@@ -54,10 +54,11 @@ specs/001-build-smart-router/
 ├── contracts/           # Phase 1 API contracts
 │   ├── routing-request.schema.json
 │   ├── routing-decision.schema.json
-│   └── explain-endpoint.md
+│   ├── explain-endpoint.md
+│   └── pi-middleware.md
 ├── checklists/
 │   └── requirements.md
-└── tasks.md             # Phase 2 (/spec:tasks — not yet created)
+└── tasks.md             # Phase 2 (/spec:tasks output)
 ```
 
 ### Source Code (repository root)
@@ -123,7 +124,7 @@ flowchart TD
   S6 --> S7[Step 7: Telemetry emit]
 ```
 
-Each stage returns `{ decided: boolean, decision?: RoutingDecision, stage: string }`. Failures at any stage → `safeCloudDefault()` from configured frontier/economical fallback in models.yaml.
+Each stage returns `{ decided: boolean, decision?: RoutingDecision, stage: string }`. Failures at any stage → `safeCloudDefault()`: first healthy `economical-cloud` model in models.yaml; if none, first healthy `frontier-cloud` model. Never throw to host agent.
 
 ## Implementation Lanes (maps to PRD §6)
 
@@ -134,13 +135,15 @@ Each stage returns `{ decided: boolean, decision?: RoutingDecision, stage: strin
 | 1.1 | `hardware-probe.ts` | FR-012; US5 |
 | 1.2 | `triage-engine.ts` | FR-003, FR-004; US2 |
 | 1.3 | `turn-envelope.ts` | FR-005; US3 |
+| 1.4 | `sub-route-policy.ts` | FR-024; US3 |
 
 ### Lane 2: State, Cost & Gateway Resilience
 
 | Task | Module | Spec / FR mapping |
 |------|--------|-------------------|
-| 2.1 | `session-pinner.ts` | FR-006–008; US4 |
-| 2.2 | `gateway-dispatch.ts` | FR-017 |
+| 2.1 | `session-pinner.ts` | FR-006–008, FR-007; US4 |
+| 2.2 | `gateway-dispatch.ts` | FR-017, FR-023 |
+| 2.2b | `sqlite-store.ts` | FR-025 |
 | 2.3 | `circuit-breaker.ts` | FR-018 |
 | 2.4 | `price-broker.ts` | FR-019 |
 | 2.5 | `pricing-monitor.ts` | FR-020; US7 |
@@ -151,6 +154,7 @@ Each stage returns `{ decided: boolean, decision?: RoutingDecision, stage: strin
 | Task | Module | Spec / FR mapping |
 |------|--------|-------------------|
 | 3.1 | `hydra-matcher.ts` | FR-009–011; US2, US7 |
+| 3.1b | `multi-objective.ts` | FR-021; US7 |
 | 3.2 | `local-zero-tier.ts` | FR-012–013; US5 |
 
 ### Lane 4: Orchestration & Guardrails

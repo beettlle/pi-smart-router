@@ -5,6 +5,9 @@
 .spine/run-metrics.jsonl
 .worktrees/
 
+# Router runtime state (SQLite + ONNX model cache)
+.pi-smart-router/
+
 #SpecKit
 .specify/
 

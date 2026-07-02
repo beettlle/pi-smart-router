@@ -20,7 +20,30 @@ npx tsc --init --strict --module nodenext --moduleResolution nodenext
 cp config/models.yaml.example config/models.yaml
 ```
 
-Build verification pending until package scripts exist (see `/spec:tasks`).
+Build verification pending until package scripts exist (see [tasks.md](./tasks.md)).
+
+## HyDRA Model Cache Bootstrap
+
+Embedding matcher weights are downloaded at runtime (not committed to git). On first run, `@huggingface/transformers` caches ONNX artifacts under `.pi-smart-router/models/` (configurable via `hydra.artifact_cache_path` in [data-model.md](./data-model.md)).
+
+```bash
+mkdir -p .pi-smart-router/models
+# First pipeline run with matcher enabled triggers download of Xenova/all-MiniLM-L6-v2
+```
+
+Ensure `.pi-smart-router/` is gitignored (covers both `state.db` and `models/`).
+
+## Cost vs Quality Preference
+
+Configure multi-objective routing weights in operator config (defaults from [data-model.md](./data-model.md)):
+
+| Key | Default | Effect |
+|-----|---------|--------|
+| `frugality.lambda_cost` | 0.5 | Higher → favor economical tiers at quality parity |
+| `frugality.lambda_latency` | 0.1 | Higher → favor lower-latency models |
+| `frugality.lambda_verbosity` | 0.15 | Higher → favor less verbose models |
+
+Loaded by `src/config/defaults.ts` (task T012); consumed by multi-objective scorer (task T049).
 
 ## Configure Fleet Catalog
 
@@ -82,11 +105,15 @@ Response includes `tier`, `stage`, `reason_code`, `candidates`, `estimated_cost_
 | Check | Command / action |
 |-------|------------------|
 | Trivial → economical | Run triage test fixtures (`tests/unit/triage-engine.test.ts`) |
+| Obvious-case latency (SC-004) | Step 2 triage exit <5ms median on obvious-case fixtures |
+| Ambiguous overhead (SC-005) | `tests/integration/routing-latency.test.ts` — median <200ms |
+| Cost vs frontier baseline (SC-009) | `tests/integration/cost-baseline.test.ts` — mocked pricing comparison |
 | Pin stability | Multi-turn integration test without compaction |
 | Zero crash on local down | Stop LM Studio; verify cloud fallback |
 | Explain parity | Compare explain vs live path for same payload (SC-010) |
 
 ## Next Steps
 
-- `/spec:tasks` — break lanes into spine-ready task packets
+- `/spec:implement` — begin Phase 1 setup tasks
+- [tasks.md](./tasks.md) T065–T066 — break lanes into spine-ready task packets
 - `spine doctor` — validate spine config before batch

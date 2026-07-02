@@ -140,12 +140,14 @@ Audit record (append-only log or OTLP span).
 | `frugality.lambda_verbosity` | number | 0.15 | λ_verbosity |
 | `loop_escalation.threshold` | number | 3 | Identical tool failures |
 | `pricing.staleness_days` | number | 14 | Reminder threshold |
-| `local.min_memory_gb` | number | 16 | Full local tier |
+| `local.min_memory_gb_full` | number | 16 | Full local execution (`zero-tier` dispatch) |
+| `local.min_memory_gb_classification` | number | 8 | Classification-only local; no full local dispatch |
 | `local.battery_threshold_pct` | number | 20 | Disable on battery |
+| `hydra.artifact_cache_path` | string | `.pi-smart-router/models/` | ONNX cache; not committed to git |
 
 ## Validation Rules Summary
 
 - Shortfall gate: candidate excluded if any capability dimension shortfall > 0 (quality parity).
 - Loop escalation: fire once per session when `consecutive_tool_failures >= threshold` with identical signature.
-- Local tier: requires hardware probe pass AND model actively loaded (ping response).
-- Rate limit: reject with retry-after when token bucket empty (HTTP 429 on proxy path).
+- Local tier: hardware probe returns `full_local`, `classification_only`, or `disabled`. Full local dispatch requires `full_local` AND model actively loaded (ping response). Classification-only mode may run triage locally but MUST NOT dispatch full inference to local tier.
+- Rate limit: reject with HTTP **429** when token bucket empty (proxy path). Response MUST include `Retry-After` header (seconds until refill) and body `{ "error": "rate_limit_exceeded", "retry_after_seconds": N }`.

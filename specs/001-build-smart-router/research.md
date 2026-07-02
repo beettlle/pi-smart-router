@@ -41,9 +41,11 @@
 
 ## 7. Hardware Gating
 
-**Decision**: `os.totalmem()` ≥16GB for full local; 8GB classification-only; battery <20% unplugged disables local.  
+**Decision**: `os.totalmem()` ≥16GB for full local; 8GB–15GB classification-only (triage locally, no full local dispatch); battery <20% unplugged disables local.  
 **Rationale**: PRD Step 1; spec edge cases.  
 **Alternatives considered**: GPU detection — defer; macOS `sysctl` for memory confirmation in hardware-probe.
+
+Configuration keys: `local.min_memory_gb_full` (16), `local.min_memory_gb_classification` (8) in [data-model.md](./data-model.md).
 
 ## 8. Rate Limiting & Failover
 
@@ -59,7 +61,21 @@
 
 ## 10. Turn Envelope (pi.dev integration)
 
-**Decision**: Classify `turn_type` enum: `planning | tool_result | subagent | main_loop | unknown` from message role, tool-call blocks, payload size. Exact pi hook fields to be confirmed during Lane 4.1 integration spike.  
+**Decision**: Classify `turn_type` enum: `planning | tool_result | subagent | main_loop | unknown` from message role, tool-call blocks, payload size.
+
+**Final pi → RoutingRequest field mapping** (see [contracts/pi-middleware.md](./contracts/pi-middleware.md) v1.0.0):
+
+| pi source | RoutingRequest field | Notes |
+|-----------|---------------------|-------|
+| `sessionManager.getSessionFile()` (+ fallback) | `session_id` | Stable across multi-turn session |
+| `context` event `messages` | `messages` | Role + content + tool blocks |
+| `session_compact` / `session_before_compact` | `compaction_flag` | Triggers pin break |
+| `model_select` (`source === "set"`) | `force_model_id` | Sets pin_reason `user_forced` |
+| Generated per request | `request_id` | UUID per routing decision |
+| Last user message / `before_agent_start.prompt` | `prompt_text` | Sanitized before scoring |
+
+**Status**: Final — documented in `contracts/pi-middleware.md` v1.0.0.
+
 **Rationale**: PRD Step 2b; Weave production pattern.  
 **Alternatives considered**: Text-only routing — rejected per spec US3.
 

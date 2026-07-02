@@ -186,6 +186,7 @@ A developer configures a cost-vs-quality preference. When a session becomes stuc
 
 ### Assumptions
 
+- **Tier naming:** User-facing "local tier" maps to catalog tier `zero-tier` in models.yaml, JSON schemas, and telemetry. Economical and frontier tiers map to `economical-cloud` and `frontier-cloud`.
 - MVP targets developers on macOS Apple Silicon.
 - Operator maintains a model fleet catalog with at least one model per tier.
 - Local inference services are optional; the router does not mandate them.
@@ -207,7 +208,7 @@ A developer configures a cost-vs-quality preference. When a session becomes stuc
 - **SC-001**: Developers complete agent sessions without manually selecting a model for each request when the router is enabled.
 - **SC-002**: At least 95% of clearly trivial prompts in a curated test set route to economical or local tiers without operator override.
 - **SC-003**: Clearly complex architecture and debugging prompts in a curated test set route to frontier-capable tiers.
-- **SC-004**: Obvious-case routing completes without user-perceptible delay before the first token.
+- **SC-004**: Obvious-case routing (Step 2 triage early exit) adds less than 5ms median routing overhead before first-token dispatch.
 - **SC-005**: Median added wait for ambiguous prompts remains under two hundred milliseconds as perceived by the developer.
 - **SC-006**: Multi-turn sessions without compaction keep the same pinned model across non-sub-routable turns; same-provider tool-result sub-routing does not break session pin state.
 - **SC-007**: Zero host-agent crashes when local inference services are unavailable or misconfigured.
