@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pi-smart-router.dev/contracts/routing-request.schema.json",
+  "title": "RoutingRequest",
+  "description": "Intercepted pi agent LLM request entering the router pipeline",
+  "type": "object",
+  "required": ["request_id", "session_id", "prompt_text"],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this request"
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable session identifier across multi-turn conversation"
+    },
+    "prompt_text": {
+      "type": "string",
+      "description": "Primary prompt text (sanitized before scoring)"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["role", "content"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["user", "assistant", "system", "tool"]
+          },
+          "content": {
+            "type": "string"
+          },
+          "tool_call_id": {
+            "type": "string"
+          },
+          "tool_calls": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    "turn_type": {
+      "type": "string",
+      "enum": ["planning", "tool_result", "subagent", "main_loop", "unknown"]
+    },
+    "compaction_flag": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, triggers session pin break"
+    },
+    "force_model_id": {
+      "type": "string",
+      "description": "Operator override; pins session to specified model"
+    },
+    "estimated_input_tokens": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

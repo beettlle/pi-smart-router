@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pi-smart-router.dev/contracts/routing-decision.schema.json",
+  "title": "RoutingDecision",
+  "description": "Output of router pipeline (live dispatch or explain path)",
+  "type": "object",
+  "required": [
+    "request_id",
+    "selected_model_id",
+    "tier",
+    "stage",
+    "reason_code",
+    "routing_latency_ms"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "selected_model_id": {
+      "type": "string"
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["zero-tier", "economical-cloud", "frontier-cloud"]
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "triage",
+        "turn_envelope",
+        "session_pin",
+        "local_zero",
+        "hydra_match",
+        "fallback"
+      ]
+    },
+    "reason_code": {
+      "type": "string",
+      "description": "Machine-readable decision reason, e.g. pin_hit, keyword_frontier"
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["model_id", "score"],
+        "properties": {
+          "model_id": { "type": "string" },
+          "score": { "type": "number" },
+          "shortfall": { "type": "number" },
+          "rejected_reason": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "estimated_cost_usd": {
+      "type": "number",
+      "minimum": 0
+    },
+    "routing_latency_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "pin_reason": {
+      "type": ["string", "null"],
+      "enum": [
+        "initial",
+        "user_forced",
+        "loop_escalation",
+        "compaction",
+        "cache_economics",
+        null
+      ]
+    }
+  },
+  "additionalProperties": false
+}

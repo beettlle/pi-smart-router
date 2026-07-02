@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "Build pi-smart-router MVP: an open-source auto-model router for the pi.dev coding agent that intercepts each LLM request and selects the best execution tier (local when viable, economical cloud, or frontier cloud) to balance cost, capability, latency, and time-to-first-token without manual model picking."
 
+## Clarifications
+
+### Session 2026-07-02
+
+- Q: When a session is pinned to a frontier-capable model, should small tool-result turns be allowed to sub-route to an economical tier? → A: Same-provider sub-routing only — small tool-result payloads may use an economical tier when the economical model shares the same provider as the pin.
+- Q: When the centralized session store is unavailable, how should session pinning behave? → A: In-memory fallback — use process-local store; pins and rate limits work for single instance only.
+- Q: What scope should rate limits apply to? → A: Per operator API key — limits keyed to the credential used for upstream calls.
+- Q: When routing fails entirely, which tier should the safe default use? → A: Economical first — select first healthy economical-cloud model; frontier only if none available.
+- Q: How long should routing telemetry be retained for operator audit? → A: Rolling window capped at 168 hours and 1111 records.
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Automatic Model Selection (Priority: P1)
@@ -48,7 +58,7 @@ During an agent session, different turn types occur—planning messages, tool re
 
 **Acceptance Scenarios**:
 
-1. **Given** a session pinned to a capable tier for planning, **When** a small tool-result turn arrives, **Then** the router may assign an economical path only if pin policy allows sub-routing without breaking cache economics.
+1. **Given** a session pinned to a capable tier for planning on a provider, **When** a small tool-result turn arrives on that same provider, **Then** the router may assign an economical-tier model from that provider; **When** the tool-result exceeds the size threshold or no same-provider economical model exists, **Then** the router uses the pinned model.
 2. **Given** a planning or architecture turn, **When** no pin exists yet, **Then** the router biases toward a frontier-capable tier.
 3. **Given** a subagent or exploration turn, **When** routing runs, **Then** the router biases toward a mid-tier capable of context gathering.
 
@@ -68,6 +78,7 @@ A developer works through a multi-turn agent conversation without history compac
 2. **Given** a pinned session, **When** history compaction occurs, **Then** the router may re-evaluate and select a new model.
 3. **Given** a pinned session, **When** the developer explicitly overrides the model, **Then** the pin updates to the forced model for the session remainder.
 4. **Given** a provider switch is considered, **When** cache-warmup cost exceeds projected savings, **Then** the router keeps the current pin.
+5. **Given** the centralized session store is unavailable, **When** routing runs in single-instance mode, **Then** the router falls back to in-process memory for pins without crashing or disabling pinning.
 
 ---
 
@@ -99,7 +110,7 @@ A developer or operator wants to understand why a specific request was routed to
 **Acceptance Scenarios**:
 
 1. **Given** a routing request payload, **When** the operator requests an explanation, **Then** the system returns tier, decision stage, reason code, and considered alternatives without executing inference.
-2. **Given** a live routed request, **When** the operator audits recent decisions, **Then** per-request telemetry includes cost estimate, routing duration, and pin reason.
+2. **Given** a live routed request, **When** the operator audits recent decisions, **Then** per-request telemetry includes cost estimate, routing duration, and pin reason, and remains queryable within the rolling retention window.
 
 ---
 
@@ -125,11 +136,13 @@ A developer configures a cost-vs-quality preference. When a session becomes stuc
 - Machine has minimal unified memory: local tier limited to classification-only; full local execution disabled.
 - Developer on battery below threshold while unplugged: local tier disabled.
 - Neither configured local service has a model ready: immediate economical cloud fallback.
-- Code structure in prompt cannot be parsed: safe default cloud tier; agent does not crash.
+- Code structure in prompt cannot be parsed: safe default selects economical cloud; frontier only if no economical model is healthy; agent does not crash.
 - Adversarial complexity inflation in prompt content: sanitization prevents over-routing to frontier.
-- Centralized session store unavailable in single-user mode: pinning degrades gracefully with documented behavior.
+- Centralized session store unavailable or unset: fall back to in-process memory for session pins and rate limits; pinning remains active for single-instance use only.
 - Provider returns infrastructure error: automatic retry on equivalent tier; policy or safety rejections do not trigger failover.
-- Tool-result sub-routing attempted when pin policy forbids it: session stays on pinned model.
+- Tool-result sub-routing attempted when payload exceeds size threshold or economical model is on a different provider: session stays on pinned model.
+- Tool-result sub-routing to same-provider economical model: pin record unchanged; provider cache markers preserved.
+- Rate limit exceeded for an operator API key: request rejected with retry guidance; other operators unaffected.
 - Loop escalation fires once per session; no tier oscillation.
 
 ## Requirements _(mandatory)_
@@ -151,14 +164,16 @@ A developer configures a cost-vs-quality preference. When a session becomes stuc
 - **FR-013**: System MUST NOT invoke unloaded local models; MUST fall back without blocking time-to-first-token.
 - **FR-014**: System MUST escalate session pin when bounded repeated identical tool failures are detected, without post-generation output judging.
 - **FR-015**: System MUST provide routing explanation (tier, stage, reason, alternatives) without upstream inference dispatch.
-- **FR-016**: System MUST emit per-request routing telemetry including decision stage, reason code, estimated cost, and routing duration.
-- **FR-017**: System MUST enforce rate limits and distribute load across equivalent model endpoints.
+- **FR-016**: System MUST emit per-request routing telemetry including decision stage, reason code, estimated cost, and routing duration; MUST retain audit records in a rolling window capped at 168 hours and 1111 records unless operator configures otherwise.
+- **FR-017**: System MUST enforce rate limits per operator API key and distribute load across equivalent model endpoints.
 - **FR-018**: System MUST fail over to alternate providers only on infrastructure errors, not on policy or safety rejections.
 - **FR-019**: System MUST resolve model pricing from operator overrides, refreshed registry data, and catalog fallbacks in priority order.
 - **FR-020**: System MUST warn the operator when pricing data exceeds a configurable staleness threshold.
 - **FR-021**: System MUST accept an operator-configurable cost-vs-quality preference with a sensible default when unset.
-- **FR-022**: System MUST degrade to a safe cloud default on any routing failure without crashing the host agent.
+- **FR-022**: System MUST degrade to a safe cloud default on any routing failure without crashing the host agent; safe default selects the first healthy economical-cloud model, falling back to frontier-cloud only when no economical model is available.
 - **FR-023**: System MUST preserve provider context-caching semantics on same-provider request paths.
+- **FR-024**: When a session is pinned, tool-result turns MAY sub-route to an economical tier only if the payload is below a configurable size threshold and the economical model shares the same provider as the pin; otherwise the pinned model MUST be used.
+- **FR-025**: When the centralized session store is unavailable, the system MUST fall back to in-process memory for session pins and rate limits; MUST NOT crash the host agent or disable pinning in single-instance mode.
 
 ### Key Entities
 
@@ -175,9 +190,13 @@ A developer configures a cost-vs-quality preference. When a session becomes stuc
 - Operator maintains a model fleet catalog with at least one model per tier.
 - Local inference services are optional; the router does not mandate them.
 - Operator configures cost preference via pi configuration; balanced default applies when unset.
-- Centralized session store is optional for single-instance development; recommended for distributed rate limiting.
+- Centralized session store is optional for single-instance development; when unavailable, in-process memory fallback applies; Redis recommended for multi-instance rate limiting and shared pins.
 - Pricing staleness reminder defaults to fourteen days unless operator configures otherwise.
 - Loop escalation threshold defaults to three identical tool failures within a session unless operator configures otherwise.
+- Tool-result sub-routing payload threshold defaults to two kilobytes unless operator configures otherwise.
+- Rate limits are scoped per operator API key unless operator configures otherwise.
+- Safe default on routing failure prefers economical-cloud tier; frontier-cloud used only when no economical model is healthy.
+- Routing telemetry retention defaults to a rolling window of 168 hours and 1111 records unless operator configures otherwise.
 
 ## Success Criteria _(mandatory)_
 
@@ -188,9 +207,9 @@ A developer configures a cost-vs-quality preference. When a session becomes stuc
 - **SC-003**: Clearly complex architecture and debugging prompts in a curated test set route to frontier-capable tiers.
 - **SC-004**: Obvious-case routing completes without user-perceptible delay before the first token.
 - **SC-005**: Median added wait for ambiguous prompts remains under two hundred milliseconds as perceived by the developer.
-- **SC-006**: Multi-turn sessions without compaction keep the same pinned model across turns.
+- **SC-006**: Multi-turn sessions without compaction keep the same pinned model across non-sub-routable turns; same-provider tool-result sub-routing does not break session pin state.
 - **SC-007**: Zero host-agent crashes when local inference services are unavailable or misconfigured.
-- **SC-008**: Operators can retrieve routing rationale for recent requests without replaying traffic through upstream inference.
+- **SC-008**: Operators can retrieve routing rationale for requests within the rolling retention window (default 168 hours and 1111 records) without replaying traffic through upstream inference.
 - **SC-009**: Mixed-workload API cost measurably decreases versus an always-frontier baseline in a representative agent workload.
 - **SC-010**: Routing decisions on identical inputs produce identical explanations on the explain path and live path.
 
