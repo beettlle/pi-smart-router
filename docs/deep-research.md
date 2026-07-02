@@ -178,6 +178,8 @@ A significant recent advancement in LLM optimization is the introduction of prov
 
 As demonstrated by the optimization strategies employed in GitHub Copilot, a state-of-the-art router must be fundamentally **cache-aware**. The architecture enforces routing decisions solely at natural cache boundaries. The router evaluates the first turn of a new conversation or task, selecting the optimal model based on the initial intent. Once selected, the routing engine "pins" the session to that specific model for all subsequent interactions. The router only re-evaluates and potentially switches models after a compaction event—such as when the conversation history exceeds a certain length and is actively summarized, resetting the prompt prefix and effectively destroying the previous cache regardless. This cache-aware pinning ensures that the system maximizes cache hit rates while still benefiting from intelligent dispatching on initial requests.
 
+Production routers (e.g., Weave Router) extend this model with **multi-objective selection** within quality parity: cost, latency, and output verbosity are first-class signals because parity models can differ 3–5× in output tokens and time-to-first-token. **Turn-type awareness** allows different routing bias for planning turns vs. tool-result payloads within pin rules. **Observational loop escalation** rescues sessions stuck in repeated tool failures without post-generation output judging. See [PRD.md](PRD.md) §2.3 and §3 for pi-smart-router adoption of these patterns.
+
 ## Implementation Architecture for the pi.dev Ecosystem
 
 To successfully replicate and advance upon the capabilities of proprietary systems like Cursor's "Auto" mode, the open-source pi.dev model routing package must be constructed as a specialized, low-latency API gateway that intercepts all LLM traffic between the user's IDE and the model providers.
@@ -190,7 +192,9 @@ The architecture should consist of a cascading pipeline:
 
 3. **The Execution and Resilience Layer:** Once a target model profile is selected, the request enters the control plane. Here, Redis-backed Lua scripts execute Token Bucket rate limiting. Valid requests are distributed probabilistically using Latency-Quality Matching across multiple API keys. If a provider endpoint suffers an outage, circuit breakers trip, and the payload is seamlessly retried on fallback chains, insulating the developer from vendor instability.
 
-By integrating cache-aware session pinning to preserve provider-side context efficiencies, and decoupling the predictive algorithms from the underlying model identities, the pi.dev routing package will dynamically optimize the cost-quality frontier. The result is an ecosystem that intelligently leverages the immense reasoning power of frontier models for complex software engineering tasks, while aggressively utilizing the speed and economy of specialized small language models for routine operations, maintaining continuous developer flow with imperceptible latency overhead.
+4. **The Observability Layer:** Every routing decision emits structured telemetry (stage, reason code, turn type, estimated cost). An explain endpoint returns the same decision without upstream dispatch for shadow runs and operator audit.
+
+By integrating cache-aware session pinning to preserve provider-side context efficiencies, multi-objective scoring, turn-type signals, and decoupling the predictive algorithms from the underlying model identities, the pi.dev routing package will dynamically optimize the cost-quality frontier.
 
 ## References
 

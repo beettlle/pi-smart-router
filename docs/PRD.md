@@ -19,6 +19,7 @@ A coding agent implementing this system must understand the specific research ar
 Cascading frameworks rely on a "Generation Judger" evaluating a cheap model's output after it generates, escalating to an expensive model on failure.
 
 - **Decision:** This introduces severe tail latencies (20s+ on complex code). Our routing must be purely predictive (pre-generation).
+- **Allowed (distinct from FrugalGPT):** Observational loop escalation — detect repeated identical tool failures or edit-loop signatures at runtime and escalate the session pin to a frontier tier. The trigger is telemetry-based, not a second inference to judge output quality.
 
 **Rejected: RouteLLM (Matrix Factorization)**
 
@@ -31,6 +32,8 @@ While RouteLLM predicts model success via binary human preference, it is highly 
 Constantly switching models mid-session shatters provider-side Prompt Prefix Caching (Anthropic/OpenAI caching). Rebuilding a 100k context window costs more than routing saves.
 
 - **Decision:** We mandate Cache-Aware Session Pinning.
+- **Rejected:** Re-optimizing provider/model on every turn (naive per-request routing).
+- **Allowed:** Turn-type-aware tier hints **within** a pinned session (e.g., `tool_result` payloads may use an economical path when pin policy permits sub-routing). Sub-routing must not break provider cache markers or cross providers without accounting for cache-warmup cost.
 
 ### 2.2. Adopted Architectures
 
@@ -45,6 +48,26 @@ HyDRA decouples routing weights from model identities. It predicts a prompt's mu
 Open-weight models (Gemma 4 7B, Qwen 3.5) are free but computationally heavy.
 
 - **Decision:** We treat local models purely as an edge-cache for high-frequency, low-complexity tasks (JSON formatting, typo fixes), gated by explicit unified memory checks and VRAM polling.
+
+### 2.3. Production Router Reference (Weave)
+
+[Weave Router](https://github.com/workweave/router) validates agentic routing in production: session pinning to preserve prompt-cache economics, multi-objective selection (cost + latency + verbosity at quality parity), and per-request telemetry. Internal claims cite 40–85% cost reduction vs. always-frontier baselines on coding-agent workloads.
+
+**Patterns we adopt:**
+
+- Pin economics: session sticks to first routing decision; switches only when cache-warmup cost is offset by savings.
+- Turn-type signals: classify agentic turn context (planning, tool result, subagent exploration) before neural matching.
+- Loop escalation: observational rescue when cheap models cycle on identical tool failures.
+- Explain endpoint: return routing rationale without upstream dispatch (shadow runs, operator trust).
+- Per-request telemetry: decision stage, reason code, estimated cost, routing latency.
+
+**Patterns we reject or defer:**
+
+- RL-trained routers on agent traces (defer to Phase 2).
+- Managed-only provider sprawl (pi-smart-router stays self-hosted and pi-native).
+- Semantic caching per intent cluster (defer to Phase 2).
+
+pi-smart-router remains open-source. Local zero-tier with cold-start gating, sub-5ms deterministic triage, confounder sanitization, and HyDRA fleet decoupling are differentiators Weave does not emphasize.
 
 ## 3. The Multi-Tiered Architecture Pipeline
 
@@ -70,11 +93,43 @@ Bypass neural inference entirely using high-speed heuristics executing on the No
   - Traverse the ESTree. Increment a counter for every control flow node (`IfStatement`, `ForStatement`, `ConditionalExpression`, `SwitchCase`, `LogicalExpression`).
   - If `cyclomatic_score > 15`, immediately route to the Frontier Cloud tier.
 
+### Step 2b: Agentic Turn Envelope Analysis (Latency Budget: < 2ms)
+
+Parse the pi request envelope (role, tool-call presence, message structure, approximate payload size) before session pinning or neural matching.
+
+| Signal | Routing implication |
+|--------|---------------------|
+| `tool_result` / small structured payload | Candidate for economical tier even when session is pinned to frontier for planning |
+| `planning` / long user prompt / architecture keywords | Frontier bias before pin applies |
+| `subagent` / exploration metadata | Mid-tier bias |
+| Same-format upstream path | Skip unnecessary serialization (lazy envelope) |
+
+Turn-type classification aligns with production router telemetry (`turn_type`); exact pi.dev metadata fields to be confirmed during `/spec:plan`.
+
 ### Step 3: Cache-Aware Session Pinning (Latency Budget: < 1ms)
 
 Preserve provider-side context caching.
 
-- **Logic:** Query `redis.get(sessionId)` or a local memory map. If a valid `pinnedModel` exists, and the current payload lacks a history-truncation flag, bypass Steps 4 and 5 completely and route to the pinned model.
+- **Logic:** Query `redis.get(sessionId)` or a local memory map. If a valid `pinnedModel` exists, and no pin-break condition applies, bypass Steps 4 and 5 and route to the pinned model.
+- **Pin immutability:** Once pinned, the scorer does not re-run full Step 5 on every turn unless a break condition fires.
+
+**Pin break conditions (exhaustive):**
+
+1. History compaction / truncation flag on the payload.
+2. User explicit model override (`pi config force-model` equivalent).
+3. Qualified loop escalation (see Step 3b).
+4. Cache-warmup economics: switch only when `estimated_savings > cache_reprime_cost` over remaining session turns.
+
+**Session pin fields:** `pin_reason`, `has_ever_switched`, `consecutive_upstream_errors` (persisted in Redis or local map).
+
+### Step 3b: Loop Escalation Pin
+
+Detect bounded failure patterns within a session window:
+
+- N identical tool failures (default N = 3).
+- Repeated edit-loop signatures or spiral signals.
+
+**Action:** Set `pinnedModel` to frontier tier; `pin_reason = loop_escalation`; pin is immutable for the session remainder (same stickiness as user force). This is observational rescue, not post-generation output judging.
 
 ### Step 4: Local Zero-Tier Execution (The Cold-Start Solution)
 
@@ -96,6 +151,19 @@ For ambiguous queries that fail deterministic triage.
 - **Rate Limiting:** Execute Token Bucket limits using `ioredis` with an atomic `EVAL` Lua script. Do not use local memory variables to prevent race conditions.
 - **Load Balancing:** Distribute traffic across identical model endpoints using Weighted Round-Robin based on Latency-Quality Matching.
 - **Circuit Breaking:** On HTTP 5xx errors, trip the breaker, start a 30-second cooldown, and seamlessly replay the payload against the next model in the fallback chain. (Do not fallback on 4xx user/safety errors).
+- **Format preservation:** Same-provider paths MUST preserve provider cache markers (`cache_control`, extended thinking blocks, tool payloads). Cross-format translation (if ever added) uses a canonical intermediate representation; never strip cache hints silently.
+
+### Step 7: Routing Observability
+
+**Explain / shadow endpoint:**
+
+- `POST /v1/route/explain` or pi CLI `pi router explain` — returns `{tier, model, stage, reason_code, candidates, estimated_cost}` without upstream dispatch.
+- Use for shadow runs, eval pipelines, and operator trust.
+
+**Per-request telemetry** (emit on every routed request):
+
+- `session_id`, `stage`, `reason_code`, `turn_type`, `candidates_considered`, `estimated_cost`, `routing_latency_ms`, `pin_reason`
+- Optional OTLP export for dashboards.
 
 ## 4. Mathematical Models & The Tri-Tier Price Engine
 
@@ -117,7 +185,7 @@ If `last_updated > 14 days`, it injects a proactive warning via the pi agent:
 
 > "Hey, your LLM pricing cache hasn't updated in 14 days. Should I fetch the latest rates or do you want to input them manually?"
 
-### The HyDRA Cost-Weighted Math
+### The HyDRA Multi-Objective Scoring
 
 Once the vectors are embedded, the router iterates over `models.yaml`.
 
@@ -129,13 +197,28 @@ Shortfall = max(0, Req_Reasoning - Model_Reasoning)
           + ...
 ```
 
-**Cost Efficiency Formula (τ = q − λc):**
+**Multi-Objective Score (quality parity gate, then optimize):**
+
+Within each candidate set that meets the shortfall gate (quality parity), select the model that maximizes:
 
 ```
-Score_i = (1 - Shortfall_i) - (λ × NormalizedCost_i)
+Score_i = (1 - Shortfall_i)
+        - (λ_cost × NormalizedCost_i)
+        - (λ_latency × NormalizedLatency_i)
+        - (λ_verbosity × NormalizedVerbosity_i)
 ```
 
-**Frugality Slider (λ):** A user-configurable value. If `λ = 0.9`, the system aggressively penalizes cost. If `λ = 0.1`, the system favors capability regardless of API price.
+- `NormalizedLatency_i` from `models.yaml` `latency_p50_ms` or live telemetry EMA.
+- `NormalizedVerbosity_i` from historical output-token ratio per model (catalog default; refine via telemetry).
+- Quality-parity models can differ 3–5× in output tokens and seconds to TTFT; all three axes are first-class.
+
+**Weight defaults:**
+
+- `λ_cost` — from frugality slider (user-configurable).
+- `λ_latency` — default `0.1`.
+- `λ_verbosity` — default `0.15`.
+
+**Frugality Slider (λ_cost):** If `λ_cost = 0.9`, the system aggressively penalizes cost. If `λ_cost = 0.1`, the system favors capability regardless of API price.
 
 ## 5. Configuration Schema (`models.yaml`)
 
@@ -148,6 +231,10 @@ models:
       reasoning: 0.3
       code_gen: 0.6
       tool_use: 0.1
+    performance:
+      latency_p50_ms: 120
+      verbosity_factor: 0.9
+      cache_friendly: true
     pricing:
       registry_key: "local/free"
       user_override_cost: null
@@ -160,6 +247,10 @@ models:
       reasoning: 0.95
       code_gen: 0.95
       tool_use: 0.95
+    performance:
+      latency_p50_ms: 450
+      verbosity_factor: 1.2
+      cache_friendly: true
     pricing:
       registry_key: "anthropic/claude-3-5-sonnet"
       user_override_cost: null
@@ -174,22 +265,24 @@ models:
 |------|-------------|
 | **1.1** | `hardware-probe.ts` — Implement macOS checks (`sysctl` for unified memory) to determine `LOCAL_TIER_ENABLED`. |
 | **1.2** | `triage-engine.ts` — Implement `aho-corasick-node` (intent scanning) and `@typescript-eslint/parser` (cyclomatic AST scoring with confounder sanitization). |
+| **1.3** | `turn-envelope.ts` — Classify agentic turn type from pi request metadata (role, tool-call presence, payload size). |
 
 ### Lane 2: State, Cost & Gateway Resilience
 
 | Task | Description |
 |------|-------------|
-| **2.1** | `session-pinner.ts` — Redis logic for context caching boundaries. |
+| **2.1** | `session-pinner.ts` — Redis logic for pin break rules, cache-warmup economics, and loop escalation pin. |
 | **2.2** | `gateway-dispatch.ts` — Token Bucket (Lua) & LQM Weighted Round-Robin. |
 | **2.3** | `circuit-breaker.ts` — 5xx failovers and cooldown probes. |
 | **2.4** | `price-broker.ts` — 24-hour background fetch caching LiteLLM pricing. |
 | **2.5** | `pricing-monitor.ts` — 14-day agentic reminder loop. |
+| **2.6** | `routing-telemetry.ts` — Structured per-decision logs; optional OTLP export. |
 
 ### Lane 3: Routing ML & Local HTTP Backends
 
 | Task | Description |
 |------|-------------|
-| **3.1** | `hydra-matcher.ts` — ONNX runtime and FrugalGPT-weighted Shortfall matching. |
+| **3.1** | `hydra-matcher.ts` — ONNX runtime, Shortfall matching, and multi-objective score (latency + verbosity). |
 | **3.2** | `local-zero-tier.ts` — Active memory cascading pings (LM Studio `/v1/models` → Ollama `/api/ps`). |
 
 ### Lane 4: Orchestration & SDD Guardrails (stet)
@@ -198,13 +291,17 @@ models:
 |------|-------------|
 | **4.1** | `router-pipeline.ts` — Wire Lanes 1–3 sequentially. |
 | **4.2** | `.stet.yaml` Configuration — Enforce zero-crash fallbacks (if local APIs or AST fail, default to cloud, never crash the IDE). Ban `any` types. Enforce <10ms latency bounds on regex triage. |
+| **4.3** | `router-explain.ts` — Shadow/explain endpoint without upstream call. |
+| **4.4** | `pi-router-install.ts` — One-command pi config wiring (stretch / post-MVP). |
 
-### Phase 2 (Post-MVP): Native Backends
+### Phase 2 (Post-MVP): Native Backends & Advanced Routing
 
 | Task | Description |
 |------|-------------|
 | **5.1** | Replace HTTP backends with Apple MLX native Node wrapper. |
 | **5.2** | Integrate CUDA EP for `onnxruntime-node` (Windows/Linux). |
+| **5.3** | RL-trained routing artifacts on agent traces. |
+| **5.4** | Semantic caching per intent cluster. |
 
 ## Appendix: Spec-Kit Setup
 
@@ -226,8 +323,8 @@ specify init pi-smart-router
 
 ### 3. Load the Specification
 
-Copy the Markdown contents of this PRD and save it as `.specify/templates/spec.md`.
+Use `/spec:specify` with a feature description derived from this PRD. Do **not** copy this PRD into `.specify/templates/`. Technical detail stays in PRD for `/spec:plan`; `specs/###-feature/spec.md` remains implementation-agnostic.
 
 ### 4. Run Spec-Driven Generation
 
-Trigger your AI coding agent (e.g., inside pi.dev or Copilot) with `/speckit.plan` to generate the file tree, followed by `/speckit.tasks` to convert Section 6 into trackable implementation tickets.
+Trigger your AI coding agent (e.g., inside pi.dev or Copilot) with `/spec:plan` to generate the file tree, followed by `/spec:tasks` to convert Section 6 into trackable implementation tickets.
