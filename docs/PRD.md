@@ -110,7 +110,7 @@ Turn-type classification aligns with production router telemetry (`turn_type`); 
 
 Preserve provider-side context caching.
 
-- **Logic:** Query `redis.get(sessionId)` or a local memory map. If a valid `pinnedModel` exists, and no pin-break condition applies, bypass Steps 4 and 5 and route to the pinned model.
+- **Logic:** Query session pin from the SQLite state store by `sessionId`. If a valid `pinnedModel` exists, and no pin-break condition applies, bypass Steps 4 and 5 and route to the pinned model.
 - **Pin immutability:** Once pinned, the scorer does not re-run full Step 5 on every turn unless a break condition fires.
 
 **Pin break conditions (exhaustive):**
@@ -120,7 +120,7 @@ Preserve provider-side context caching.
 3. Qualified loop escalation (see Step 3b).
 4. Cache-warmup economics: switch only when `estimated_savings > cache_reprime_cost` over remaining session turns.
 
-**Session pin fields:** `pin_reason`, `has_ever_switched`, `consecutive_upstream_errors` (persisted in Redis or local map).
+**Session pin fields:** `pin_reason`, `has_ever_switched`, `consecutive_upstream_errors` (persisted in SQLite; in-memory store for unit tests only).
 
 ### Step 3b: Loop Escalation Pin
 
@@ -148,7 +148,7 @@ For ambiguous queries that fail deterministic triage.
 
 ### Step 6: Resilient Gateway Dispatch
 
-- **Rate Limiting:** Execute Token Bucket limits using `ioredis` with an atomic `EVAL` Lua script. Do not use local memory variables to prevent race conditions.
+- **Rate Limiting:** Execute Token Bucket limits using `better-sqlite3` with atomic `BEGIN IMMEDIATE` transactions (read → refill → deduct in one commit). Shared across single-host multi-process runs (e.g., pi-spine workers). Do not use per-process memory variables for production rate limits.
 - **Load Balancing:** Distribute traffic across identical model endpoints using Weighted Round-Robin based on Latency-Quality Matching.
 - **Circuit Breaking:** On HTTP 5xx errors, trip the breaker, start a 30-second cooldown, and seamlessly replay the payload against the next model in the fallback chain. (Do not fallback on 4xx user/safety errors).
 - **Format preservation:** Same-provider paths MUST preserve provider cache markers (`cache_control`, extended thinking blocks, tool payloads). Cross-format translation (if ever added) uses a canonical intermediate representation; never strip cache hints silently.
@@ -174,7 +174,7 @@ LLM pricing is highly volatile. pi-smart-router implements a background pricing 
 To determine a model's exact `cost_per_1m`, the router checks:
 
 1. **User Overrides:** Explicit hardcoded limits set via `pi config set-price`.
-2. **Async Broker Cache:** A background cron worker (`price-broker.ts`) fetches the LiteLLM pricing JSON from GitHub every 24 hours and caches it in Redis/SQLite.
+2. **Async Broker Cache:** A background cron worker (`price-broker.ts`) fetches the LiteLLM pricing JSON from GitHub every 24 hours and caches it in the SQLite state store.
 3. **YAML Fallback:** The static baseline defined in `models.yaml`.
 
 ### The Agentic Reminder Loop
@@ -271,8 +271,8 @@ models:
 
 | Task | Description |
 |------|-------------|
-| **2.1** | `session-pinner.ts` — Redis logic for pin break rules, cache-warmup economics, and loop escalation pin. |
-| **2.2** | `gateway-dispatch.ts` — Token Bucket (Lua) & LQM Weighted Round-Robin. |
+| **2.1** | `session-pinner.ts` — SQLite persistence for pin break rules, cache-warmup economics, and loop escalation pin. |
+| **2.2** | `gateway-dispatch.ts` — Token Bucket (SQLite transactions) & LQM Weighted Round-Robin. |
 | **2.3** | `circuit-breaker.ts` — 5xx failovers and cooldown probes. |
 | **2.4** | `price-broker.ts` — 24-hour background fetch caching LiteLLM pricing. |
 | **2.5** | `pricing-monitor.ts` — 14-day agentic reminder loop. |
@@ -302,6 +302,11 @@ models:
 | **5.2** | Integrate CUDA EP for `onnxruntime-node` (Windows/Linux). |
 | **5.3** | RL-trained routing artifacts on agent traces. |
 | **5.4** | Semantic caching per intent cluster. |
+| **5.5** | Optional Redis store adapter for distributed multi-host deployments. |
+
+### Storage (MVP)
+
+Default state store: SQLite file at `.pi-smart-router/state.db` (project-relative), via `better-sqlite3` with WAL mode. Holds session pins, rate-limit buckets, price cache, and routing telemetry retention. No external server required. pi is single-host, multi-process — SQLite satisfies shared state across spine workers on the same machine.
 
 ## Appendix: Spec-Kit Setup
 

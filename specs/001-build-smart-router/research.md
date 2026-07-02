@@ -9,11 +9,11 @@
 **Rationale**: pi.dev ecosystem is Node/TS; constitution mandates strict TS and ES modules. Greenfield repo has no existing layout.  
 **Alternatives considered**: Go proxy (Weave pattern) — rejected; pi-native middleware integration favors TS library.
 
-## 2. Session Store
+## 2. Session & State Store
 
-**Decision**: Redis via `ioredis` for production/multi-instance; in-memory `Map` fallback when `REDIS_URL` unset (single-user dev).  
-**Rationale**: Spec assumption: centralized store optional for dev, recommended for distributed rate limiting. PRD §3 Step 3 requires atomic pin state.  
-**Alternatives considered**: SQLite-only — rejected for rate-limit Lua scripts; PostgreSQL — overkill for MVP.
+**Decision**: SQLite via `better-sqlite3` at default path `.pi-smart-router/state.db` (WAL mode). Holds session pins, rate-limit buckets, price cache, and telemetry retention.  
+**Rationale**: pi is single-host, multi-process (spine workers share one repo). SQLite provides atomic transactions without an external server; `BEGIN IMMEDIATE` replaces Redis Lua for token-bucket updates. Works out of the box for spine development cycles.  
+**Alternatives considered**: Redis — rejected for MVP (external server, heavy for solo/single-host); in-memory only — rejected for production path (no cross-process sharing); PostgreSQL — overkill.
 
 ## 3. Lexical Triage
 
@@ -47,9 +47,9 @@
 
 ## 8. Rate Limiting & Failover
 
-**Decision**: Redis Token Bucket via Lua `EVAL`; circuit breaker 30s cooldown on 5xx only; weighted round-robin with latency-quality matching.  
-**Rationale**: deep-research §System Optimization; PRD Step 6.  
-**Alternatives considered**: In-memory token bucket — race conditions in multi-instance.
+**Decision**: SQLite Token Bucket via `better-sqlite3` with `BEGIN IMMEDIATE` transactions; circuit breaker 30s cooldown on 5xx only; weighted round-robin with latency-quality matching.  
+**Rationale**: deep-research §System Optimization (atomic rate limiting); PRD Step 6. Single transaction achieves same correctness as Redis Lua on single-host multi-process.  
+**Alternatives considered**: Redis Lua `EVAL` — deferred to Phase 2 optional adapter for distributed multi-host; in-memory token bucket — tests only.
 
 ## 9. Pricing Engine
 
@@ -71,7 +71,7 @@
 
 ## 12. Testing Stack
 
-**Decision**: Vitest + zod schema tests + mocked Redis/local HTTP; spine gates: `npm run typecheck && npm test`.  
+**Decision**: Vitest + zod schema tests + in-memory SQLite (`:memory:`) or mocked store; spine gates: `npm run typecheck && npm test`.  
 **Rationale**: spine-config.json testing block; constitution error-path coverage.  
 **Alternatives considered**: Jest — either acceptable; Vitest chosen for ESM-native speed.
 
@@ -89,3 +89,4 @@
 | Semantic caching | PRD §5.4 |
 | MLX / CUDA native | PRD Phase 2 |
 | Cross-format API translation | MVP same-provider paths only |
+| Redis store adapter | PRD §5.5 — distributed multi-host deployments only |

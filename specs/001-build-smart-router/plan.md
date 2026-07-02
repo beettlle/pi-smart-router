@@ -12,14 +12,14 @@ Technical approach derives from [docs/PRD.md](../../docs/PRD.md) §3–6 and [re
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x strict mode, Node.js 20 LTS (ES modules)  
-**Primary Dependencies**: `aho-corasick-node`, `@typescript-eslint/parser`, `@huggingface/transformers` (ONNX/WASM), `ioredis`, `yaml`, `zod` (config validation)  
-**Storage**: Redis (session pins, rate limits, price cache); local in-memory `Map` fallback for single-instance dev; SQLite optional for price cache offline  
+**Primary Dependencies**: `aho-corasick-node`, `@typescript-eslint/parser`, `@huggingface/transformers` (ONNX/WASM), `better-sqlite3`, `yaml`, `zod` (config validation)  
+**Storage**: SQLite via `better-sqlite3` at default path `.pi-smart-router/state.db` (session pins, rate limits, price cache, telemetry retention); WAL mode for single-host multi-process (spine workers); in-memory store for unit tests only; Redis optional post-MVP adapter for distributed multi-host  
 **Testing**: Vitest (unit/integration), contract tests against [contracts/](./contracts/)  
 **Target Platform**: macOS Apple Silicon (Darwin); pi.dev agent middleware hook  
 **Project Type**: npm library + optional local HTTP proxy CLI  
 **Performance Goals**: Step 2 triage <5ms; Step 2b turn envelope <2ms; Step 3 pin lookup <1ms; Step 4 local pings <15ms combined; Step 5 embedding 80–120ms median; SC-005 ambiguous path <200ms total routing overhead  
 **Constraints**: Zero host-agent crashes; ban `any` on routing paths; no I/O in loops; bounded retry/escalation windows; open-source license  
-**Scale/Scope**: Single developer workstation MVP; optional multi-instance via Redis; ~15 pipeline modules across 4 implementation lanes (PRD §6)
+**Scale/Scope**: Single-host multi-process (pi + spine); SQLite shared state across workers; ~15 pipeline modules across 4 implementation lanes (PRD §6)
 
 ## Constitution Check
 
@@ -39,7 +39,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 | ML inference path | Shape validation; no weights in git; eval mode only |
 | Quality & security | Env-based secrets; error-path tests; cache marker preservation |
 
-**Post-design re-check**: PASS — data model separates domain state from Redis transport; contracts define explain vs dispatch paths; no unjustified complexity.
+**Post-design re-check**: PASS — data model separates domain state from SQLite persistence; contracts define explain vs dispatch paths; no unjustified complexity.
 
 ## Project Structure
 
@@ -76,7 +76,7 @@ src/
 │   ├── local/                 # local-zero-tier.ts (LM Studio, Ollama)
 │   ├── gateway/               # gateway-dispatch.ts, circuit-breaker.ts
 │   ├── pricing/               # price-broker.ts, pricing-monitor.ts
-│   ├── persistence/           # redis-session-store.ts, memory-session-store.ts
+│   ├── persistence/           # sqlite-store.ts, memory-store.ts (tests)
 │   └── telemetry/             # routing-telemetry.ts
 ├── api/
 │   ├── explain/               # router-explain.ts
@@ -178,4 +178,4 @@ Updated [.specify/memory/pi-agent.md](../../.specify/memory/pi-agent.md) with ac
 
 ## Complexity Tracking
 
-No constitution violations requiring justification. Redis + embedding matcher are PRD-mandated; in-memory fallback keeps single-user path simple.
+No constitution violations requiring justification. SQLite + embedding matcher are PRD-mandated; in-memory store for tests only.

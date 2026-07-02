@@ -31,7 +31,7 @@ Intercepted agent request entering the pipeline.
 
 ## SessionPin
 
-Persisted session routing state (Redis or memory).
+Persisted session routing state (SQLite; in-memory for unit tests).
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
@@ -105,7 +105,7 @@ Output of pipeline (live or explain path).
 
 ## PriceCatalog
 
-Runtime pricing state (Redis/SQLite/memory).
+Runtime pricing state (SQLite state store).
 
 | Field | Type | Notes |
 |-------|------|-------|

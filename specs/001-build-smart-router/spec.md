@@ -10,7 +10,7 @@
 ### Session 2026-07-02
 
 - Q: When a session is pinned to a frontier-capable model, should small tool-result turns be allowed to sub-route to an economical tier? → A: Same-provider sub-routing only — small tool-result payloads may use an economical tier when the economical model shares the same provider as the pin.
-- Q: When the centralized session store is unavailable, how should session pinning behave? → A: In-memory fallback — use process-local store; pins and rate limits work for single instance only.
+- Q: When the centralized session store is unavailable, how should session pinning behave? → A: *(Amended)* Default SQLite file store at `.pi-smart-router/state.db` via better-sqlite3; shared across single-host multi-process. In-memory fallback for unit tests only when SQLite is explicitly disabled.
 - Q: What scope should rate limits apply to? → A: Per operator API key — limits keyed to the credential used for upstream calls.
 - Q: When routing fails entirely, which tier should the safe default use? → A: Economical first — select first healthy economical-cloud model; frontier only if none available.
 - Q: How long should routing telemetry be retained for operator audit? → A: Rolling window capped at 168 hours and 1111 records.
@@ -78,7 +78,7 @@ A developer works through a multi-turn agent conversation without history compac
 2. **Given** a pinned session, **When** history compaction occurs, **Then** the router may re-evaluate and select a new model.
 3. **Given** a pinned session, **When** the developer explicitly overrides the model, **Then** the pin updates to the forced model for the session remainder.
 4. **Given** a provider switch is considered, **When** cache-warmup cost exceeds projected savings, **Then** the router keeps the current pin.
-5. **Given** the centralized session store is unavailable, **When** routing runs in single-instance mode, **Then** the router falls back to in-process memory for pins without crashing or disabling pinning.
+5. **Given** multiple pi or spine processes on the same host, **When** routing runs, **Then** session pins and rate limits are read from the shared SQLite state store without requiring an external server.
 
 ---
 
@@ -138,7 +138,7 @@ A developer configures a cost-vs-quality preference. When a session becomes stuc
 - Neither configured local service has a model ready: immediate economical cloud fallback.
 - Code structure in prompt cannot be parsed: safe default selects economical cloud; frontier only if no economical model is healthy; agent does not crash.
 - Adversarial complexity inflation in prompt content: sanitization prevents over-routing to frontier.
-- Centralized session store unavailable or unset: fall back to in-process memory for session pins and rate limits; pinning remains active for single-instance use only.
+- SQLite state store unavailable (corrupt or missing file): recreate store or fall back to in-memory for current process only; MUST NOT crash host agent.
 - Provider returns infrastructure error: automatic retry on equivalent tier; policy or safety rejections do not trigger failover.
 - Tool-result sub-routing attempted when payload exceeds size threshold or economical model is on a different provider: session stays on pinned model.
 - Tool-result sub-routing to same-provider economical model: pin record unchanged; provider cache markers preserved.
@@ -173,7 +173,7 @@ A developer configures a cost-vs-quality preference. When a session becomes stuc
 - **FR-022**: System MUST degrade to a safe cloud default on any routing failure without crashing the host agent; safe default selects the first healthy economical-cloud model, falling back to frontier-cloud only when no economical model is available.
 - **FR-023**: System MUST preserve provider context-caching semantics on same-provider request paths.
 - **FR-024**: When a session is pinned, tool-result turns MAY sub-route to an economical tier only if the payload is below a configurable size threshold and the economical model shares the same provider as the pin; otherwise the pinned model MUST be used.
-- **FR-025**: When the centralized session store is unavailable, the system MUST fall back to in-process memory for session pins and rate limits; MUST NOT crash the host agent or disable pinning in single-instance mode.
+- **FR-025**: When the SQLite state store is unavailable, the system MUST fall back to in-process memory for the current process only; MUST NOT crash the host agent. Production path MUST use the shared SQLite store for cross-process pins and rate limits.
 
 ### Key Entities
 
@@ -190,7 +190,9 @@ A developer configures a cost-vs-quality preference. When a session becomes stuc
 - Operator maintains a model fleet catalog with at least one model per tier.
 - Local inference services are optional; the router does not mandate them.
 - Operator configures cost preference via pi configuration; balanced default applies when unset.
-- Centralized session store is optional for single-instance development; when unavailable, in-process memory fallback applies; Redis recommended for multi-instance rate limiting and shared pins.
+- Default state store is a SQLite file at `.pi-smart-router/state.db` (project-relative), shared across single-host multi-process pi and spine workers; no external server required.
+- In-memory store is used for unit tests only when SQLite is explicitly disabled.
+- Distributed multi-host deployments may use an optional Redis store adapter (post-MVP); not required for MVP.
 - Pricing staleness reminder defaults to fourteen days unless operator configures otherwise.
 - Loop escalation threshold defaults to three identical tool failures within a session unless operator configures otherwise.
 - Tool-result sub-routing payload threshold defaults to two kilobytes unless operator configures otherwise.

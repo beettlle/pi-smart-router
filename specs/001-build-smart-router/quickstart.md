@@ -6,7 +6,7 @@
 
 - macOS Apple Silicon
 - Node.js 20 LTS
-- Optional: Redis (`REDIS_URL=redis://localhost:6379`)
+- SQLite via `better-sqlite3` (default: `.pi-smart-router/state.db` — created automatically)
 - Optional: LM Studio (port 1234) or Ollama (port 11434) with a model loaded
 
 ## Bootstrap (first-time repo setup)
@@ -14,7 +14,7 @@
 ```bash
 cd /Users/cdelgado/Documents/github/pi-smart-router
 npm init -y
-npm install typescript @types/node vitest zod yaml aho-corasick-node @typescript-eslint/parser ioredis @huggingface/transformers
+npm install typescript @types/node vitest zod yaml aho-corasick-node @typescript-eslint/parser better-sqlite3 @huggingface/transformers
 npm install -D @typescript-eslint/eslint-plugin eslint
 npx tsc --init --strict --module nodenext --moduleResolution nodenext
 cp config/models.yaml.example config/models.yaml
@@ -36,7 +36,7 @@ See [data-model.md](./data-model.md) ModelProfile and PRD §5 schema.
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `REDIS_URL` | No | Session pins + rate limits; omit for in-memory dev |
+| `ROUTER_STATE_DB_PATH` | No | Default `./.pi-smart-router/state.db` |
 | `MODELS_YAML_PATH` | No | Default `./config/models.yaml` |
 | `ROUTER_SAFE_DEFAULT_TIER` | No | Default `economical-cloud` |
 | `LITELLM_PRICING_URL` | No | LiteLLM pricing JSON source |
@@ -72,7 +72,7 @@ Response includes `tier`, `stage`, `reason_code`, `candidates`, `estimated_cost_
 
 ## Local Development Loop
 
-1. Start Redis (optional): `redis-server`
+1. Ensure `.pi-smart-router/state.db` is writable (created on first run)
 2. Start LM Studio or Ollama with a small model loaded
 3. Run tests: `npm run typecheck && npm test`
 4. Send test prompts through pipeline unit tests in `tests/integration/`
