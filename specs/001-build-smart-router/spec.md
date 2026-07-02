@@ -136,7 +136,7 @@ A developer configures a cost-vs-quality preference. When a session becomes stuc
 - Machine has minimal unified memory: local tier limited to classification-only; full local execution disabled.
 - Developer on battery below threshold while unplugged: local tier disabled.
 - Neither configured local service has a model ready: immediate economical cloud fallback.
-- Code structure in prompt cannot be parsed: safe default selects economical cloud; frontier only if no economical model is healthy; agent does not crash.
+- Code structure in prompt cannot be parsed: safe default per FR-022; agent does not crash.
 - Adversarial complexity inflation in prompt content: sanitization prevents over-routing to frontier.
 - SQLite state store unavailable (corrupt or missing file): recreate store or fall back to in-memory for current process only; MUST NOT crash host agent.
 - Provider returns infrastructure error: automatic retry on equivalent tier; policy or safety rejections do not trigger failover.
@@ -198,7 +198,7 @@ A developer configures a cost-vs-quality preference. When a session becomes stuc
 - Loop escalation threshold defaults to three identical tool failures within a session unless operator configures otherwise.
 - Tool-result sub-routing payload threshold defaults to two kilobytes unless operator configures otherwise.
 - Rate limits are scoped per operator API key unless operator configures otherwise.
-- Safe default on routing failure prefers economical-cloud tier; frontier-cloud used only when no economical model is healthy.
+- Safe default on routing failure: see FR-022.
 - Routing telemetry retention defaults to a rolling window of 168 hours and 1111 records unless operator configures otherwise.
 
 ## Success Criteria _(mandatory)_
@@ -209,7 +209,7 @@ A developer configures a cost-vs-quality preference. When a session becomes stuc
 - **SC-002**: At least 95% of clearly trivial prompts in a curated test set route to economical or local tiers without operator override.
 - **SC-003**: Clearly complex architecture and debugging prompts in a curated test set route to frontier-capable tiers.
 - **SC-004**: Obvious-case routing (Step 2 triage early exit) adds less than 5ms median routing overhead before first-token dispatch.
-- **SC-005**: Median added wait for ambiguous prompts remains under two hundred milliseconds as perceived by the developer.
+- **SC-005**: Median routing overhead for ambiguous prompts remains under two hundred milliseconds. Acceptance proxy: median <200ms in `tests/integration/routing-latency.test.ts` (task T061).
 - **SC-006**: Multi-turn sessions without compaction keep the same pinned model across non-sub-routable turns; same-provider tool-result sub-routing does not break session pin state.
 - **SC-007**: Zero host-agent crashes when local inference services are unavailable or misconfigured.
 - **SC-008**: Operators can retrieve routing rationale for requests within the rolling retention window (default 168 hours and 1111 records) without replaying traffic through upstream inference.
