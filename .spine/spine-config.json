@@ -50,7 +50,7 @@
     "cleanupWorktreesOnComplete": true
   },
   "dashboard": {
-    "port": 8109
+    "port": 8129
   },
   "gates": {
     "requireBeforeIntegrate": true,
