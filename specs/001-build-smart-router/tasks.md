@@ -203,8 +203,8 @@ Single npm package at repository root per plan.md: `src/`, `tests/`, `config/`.
 - [ ] T062 [P] Cost-comparison fixture: mixed workload vs always-frontier baseline with mocked pricing (SC-009) in `tests/integration/cost-baseline.test.ts`
 - [ ] T063 Update `specs/001-build-smart-router/quickstart.md` with actual install/run commands once scripts exist
 - [ ] T064 Run `npm run typecheck && npm test` and document results in spine gate evidence
-- [ ] T065 Decompose tasks into spine `SP-*` packets under `spine-tasks/` with `dependencies.json`
-- [ ] T066 Populate phase tables in `spine-tasks/CONTEXT.md` from this task list
+- [x] T065 Decompose tasks into spine `SP-*` packets under `spine-tasks/` with `dependencies.json` (SP-001–SP-014)
+- [x] T066 Populate phase tables in `spine-tasks/CONTEXT.md` from this task list
 
 ---
 
@@ -264,8 +264,8 @@ Single npm package at repository root per plan.md: `src/`, `tests/`, `config/`.
 
 1. Complete Phase 1: Setup
 2. Complete Phase 2: Foundational
-3. Complete Phase 3: User Story 1 (+ T021b spike)
-4. **STOP and VALIDATE**: `npm run typecheck && npm test`; demo automatic routing
+3. Complete Phase 3: User Story 1 (spine SP-012–SP-014)
+4. **STOP and VALIDATE**: `npm run typecheck && npm test` at SP-014; demo automatic routing
 5. Proceed to US2 triage for cost wins
 
 ### Incremental Delivery
@@ -288,6 +288,51 @@ Single npm package at repository root per plan.md: `src/`, `tests/`, `config/`.
 | Lane 3 (ML & Local) | T048–T050, T044–T047 |
 | Lane 4 (Orchestration & Guardrails) | T019–T024, T021b, T041, T059–T064, T006b |
 
+### Spine Packet Mapping (SP-* → T*)
+
+36 packets (SP-001–SP-036), all S or M — no L tasks. MVP checkpoint at **SP-014**.
+
+| SP ID | Title | Size | Maps to | Dependencies |
+|-------|-------|------|---------|--------------|
+| SP-001 | Package init + dirs + vitest | M | T001,T002,T003,T007 | — |
+| SP-002 | ESLint + models.example + stet | S | T004,T005,T006 | SP-001 |
+| SP-003 | HyDRA bootstrap + gitignore | S | T006b,T008 | SP-002 |
+| SP-004 | Domain types + store port | S | T009,T015 | SP-003 |
+| SP-005 | Zod schemas + defaults | S | T010,T012 | SP-004 |
+| SP-006 | Contract tests | S | T018 | SP-005 |
+| SP-007 | Models loader | S | T011 | SP-006 |
+| SP-008 | SQLite core | M | T013 | SP-007 |
+| SP-009 | SQLite fallback + memory store | M | T013b,T014,T013c | SP-008 |
+| SP-010 | Safe cloud default | S | T016 | SP-009 |
+| SP-011 | Pipeline skeleton | S | T017 | SP-010 |
+| SP-012 | Pipeline stubs + gateway | M | T019,T020 | SP-011 |
+| SP-013 | Pi extension + factory | M | T021,T021b,T022 | SP-012 |
+| SP-014 | MVP tests | S | T023,T024 | SP-013 |
+| SP-015 | Triage engine | M | T025,T025b,T026 | SP-014 |
+| SP-016 | Step 2 triage pipeline | S | T027,T028 | SP-015 |
+| SP-017 | Session pinner | M | T033,T034 | SP-016 |
+| SP-018 | Pinning cache + tests | M | T035–T038 | SP-017 |
+| SP-019 | Hardware + local probes | S | T044,T045 | SP-018 |
+| SP-020 | Local pipeline + tests | S | T046,T047 | SP-019 |
+| SP-021 | Turn classifier | S | T029 | SP-020 |
+| SP-022 | Step 2b pipeline | S | T030 | SP-021 |
+| SP-023 | Sub-route policy + tests | S | T031,T032 | SP-022 |
+| SP-024 | Telemetry + Step 7 | S | T039,T040 | SP-023 |
+| SP-025 | Explain handler | S | T041 | SP-024 |
+| SP-026 | Explain tests | S | T042,T043 | SP-025 |
+| SP-027 | HyDRA matcher | M | T048 | SP-026 |
+| SP-028 | Multi-objective scoring | S | T049 | SP-027 |
+| SP-029 | Step 5 matcher pipeline | S | T050 | SP-028 |
+| SP-030 | Loop escalation + Step 3b | M | T051,T052 | SP-029 |
+| SP-031 | Pricing engine | M | T053,T054 | SP-030 |
+| SP-032 | Gateway resilience + rate limits | M | T055–T057 | SP-031 |
+| SP-033 | Resilience tests | S | T058 | SP-032 |
+| SP-034 | Finalize stet guardrails | S | T059 | SP-016,SP-020,SP-023,SP-026,SP-033 |
+| SP-035 | E2E + benchmarks | M | T060,T061,T062 | SP-034 |
+| SP-036 | Quickstart + gate evidence | S | T063,T064 | SP-035 |
+
+Packets live in `spine-tasks/{SP-###-slug}/` with `PROMPT.md`, `STATUS.md`, and `spine-tasks/dependencies.json`.
+
 ---
 
 ## Notes
@@ -298,6 +343,7 @@ Single npm package at repository root per plan.md: `src/`, `tests/`, `config/`.
 - T006 (`.stet.yaml` skeleton) is extended by T059 (finalize rules) — do not duplicate guardrail definitions
 - Safe default (FR-022): economical-cloud first, frontier only when no economical model healthy
 - SQLite store path: `.pi-smart-router/state.db`; try-recreate-then-fallback per FR-025 when store corrupt/unavailable
+- MVP spine checkpoint: **SP-014** (not SP-006); 36 S/M packets total (SP-001–SP-036)
 - Post-MVP: `pi-router-install.ts` stretch goal — defer until after T064 validation
 
 ### Task ID Registry (execution order vs numeric IDs)
