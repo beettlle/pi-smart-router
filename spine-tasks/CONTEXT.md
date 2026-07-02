@@ -30,8 +30,8 @@
 | SP-007 | Models loader | S | SP-006 | T011 |
 | SP-008 | SQLite core | M | SP-007 | T013 |
 | SP-009 | SQLite fallback + memory store | M | SP-008 | T013b,T014,T013c |
-| SP-010 | Safe cloud default | S | SP-009 | T016 |
-| SP-011 | Pipeline skeleton | S | SP-010 | T017 |
+| SP-010 | Safe cloud default | S | SP-007 | T016 |
+| SP-011 | Pipeline skeleton | S | SP-009, SP-010 | T017 |
 
 ### Phase 3 — US1 MVP (SP-012–SP-014)
 
@@ -46,23 +46,23 @@
 | Task | Summary | Size | Deps | Maps |
 |------|---------|------|------|------|
 | SP-015 | Triage engine | M | SP-014 | T025,T025b,T026 |
-| SP-016 | Step 2 triage pipeline | S | SP-015 | T027,T028 |
+| SP-016 | Step 2 triage pipeline | S | SP-015, SP-020 | T027,T028 |
 | SP-017 | Session pinner | M | SP-016 | T033,T034 |
 | SP-018 | Pinning cache + tests | M | SP-017 | T035–T038 |
-| SP-019 | Hardware + local probes | S | SP-018 | T044,T045 |
+| SP-019 | Hardware + local probes | S | SP-014 | T044,T045 |
 | SP-020 | Local pipeline + tests | S | SP-019 | T046,T047 |
-| SP-021 | Turn classifier | S | SP-020 | T029 |
-| SP-022 | Step 2b pipeline | S | SP-021 | T030 |
-| SP-023 | Sub-route policy + tests | S | SP-022 | T031,T032 |
+| SP-021 | Turn classifier | S | SP-014 | T029 |
+| SP-022 | Step 2b pipeline | S | SP-021, SP-018 | T030 |
+| SP-023 | Sub-route policy + tests | S | SP-022, SP-018 | T031,T032 |
 | SP-024 | Telemetry + Step 7 | S | SP-023 | T039,T040 |
-| SP-025 | Explain handler | S | SP-024 | T041 |
+| SP-025 | Explain handler | S | SP-014 | T041 |
 | SP-026 | Explain tests | S | SP-025 | T042,T043 |
-| SP-027 | HyDRA matcher | M | SP-026 | T048 |
+| SP-027 | HyDRA matcher | M | SP-014 | T048 |
 | SP-028 | Multi-objective scoring | S | SP-027 | T049 |
-| SP-029 | Step 5 matcher pipeline | S | SP-028 | T050 |
-| SP-030 | Loop escalation + Step 3b | M | SP-029 | T051,T052 |
-| SP-031 | Pricing engine | M | SP-030 | T053,T054 |
-| SP-032 | Gateway resilience + rate limits | M | SP-031 | T055–T057 |
+| SP-029 | Step 5 matcher pipeline | S | SP-028, SP-024 | T050 |
+| SP-030 | Loop escalation + Step 3b | M | SP-029, SP-017 | T051,T052 |
+| SP-031 | Pricing engine | M | SP-014 | T053,T054 |
+| SP-032 | Gateway resilience + rate limits | M | SP-031, SP-030, SP-018 | T055–T057 |
 | SP-033 | Resilience tests | S | SP-032 | T058 |
 
 ### Phase 11 — Polish (SP-034–SP-036)
@@ -89,13 +89,20 @@ After **SP-014**: run `npm run typecheck && npm test` — automatic routing with
 
 ## Recommended batch waves
 
+28 waves with parallel fan-out (`spine plan pending`, waves 0–27). `lanes.maxParallel: 3` caps concurrent workers; waves with >3 tasks queue within the wave.
+
 | Wave | Packets | Notes |
 |------|---------|-------|
-| 1 | SP-001 → SP-011 | Foundation (11 tasks) |
-| 2 | SP-012 → SP-014 | MVP gate |
-| 3 | SP-015 → SP-033 | Serial pipeline chain; use `maxParallel: 1` |
-| 4 | SP-034 → SP-036 | Polish |
+| 1–7 | SP-001 → SP-007 | Linear foundation |
+| 8 | SP-008, SP-010 | Parallel after SP-007 (SQLite vs safe-default) |
+| 9 | SP-009 | After SP-008 |
+| 10 | SP-011 | After SP-009 + SP-010 |
+| 11–13 | SP-012 → SP-014 | MVP gate |
+| 14 | SP-015, SP-019, SP-021, SP-025, SP-027, SP-031 | Six module-only tasks after MVP |
+| 15 | SP-026, SP-028 | Explain tests + multi-objective (parallel) |
+| 16–25 | SP-020 → SP-033 | Pipeline serial chain + merges (`router-pipeline.ts`) |
+| 26–28 | SP-034 → SP-036 | Polish |
 
-`router-pipeline.ts` edits serialize SP-016 through SP-033.
+`router-pipeline.ts` edits serialize via SP-016 → SP-017 → SP-018 → SP-022 → SP-023 → SP-024 → SP-029 → SP-030 → SP-032; module work fans out at wave 14.
 
 ---

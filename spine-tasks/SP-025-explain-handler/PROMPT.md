@@ -14,7 +14,7 @@ Explain handler per explain-endpoint.md — no inference, no upstream-cost telem
 
 ## Dependencies
 
-- SP-024
+- SP-014
 
 ## Context to Read First
 

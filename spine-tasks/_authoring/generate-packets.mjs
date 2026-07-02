@@ -188,7 +188,7 @@ const packets = [
     score: "2/8",
     assessment: "Economical-first safe cloud default.",
     mission: "Implement safeCloudDefault() economical first, frontier fallback. Maps to T016 (FR-022).",
-    deps: ["SP-009"],
+    deps: ["SP-007"],
     context: ["specs/001-build-smart-router/spec.md (FR-022)", "src/config/models-loader.ts"],
     scope: ["src/domain/pipeline/safe-default.ts", "tests/unit/safe-default.test.ts"],
     mustChange: "src/domain/pipeline/safe-default.ts",
@@ -207,7 +207,7 @@ const packets = [
     score: "3/8",
     assessment: "Pipeline orchestrator skeleton only.",
     mission: "Pipeline stage result type and orchestrator skeleton with early-exit and safe-default fallback. Maps to T017.",
-    deps: ["SP-010"],
+    deps: ["SP-009", "SP-010"],
     context: ["specs/001-build-smart-router/plan.md (Pipeline Design)"],
     scope: ["src/domain/pipeline/router-pipeline.ts", "tests/unit/router-pipeline.test.ts"],
     mustChange: "src/domain/pipeline/router-pipeline.ts",
@@ -302,7 +302,7 @@ const packets = [
     score: "3/8",
     assessment: "Step 2 pipeline integration and triage tests.",
     mission: "Integrate Step 2 triage into pipeline with <5ms budget and unit tests. Maps to T027, T028.",
-    deps: ["SP-015"],
+    deps: ["SP-015", "SP-020"],
     context: ["src/domain/triage/triage-engine.ts"],
     scope: ["src/domain/pipeline/router-pipeline.ts", "tests/unit/triage-engine.test.ts"],
     mustChange: "src/domain/pipeline/router-pipeline.ts (Step 2 only)",
@@ -359,7 +359,7 @@ const packets = [
     score: "3/8",
     assessment: "Hardware probe and local service pings.",
     mission: "Hardware probe and LM Studio/Ollama readiness pings. Maps to T044, T045.",
-    deps: ["SP-018"],
+    deps: ["SP-014"],
     context: ["specs/001-build-smart-router/data-model.md", "specs/001-build-smart-router/spec.md (US5)"],
     scope: ["src/infrastructure/hardware/hardware-probe.ts", "src/infrastructure/local/local-zero-tier.ts"],
     mustChange: "src/infrastructure/hardware/hardware-probe.ts, src/infrastructure/local/local-zero-tier.ts",
@@ -397,7 +397,7 @@ const packets = [
     score: "3/8",
     assessment: "Turn envelope classifier module.",
     mission: "Turn envelope classifier (<2ms budget). Maps to T029.",
-    deps: ["SP-020"],
+    deps: ["SP-014"],
     context: ["specs/001-build-smart-router/contracts/pi-middleware.md"],
     scope: ["src/domain/triage/turn-envelope.ts"],
     mustChange: "src/domain/triage/turn-envelope.ts",
@@ -416,7 +416,7 @@ const packets = [
     score: "2/8",
     assessment: "Step 2b pipeline hook only.",
     mission: "Integrate Step 2b turn envelope into pipeline. Maps to T030.",
-    deps: ["SP-021"],
+    deps: ["SP-021", "SP-018"],
     context: ["src/domain/triage/turn-envelope.ts"],
     scope: ["src/domain/pipeline/router-pipeline.ts"],
     mustChange: "src/domain/pipeline/router-pipeline.ts (Step 2b only)",
@@ -435,7 +435,7 @@ const packets = [
     score: "3/8",
     assessment: "Same-provider sub-routing policy and tests.",
     mission: "Same-provider economical sub-routing and unit tests. Maps to T031, T032 (FR-024).",
-    deps: ["SP-022"],
+    deps: ["SP-022", "SP-018"],
     context: ["specs/001-build-smart-router/spec.md (FR-024)"],
     scope: ["src/domain/pinning/sub-route-policy.ts", "tests/unit/turn-envelope.test.ts"],
     mustChange: "src/domain/pinning/sub-route-policy.ts",
@@ -473,7 +473,7 @@ const packets = [
     score: "3/8",
     assessment: "Explain endpoint without upstream dispatch.",
     mission: "Explain handler per explain-endpoint.md — no inference, no upstream-cost telemetry. Maps to T041.",
-    deps: ["SP-024"],
+    deps: ["SP-014"],
     context: ["specs/001-build-smart-router/contracts/explain-endpoint.md"],
     scope: ["src/api/explain/router-explain.ts"],
     mustChange: "src/api/explain/router-explain.ts",
@@ -511,7 +511,7 @@ const packets = [
     score: "6/8",
     assessment: "HyDRA embedding matcher with ONNX.",
     mission: "HyDRA embedding matcher with shortfall scoring and mocked unit tests. Maps to T048.",
-    deps: ["SP-026"],
+    deps: ["SP-014"],
     context: ["specs/001-build-smart-router/research.md", "specs/001-build-smart-router/quickstart.md"],
     scope: ["src/domain/matching/hydra-matcher.ts", "tests/unit/hydra-matcher.test.ts"],
     mustChange: "src/domain/matching/hydra-matcher.ts",
@@ -549,7 +549,7 @@ const packets = [
     score: "3/8",
     assessment: "Step 5 pipeline hook only.",
     mission: "Integrate Step 5 HyDRA matcher for ambiguous prompts. Maps to T050.",
-    deps: ["SP-028"],
+    deps: ["SP-028", "SP-024"],
     context: ["src/domain/matching/hydra-matcher.ts"],
     scope: ["src/domain/pipeline/router-pipeline.ts"],
     mustChange: "src/domain/pipeline/router-pipeline.ts (Step 5 only)",
@@ -568,7 +568,7 @@ const packets = [
     score: "4/8",
     assessment: "Loop escalation and Step 3b integration.",
     mission: "Loop escalation for identical tool failures and Step 3b pipeline hook. Maps to T051, T052 (FR-014).",
-    deps: ["SP-029"],
+    deps: ["SP-029", "SP-017"],
     context: ["specs/001-build-smart-router/spec.md (FR-014, FR-008)"],
     scope: ["src/domain/pinning/loop-escalation.ts", "src/domain/pipeline/router-pipeline.ts"],
     mustChange: "src/domain/pinning/loop-escalation.ts",
@@ -587,7 +587,7 @@ const packets = [
     score: "4/8",
     assessment: "Price broker and staleness monitor.",
     mission: "Price broker (override → registry → fallback) and staleness warning. Maps to T053, T054 (FR-019, FR-020).",
-    deps: ["SP-030"],
+    deps: ["SP-014"],
     context: ["specs/001-build-smart-router/spec.md (FR-019, FR-020)"],
     scope: ["src/infrastructure/pricing/price-broker.ts", "src/infrastructure/pricing/pricing-monitor.ts"],
     mustChange: "src/infrastructure/pricing/price-broker.ts",
@@ -606,7 +606,7 @@ const packets = [
     score: "5/8",
     assessment: "Circuit breaker, failover, rate limiting.",
     mission: "Circuit breaker, gateway failover chains, per-key rate limits with 429 response. Maps to T055, T056, T057.",
-    deps: ["SP-031"],
+    deps: ["SP-031", "SP-030", "SP-018"],
     context: ["specs/001-build-smart-router/data-model.md", "specs/001-build-smart-router/spec.md (FR-017, FR-018)"],
     scope: ["src/infrastructure/gateway/circuit-breaker.ts", "src/infrastructure/gateway/gateway-dispatch.ts", "src/infrastructure/persistence/sqlite-store.ts", "src/domain/pipeline/router-pipeline.ts"],
     mustChange: "src/infrastructure/gateway/gateway-dispatch.ts",
@@ -812,11 +812,10 @@ for (const p of packets) {
   writeFileSync(join(dir, "STATUS.md"), status(p));
 }
 
-const edges = [];
+const tasks = {};
 for (const p of packets) {
-  for (const dep of p.deps) {
-    edges.push({ from: p.id, to: dep });
-  }
+  tasks[p.id] = p.deps;
 }
-writeFileSync(join(root, "dependencies.json"), JSON.stringify({ edges }, null, 2) + "\n");
-console.log(`Generated ${packets.length} packets, ${edges.length} dependency edges`);
+writeFileSync(join(root, "dependencies.json"), JSON.stringify({ version: 1, tasks }, null, 2) + "\n");
+const edgeCount = packets.reduce((n, p) => n + p.deps.length, 0);
+console.log(`Generated ${packets.length} packets, ${edgeCount} dependency edges (tasks map)`);

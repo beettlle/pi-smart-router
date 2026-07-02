@@ -15,6 +15,7 @@ Integrate Step 2 triage into pipeline with <5ms budget and unit tests. Maps to T
 ## Dependencies
 
 - SP-015
+- SP-020
 
 ## Context to Read First
 

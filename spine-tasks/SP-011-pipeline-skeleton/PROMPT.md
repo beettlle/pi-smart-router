@@ -14,6 +14,7 @@ Pipeline stage result type and orchestrator skeleton with early-exit and safe-de
 
 ## Dependencies
 
+- SP-009
 - SP-010
 
 ## Context to Read First

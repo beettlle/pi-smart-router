@@ -15,6 +15,7 @@ Integrate Step 5 HyDRA matcher for ambiguous prompts. Maps to T050.
 ## Dependencies
 
 - SP-028
+- SP-024
 
 ## Context to Read First
 

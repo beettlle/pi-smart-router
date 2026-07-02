@@ -15,6 +15,8 @@ Circuit breaker, gateway failover chains, per-key rate limits with 429 response.
 ## Dependencies
 
 - SP-031
+- SP-030
+- SP-018
 
 ## Context to Read First
 

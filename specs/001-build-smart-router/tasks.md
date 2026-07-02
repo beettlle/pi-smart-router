@@ -303,29 +303,29 @@ Single npm package at repository root per plan.md: `src/`, `tests/`, `config/`.
 | SP-007 | Models loader | S | T011 | SP-006 |
 | SP-008 | SQLite core | M | T013 | SP-007 |
 | SP-009 | SQLite fallback + memory store | M | T013b,T014,T013c | SP-008 |
-| SP-010 | Safe cloud default | S | T016 | SP-009 |
-| SP-011 | Pipeline skeleton | S | T017 | SP-010 |
+| SP-010 | Safe cloud default | S | T016 | SP-007 |
+| SP-011 | Pipeline skeleton | S | T017 | SP-009, SP-010 |
 | SP-012 | Pipeline stubs + gateway | M | T019,T020 | SP-011 |
 | SP-013 | Pi extension + factory | M | T021,T021b,T022 | SP-012 |
 | SP-014 | MVP tests | S | T023,T024 | SP-013 |
 | SP-015 | Triage engine | M | T025,T025b,T026 | SP-014 |
-| SP-016 | Step 2 triage pipeline | S | T027,T028 | SP-015 |
+| SP-016 | Step 2 triage pipeline | S | T027,T028 | SP-015, SP-020 |
 | SP-017 | Session pinner | M | T033,T034 | SP-016 |
 | SP-018 | Pinning cache + tests | M | T035–T038 | SP-017 |
-| SP-019 | Hardware + local probes | S | T044,T045 | SP-018 |
+| SP-019 | Hardware + local probes | S | T044,T045 | SP-014 |
 | SP-020 | Local pipeline + tests | S | T046,T047 | SP-019 |
-| SP-021 | Turn classifier | S | T029 | SP-020 |
-| SP-022 | Step 2b pipeline | S | T030 | SP-021 |
-| SP-023 | Sub-route policy + tests | S | T031,T032 | SP-022 |
+| SP-021 | Turn classifier | S | T029 | SP-014 |
+| SP-022 | Step 2b pipeline | S | T030 | SP-021, SP-018 |
+| SP-023 | Sub-route policy + tests | S | T031,T032 | SP-022, SP-018 |
 | SP-024 | Telemetry + Step 7 | S | T039,T040 | SP-023 |
-| SP-025 | Explain handler | S | T041 | SP-024 |
+| SP-025 | Explain handler | S | T041 | SP-014 |
 | SP-026 | Explain tests | S | T042,T043 | SP-025 |
-| SP-027 | HyDRA matcher | M | T048 | SP-026 |
+| SP-027 | HyDRA matcher | M | T048 | SP-014 |
 | SP-028 | Multi-objective scoring | S | T049 | SP-027 |
-| SP-029 | Step 5 matcher pipeline | S | T050 | SP-028 |
-| SP-030 | Loop escalation + Step 3b | M | T051,T052 | SP-029 |
-| SP-031 | Pricing engine | M | T053,T054 | SP-030 |
-| SP-032 | Gateway resilience + rate limits | M | T055–T057 | SP-031 |
+| SP-029 | Step 5 matcher pipeline | S | T050 | SP-028, SP-024 |
+| SP-030 | Loop escalation + Step 3b | M | T051,T052 | SP-029, SP-017 |
+| SP-031 | Pricing engine | M | T053,T054 | SP-014 |
+| SP-032 | Gateway resilience + rate limits | M | T055–T057 | SP-031, SP-030, SP-018 |
 | SP-033 | Resilience tests | S | T058 | SP-032 |
 | SP-034 | Finalize stet guardrails | S | T059 | SP-016,SP-020,SP-023,SP-026,SP-033 |
 | SP-035 | E2E + benchmarks | M | T060,T061,T062 | SP-034 |

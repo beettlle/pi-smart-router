@@ -14,7 +14,7 @@ Turn envelope classifier (<2ms budget). Maps to T029.
 
 ## Dependencies
 
-- SP-020
+- SP-014
 
 ## Context to Read First
 

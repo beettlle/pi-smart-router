@@ -14,7 +14,7 @@ Implement safeCloudDefault() economical first, frontier fallback. Maps to T016 (
 
 ## Dependencies
 
-- SP-009
+- SP-007
 
 ## Context to Read First
 

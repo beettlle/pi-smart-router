@@ -15,6 +15,7 @@ Integrate Step 2b turn envelope into pipeline. Maps to T030.
 ## Dependencies
 
 - SP-021
+- SP-018
 
 ## Context to Read First
 

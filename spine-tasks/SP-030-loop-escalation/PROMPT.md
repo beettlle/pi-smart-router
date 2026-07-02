@@ -15,6 +15,7 @@ Loop escalation for identical tool failures and Step 3b pipeline hook. Maps to T
 ## Dependencies
 
 - SP-029
+- SP-017
 
 ## Context to Read First
 

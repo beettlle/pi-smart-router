@@ -14,7 +14,7 @@ Price broker (override → registry → fallback) and staleness warning. Maps to
 
 ## Dependencies
 
-- SP-030
+- SP-014
 
 ## Context to Read First
 

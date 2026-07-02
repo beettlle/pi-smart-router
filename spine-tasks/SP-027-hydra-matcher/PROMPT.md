@@ -14,7 +14,7 @@ HyDRA embedding matcher with shortfall scoring and mocked unit tests. Maps to T0
 
 ## Dependencies
 
-- SP-026
+- SP-014
 
 ## Context to Read First
 

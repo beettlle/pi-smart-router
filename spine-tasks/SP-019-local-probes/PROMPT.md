@@ -14,7 +14,7 @@ Hardware probe and LM Studio/Ollama readiness pings. Maps to T044, T045.
 
 ## Dependencies
 
-- SP-018
+- SP-014
 
 ## Context to Read First
 
