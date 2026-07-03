@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-02
 **Review Level:** 2
 **Size:** M
@@ -8,18 +8,18 @@
 
 ## Step 1: Cache and tests
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] T035: cache-economics.ts
-- [ ] T036: Preserve cache markers (FR-023)
-- [ ] T037: Unit tests incl. FR-007 negative
-- [ ] T038: session-pinning integration test
+- [x] T035: cache-economics.ts
+- [x] T036: Preserve cache markers (FR-023)
+- [x] T037: Unit tests incl. FR-007 negative
+- [x] T038: session-pinning integration test
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 

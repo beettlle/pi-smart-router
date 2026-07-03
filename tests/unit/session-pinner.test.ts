@@ -4,7 +4,11 @@ import {
   SessionPinner,
   type PinLookupResult,
 } from '../../src/domain/pinning/session-pinner.js';
-import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
+import {
+  evaluateCacheEconomics,
+  type CacheEconomicsConfig,
+} from '../../src/domain/pinning/cache-economics.js';
+import type { ModelProfile, RoutingRequest, SessionPin } from '../../src/domain/types/index.js';
 
 // ─── Test helpers ────────────────────────────────────────────────────────────
 
@@ -488,5 +492,327 @@ describe('SessionPinner', () => {
 
       expect(perCall).toBeLessThan(1);
     });
+  });
+
+  // ─── FR-007 negative tests ──────────────────────────────────────────────────
+
+  describe('FR-007: MUST NOT re-optimize on every turn', () => {
+    it('pin hit returns use_pin without re-evaluating fleet cost', () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const cheaperModel = makeModel({
+        id: 'super-cheap',
+        tier: 'economical-cloud',
+        provider: 'budget-co',
+        pricing: { fallback_cost_per_1m: 0.01 },
+      });
+      const fleetWithCheap = [...fleet, cheaperModel];
+
+      const result = pinner.lookupPin(
+        makeRequest({ turn_type: 'planning' }),
+        fleetWithCheap,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.pinnedModel?.id).toBe('claude-opus');
+    });
+
+    it('consecutive turns on same session always return pinned model', () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      for (let i = 0; i < 10; i++) {
+        const result = pinner.lookupPin(
+          makeRequest({ request_id: `req-${i}`, turn_type: 'main_loop' }),
+          fleet,
+        );
+        expect(result.action).toBe('use_pin');
+        expect(result.pinnedModel?.id).toBe('claude-opus');
+      }
+    });
+
+    it('pin holds even when a different tier would be cheaper for the prompt', () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const trivialRequest = makeRequest({
+        prompt_text: 'Format this JSON',
+        turn_type: 'main_loop',
+      });
+
+      const result = pinner.lookupPin(trivialRequest, fleet);
+
+      expect(result.action).toBe('use_pin');
+      expect(result.pinnedModel?.id).toBe('claude-opus');
+    });
+
+    it('pin is NOT broken by provider cost difference alone', () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'gpt-4o', 'initial');
+
+      const result = pinner.lookupPin(
+        makeRequest({
+          turn_type: 'planning',
+          estimated_input_tokens: 50_000,
+        }),
+        fleet,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.pinnedModel?.id).toBe('gpt-4o');
+      expect(result.breakReason).toBeUndefined();
+    });
+
+    it('sub-routing does not change the session pin record', () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const result = pinner.lookupPin(
+        makeRequest({
+          turn_type: 'tool_result',
+          estimated_input_tokens: 100,
+        }),
+        fleet,
+      );
+
+      expect(result.action).toBe('sub_route');
+
+      const pin = pinner.getPin('sess-1');
+      expect(pin?.pinned_model_id).toBe('claude-opus');
+      expect(pin?.pin_reason).toBe('initial');
+    });
+  });
+
+  // ─── Cross-process pin load / hydrate ──────────────────────────────────────
+
+  describe('cross-process pin read', () => {
+    it('loaded pin from another process is usable for routing', () => {
+      const pinner = new SessionPinner();
+      const externalPin: SessionPin = {
+        session_id: 'sess-cross-proc',
+        pinned_model_id: 'gpt-4o',
+        pin_reason: 'initial',
+        has_ever_switched: false,
+        consecutive_upstream_errors: 0,
+        consecutive_tool_failures: 0,
+        last_tool_failure_signature: null,
+        created_at: '2026-06-30T00:00:00.000Z',
+        updated_at: '2026-06-30T12:00:00.000Z',
+      };
+
+      pinner.loadPin(externalPin);
+      const result = pinner.lookupPin(
+        makeRequest({ session_id: 'sess-cross-proc' }),
+        fleet,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.pinnedModel?.id).toBe('gpt-4o');
+    });
+
+    it('loaded pin preserves all metadata fields', () => {
+      const pinner = new SessionPinner();
+      const externalPin: SessionPin = {
+        session_id: 'sess-meta',
+        pinned_model_id: 'claude-opus',
+        pin_reason: 'loop_escalation',
+        has_ever_switched: true,
+        consecutive_upstream_errors: 5,
+        consecutive_tool_failures: 2,
+        last_tool_failure_signature: 'TIMEOUT',
+        created_at: '2026-06-28T10:00:00.000Z',
+        updated_at: '2026-06-28T18:00:00.000Z',
+      };
+
+      pinner.loadPin(externalPin);
+      const retrieved = pinner.getPin('sess-meta');
+
+      expect(retrieved).toEqual(externalPin);
+    });
+  });
+});
+
+// ─── Cache Economics Tests ──────────────────────────────────────────────────
+
+describe('evaluateCacheEconomics', () => {
+  const pinnedPin: SessionPin = {
+    session_id: 'sess-econ',
+    pinned_model_id: 'claude-opus',
+    pin_reason: 'initial',
+    has_ever_switched: false,
+    consecutive_upstream_errors: 0,
+    consecutive_tool_failures: 0,
+    last_tool_failure_signature: null,
+    created_at: '2026-07-01T00:00:00.000Z',
+    updated_at: '2026-07-01T00:00:00.000Z',
+  };
+
+  const expensiveModel = makeModel({
+    id: 'claude-opus',
+    tier: 'frontier-cloud',
+    provider: 'anthropic',
+    pricing: { fallback_cost_per_1m: 15.0 },
+  });
+
+  const cheapModel = makeModel({
+    id: 'gpt-4o-mini',
+    tier: 'economical-cloud',
+    provider: 'openai',
+    pricing: { fallback_cost_per_1m: 0.15 },
+  });
+
+  const sameProviderCheap = makeModel({
+    id: 'claude-haiku',
+    tier: 'economical-cloud',
+    provider: 'anthropic',
+    pricing: { fallback_cost_per_1m: 0.25 },
+  });
+
+  it('returns shouldSwitch: false for same-provider candidates', () => {
+    const result = evaluateCacheEconomics(
+      pinnedPin,
+      expensiveModel,
+      sameProviderCheap,
+      10_000,
+    );
+
+    expect(result.shouldSwitch).toBe(false);
+    expect(result.reason).toBe('same_provider_no_cache_penalty');
+    expect(result.warmupCostUsd).toBe(0);
+  });
+
+  it('returns shouldSwitch: false when warmup cost exceeds savings', () => {
+    const marginalCandidate = makeModel({
+      id: 'marginal',
+      tier: 'economical-cloud',
+      provider: 'other',
+      pricing: { fallback_cost_per_1m: 14.5 },
+    });
+
+    const result = evaluateCacheEconomics(
+      pinnedPin,
+      expensiveModel,
+      marginalCandidate,
+      1_000,
+      { projectedRemainingTurns: 1 },
+    );
+
+    expect(result.shouldSwitch).toBe(false);
+  });
+
+  it('returns shouldSwitch: false when savings below threshold', () => {
+    const slightlyCheaper = makeModel({
+      id: 'slightly-cheaper',
+      tier: 'economical-cloud',
+      provider: 'other',
+      pricing: { fallback_cost_per_1m: 14.9 },
+    });
+
+    const result = evaluateCacheEconomics(
+      pinnedPin,
+      expensiveModel,
+      slightlyCheaper,
+      1_000,
+    );
+
+    expect(result.shouldSwitch).toBe(false);
+    expect(result.reason).toBe('savings_below_threshold');
+  });
+
+  it('returns shouldSwitch: true when projected savings are large', () => {
+    const result = evaluateCacheEconomics(
+      pinnedPin,
+      expensiveModel,
+      cheapModel,
+      100_000,
+      { projectedRemainingTurns: 10 },
+    );
+
+    expect(result.shouldSwitch).toBe(true);
+    expect(result.reason).toBe('switch_justified');
+    expect(result.projectedSavingsUsd).toBeGreaterThan(result.warmupCostUsd);
+  });
+
+  it('respects custom warmupCostMultiplier', () => {
+    const config: CacheEconomicsConfig = {
+      warmupCostMultiplier: 2.0,
+      projectedRemainingTurns: 2,
+    };
+
+    const result = evaluateCacheEconomics(
+      pinnedPin,
+      expensiveModel,
+      cheapModel,
+      10_000,
+      config,
+    );
+
+    expect(result.warmupCostUsd).toBeGreaterThan(0);
+  });
+
+  it('respects custom minSavingsThreshold', () => {
+    const config: CacheEconomicsConfig = {
+      minSavingsThreshold: 100.0,
+    };
+
+    const result = evaluateCacheEconomics(
+      pinnedPin,
+      expensiveModel,
+      cheapModel,
+      1_000,
+      config,
+    );
+
+    expect(result.shouldSwitch).toBe(false);
+    expect(result.reason).toBe('savings_below_threshold');
+  });
+
+  it('higher projectedRemainingTurns favors switching', () => {
+    const shortHorizon = evaluateCacheEconomics(
+      pinnedPin,
+      expensiveModel,
+      cheapModel,
+      50_000,
+      { projectedRemainingTurns: 1 },
+    );
+
+    const longHorizon = evaluateCacheEconomics(
+      pinnedPin,
+      expensiveModel,
+      cheapModel,
+      50_000,
+      { projectedRemainingTurns: 20 },
+    );
+
+    expect(longHorizon.projectedSavingsUsd).toBeGreaterThan(
+      shortHorizon.projectedSavingsUsd,
+    );
+  });
+
+  it('returns numeric cost values for all scenarios', () => {
+    const result = evaluateCacheEconomics(
+      pinnedPin,
+      expensiveModel,
+      cheapModel,
+      50_000,
+    );
+
+    expect(typeof result.warmupCostUsd).toBe('number');
+    expect(typeof result.projectedSavingsUsd).toBe('number');
+    expect(result.warmupCostUsd).toBeGreaterThanOrEqual(0);
+  });
+
+  it('handles zero estimated tokens gracefully', () => {
+    const result = evaluateCacheEconomics(
+      pinnedPin,
+      expensiveModel,
+      cheapModel,
+      0,
+    );
+
+    expect(result.shouldSwitch).toBe(false);
+    expect(result.warmupCostUsd).toBe(0);
+    expect(result.projectedSavingsUsd).toBe(0);
   });
 });
