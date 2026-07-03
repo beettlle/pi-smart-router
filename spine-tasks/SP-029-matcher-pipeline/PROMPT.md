@@ -34,7 +34,7 @@ Integrate Step 5 HyDRA matcher for ambiguous prompts. Maps to T050.
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npm test` |
-| fileScopeMustChange | `src/domain/pipeline/router-pipeline.ts (Step 5 only)` |
+| fileScopeMustChange | `src/domain/pipeline/router-pipeline.ts` |
 | fileScopeMustNotChange | `src/domain/matching/hydra-matcher.ts` |
 | completionCriteria | Ambiguous prompts route through Step 5 matcher. |
 

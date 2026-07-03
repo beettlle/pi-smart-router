@@ -35,7 +35,7 @@ Integrate Step 2 triage into pipeline with <5ms budget and unit tests. Maps to T
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npm test` |
-| fileScopeMustChange | `src/domain/pipeline/router-pipeline.ts (Step 2 only)` |
+| fileScopeMustChange | `src/domain/pipeline/router-pipeline.ts` |
 | fileScopeMustNotChange | `src/domain/pinning/**` |
 | completionCriteria | Step 2 early exit within SC-004 budget. |
 

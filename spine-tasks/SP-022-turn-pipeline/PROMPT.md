@@ -34,7 +34,7 @@ Integrate Step 2b turn envelope into pipeline. Maps to T030.
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npm test` |
-| fileScopeMustChange | `src/domain/pipeline/router-pipeline.ts (Step 2b only)` |
+| fileScopeMustChange | `src/domain/pipeline/router-pipeline.ts` |
 | fileScopeMustNotChange | `src/domain/pinning/sub-route-policy.ts` |
 | completionCriteria | Step 2b runs after Step 2 within budget. |
 
