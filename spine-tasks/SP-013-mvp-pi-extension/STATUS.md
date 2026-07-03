@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Pi integration
-**Status:** In Progress
+**Current Step:** Step 2: Testing and verification
+**Status:** Complete
 **Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** M
@@ -8,7 +8,7 @@
 
 ## Step 1: Pi integration
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] T021: before_provider_request, context, session_compact, model_select
 - [x] T021b: Confirm contract v1.0.0; update schema if needed
@@ -16,9 +16,9 @@
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 
