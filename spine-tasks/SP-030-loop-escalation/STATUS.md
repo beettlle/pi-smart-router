@@ -1,6 +1,6 @@
-**Current Step:** Complete
-**Status:** Complete
-**Last Updated:** 2026-07-02
+**Current Step:** 2
+**Status:** In Progress
+**Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** M
 
@@ -15,7 +15,7 @@
 
 ## Step 2: Testing and verification
 
-**Status:** Complete
+**Status:** In Progress
 
 - [x] Run `npm run typecheck && npm test`
 
@@ -24,3 +24,7 @@
 ## Notes
 
 SP-030 (M) — loop-escalation
+
+### REVISE feedback (2-20260703T220534.md)
+
+Addressed: Added tests/unit/loop-escalation.test.ts (29 tests) and pipeline integration tests in router-pipeline.test.ts (4 tests). All 521 tests pass.
