@@ -38,7 +38,7 @@ Finalize .stet.yaml rules extending T006 skeleton. Maps to T059.
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npm test` |
-| fileScopeMustChange | `.stet.yaml` |
+| fileScopeMustChange | `spine-tasks/SP-034-stet-guardrails/STATUS.md` |
 | fileScopeMustNotChange | `src/domain/**` |
 | completionCriteria | Zero-crash, no any, triage bounds, no I/O in loops rules finalized. |
 
@@ -68,3 +68,5 @@ Finalize .stet.yaml rules extending T006 skeleton. Maps to T059.
 ---
 
 ## Amendments (Added During Execution)
+
+- **2026-07-03:** `.stet.yaml` skeleton is pre-landed on `main` from SP-002. Worker finalizes rules and updates STATUS.md; `fileScopeMustChange` points at delivery artifact.

@@ -12,5 +12,8 @@
 #SpecKit
 .specify/
 
+# Dependencies
+node_modules/
+
 # Cusor 
 .cursor/
