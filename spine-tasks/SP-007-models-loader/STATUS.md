@@ -1,4 +1,4 @@
-**Current Step:** Step 1: Loader
+**Current Step:** Step 2: Tests
 **Status:** In Progress
 **Last Updated:** 2026-07-03
 **Review Level:** 1
@@ -8,15 +8,15 @@
 
 ## Step 1: Loader
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] T011: models-loader.ts with zod validation
 
 ## Step 2: Tests
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Unit tests: valid catalog, missing tier, invalid schema
+- [x] Unit tests: valid catalog, missing tier, invalid schema
 
 ## Step 3: Testing and verification
 
