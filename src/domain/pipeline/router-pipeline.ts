@@ -16,6 +16,7 @@ import { classifyTurnEnvelope } from '../triage/turn-envelope.js';
 import { safeCloudDefault } from './safe-default.js';
 import type { SessionPinner } from '../pinning/session-pinner.js';
 import { RoutingTelemetryEmitter } from '../../infrastructure/telemetry/routing-telemetry.js';
+import type { HydraMatcher as HydraMatcherType } from '../matching/hydra-matcher.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ export interface PipelineOptions {
   readonly httpFetchPort?: HttpFetchPort;
   readonly sessionPinner?: SessionPinner;
   readonly telemetryEmitter?: RoutingTelemetryEmitter;
+  readonly hydraMatcher?: HydraMatcherType;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -308,7 +310,43 @@ export class RouterPipeline {
     return { decided: false, stage: 'loop_escalation' };
   }
 
-  private async hydraMatcher(_request: RoutingRequest): Promise<StageResult> {
-    return { decided: false, stage: 'hydra_match' };
+  /**
+   * Step 5: HyDRA embedding matcher for ambiguous prompts (T050).
+   * Scores fleet candidates via embedding cosine similarity with shortfall gate.
+   * Pass-through when no matcher is configured.
+   */
+  private async hydraMatcher(request: RoutingRequest): Promise<StageResult> {
+    const matcher = this.options.hydraMatcher;
+    if (!matcher) {
+      return { decided: false, stage: 'hydra_match' };
+    }
+
+    const result = await matcher.match(request, this.fleet);
+
+    if (!result.selected) {
+      return { decided: false, stage: 'hydra_match' };
+    }
+
+    const selectedModel = this.fleet.find(
+      (m) => m.id === result.selected!.model_id,
+    );
+    if (!selectedModel) {
+      return { decided: false, stage: 'hydra_match' };
+    }
+
+    return {
+      decided: true,
+      stage: 'hydra_match',
+      decision: {
+        request_id: request.request_id,
+        selected_model_id: selectedModel.id,
+        tier: selectedModel.tier,
+        stage: 'hydra_match',
+        reason_code: 'hydra_embedding_match',
+        candidates: result.candidates,
+        routing_latency_ms: result.elapsedMs,
+        pin_reason: null,
+      },
+    };
   }
 }
