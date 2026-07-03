@@ -15,5 +15,8 @@
 # Dependencies
 node_modules/
 
+# Test artifacts
+coverage/
+
 # Cusor 
 .cursor/
