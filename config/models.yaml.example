@@ -1,0 +1,49 @@
+# Example fleet catalog — copy to config/models.yaml and customize.
+# See specs/001-build-smart-router/data-model.md (ModelProfile) and docs/PRD.md §5.
+
+models:
+  - id: local-gemma-4-7b
+    tier: zero-tier
+    provider: lmstudio
+    endpoint: http://localhost:1234/v1
+    capabilities:
+      reasoning: 0.3
+      code_gen: 0.6
+      tool_use: 0.1
+    performance:
+      latency_p50_ms: 120
+      verbosity_factor: 0.9
+      cache_friendly: true
+    pricing:
+      registry_key: local/free
+      fallback_cost_per_1m: 0.0
+
+  - id: claude-3.5-haiku
+    tier: economical-cloud
+    provider: anthropic
+    capabilities:
+      reasoning: 0.7
+      code_gen: 0.75
+      tool_use: 0.7
+    performance:
+      latency_p50_ms: 280
+      verbosity_factor: 0.95
+      cache_friendly: true
+    pricing:
+      registry_key: anthropic/claude-3-5-haiku
+      fallback_cost_per_1m: 0.8
+
+  - id: claude-3.5-sonnet
+    tier: frontier-cloud
+    provider: anthropic
+    capabilities:
+      reasoning: 0.95
+      code_gen: 0.95
+      tool_use: 0.95
+    performance:
+      latency_p50_ms: 450
+      verbosity_factor: 1.2
+      cache_friendly: true
+    pricing:
+      registry_key: anthropic/claude-3-5-sonnet
+      fallback_cost_per_1m: 3.0
