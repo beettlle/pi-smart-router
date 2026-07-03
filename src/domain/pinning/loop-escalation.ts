@@ -49,13 +49,13 @@ const FAILURE_PATTERNS = [
  */
 export function extractToolFailureSignature(request: RoutingRequest): string | null {
   const msgs = request.messages;
-  if (!msgs?.length) return null;
+  if (!msgs || msgs.length === 0) return null;
 
   for (let i = msgs.length - 1; i >= 0; i--) {
-    if (msgs[i].role === 'tool') {
-      const content = msgs[i].content;
-      if (looksLikeFailure(content)) {
-        return computeSignature(content);
+    const msg = msgs[i]!;
+    if (msg.role === 'tool') {
+      if (looksLikeFailure(msg.content)) {
+        return computeSignature(msg.content);
       }
       return null;
     }
