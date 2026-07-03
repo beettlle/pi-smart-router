@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
+**Current Step:** Step 1: Structure and package init
+**Status:** In Progress
 **Last Updated:** 2026-07-02
 **Review Level:** 1
 **Size:** M
@@ -8,11 +8,11 @@
 
 ## Step 1: Structure and package init
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T001: Create directory layout per plan.md
-- [ ] T002: Initialize npm + TypeScript strict ESM
-- [ ] T007: Public entry stub in src/index.ts
+- [x] T001: Create directory layout per plan.md
+- [x] T002: Initialize npm + TypeScript strict ESM
+- [x] T007: Public entry stub in src/index.ts
 
 ## Step 2: Vitest and scripts
 

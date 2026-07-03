@@ -1,0 +1,29 @@
+{
+  "name": "pi-smart-router",
+  "version": "0.0.0",
+  "description": "Auto-model router middleware for the pi.dev coding agent",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "node --eval \"console.log('lint: ESLint configured in SP-002')\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.3"
+  }
+}
