@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Step 1: Domain types
+**Status:** In Progress
+**Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** S
 
@@ -8,10 +8,10 @@
 
 ## Step 1: Domain types
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T009: RoutingRequest, RoutingDecision, SessionPin, ModelProfile, PriceCatalog, RoutingTelemetry
-- [ ] T015: store-port.ts interface
+- [x] T009: RoutingRequest, RoutingDecision, SessionPin, ModelProfile, PriceCatalog, RoutingTelemetry
+- [x] T015: store-port.ts interface
 
 ## Step 2: Testing and verification
 
