@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
+import { extractToolFailureSignature } from '../../src/domain/pinning/loop-escalation.js';
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 
 function makeModel(
@@ -200,6 +201,147 @@ describe('RouterPipeline', () => {
       const decision = await pipeline.route(makeRequest());
 
       expect(decision.stage).toBe('fallback');
+    });
+  });
+
+  describe('loop escalation integration (FR-014, Step 3b)', () => {
+    // Use different providers so FR-024 sub-routing does not interfere
+    // with escalation verification (sub-routing requires same provider).
+    const escalationFleet: ModelProfile[] = [
+      makeModel({ id: 'econ-a', tier: 'economical-cloud', provider: 'openai' }),
+      makeModel({ id: 'frontier-a', tier: 'frontier-cloud', provider: 'anthropic' }),
+    ];
+
+    const failureContent = 'Error: ENOENT file not found';
+    const failureSig = extractToolFailureSignature(
+      makeRequest({ messages: [{ role: 'tool', content: failureContent }] }),
+    )!;
+
+    it('escalates session pin after N identical tool failures', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'econ-a', 'initial');
+
+      const pipeline = new RouterPipeline(escalationFleet, {
+        sessionPinner: pinner,
+        loopEscalationConfig: { threshold: 3 },
+      });
+
+      const failureRequest = makeRequest({
+        turn_type: 'tool_result',
+        messages: [{ role: 'tool', content: failureContent }],
+      });
+
+      await pipeline.route(failureRequest);
+      await pipeline.route(failureRequest);
+
+      const pin2 = pinner.getPin('sess-1');
+      expect(pin2!.pinned_model_id).toBe('econ-a');
+      expect(pin2!.consecutive_tool_failures).toBe(2);
+
+      const decision = await pipeline.route(failureRequest);
+
+      expect(decision.selected_model_id).toBe('frontier-a');
+      expect(decision.stage).toBe('session_pin');
+      expect(decision.reason_code).toBe('session_pinned');
+
+      const pin3 = pinner.getPin('sess-1');
+      expect(pin3!.pinned_model_id).toBe('frontier-a');
+      expect(pin3!.pin_reason).toBe('loop_escalation');
+    });
+
+    it('pipeline without loopEscalationConfig is a no-op', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'econ-a', 'initial');
+
+      const pipeline = new RouterPipeline(escalationFleet, {
+        sessionPinner: pinner,
+      });
+
+      const failureRequest = makeRequest({
+        turn_type: 'tool_result',
+        messages: [{ role: 'tool', content: failureContent }],
+      });
+
+      for (let i = 0; i < 5; i++) {
+        await pipeline.route(failureRequest);
+      }
+
+      const pin = pinner.getPin('sess-1');
+      expect(pin!.pinned_model_id).toBe('econ-a');
+      expect(pin!.pin_reason).toBe('initial');
+    });
+
+    it('escalation fires once — subsequent failures do not re-escalate', async () => {
+      const pinner = new SessionPinner();
+      pinner.loadPin({
+        session_id: 'sess-1',
+        pinned_model_id: 'econ-a',
+        pin_reason: 'initial',
+        has_ever_switched: false,
+        consecutive_upstream_errors: 0,
+        consecutive_tool_failures: 2,
+        last_tool_failure_signature: failureSig,
+        created_at: '2026-07-01T00:00:00.000Z',
+        updated_at: '2026-07-01T00:00:00.000Z',
+      });
+
+      const pipeline = new RouterPipeline(escalationFleet, {
+        sessionPinner: pinner,
+        loopEscalationConfig: { threshold: 3 },
+      });
+
+      const failureRequest = makeRequest({
+        turn_type: 'tool_result',
+        messages: [{ role: 'tool', content: failureContent }],
+      });
+
+      const decision1 = await pipeline.route(failureRequest);
+      expect(decision1.selected_model_id).toBe('frontier-a');
+
+      const pin = pinner.getPin('sess-1');
+      expect(pin!.pin_reason).toBe('loop_escalation');
+
+      // Subsequent non-tool-result turns stay on frontier
+      for (let i = 0; i < 3; i++) {
+        const decision = await pipeline.route(makeRequest({
+          request_id: `req-post-${i}`,
+          turn_type: 'planning',
+        }));
+        expect(decision.selected_model_id).toBe('frontier-a');
+        expect(decision.stage).toBe('session_pin');
+      }
+
+      const finalPin = pinner.getPin('sess-1');
+      expect(finalPin!.pin_reason).toBe('loop_escalation');
+      expect(finalPin!.pinned_model_id).toBe('frontier-a');
+    });
+
+    it('loop escalation stage runs before session pin stage', async () => {
+      const pinner = new SessionPinner();
+      pinner.loadPin({
+        session_id: 'sess-1',
+        pinned_model_id: 'econ-a',
+        pin_reason: 'initial',
+        has_ever_switched: false,
+        consecutive_upstream_errors: 0,
+        consecutive_tool_failures: 2,
+        last_tool_failure_signature: failureSig,
+        created_at: '2026-07-01T00:00:00.000Z',
+        updated_at: '2026-07-01T00:00:00.000Z',
+      });
+
+      const pipeline = new RouterPipeline(escalationFleet, {
+        sessionPinner: pinner,
+        loopEscalationConfig: { threshold: 3 },
+      });
+
+      const decision = await pipeline.route(makeRequest({
+        turn_type: 'tool_result',
+        messages: [{ role: 'tool', content: failureContent }],
+      }));
+
+      expect(decision.selected_model_id).toBe('frontier-a');
+      expect(decision.pin_reason).toBe('loop_escalation');
     });
   });
 });

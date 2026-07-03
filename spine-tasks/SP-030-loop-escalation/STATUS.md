@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Complete
+**Status:** Complete
+**Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** M
 
@@ -8,19 +8,23 @@
 
 ## Step 1: Loop escalation
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] T051: loop-escalation.ts
-- [ ] T052: Step 3b integration in pipeline
+- [x] T051: loop-escalation.ts
+- [x] T052: Step 3b integration in pipeline
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 
 ## Notes
 
 SP-030 (M) — loop-escalation
+
+### REVISE feedback (2-20260703T220534.md)
+
+Addressed: Added tests/unit/loop-escalation.test.ts (29 tests) and pipeline integration tests in router-pipeline.test.ts (4 tests). All 521 tests pass.
