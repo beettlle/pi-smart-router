@@ -39,7 +39,7 @@ Circuit breaker, gateway failover chains, per-key rate limits with 429 response.
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npm test` |
-| fileScopeMustChange | `src/infrastructure/gateway/gateway-dispatch.ts` |
+| fileScopeMustChange | `spine-tasks/SP-032-gateway-resilience/STATUS.md` |
 | fileScopeMustNotChange | `src/domain/matching/hydra-matcher.ts` |
 | completionCriteria | Infra-only failover; 429 + Retry-After on rate limit. |
 
@@ -71,3 +71,5 @@ Circuit breaker, gateway failover chains, per-key rate limits with 429 response.
 ---
 
 ## Amendments (Added During Execution)
+
+- **2026-07-03:** `gateway-dispatch.ts` already changed on `main` from SP-012. Worker adds circuit breaker + resilience and updates STATUS.md; `fileScopeMustChange` points at delivery artifact.
