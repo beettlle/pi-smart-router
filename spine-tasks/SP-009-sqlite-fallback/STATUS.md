@@ -1,4 +1,4 @@
-**Current Step:** Step 1: Fallback paths
+**Current Step:** Step 2: Error-path tests
 **Status:** In Progress
 **Last Updated:** 2026-07-03
 **Review Level:** 2
@@ -8,16 +8,16 @@
 
 ## Step 1: Fallback paths
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] T013b: Corrupt DB rename → migrations → reopen; memory fallback on failure
 - [x] T014: memory-store.ts for unit tests
 
 ## Step 2: Error-path tests
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T013c: Recreate succeeds; recreate failure → memory fallback
+- [x] T013c: Recreate succeeds; recreate failure → memory fallback
 
 ## Step 3: Testing and verification
 
