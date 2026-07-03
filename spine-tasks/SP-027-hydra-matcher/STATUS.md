@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Complete
+**Status:** Complete
+**Last Updated:** 2026-07-03
 **Review Level:** 3
 **Size:** M
 
@@ -8,16 +8,16 @@
 
 ## Step 1: Matcher
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] T048: hydra-matcher.ts with shortfall scoring
-- [ ] Mocked unit tests; no weights in git
+- [x] T048: hydra-matcher.ts with shortfall scoring
+- [x] Mocked unit tests; no weights in git
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 

@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Complete
+**Status:** Done
+**Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** S
 
@@ -8,19 +8,23 @@
 
 ## Step 1: Probes
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] T044: hardware-probe.ts three-state gate
-- [ ] T045: LM Studio + Ollama readiness pings
+- [x] T044: hardware-probe.ts three-state gate
+- [x] T045: LM Studio + Ollama readiness pings
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 
 ## Notes
 
 SP-019 (S) — local-probes
+
+## Revisions
+
+- **REVISE (Step 2 code review):** Both source files lacked unit tests. Added `tests/unit/hardware-probe.test.ts` and `tests/unit/local-zero-tier.test.ts` covering three-state gate logic, HTTP ping readiness, error paths, and timeout handling.
