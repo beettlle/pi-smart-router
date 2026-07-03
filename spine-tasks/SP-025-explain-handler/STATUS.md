@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
+**Current Step:** Step 1: Explain handler
+**Status:** In Progress
 **Last Updated:** 2026-07-02
 **Review Level:** 2
 **Size:** S
@@ -8,9 +8,9 @@
 
 ## Step 1: Explain handler
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T041: router-explain.ts per contract
+- [x] T041: router-explain.ts per contract
 
 ## Step 2: Testing and verification
 
