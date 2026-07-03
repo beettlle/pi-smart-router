@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-02
 **Review Level:** 2
 **Size:** S
@@ -8,16 +8,16 @@
 
 ## Step 1: Schemas and defaults
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] T010: Zod schemas mirroring contracts + PriceCatalog
-- [ ] T012: defaults.ts per data-model.md (FR-021)
+- [x] T010: Zod schemas mirroring contracts + PriceCatalog
+- [x] T012: defaults.ts per data-model.md (FR-021)
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 
