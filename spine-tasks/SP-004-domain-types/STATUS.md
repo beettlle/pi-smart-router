@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Complete
+**Status:** Done
+**Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** S
 
@@ -8,16 +8,16 @@
 
 ## Step 1: Domain types
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] T009: RoutingRequest, RoutingDecision, SessionPin, ModelProfile, PriceCatalog, RoutingTelemetry
-- [ ] T015: store-port.ts interface
+- [x] T009: RoutingRequest, RoutingDecision, SessionPin, ModelProfile, PriceCatalog, RoutingTelemetry
+- [x] T015: store-port.ts interface
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 
