@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Step 2: In progress
+**Status:** In Progress
+**Last Updated:** 2026-07-03
 **Review Level:** 0
 **Size:** S
 
@@ -8,14 +8,14 @@
 
 ## Step 1: Bootstrap docs
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] T006b: HyDRA cache bootstrap section in quickstart.md
-- [ ] T008: Verify .pi-smart-router/ gitignore
+- [x] T006b: HyDRA cache bootstrap section in quickstart.md — verified: "HyDRA Model Cache Bootstrap" section present in quickstart.md (pre-landed on main per amendment)
+- [x] T008: Verify .pi-smart-router/ gitignore — verified: `.pi-smart-router/` in .gitignore covers state.db and models/
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Run `npm run typecheck && npm test`
 
