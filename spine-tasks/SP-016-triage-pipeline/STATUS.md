@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Integration and tests
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Done
 **Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** S
@@ -8,16 +8,16 @@
 
 ## Step 1: Integration and tests
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] T027: Step 2 integration with <5ms budget
 - [x] T028: triage-engine.test.ts
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 
