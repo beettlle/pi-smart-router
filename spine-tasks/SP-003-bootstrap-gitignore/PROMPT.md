@@ -35,7 +35,7 @@ Document HyDRA ONNX cache bootstrap and verify .pi-smart-router/ gitignore. Maps
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npm test` |
-| fileScopeMustChange | `specs/001-build-smart-router/quickstart.md` |
+| fileScopeMustChange | `spine-tasks/SP-003-bootstrap-gitignore/STATUS.md` |
 | fileScopeMustNotChange | `src/**` |
 | completionCriteria | .pi-smart-router/ gitignored for state.db and models/. |
 
@@ -66,3 +66,5 @@ Document HyDRA ONNX cache bootstrap and verify .pi-smart-router/ gitignore. Maps
 ---
 
 ## Amendments (Added During Execution)
+
+- **2026-07-02:** `quickstart.md` content is pre-landed on `main`. Worker verifies `.gitignore` and documents bootstrap in STATUS.md; `fileScopeMustChange` points at delivery artifact.

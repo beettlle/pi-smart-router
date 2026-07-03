@@ -33,7 +33,7 @@ Update quickstart with install/run commands and document gate evidence. Maps to 
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npm test` |
-| fileScopeMustChange | `specs/001-build-smart-router/quickstart.md` |
+| fileScopeMustChange | `spine-tasks/SP-036-quickstart-gate/STATUS.md` |
 | fileScopeMustNotChange | `src/**` |
 | completionCriteria | Quickstart reflects actual commands; typecheck+test evidence documented. |
 
@@ -64,3 +64,5 @@ Update quickstart with install/run commands and document gate evidence. Maps to 
 ---
 
 ## Amendments (Added During Execution)
+
+- **2026-07-02:** `quickstart.md` content is pre-landed on `main`. Worker documents gate evidence in STATUS.md; `fileScopeMustChange` points at delivery artifact.

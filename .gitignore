@@ -1,4 +1,5 @@
 # pi-spine runtime
+.pi/
 .spine/runtime/
 .spine/batch-state.json
 .spine/batch-history.json
