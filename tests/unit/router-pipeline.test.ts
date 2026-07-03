@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
+import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 
 function makeModel(
@@ -102,6 +103,103 @@ describe('RouterPipeline', () => {
       expect(decision).toHaveProperty('reason_code');
       expect(decision).toHaveProperty('routing_latency_ms');
       expect(decision).toHaveProperty('pin_reason');
+    });
+  });
+
+  describe('session pin integration (FR-006, FR-007, FR-008)', () => {
+    const pinFleet: ModelProfile[] = [
+      makeModel({ id: 'econ-a', tier: 'economical-cloud', provider: 'anthropic' }),
+      makeModel({ id: 'frontier-a', tier: 'frontier-cloud', provider: 'anthropic' }),
+      makeModel({ id: 'econ-o', tier: 'economical-cloud', provider: 'openai' }),
+    ];
+
+    it('pin decision is returned before triage when pin exists', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'frontier-a', 'initial');
+
+      const pipeline = new RouterPipeline(pinFleet, { sessionPinner: pinner });
+      const decision = await pipeline.route(makeRequest());
+
+      expect(decision.stage).toBe('session_pin');
+      expect(decision.reason_code).toBe('session_pinned');
+      expect(decision.selected_model_id).toBe('frontier-a');
+      expect(decision.pin_reason).toBe('initial');
+    });
+
+    it('persistPinIfNeeded records a pin after fallback routing', async () => {
+      const pinner = new SessionPinner();
+      const pipeline = new RouterPipeline(pinFleet, { sessionPinner: pinner });
+
+      const decision = await pipeline.route(makeRequest());
+
+      expect(decision.stage).toBe('fallback');
+      const pin = pinner.getPin('sess-1');
+      expect(pin).not.toBeNull();
+      expect(pin!.pinned_model_id).toBe(decision.selected_model_id);
+      expect(pin!.pin_reason).toBe('initial');
+    });
+
+    it('sub-route decisions do not re-persist the pin', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'frontier-a', 'initial');
+
+      const pipeline = new RouterPipeline(pinFleet, { sessionPinner: pinner });
+      const decision = await pipeline.route(
+        makeRequest({
+          turn_type: 'tool_result',
+          estimated_input_tokens: 50,
+        }),
+      );
+
+      expect(decision.reason_code).toBe('tool_result_sub_route');
+      expect(decision.selected_model_id).toBe('econ-a');
+      const pin = pinner.getPin('sess-1');
+      expect(pin!.pinned_model_id).toBe('frontier-a');
+    });
+
+    it('already-pinned decisions do not re-persist the pin', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'frontier-a', 'user_forced');
+
+      const pipeline = new RouterPipeline(pinFleet, { sessionPinner: pinner });
+      await pipeline.route(makeRequest({ turn_type: 'planning' }));
+
+      const pin = pinner.getPin('sess-1');
+      expect(pin!.pin_reason).toBe('user_forced');
+    });
+
+    it('second request reuses established pin', async () => {
+      const pinner = new SessionPinner();
+      const pipeline = new RouterPipeline(pinFleet, { sessionPinner: pinner });
+
+      const first = await pipeline.route(makeRequest());
+      const second = await pipeline.route(makeRequest({ request_id: 'req-002' }));
+
+      expect(second.stage).toBe('session_pin');
+      expect(second.reason_code).toBe('session_pinned');
+      expect(second.selected_model_id).toBe(first.selected_model_id);
+    });
+
+    it('compaction break allows fresh re-route', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'frontier-a', 'initial');
+
+      const pipeline = new RouterPipeline(pinFleet, { sessionPinner: pinner });
+      const decision = await pipeline.route(
+        makeRequest({ compaction_flag: true }),
+      );
+
+      expect(decision.stage).not.toBe('session_pin');
+      const pin = pinner.getPin('sess-1');
+      expect(pin).not.toBeNull();
+      expect(pin!.pin_reason).toBe('initial');
+    });
+
+    it('pipeline without sessionPinner skips pin stage', async () => {
+      const pipeline = new RouterPipeline(pinFleet);
+      const decision = await pipeline.route(makeRequest());
+
+      expect(decision.stage).toBe('fallback');
     });
   });
 });
