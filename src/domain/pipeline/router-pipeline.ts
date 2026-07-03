@@ -15,6 +15,8 @@ import { triage as triageClassify } from '../triage/triage-engine.js';
 import { classifyTurnEnvelope } from '../triage/turn-envelope.js';
 import { safeCloudDefault } from './safe-default.js';
 import type { SessionPinner } from '../pinning/session-pinner.js';
+import { evaluateLoopEscalation } from '../pinning/loop-escalation.js';
+import type { LoopEscalationConfig } from '../pinning/loop-escalation.js';
 import { RoutingTelemetryEmitter } from '../../infrastructure/telemetry/routing-telemetry.js';
 import type { HydraMatcher as HydraMatcherType } from '../matching/hydra-matcher.js';
 
@@ -36,6 +38,7 @@ export interface PipelineOptions {
   readonly systemInfoProvider?: () => Promise<SystemInfo>;
   readonly httpFetchPort?: HttpFetchPort;
   readonly sessionPinner?: SessionPinner;
+  readonly loopEscalationConfig?: LoopEscalationConfig;
   readonly telemetryEmitter?: RoutingTelemetryEmitter;
   readonly hydraMatcher?: HydraMatcherType;
 }
@@ -55,10 +58,10 @@ export class RouterPipeline {
     this.options = options ?? {};
     this.stages = [
       this.hardwareProbeStage.bind(this),
+      this.loopEscalation.bind(this),
       this.sessionPin.bind(this),
       this.triage.bind(this),
       this.turnEnvelope.bind(this),
-      this.loopEscalation.bind(this),
       this.localZeroTierStage.bind(this),
       this.hydraMatcher.bind(this),
     ];
@@ -304,9 +307,39 @@ export class RouterPipeline {
     };
   }
 
-  // ─── Placeholder stages (to be implemented by future tasks) ──────────────
+  // ─── Loop escalation (Step 3b — FR-014) ─────────────────────────────────
 
-  private async loopEscalation(_request: RoutingRequest): Promise<StageResult> {
+  /**
+   * Observational loop escalation: detects repeated identical tool failures
+   * and re-pins the session to a frontier-capable tier.
+   *
+   * Runs before sessionPin so it can modify pin state. Never returns
+   * decided: true — the subsequent sessionPin stage picks up the
+   * (potentially escalated) pin and decides.
+   */
+  private async loopEscalation(request: RoutingRequest): Promise<StageResult> {
+    const pinner = this.options.sessionPinner;
+    const config = this.options.loopEscalationConfig;
+    if (!pinner || !config) {
+      return { decided: false, stage: 'loop_escalation' };
+    }
+
+    const pin = pinner.getPin(request.session_id);
+    const result = evaluateLoopEscalation(pin, request, this.fleet, config);
+
+    if (result.updatedPin) {
+      pinner.loadPin(result.updatedPin);
+    }
+
+    if (result.shouldEscalate && result.escalationTarget) {
+      pinner.breakPin(request.session_id);
+      pinner.recordPin(
+        request.session_id,
+        result.escalationTarget.id,
+        'loop_escalation',
+      );
+    }
+
     return { decided: false, stage: 'loop_escalation' };
   }
 
