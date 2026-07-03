@@ -19,11 +19,15 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "node --eval \"console.log('lint: ESLint configured in SP-002')\""
+    "lint": "eslint . --ext .ts && node --input-type=module -e \"import { readFileSync } from 'node:fs'; import { parse } from 'yaml'; const doc = parse(readFileSync('config/models.yaml.example', 'utf8')); if (!Array.isArray(doc.models) || doc.models.length < 3) throw new Error('models.yaml.example must list at least one model per tier'); const tiers = new Set(doc.models.map((m) => m.tier)); for (const tier of ['zero-tier', 'economical-cloud', 'frontier-cloud']) { if (!tiers.has(tier)) throw new Error('missing tier: ' + tier); } console.log('models.yaml.example: valid');\""
   },
   "devDependencies": {
     "@types/node": "^22.15.21",
+    "@typescript-eslint/eslint-plugin": "^8.62.1",
+    "@typescript-eslint/parser": "^8.62.1",
+    "eslint": "^8.57.1",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.3"
+    "vitest": "^3.2.3",
+    "yaml": "^2.9.0"
   }
 }

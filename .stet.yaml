@@ -1,0 +1,21 @@
+# pi-smart-router SDD guardrails — skeleton (SP-002 / T006).
+# Finalized in SP-034 (T059). Do not add production enforcement rules here.
+
+version: 1
+project: pi-smart-router
+
+guardrails:
+  zero_crash:
+    enabled: true
+    description: |
+      On routing failure, degrade to safe cloud default (FR-022).
+      Never throw to the host pi agent.
+    rules: []
+
+  triage_bounds:
+    enabled: true
+    description: |
+      Deterministic triage (regex/keyword scan) must stay within latency budget.
+    limits:
+      regex_triage_max_ms: 10
+    rules: []
