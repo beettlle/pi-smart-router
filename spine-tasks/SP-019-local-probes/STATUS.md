@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Step 1: Probes
+**Status:** In Progress
+**Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** S
 
@@ -8,10 +8,10 @@
 
 ## Step 1: Probes
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T044: hardware-probe.ts three-state gate
-- [ ] T045: LM Studio + Ollama readiness pings
+- [x] T044: hardware-probe.ts three-state gate
+- [x] T045: LM Studio + Ollama readiness pings
 
 ## Step 2: Testing and verification
 
