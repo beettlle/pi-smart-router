@@ -1,5 +1,5 @@
-**Current Step:** Step 2: Error-path tests
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Done
 **Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** M
@@ -15,15 +15,15 @@
 
 ## Step 2: Error-path tests
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] T013c: Recreate succeeds; recreate failure → memory fallback
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 
