@@ -1,5 +1,5 @@
-**Current Step:** Step 1: MVP tests
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Done
 **Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** S
@@ -8,16 +8,16 @@
 
 ## Step 1: MVP tests
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] T023: pipeline-mvp.test.ts integration
 - [x] T024: safe-default error-path test
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 
