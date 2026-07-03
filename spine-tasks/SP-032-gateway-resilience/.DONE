@@ -1,0 +1,4 @@
+SP-032 gateway-resilience complete
+Typecheck: pass
+Tests: 555 passed (26 files)
+REVISE feedback addressed: failover test deterministic, rate limit guard fixed
