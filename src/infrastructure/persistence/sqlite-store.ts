@@ -8,11 +8,14 @@
  * Maps to T013 in the routing pipeline spec.
  */
 
+import { renameSync } from 'node:fs';
+
 import Database from 'better-sqlite3';
 import type BetterSqlite3 from 'better-sqlite3';
 
 import type { ModelProfile, PriceCatalog, RoutingTelemetry, SessionPin } from '../../domain/types/entities.js';
 import type { StorePort } from '../../domain/types/store-port.js';
+import { MemoryStore } from './memory-store.js';
 
 // ─── Schema version & migrations ────────────────────────────────────────────
 
@@ -80,6 +83,46 @@ export interface SqliteStoreOptions {
   readonly dbPath: string;
   /** Fleet catalog (loaded from YAML config, not persisted in SQLite). */
   readonly models: readonly ModelProfile[];
+}
+
+// ─── Factory with resilient fallback (FR-025, T013b) ─────────────────────────
+
+export interface CreateStoreResult {
+  readonly store: StorePort;
+  readonly degraded: boolean;
+}
+
+/**
+ * Create a persistence store with corrupt-DB recovery.
+ *
+ * Strategy:
+ * 1. Attempt to open the SQLite DB and run migrations.
+ * 2. On failure (corrupt/locked): rename the file, try fresh creation.
+ * 3. If recreation also fails: fall back to MemoryStore.
+ *
+ * Never throws — the host agent must not crash due to persistence issues.
+ */
+export function createResilientStore(options: SqliteStoreOptions): CreateStoreResult {
+  if (options.dbPath === ':memory:') {
+    return { store: new SqliteStore(options), degraded: false };
+  }
+
+  try {
+    return { store: new SqliteStore(options), degraded: false };
+  } catch (firstError: unknown) {
+    try {
+      const corruptPath = `${options.dbPath}.corrupt.${Date.now()}`;
+      renameSync(options.dbPath, corruptPath);
+    } catch {
+      // Rename may fail if the file doesn't exist or permissions issue — continue to recreate attempt
+    }
+
+    try {
+      return { store: new SqliteStore(options), degraded: false };
+    } catch {
+      return { store: new MemoryStore(options.models), degraded: true };
+    }
+  }
 }
 
 // ─── SqliteStore ────────────────────────────────────────────────────────────
@@ -228,6 +271,16 @@ export class SqliteStore implements StorePort {
    */
   consumeToken(key: string, cost: number = 1): TokenBucketResult {
     return this.consumeTokenTx(key, cost);
+  }
+
+  /** Run PRAGMA integrity_check. Returns true if the database is healthy. */
+  checkHealth(): boolean {
+    try {
+      const result = this.db.pragma('integrity_check', { simple: true }) as string;
+      return result === 'ok';
+    } catch {
+      return false;
+    }
   }
 
   /** Close the database connection. */
