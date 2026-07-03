@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
+**Current Step:** Step 1: E2E and benchmarks
+**Status:** In Progress
 **Last Updated:** 2026-07-02
 **Review Level:** 2
 **Size:** M
@@ -8,11 +8,11 @@
 
 ## Step 1: E2E and benchmarks
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T060: full-pipeline.test.ts
-- [ ] T061: routing-latency.test.ts (<200ms)
-- [ ] T062: cost-baseline.test.ts
+- [x] T060: full-pipeline.test.ts
+- [x] T061: routing-latency.test.ts (<200ms)
+- [x] T062: cost-baseline.test.ts
 
 ## Step 2: Testing and verification
 
