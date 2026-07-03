@@ -24,3 +24,8 @@
 ## Notes
 
 SP-012 (M) — mvp-pipeline-gateway
+
+### REVISE response (2-20260703T191643)
+- Added `tests/unit/gateway-dispatch.test.ts` per code review feedback (FR-REV-07)
+- 7 tests: construction, dispatch fallback, request_id preservation, empty fleet, never throws, field shape
+- All 97 tests pass (8 files)
