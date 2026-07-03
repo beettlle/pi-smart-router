@@ -1,4 +1,4 @@
-**Current Step:** Step 1: Classifier
+**Current Step:** Step 2: Testing and verification
 **Status:** In Progress
 **Last Updated:** 2026-07-03
 **Review Level:** 2
@@ -8,15 +8,15 @@
 
 ## Step 1: Classifier
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] T029: turn-envelope.ts classifier
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 
