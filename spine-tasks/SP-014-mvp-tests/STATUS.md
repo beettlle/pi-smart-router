@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Step 1: MVP tests
+**Status:** In Progress
+**Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** S
 
@@ -8,10 +8,10 @@
 
 ## Step 1: MVP tests
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T023: pipeline-mvp.test.ts integration
-- [ ] T024: safe-default error-path test
+- [x] T023: pipeline-mvp.test.ts integration
+- [x] T024: safe-default error-path test
 
 ## Step 2: Testing and verification
 
