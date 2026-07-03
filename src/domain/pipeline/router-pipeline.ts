@@ -15,6 +15,7 @@ import { triage as triageClassify } from '../triage/triage-engine.js';
 import { classifyTurnEnvelope } from '../triage/turn-envelope.js';
 import { safeCloudDefault } from './safe-default.js';
 import type { SessionPinner } from '../pinning/session-pinner.js';
+import { RoutingTelemetryEmitter } from '../../infrastructure/telemetry/routing-telemetry.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ export interface PipelineOptions {
   readonly systemInfoProvider?: () => Promise<SystemInfo>;
   readonly httpFetchPort?: HttpFetchPort;
   readonly sessionPinner?: SessionPinner;
+  readonly telemetryEmitter?: RoutingTelemetryEmitter;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -69,6 +71,7 @@ export class RouterPipeline {
         const result = await stage(request);
         if (result.decided && result.decision) {
           this.persistPinIfNeeded(request, result.decision);
+          this.emitTelemetry(request, result.decision);
           return result.decision;
         }
       }
@@ -78,7 +81,13 @@ export class RouterPipeline {
 
     const fallback = this.buildFallbackDecision(request, Date.now() - start);
     this.persistPinIfNeeded(request, fallback);
+    this.emitTelemetry(request, fallback);
     return fallback;
+  }
+
+  /** Step 7: emit routing telemetry after decision (T040). */
+  private emitTelemetry(request: RoutingRequest, decision: RoutingDecision): void {
+    this.options.telemetryEmitter?.emit(request, decision);
   }
 
   private buildFallbackDecision(
