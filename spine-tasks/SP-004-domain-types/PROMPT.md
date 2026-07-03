@@ -33,7 +33,7 @@ Define domain types and persistence port interface. Maps to T009, T015.
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npm test` |
-| fileScopeMustChange | `src/domain/types/` |
+| fileScopeMustChange | `src/domain/types/index.ts` |
 | fileScopeMustNotChange | `src/infrastructure/**` |
 | completionCriteria | All entity types and store port defined. |
 
@@ -64,3 +64,5 @@ Define domain types and persistence port interface. Maps to T009, T015.
 ---
 
 ## Amendments (Added During Execution)
+
+- **2026-07-03:** Contract verifier doesn't match directory-with-trailing-slash patterns. Changed `fileScopeMustChange` to exact file `src/domain/types/index.ts`. Filed pi-spine issue.
