@@ -34,7 +34,7 @@ Integrate Steps 1+4 and local tier unit tests. Maps to T046, T047.
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npm test` |
-| fileScopeMustChange | `src/domain/pipeline/router-pipeline.ts (Steps 1 and 4 only)` |
+| fileScopeMustChange | `src/domain/pipeline/router-pipeline.ts` |
 | fileScopeMustNotChange | `src/domain/matching/**` |
 | completionCriteria | Classification-only MUST NOT dispatch full local; SC-007. |
 
@@ -65,3 +65,5 @@ Integrate Steps 1+4 and local tier unit tests. Maps to T046, T047.
 ---
 
 ## Amendments (Added During Execution)
+
+- **2026-07-03:** Removed parenthetical from fileScopeMustChange — verifier treats it as literal path. pi-spine#118 related (pattern matching).
