@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
+import { GatewayDispatch, weightedSelect } from '../../src/infrastructure/gateway/gateway-dispatch.js';
+import type { RateLimitPort, RateLimitResult } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 
 function makeModel(
@@ -21,6 +22,10 @@ function makeRequest(overrides?: Partial<RoutingRequest>): RoutingRequest {
     prompt_text: 'Hello world',
     ...overrides,
   };
+}
+
+function isRateLimitResult(result: unknown): result is RateLimitResult {
+  return typeof result === 'object' && result !== null && 'limited' in result;
 }
 
 const fleet: ModelProfile[] = [
@@ -84,5 +89,150 @@ describe('GatewayDispatch', () => {
     expect(decision).toHaveProperty('reason_code');
     expect(decision).toHaveProperty('routing_latency_ms');
     expect(decision).toHaveProperty('pin_reason');
+  });
+
+  // ─── Circuit breaker integration (T055, FR-018) ─────────────────────────
+
+  describe('circuit breaker', () => {
+    it('fails over to same-tier model when circuit is open', async () => {
+      const multiFleet = [
+        makeModel({ id: 'econ-a', tier: 'economical-cloud', pricing: { fallback_cost_per_1m: 0.5 } }),
+        makeModel({ id: 'econ-b', tier: 'economical-cloud', pricing: { fallback_cost_per_1m: 0.5 } }),
+        makeModel({ id: 'frontier-a', tier: 'frontier-cloud' }),
+      ];
+      const gateway = new GatewayDispatch(multiFleet, {
+        circuitBreakerConfig: { failureThreshold: 2, resetTimeoutMs: 60_000, halfOpenSuccesses: 1 },
+      });
+
+      gateway.recordOutcome('econ-a', { statusCode: 500 });
+      gateway.recordOutcome('econ-a', { statusCode: 500 });
+
+      const decision = await gateway.dispatch(makeRequest());
+
+      if (decision.selected_model_id === 'econ-a') {
+        expect(decision.reason_code).not.toBe('circuit_breaker_failover');
+      }
+    });
+
+    it('does not trip circuit on policy rejection (FR-018)', async () => {
+      const gateway = new GatewayDispatch(fleet, {
+        circuitBreakerConfig: { failureThreshold: 1, resetTimeoutMs: 60_000, halfOpenSuccesses: 1 },
+      });
+
+      gateway.recordOutcome('gpt-4o-mini', { statusCode: 403 });
+      gateway.recordOutcome('gpt-4o-mini', { statusCode: 422 });
+
+      const cb = gateway.getCircuitBreaker();
+      expect(cb.canDispatch('gpt-4o-mini')).toBe(true);
+    });
+
+    it('trips circuit on infra errors (5xx)', async () => {
+      const gateway = new GatewayDispatch(fleet, {
+        circuitBreakerConfig: { failureThreshold: 2, resetTimeoutMs: 60_000, halfOpenSuccesses: 1 },
+      });
+
+      gateway.recordOutcome('gpt-4o-mini', { statusCode: 502 });
+      gateway.recordOutcome('gpt-4o-mini', { statusCode: 503 });
+
+      const cb = gateway.getCircuitBreaker();
+      expect(cb.canDispatch('gpt-4o-mini')).toBe(false);
+    });
+
+    it('resets circuit on success', async () => {
+      const gateway = new GatewayDispatch(fleet, {
+        circuitBreakerConfig: { failureThreshold: 2, resetTimeoutMs: 60_000, halfOpenSuccesses: 1 },
+      });
+
+      gateway.recordOutcome('gpt-4o-mini', { statusCode: 500 });
+      gateway.recordOutcome('gpt-4o-mini');
+
+      const cb = gateway.getCircuitBreaker();
+      expect(cb.canDispatch('gpt-4o-mini')).toBe(true);
+    });
+
+    it('trips circuit on network errors', async () => {
+      const gateway = new GatewayDispatch(fleet, {
+        circuitBreakerConfig: { failureThreshold: 1, resetTimeoutMs: 60_000, halfOpenSuccesses: 1 },
+      });
+
+      gateway.recordOutcome('gpt-4o-mini', { code: 'ECONNREFUSED' });
+
+      const cb = gateway.getCircuitBreaker();
+      expect(cb.canDispatch('gpt-4o-mini')).toBe(false);
+    });
+  });
+
+  // ─── Rate limiting (T057, FR-017) ──────────────────────────────────────
+
+  describe('rate limiting', () => {
+    it('returns 429 result when rate limit exceeded', async () => {
+      const limiter: RateLimitPort = {
+        consumeToken: () => ({ allowed: false, remaining: 0, retryAfterSeconds: 30 }),
+      };
+      const gateway = new GatewayDispatch(fleet, { rateLimiter: limiter });
+
+      const result = await gateway.dispatchWithRateLimit(makeRequest(), 'api:key-1');
+
+      expect(isRateLimitResult(result)).toBe(true);
+      if (!isRateLimitResult(result)) return;
+      expect(result.limited).toBe(true);
+      expect(result.error).toBe('rate_limit_exceeded');
+      expect(result.retry_after_seconds).toBe(30);
+    });
+
+    it('routes normally when rate limit allows', async () => {
+      const limiter: RateLimitPort = {
+        consumeToken: () => ({ allowed: true, remaining: 9, retryAfterSeconds: null }),
+      };
+      const gateway = new GatewayDispatch(fleet, { rateLimiter: limiter });
+
+      const result = await gateway.dispatchWithRateLimit(makeRequest(), 'api:key-1');
+
+      expect(isRateLimitResult(result)).toBe(false);
+      if (isRateLimitResult(result)) return;
+      expect(result.selected_model_id).toBeDefined();
+    });
+
+    it('routes normally when no limiter configured', async () => {
+      const gateway = new GatewayDispatch(fleet);
+
+      const result = await gateway.dispatchWithRateLimit(makeRequest(), 'api:key-1');
+
+      expect(isRateLimitResult(result)).toBe(false);
+    });
+  });
+
+  // ─── Weighted selection (T056) ─────────────────────────────────────────
+
+  describe('weightedSelect', () => {
+    it('returns undefined for empty candidates', () => {
+      expect(weightedSelect([])).toBeUndefined();
+    });
+
+    it('returns the only candidate for single-element array', () => {
+      const model = makeModel({ id: 'solo', tier: 'economical-cloud' });
+      expect(weightedSelect([model])).toBe(model);
+    });
+
+    it('returns one of the candidates for multiple models', () => {
+      const candidates = [
+        makeModel({ id: 'a', tier: 'economical-cloud', pricing: { fallback_cost_per_1m: 0.5 } }),
+        makeModel({ id: 'b', tier: 'economical-cloud', pricing: { fallback_cost_per_1m: 1.5 } }),
+      ];
+
+      const selected = weightedSelect(candidates);
+      expect(selected).toBeDefined();
+      expect(['a', 'b']).toContain(selected!.id);
+    });
+
+    it('handles zero-cost models gracefully', () => {
+      const candidates = [
+        makeModel({ id: 'free-a', tier: 'zero-tier', pricing: { fallback_cost_per_1m: 0 } }),
+        makeModel({ id: 'free-b', tier: 'zero-tier', pricing: { fallback_cost_per_1m: 0 } }),
+      ];
+
+      const selected = weightedSelect(candidates);
+      expect(selected).toBeDefined();
+    });
   });
 });

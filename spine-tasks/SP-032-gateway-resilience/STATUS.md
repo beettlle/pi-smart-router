@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Step 1: Gateway resilience
+**Status:** In Progress
+**Last Updated:** 2026-07-03
 **Review Level:** 3
 **Size:** M
 
@@ -8,11 +8,11 @@
 
 ## Step 1: Gateway resilience
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T055: circuit-breaker.ts (infra errors only)
-- [ ] T056: Weighted distribution + failover
-- [ ] T057: Rate limiting with 429/retry-after body
+- [x] T055: circuit-breaker.ts (infra errors only)
+- [x] T056: Weighted distribution + failover
+- [x] T057: Rate limiting with 429/retry-after body
 
 ## Step 2: Testing and verification
 
