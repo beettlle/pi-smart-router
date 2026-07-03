@@ -1,4 +1,4 @@
-**Current Step:** Step 1: Structure and package init
+**Current Step:** Step 2: Vitest and scripts
 **Status:** In Progress
 **Last Updated:** 2026-07-02
 **Review Level:** 1
@@ -8,7 +8,7 @@
 
 ## Step 1: Structure and package init
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] T001: Create directory layout per plan.md
 - [x] T002: Initialize npm + TypeScript strict ESM
@@ -16,9 +16,9 @@
 
 ## Step 2: Vitest and scripts
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T003: vitest.config.ts + typecheck/test/lint scripts
+- [x] T003: vitest.config.ts + typecheck/test/lint scripts
 
 ## Step 3: Testing and verification
 
