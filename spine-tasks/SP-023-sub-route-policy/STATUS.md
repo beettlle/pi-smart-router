@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Step 1: In progress
+**Status:** In Progress
+**Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** S
 
@@ -8,10 +8,10 @@
 
 ## Step 1: Sub-route and tests
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T031: sub-route-policy.ts
-- [ ] T032: turn-envelope.test.ts
+- [x] T031: sub-route-policy.ts
+- [x] T032: turn-envelope.test.ts
 
 ## Step 2: Testing and verification
 
