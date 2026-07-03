@@ -109,9 +109,8 @@ describe('GatewayDispatch', () => {
 
       const decision = await gateway.dispatch(makeRequest());
 
-      if (decision.selected_model_id === 'econ-a') {
-        expect(decision.reason_code).not.toBe('circuit_breaker_failover');
-      }
+      expect(decision.selected_model_id).toBe('econ-b');
+      expect(decision.reason_code).toBe('circuit_breaker_failover');
     });
 
     it('does not trip circuit on policy rejection (FR-018)', async () => {
@@ -199,6 +198,21 @@ describe('GatewayDispatch', () => {
       const result = await gateway.dispatchWithRateLimit(makeRequest(), 'api:key-1');
 
       expect(isRateLimitResult(result)).toBe(false);
+    });
+
+    it('returns 429 with retry_after_seconds 0 when limiter denies but retryAfterSeconds is null', async () => {
+      const limiter: RateLimitPort = {
+        consumeToken: () => ({ allowed: false, remaining: 0, retryAfterSeconds: null }),
+      };
+      const gateway = new GatewayDispatch(fleet, { rateLimiter: limiter });
+
+      const result = await gateway.dispatchWithRateLimit(makeRequest(), 'api:key-1');
+
+      expect(isRateLimitResult(result)).toBe(true);
+      if (!isRateLimitResult(result)) return;
+      expect(result.limited).toBe(true);
+      expect(result.error).toBe('rate_limit_exceeded');
+      expect(result.retry_after_seconds).toBe(0);
     });
   });
 

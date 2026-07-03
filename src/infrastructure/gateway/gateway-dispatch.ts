@@ -127,11 +127,11 @@ export class GatewayDispatch {
   ): Promise<RoutingDecision | RateLimitResult> {
     if (this.rateLimiter) {
       const bucket = this.rateLimiter.consumeToken(rateLimitKey);
-      if (!bucket.allowed && bucket.retryAfterSeconds !== null) {
+      if (!bucket.allowed) {
         return {
           limited: true,
           error: 'rate_limit_exceeded',
-          retry_after_seconds: bucket.retryAfterSeconds,
+          retry_after_seconds: bucket.retryAfterSeconds ?? 0,
         };
       }
     }
