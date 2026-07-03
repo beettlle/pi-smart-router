@@ -16,6 +16,8 @@ import {
   sanitize,
   triage,
 } from '../../src/domain/triage/triage-engine.js';
+import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
+import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 
 // ─── T026: Adversarial Sanitization ──────────────────────────────────────────
 
@@ -363,5 +365,197 @@ describe('TriageResult contract', () => {
     expect(result.complex_hits).toBeGreaterThanOrEqual(0);
     expect(result.cyclomatic_score).toBeGreaterThanOrEqual(0);
     expect(result.sanitized_length_delta).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ─── T027/T028: Pipeline Triage Stage Integration ─────────────────────────────
+
+function makeModel(
+  overrides: Partial<ModelProfile> & { id: string; tier: ModelProfile['tier'] },
+): ModelProfile {
+  return {
+    provider: 'test',
+    capabilities: { reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 },
+    pricing: { fallback_cost_per_1m: 1.0 },
+    ...overrides,
+  };
+}
+
+function makeRequest(overrides?: Partial<RoutingRequest>): RoutingRequest {
+  return {
+    request_id: 'req-triage-001',
+    session_id: 'sess-triage',
+    prompt_text: 'Hello world',
+    ...overrides,
+  };
+}
+
+const triageFleet: ModelProfile[] = [
+  makeModel({ id: 'local-llama', tier: 'zero-tier' }),
+  makeModel({ id: 'gpt-4o-mini', tier: 'economical-cloud' }),
+  makeModel({ id: 'claude-opus', tier: 'frontier-cloud' }),
+];
+
+describe('Pipeline triage stage (T027, T028)', () => {
+  describe('early exit on trivial prompt', () => {
+    it('routes trivial prompt to economical-cloud model', async () => {
+      const pipeline = new RouterPipeline(triageFleet);
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Format this JSON file' }),
+      );
+
+      expect(decision.stage).toBe('triage');
+      expect(decision.tier).toBe('economical-cloud');
+      expect(decision.selected_model_id).toBe('gpt-4o-mini');
+      expect(decision.reason_code).toBe('keyword_economical');
+    });
+
+    it('routes lint request to economical-cloud', async () => {
+      const pipeline = new RouterPipeline(triageFleet);
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Lint the codebase' }),
+      );
+
+      expect(decision.stage).toBe('triage');
+      expect(decision.tier).toBe('economical-cloud');
+    });
+  });
+
+  describe('early exit on complex prompt', () => {
+    it('routes complex prompt to frontier-cloud model', async () => {
+      const pipeline = new RouterPipeline(triageFleet);
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Debug the memory leak in the WebSocket handler' }),
+      );
+
+      expect(decision.stage).toBe('triage');
+      expect(decision.tier).toBe('frontier-cloud');
+      expect(decision.selected_model_id).toBe('claude-opus');
+      expect(decision.reason_code).toBe('keyword_frontier');
+    });
+
+    it('routes architecture request to frontier-cloud', async () => {
+      const pipeline = new RouterPipeline(triageFleet);
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Architect a distributed caching system' }),
+      );
+
+      expect(decision.stage).toBe('triage');
+      expect(decision.tier).toBe('frontier-cloud');
+    });
+  });
+
+  describe('pass-through on ambiguous prompt', () => {
+    it('falls through to later stages for ambiguous prompt', async () => {
+      const pipeline = new RouterPipeline(triageFleet);
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Hello, how are you today?' }),
+      );
+
+      expect(decision.stage).toBe('fallback');
+      expect(decision.reason_code).toBe('safe_cloud_default');
+    });
+
+    it('falls through for empty prompt', async () => {
+      const pipeline = new RouterPipeline(triageFleet);
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: '' }),
+      );
+
+      expect(decision.stage).toBe('fallback');
+    });
+  });
+
+  describe('fallback when target tier unavailable', () => {
+    it('passes through when no economical model in fleet for trivial prompt', async () => {
+      const frontierOnly = [makeModel({ id: 'opus', tier: 'frontier-cloud' })];
+      const pipeline = new RouterPipeline(frontierOnly);
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Format this file' }),
+      );
+
+      expect(decision.stage).toBe('fallback');
+    });
+
+    it('passes through when no frontier model in fleet for complex prompt', async () => {
+      const econOnly = [makeModel({ id: 'mini', tier: 'economical-cloud' })];
+      const pipeline = new RouterPipeline(econOnly);
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Debug the deadlock in concurrent writes' }),
+      );
+
+      expect(decision.stage).toBe('fallback');
+    });
+
+    it('skips unhealthy target-tier models', async () => {
+      const fleet = [
+        makeModel({ id: 'econ-sick', tier: 'economical-cloud', healthy: false }),
+        makeModel({ id: 'frontier-ok', tier: 'frontier-cloud' }),
+      ];
+      const pipeline = new RouterPipeline(fleet);
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Rename the variable' }),
+      );
+
+      expect(decision.stage).toBe('fallback');
+    });
+  });
+
+  describe('SC-004 latency budget (<5ms)', () => {
+    it('completes triage routing within 5ms', async () => {
+      const pipeline = new RouterPipeline(triageFleet);
+      const start = performance.now();
+
+      await pipeline.route(
+        makeRequest({ prompt_text: 'Format this JSON file' }),
+      );
+
+      const elapsed = performance.now() - start;
+      expect(elapsed).toBeLessThan(5);
+    });
+
+    it('completes complex triage within 5ms', async () => {
+      const pipeline = new RouterPipeline(triageFleet);
+      const start = performance.now();
+
+      await pipeline.route(
+        makeRequest({ prompt_text: 'Debug the race condition in the worker pool' }),
+      );
+
+      const elapsed = performance.now() - start;
+      expect(elapsed).toBeLessThan(5);
+    });
+
+    it('completes ambiguous pass-through within 5ms', async () => {
+      const pipeline = new RouterPipeline(triageFleet);
+      const start = performance.now();
+
+      await pipeline.route(
+        makeRequest({ prompt_text: 'Hello, how are you?' }),
+      );
+
+      const elapsed = performance.now() - start;
+      expect(elapsed).toBeLessThan(5);
+    });
+  });
+
+  describe('preserves request context', () => {
+    it('preserves request_id in triage decision', async () => {
+      const pipeline = new RouterPipeline(triageFleet);
+      const decision = await pipeline.route(
+        makeRequest({ request_id: 'custom-id-123', prompt_text: 'Lint the code' }),
+      );
+
+      expect(decision.request_id).toBe('custom-id-123');
+    });
+
+    it('sets pin_reason to null for triage decisions', async () => {
+      const pipeline = new RouterPipeline(triageFleet);
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Refactor the authentication module' }),
+      );
+
+      expect(decision.pin_reason).toBeNull();
+    });
   });
 });

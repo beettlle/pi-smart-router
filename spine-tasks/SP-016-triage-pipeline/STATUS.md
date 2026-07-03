@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Step 1: Integration and tests
+**Status:** In Progress
+**Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** S
 
@@ -8,10 +8,10 @@
 
 ## Step 1: Integration and tests
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T027: Step 2 integration with <5ms budget
-- [ ] T028: triage-engine.test.ts
+- [x] T027: Step 2 integration with <5ms budget
+- [x] T028: triage-engine.test.ts
 
 ## Step 2: Testing and verification
 

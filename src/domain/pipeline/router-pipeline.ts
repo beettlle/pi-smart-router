@@ -10,6 +10,7 @@ import type { HardwareProbeConfig, HardwareProbeResult, SystemInfo } from '../..
 import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
 import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
 import { pingLocalServices } from '../../infrastructure/local/local-zero-tier.js';
+import { triage as triageClassify } from '../triage/triage-engine.js';
 import { safeCloudDefault } from './safe-default.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
@@ -145,11 +146,38 @@ export class RouterPipeline {
     };
   }
 
-  // ─── Placeholder stages (to be implemented by future tasks) ──────────────
+  // ─── Triage stage (FR-003, SC-004 <5ms budget) ──────────────────────────────
 
-  private async triage(_request: RoutingRequest): Promise<StageResult> {
-    return { decided: false, stage: 'triage' };
+  private async triage(request: RoutingRequest): Promise<StageResult> {
+    const result = triageClassify(request.prompt_text);
+
+    if (result.verdict === 'ambiguous') {
+      return { decided: false, stage: 'triage' };
+    }
+
+    const targetTier = result.verdict === 'trivial' ? 'economical-cloud' : 'frontier-cloud';
+    const model = this.fleet.find((m) => m.tier === targetTier && m.healthy !== false);
+
+    if (!model) {
+      return { decided: false, stage: 'triage' };
+    }
+
+    return {
+      decided: true,
+      stage: 'triage',
+      decision: {
+        request_id: request.request_id,
+        selected_model_id: model.id,
+        tier: targetTier,
+        stage: 'triage',
+        reason_code: result.reason_code,
+        routing_latency_ms: 0,
+        pin_reason: null,
+      },
+    };
   }
+
+  // ─── Placeholder stages (to be implemented by future tasks) ──────────────
 
   private async turnEnvelope(_request: RoutingRequest): Promise<StageResult> {
     return { decided: false, stage: 'turn_envelope' };
