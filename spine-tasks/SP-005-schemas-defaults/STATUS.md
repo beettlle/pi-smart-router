@@ -1,4 +1,4 @@
-**Current Step:** Step 1: In progress
+**Current Step:** Step 2: In progress
 **Status:** In Progress
 **Last Updated:** 2026-07-02
 **Review Level:** 2
@@ -8,16 +8,16 @@
 
 ## Step 1: Schemas and defaults
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] T010: Zod schemas mirroring contracts + PriceCatalog
 - [x] T012: defaults.ts per data-model.md (FR-021)
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 
