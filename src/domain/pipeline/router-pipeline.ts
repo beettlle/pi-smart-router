@@ -1,7 +1,8 @@
 /**
- * Pipeline stage orchestrator — FR-001, FR-022.
+ * Pipeline stage orchestrator — FR-001, FR-006, FR-022.
  *
  * Runs stages sequentially with early-exit on decision.
+ * Session pin lookup runs before triage so existing pins hold (FR-006).
  * Any stage failure falls back to safeCloudDefault(); never throws to host.
  */
 
@@ -12,6 +13,7 @@ import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
 import { pingLocalServices } from '../../infrastructure/local/local-zero-tier.js';
 import { triage as triageClassify } from '../triage/triage-engine.js';
 import { safeCloudDefault } from './safe-default.js';
+import type { SessionPinner } from '../pinning/session-pinner.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
 
@@ -30,6 +32,7 @@ export interface PipelineOptions {
   readonly localConfig?: LocalZeroTierConfig;
   readonly systemInfoProvider?: () => Promise<SystemInfo>;
   readonly httpFetchPort?: HttpFetchPort;
+  readonly sessionPinner?: SessionPinner;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -47,9 +50,9 @@ export class RouterPipeline {
     this.options = options ?? {};
     this.stages = [
       this.hardwareProbeStage.bind(this),
+      this.sessionPin.bind(this),
       this.triage.bind(this),
       this.turnEnvelope.bind(this),
-      this.sessionPin.bind(this),
       this.loopEscalation.bind(this),
       this.localZeroTierStage.bind(this),
       this.hydraMatcher.bind(this),
@@ -64,6 +67,7 @@ export class RouterPipeline {
       for (const stage of this.stages) {
         const result = await stage(request);
         if (result.decided && result.decision) {
+          this.persistPinIfNeeded(request, result.decision);
           return result.decision;
         }
       }
@@ -71,7 +75,9 @@ export class RouterPipeline {
       // Constitution VI: zero-crash resilience — degrade to safe default
     }
 
-    return this.buildFallbackDecision(request, Date.now() - start);
+    const fallback = this.buildFallbackDecision(request, Date.now() - start);
+    this.persistPinIfNeeded(request, fallback);
+    return fallback;
   }
 
   private buildFallbackDecision(
@@ -177,14 +183,81 @@ export class RouterPipeline {
     };
   }
 
+  // ─── Session pin stage (FR-006, FR-007, FR-008) ──────────────────────────
+
+  private async sessionPin(request: RoutingRequest): Promise<StageResult> {
+    const pinner = this.options.sessionPinner;
+    if (!pinner) {
+      return { decided: false, stage: 'session_pin' };
+    }
+
+    const result = pinner.lookupPin(request, this.fleet);
+
+    switch (result.action) {
+      case 'use_pin': {
+        const model = result.pinnedModel!;
+        const pin = pinner.getPin(request.session_id);
+        return {
+          decided: true,
+          stage: 'session_pin',
+          decision: {
+            request_id: request.request_id,
+            selected_model_id: model.id,
+            tier: model.tier,
+            stage: 'session_pin',
+            reason_code: 'session_pinned',
+            routing_latency_ms: 0,
+            pin_reason: pin?.pin_reason ?? null,
+          },
+        };
+      }
+
+      case 'sub_route': {
+        const model = result.subRouteModel!;
+        const pin = pinner.getPin(request.session_id);
+        return {
+          decided: true,
+          stage: 'session_pin',
+          decision: {
+            request_id: request.request_id,
+            selected_model_id: model.id,
+            tier: model.tier,
+            stage: 'session_pin',
+            reason_code: 'tool_result_sub_route',
+            routing_latency_ms: 0,
+            pin_reason: pin?.pin_reason ?? null,
+          },
+        };
+      }
+
+      case 'break':
+      case 'no_pin':
+      default:
+        return { decided: false, stage: 'session_pin' };
+    }
+  }
+
+  /**
+   * After a routing decision, persist an initial pin when none exists.
+   * Sub-routes and already-pinned decisions skip persistence.
+   */
+  private persistPinIfNeeded(
+    request: RoutingRequest,
+    decision: RoutingDecision,
+  ): void {
+    const pinner = this.options.sessionPinner;
+    if (!pinner) return;
+
+    if (decision.reason_code === 'tool_result_sub_route') return;
+    if (decision.reason_code === 'session_pinned') return;
+
+    pinner.recordPin(request.session_id, decision.selected_model_id, 'initial');
+  }
+
   // ─── Placeholder stages (to be implemented by future tasks) ──────────────
 
   private async turnEnvelope(_request: RoutingRequest): Promise<StageResult> {
     return { decided: false, stage: 'turn_envelope' };
-  }
-
-  private async sessionPin(_request: RoutingRequest): Promise<StageResult> {
-    return { decided: false, stage: 'session_pin' };
   }
 
   private async loopEscalation(_request: RoutingRequest): Promise<StageResult> {
