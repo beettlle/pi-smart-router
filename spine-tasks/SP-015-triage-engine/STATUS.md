@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Triage engine
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-02
 **Review Level:** 2
 **Size:** M
@@ -8,7 +8,7 @@
 
 ## Step 1: Triage engine
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] T025: Aho-Corasick keyword sets
 - [x] T025b: AST cyclomatic scan (threshold 15)
@@ -16,9 +16,9 @@
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 
