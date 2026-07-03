@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
+**Current Step:** Step 1: Contract tests
+**Status:** In Progress
 **Last Updated:** 2026-07-02
 **Review Level:** 1
 **Size:** S
@@ -8,9 +8,9 @@
 
 ## Step 1: Contract tests
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T018: routing-schemas.test.ts
+- [x] T018: routing-schemas.test.ts
 
 ## Step 2: Testing and verification
 
@@ -19,6 +19,10 @@
 - [ ] Run `npm run typecheck && npm test`
 
 ---
+
+## Discoveries
+
+- **Schema drift (minor):** Zod `RoutingDecisionSchema` has `pin_reason: PinReasonSchema.nullable()` (required but nullable), while JSON schema `routing-decision.schema.json` lists `pin_reason` as optional (not in `required` array). Tests use `pin_reason: null` in minimal fixtures to satisfy both validators. Consider aligning by making the Zod field `.nullable().optional()` or adding `pin_reason` to the JSON schema's `required` array.
 
 ## Notes
 
