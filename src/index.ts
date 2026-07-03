@@ -1,20 +1,66 @@
 /**
- * Public package exports.
- * Router factory implementation is wired in later spine tasks (SP-012+).
+ * Public package exports — pi-smart-router.
+ *
+ * Exposes the router factory (T022) and pi extension middleware (T021).
  */
+
+import type { ModelProfile, RoutingDecision } from './domain/types/index.js';
+import { loadModels } from './config/models-loader.js';
+import { GatewayDispatch } from './infrastructure/gateway/gateway-dispatch.js';
+import {
+  createPiRouterMiddleware,
+  type PiRouterMiddleware,
+  type PiExtensionHooks,
+} from './api/middleware/pi-router-middleware.js';
 
 /** Package identifier for diagnostics and telemetry. */
 export const PACKAGE_NAME = 'pi-smart-router' as const;
 
-/** Placeholder router factory type — implemented when pipeline is ready. */
-export type RouterFactory = (options?: RouterFactoryOptions) => Promise<RouterHandle>;
+// ─── Router factory types ────────────────────────────────────────────────────
 
-/** Options passed when creating a router instance. */
 export interface RouterFactoryOptions {
   readonly modelsPath?: string;
 }
 
-/** Opaque handle returned by the router factory. */
 export interface RouterHandle {
-  readonly version: typeof PACKAGE_NAME;
+  readonly version: string;
+  readonly middleware: PiRouterMiddleware;
+  readonly dispatch: GatewayDispatch;
+  readonly fleet: readonly ModelProfile[];
+  readonly register: (hooks: PiExtensionHooks) => void;
 }
+
+// ─── Router factory (T022) ───────────────────────────────────────────────────
+
+export function createRouter(options?: RouterFactoryOptions): RouterHandle {
+  const catalog = loadModels(
+    options?.modelsPath ? { filePath: options.modelsPath } : undefined,
+  );
+
+  const fleet = catalog.models as unknown as ModelProfile[];
+  const dispatch = new GatewayDispatch(fleet);
+  const middleware = createPiRouterMiddleware({ fleet });
+
+  return {
+    version: 'pi-smart-router',
+    middleware,
+    dispatch,
+    fleet,
+    register: middleware.register,
+  };
+}
+
+// ─── Re-exports for consumer convenience ─────────────────────────────────────
+
+export type { RoutingDecision, ModelProfile };
+export type {
+  PiRouterMiddleware,
+  PiRouterMiddlewareOptions,
+  PiExtensionHooks,
+  PiExtensionContext,
+  PiProviderRequestEvent,
+  PiContextEvent,
+  PiModelSelectEvent,
+  PiSessionManager,
+} from './api/middleware/pi-router-middleware.js';
+export { createPiRouterMiddleware } from './api/middleware/pi-router-middleware.js';
