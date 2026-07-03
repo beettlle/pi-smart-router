@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
+**Current Step:** Step 1: Triage engine
+**Status:** In Progress
 **Last Updated:** 2026-07-02
 **Review Level:** 2
 **Size:** M
@@ -8,11 +8,11 @@
 
 ## Step 1: Triage engine
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T025: Aho-Corasick keyword sets
-- [ ] T025b: AST cyclomatic scan (threshold 15)
-- [ ] T026: Adversarial sanitization
+- [x] T025: Aho-Corasick keyword sets
+- [x] T025b: AST cyclomatic scan (threshold 15)
+- [x] T026: Adversarial sanitization
 
 ## Step 2: Testing and verification
 
