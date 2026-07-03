@@ -6,12 +6,13 @@
  * Any stage failure falls back to safeCloudDefault(); never throws to host.
  */
 
-import type { ModelProfile, RoutingDecision, RoutingRequest } from '../types/index.js';
+import type { ModelProfile, RoutingDecision, RoutingRequest, Tier } from '../types/index.js';
 import type { HardwareProbeConfig, HardwareProbeResult, SystemInfo } from '../../infrastructure/hardware/hardware-probe.js';
 import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
 import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
 import { pingLocalServices } from '../../infrastructure/local/local-zero-tier.js';
 import { triage as triageClassify } from '../triage/triage-engine.js';
+import { classifyTurnEnvelope } from '../triage/turn-envelope.js';
 import { safeCloudDefault } from './safe-default.js';
 import type { SessionPinner } from '../pinning/session-pinner.js';
 
@@ -254,11 +255,45 @@ export class RouterPipeline {
     pinner.recordPin(request.session_id, decision.selected_model_id, 'initial');
   }
 
-  // ─── Placeholder stages (to be implemented by future tasks) ──────────────
+  // ─── Turn envelope stage (Step 2b, <2ms budget) ─────────────────────────
 
-  private async turnEnvelope(_request: RoutingRequest): Promise<StageResult> {
-    return { decided: false, stage: 'turn_envelope' };
+  private static readonly TURN_TIER_MAP: Readonly<Record<string, Tier | null>> = {
+    planning: 'frontier-cloud',
+    tool_result: 'economical-cloud',
+    subagent: 'economical-cloud',
+    main_loop: null,
+    unknown: null,
+  };
+
+  private async turnEnvelope(request: RoutingRequest): Promise<StageResult> {
+    const turnType = request.turn_type ?? classifyTurnEnvelope(request.messages);
+    const targetTier = RouterPipeline.TURN_TIER_MAP[turnType] ?? null;
+
+    if (!targetTier) {
+      return { decided: false, stage: 'turn_envelope' };
+    }
+
+    const model = this.fleet.find((m) => m.tier === targetTier && m.healthy !== false);
+    if (!model) {
+      return { decided: false, stage: 'turn_envelope' };
+    }
+
+    return {
+      decided: true,
+      stage: 'turn_envelope',
+      decision: {
+        request_id: request.request_id,
+        selected_model_id: model.id,
+        tier: targetTier,
+        stage: 'turn_envelope',
+        reason_code: `turn_${turnType}`,
+        routing_latency_ms: 0,
+        pin_reason: null,
+      },
+    };
   }
+
+  // ─── Placeholder stages (to be implemented by future tasks) ──────────────
 
   private async loopEscalation(_request: RoutingRequest): Promise<StageResult> {
     return { decided: false, stage: 'loop_escalation' };
