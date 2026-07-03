@@ -10,7 +10,54 @@ guardrails:
     description: |
       On routing failure, degrade to safe cloud default (FR-022).
       Never throw to the host pi agent.
-    rules: []
+    rules:
+      - id: ZC-001
+        summary: Every pipeline stage catches exceptions and returns safeCloudDefault()
+        scope: src/domain/pipeline/**
+        enforcement: review
+      - id: ZC-002
+        summary: Gateway dispatch handles provider outage without throwing
+        scope: src/infrastructure/gateway/**
+        enforcement: review
+      - id: ZC-003
+        summary: Circuit breaker prevents cascading failures to host agent
+        scope: src/infrastructure/gateway/circuit-breaker.ts
+        enforcement: review
+      - id: ZC-004
+        summary: Embedding / matcher failures degrade to deterministic triage result
+        scope: src/domain/matching/**
+        enforcement: review
+      - id: ZC-005
+        summary: Config parse errors fall back to built-in defaults; never crash startup
+        scope: src/config/**
+        enforcement: review
+
+  no_any:
+    enabled: true
+    description: |
+      Ban `any` on routing paths (constitution §TypeScript / Node).
+      Strict TypeScript across domain and pipeline modules.
+    rules:
+      - id: NA-001
+        summary: No explicit `any` type annotations in domain modules
+        scope: src/domain/**
+        enforcement: lint
+        pattern: ":\\s*any\\b"
+      - id: NA-002
+        summary: No `as any` casts in domain or pipeline modules
+        scope: src/domain/**
+        enforcement: lint
+        pattern: "as\\s+any\\b"
+      - id: NA-003
+        summary: No explicit `any` in infrastructure gateway/dispatch paths
+        scope: src/infrastructure/gateway/**
+        enforcement: lint
+        pattern: ":\\s*any\\b"
+      - id: NA-004
+        summary: No `any` in public API surface (index.ts, middleware, explain)
+        scope: src/api/**
+        enforcement: lint
+        pattern: ":\\s*any\\b"
 
   triage_bounds:
     enabled: true
@@ -18,4 +65,56 @@ guardrails:
       Deterministic triage (regex/keyword scan) must stay within latency budget.
     limits:
       regex_triage_max_ms: 10
-    rules: []
+      turn_envelope_max_ms: 2
+      pin_lookup_max_ms: 1
+      local_probe_combined_max_ms: 15
+      embedding_median_max_ms: 120
+      total_routing_overhead_max_ms: 200
+    rules:
+      - id: TB-001
+        summary: Triage engine completes within regex_triage_max_ms (10 ms)
+        scope: src/domain/triage/triage-engine.ts
+        enforcement: test
+      - id: TB-002
+        summary: Turn envelope analysis completes within turn_envelope_max_ms (2 ms)
+        scope: src/domain/triage/turn-envelope.ts
+        enforcement: test
+      - id: TB-003
+        summary: Session pin lookup completes within pin_lookup_max_ms (1 ms)
+        scope: src/domain/pinning/session-pinner.ts
+        enforcement: test
+      - id: TB-004
+        summary: Local zero-tier probes complete within local_probe_combined_max_ms (15 ms)
+        scope: src/infrastructure/local/local-zero-tier.ts
+        enforcement: test
+      - id: TB-005
+        summary: HyDRA embedding match completes within embedding_median_max_ms (120 ms)
+        scope: src/domain/matching/hydra-matcher.ts
+        enforcement: test
+      - id: TB-006
+        summary: Full routing pipeline stays within total_routing_overhead_max_ms (200 ms)
+        scope: src/domain/pipeline/**
+        enforcement: test
+
+  no_io_in_loops:
+    enabled: true
+    description: |
+      Avoid I/O inside iteration loops (constitution §Performance).
+      Batch reads/writes; parallelize independent probes.
+    rules:
+      - id: IO-001
+        summary: No network calls (fetch/http) inside for/while/map iteration
+        scope: src/**
+        enforcement: review
+      - id: IO-002
+        summary: No SQLite queries inside loop bodies; batch before or after
+        scope: src/infrastructure/persistence/**
+        enforcement: review
+      - id: IO-003
+        summary: No filesystem reads/writes inside loop bodies
+        scope: src/**
+        enforcement: review
+      - id: IO-004
+        summary: Parallelize independent provider health probes (Promise.all)
+        scope: src/infrastructure/local/**
+        enforcement: review
