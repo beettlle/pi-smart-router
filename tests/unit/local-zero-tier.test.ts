@@ -5,6 +5,9 @@ import {
   type HttpFetchPort,
   type LocalZeroTierConfig,
 } from '../../src/infrastructure/local/local-zero-tier.js';
+import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
+import type { HardwareProbeConfig, SystemInfo } from '../../src/infrastructure/hardware/hardware-probe.js';
+import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 
 const TEST_CONFIG: LocalZeroTierConfig = {
   lmStudioBaseUrl: 'http://127.0.0.1:1234',
@@ -184,6 +187,219 @@ describe('pingLocalServices (T045, FR-012, FR-013)', () => {
         httpFetch,
       );
       expect(result.combinedLatencyMs).toBeLessThan(delayMs * 3);
+    });
+  });
+});
+
+// ─── Pipeline integration tests (T046, T047) ─────────────────────────────────
+
+const HARDWARE_CONFIG: HardwareProbeConfig = {
+  min_memory_gb_full: 16,
+  min_memory_gb_classification: 8,
+  battery_threshold_pct: 20,
+};
+
+const LOCAL_MODEL: ModelProfile = {
+  id: 'qwen2.5-coder-7b',
+  tier: 'zero-tier',
+  provider: 'lm-studio',
+  capabilities: { reasoning: 3, code_gen: 4, tool_use: 2 },
+  pricing: { fallback_cost_per_1m: 0 },
+};
+
+const CLOUD_MODEL: ModelProfile = {
+  id: 'gpt-4o-mini',
+  tier: 'economical-cloud',
+  provider: 'openai',
+  capabilities: { reasoning: 7, code_gen: 7, tool_use: 7 },
+  pricing: { fallback_cost_per_1m: 0.15 },
+};
+
+const FLEET: readonly ModelProfile[] = [LOCAL_MODEL, CLOUD_MODEL];
+
+function makeRequest(overrides?: Partial<RoutingRequest>): RoutingRequest {
+  return {
+    request_id: 'test-req-001',
+    session_id: 'test-session',
+    prompt_text: 'hello world',
+    ...overrides,
+  };
+}
+
+function makeSystemInfo(overrides?: Partial<SystemInfo>): SystemInfo {
+  return {
+    totalMemoryGb: 16,
+    arch: 'arm64',
+    platform: 'darwin',
+    batteryLevel: 80,
+    isOnAcPower: true,
+    ...overrides,
+  };
+}
+
+const READY_FETCH: HttpFetchPort = makeFetchPort(async (url) => {
+  if (url.includes('/v1/models')) {
+    return { ok: true, json: async () => ({ data: [{ id: 'qwen2.5-coder-7b' }] }) };
+  }
+  if (url.includes('/api/tags')) {
+    return { ok: true, json: async () => ({ models: [{ name: 'llama3.2' }] }) };
+  }
+  throw new Error('ECONNREFUSED');
+});
+
+describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
+  describe('16GB Apple Silicon — full_local (T047)', () => {
+    it('routes to zero-tier when hardware is full_local and services are ready', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 16 })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(makeRequest());
+      expect(decision.tier).toBe('zero-tier');
+      expect(decision.stage).toBe('local_zero');
+      expect(decision.selected_model_id).toBe('qwen2.5-coder-7b');
+      expect(decision.reason_code).toBe('local_model_ready');
+    });
+  });
+
+  describe('8GB Apple Silicon — classification_only (T047, SC-007)', () => {
+    it('MUST NOT dispatch full local when hardware is classification_only', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 8 })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(makeRequest());
+      expect(decision.tier).not.toBe('zero-tier');
+      expect(decision.stage).not.toBe('local_zero');
+    });
+
+    it('falls through to safe cloud default', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 8 })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(makeRequest());
+      expect(decision.tier).toBe('economical-cloud');
+      expect(decision.reason_code).toBe('safe_cloud_default');
+    });
+  });
+
+  describe('battery below threshold — disabled (T047)', () => {
+    it('does not route to local when battery is low and on battery power', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({
+          totalMemoryGb: 32,
+          batteryLevel: 10,
+          isOnAcPower: false,
+        })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(makeRequest());
+      expect(decision.tier).not.toBe('zero-tier');
+      expect(decision.stage).toBe('fallback');
+    });
+
+    it('routes to local when battery is low but on AC power', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({
+          totalMemoryGb: 32,
+          batteryLevel: 10,
+          isOnAcPower: true,
+        })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(makeRequest());
+      expect(decision.tier).toBe('zero-tier');
+      expect(decision.stage).toBe('local_zero');
+    });
+  });
+
+  describe('local services unreachable (T047)', () => {
+    it('falls through when services are unreachable despite full_local hardware', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 32 })),
+        httpFetchPort: UNREACHABLE_FETCH,
+      });
+
+      const decision = await pipeline.route(makeRequest());
+      expect(decision.tier).not.toBe('zero-tier');
+      expect(decision.stage).toBe('fallback');
+      expect(decision.reason_code).toBe('safe_cloud_default');
+    });
+
+    it('never throws when both local services are down', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 16 })),
+        httpFetchPort: UNREACHABLE_FETCH,
+      });
+
+      await expect(pipeline.route(makeRequest())).resolves.toBeDefined();
+    });
+  });
+
+  describe('no zero-tier model in fleet', () => {
+    it('falls through when fleet has no zero-tier model', async () => {
+      const pipeline = new RouterPipeline([CLOUD_MODEL], {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 32 })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(makeRequest());
+      expect(decision.tier).toBe('economical-cloud');
+      expect(decision.stage).toBe('fallback');
+    });
+  });
+
+  describe('non-Apple Silicon hardware', () => {
+    it('disables local when platform is not darwin', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({
+          platform: 'linux',
+          totalMemoryGb: 64,
+        })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(makeRequest());
+      expect(decision.tier).not.toBe('zero-tier');
+    });
+
+    it('disables local when arch is not arm64', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({
+          arch: 'x64',
+          totalMemoryGb: 64,
+        })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(makeRequest());
+      expect(decision.tier).not.toBe('zero-tier');
     });
   });
 });

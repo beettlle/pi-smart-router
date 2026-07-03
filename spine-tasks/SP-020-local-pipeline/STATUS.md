@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Complete
+**Status:** Done
+**Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** S
 
@@ -8,16 +8,16 @@
 
 ## Step 1: Integration and tests
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] T046: Steps 1+4 integration
-- [ ] T047: 8GB/16GB/battery/unreachable tests
+- [x] T046: Steps 1+4 integration
+- [x] T047: 8GB/16GB/battery/unreachable tests
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 

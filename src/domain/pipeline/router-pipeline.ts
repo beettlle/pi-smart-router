@@ -6,6 +6,10 @@
  */
 
 import type { ModelProfile, RoutingDecision, RoutingRequest } from '../types/index.js';
+import type { HardwareProbeConfig, HardwareProbeResult, SystemInfo } from '../../infrastructure/hardware/hardware-probe.js';
+import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
+import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
+import { pingLocalServices } from '../../infrastructure/local/local-zero-tier.js';
 import { safeCloudDefault } from './safe-default.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
@@ -18,27 +22,43 @@ export interface StageResult {
 
 export type PipelineStage = (request: RoutingRequest) => Promise<StageResult>;
 
+// ─── Pipeline configuration ──────────────────────────────────────────────────
+
+export interface PipelineOptions {
+  readonly hardwareConfig?: HardwareProbeConfig;
+  readonly localConfig?: LocalZeroTierConfig;
+  readonly systemInfoProvider?: () => Promise<SystemInfo>;
+  readonly httpFetchPort?: HttpFetchPort;
+}
+
 // ─── Orchestrator ────────────────────────────────────────────────────────────
 
 export class RouterPipeline {
   private readonly stages: PipelineStage[];
   private readonly fleet: readonly ModelProfile[];
+  private readonly options: PipelineOptions;
 
-  constructor(fleet: readonly ModelProfile[]) {
+  /** Per-route transient state — reset on each route() call. */
+  private currentHardwareResult: HardwareProbeResult = 'disabled';
+
+  constructor(fleet: readonly ModelProfile[], options?: PipelineOptions) {
     this.fleet = fleet;
+    this.options = options ?? {};
     this.stages = [
-      this.hardwareProbe.bind(this),
+      this.hardwareProbeStage.bind(this),
       this.triage.bind(this),
       this.turnEnvelope.bind(this),
       this.sessionPin.bind(this),
       this.loopEscalation.bind(this),
-      this.localZeroTier.bind(this),
+      this.localZeroTierStage.bind(this),
       this.hydraMatcher.bind(this),
     ];
   }
 
   async route(request: RoutingRequest): Promise<RoutingDecision> {
     const start = Date.now();
+    this.currentHardwareResult = 'disabled';
+
     try {
       for (const stage of this.stages) {
         const result = await stage(request);
@@ -72,11 +92,60 @@ export class RouterPipeline {
     };
   }
 
-  // ─── Placeholder stages (to be implemented by future tasks) ──────────────
+  // ─── Implemented stages ─────────────────────────────────────────────────────
 
-  private async hardwareProbe(_request: RoutingRequest): Promise<StageResult> {
+  private async hardwareProbeStage(_request: RoutingRequest): Promise<StageResult> {
+    if (!this.options.hardwareConfig || !this.options.systemInfoProvider) {
+      return { decided: false, stage: 'hardware_probe' };
+    }
+
+    const systemInfo = await this.options.systemInfoProvider();
+    this.currentHardwareResult = probeHardware(this.options.hardwareConfig, systemInfo);
     return { decided: false, stage: 'hardware_probe' };
   }
+
+  /**
+   * SC-007: classification_only MUST NOT dispatch full local.
+   * Only routes to zero-tier when hardware says full_local AND a local model is ready.
+   */
+  private async localZeroTierStage(request: RoutingRequest): Promise<StageResult> {
+    if (this.currentHardwareResult !== 'full_local') {
+      return { decided: false, stage: 'local_zero' };
+    }
+
+    const readiness = await pingLocalServices(
+      this.options.localConfig,
+      this.options.httpFetchPort,
+    );
+
+    if (!readiness.anyModelReady) {
+      return { decided: false, stage: 'local_zero' };
+    }
+
+    const localModel = this.fleet.find(
+      (m) => m.tier === 'zero-tier' && m.healthy !== false,
+    );
+
+    if (!localModel) {
+      return { decided: false, stage: 'local_zero' };
+    }
+
+    return {
+      decided: true,
+      stage: 'local_zero',
+      decision: {
+        request_id: request.request_id,
+        selected_model_id: localModel.id,
+        tier: 'zero-tier',
+        stage: 'local_zero',
+        reason_code: 'local_model_ready',
+        routing_latency_ms: readiness.combinedLatencyMs,
+        pin_reason: null,
+      },
+    };
+  }
+
+  // ─── Placeholder stages (to be implemented by future tasks) ──────────────
 
   private async triage(_request: RoutingRequest): Promise<StageResult> {
     return { decided: false, stage: 'triage' };
@@ -92,10 +161,6 @@ export class RouterPipeline {
 
   private async loopEscalation(_request: RoutingRequest): Promise<StageResult> {
     return { decided: false, stage: 'loop_escalation' };
-  }
-
-  private async localZeroTier(_request: RoutingRequest): Promise<StageResult> {
-    return { decided: false, stage: 'local_zero' };
   }
 
   private async hydraMatcher(_request: RoutingRequest): Promise<StageResult> {
