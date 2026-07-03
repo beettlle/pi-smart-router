@@ -1,5 +1,5 @@
-**Current Step:** Step 1: In progress
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-03
 **Review Level:** 1
 **Size:** S
@@ -8,18 +8,19 @@
 
 ## Step 1: Pipeline hook
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] T030: Step 2b integration
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 
 ## Notes
 
 SP-022 (S) — turn-pipeline
+All 468 tests pass. Typecheck clean.
