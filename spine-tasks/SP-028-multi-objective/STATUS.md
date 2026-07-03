@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
+**Current Step:** Step 1: Scoring
+**Status:** In Progress
 **Last Updated:** 2026-07-02
 **Review Level:** 2
 **Size:** S
@@ -8,9 +8,9 @@
 
 ## Step 1: Scoring
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T049: multi-objective.ts
+- [x] T049: multi-objective.ts
 
 ## Step 2: Testing and verification
 
