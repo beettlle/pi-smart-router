@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Step 1: Classifier
+**Status:** In Progress
+**Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** S
 
@@ -8,9 +8,9 @@
 
 ## Step 1: Classifier
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T029: turn-envelope.ts classifier
+- [x] T029: turn-envelope.ts classifier
 
 ## Step 2: Testing and verification
 
