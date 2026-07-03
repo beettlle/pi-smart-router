@@ -35,7 +35,7 @@ Pi extension integration per pi-middleware.md v1.0.0 and router factory export. 
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npm test` |
-| fileScopeMustChange | `src/api/middleware/pi-router-middleware.ts`, `src/index.ts` |
+| fileScopeMustChange | `spine-tasks/SP-013-mvp-pi-extension/STATUS.md` |
 | fileScopeMustNotChange | `src/domain/triage/**` |
 | completionCriteria | Extension hooks registered; factory exports router. |
 
@@ -67,3 +67,5 @@ Pi extension integration per pi-middleware.md v1.0.0 and router factory export. 
 ---
 
 ## Amendments (Added During Execution)
+
+- **2026-07-02:** `src/index.ts` stub exists from SP-001. Worker creates middleware and updates exports; `fileScopeMustChange` points at STATUS.md delivery artifact.
