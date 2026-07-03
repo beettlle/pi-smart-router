@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Complete
+**Status:** Done
+**Last Updated:** 2026-07-03
 **Review Level:** 2
 **Size:** M
 
@@ -8,16 +8,16 @@
 
 ## Step 1: Session pinner
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] T033: session-pinner.ts (FR-006, FR-007, FR-008)
-- [ ] T034: Step 3 pin lookup + persistence; Step 3b stub until SP-030
+- [x] T033: session-pinner.ts (FR-006, FR-007, FR-008)
+- [x] T034: Step 3 pin lookup + persistence; Step 3b stub until SP-030
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
 
 ---
 
