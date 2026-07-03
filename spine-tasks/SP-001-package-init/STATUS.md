@@ -1,5 +1,5 @@
-**Current Step:** Step 2: Vitest and scripts
-**Status:** In Progress
+**Current Step:** Step 3: Testing and verification
+**Status:** Complete
 **Last Updated:** 2026-07-02
 **Review Level:** 1
 **Size:** M
@@ -16,18 +16,25 @@
 
 ## Step 2: Vitest and scripts
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] T003: vitest.config.ts + typecheck/test/lint scripts
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
+
+---
+
+## Completion Criteria
+
+- [x] All steps complete
+- [x] Tests pass
 
 ---
 
 ## Notes
 
-SP-001 (M) — package-init
+SP-001 (M) — package-init. Verification: `npm run typecheck && npm test` passed (1 test).
