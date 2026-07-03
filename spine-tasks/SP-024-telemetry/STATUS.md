@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-02
+**Current Step:** Step 1: Telemetry
+**Status:** In Progress
+**Last Updated:** 2026-07-03
 **Review Level:** 1
 **Size:** S
 
@@ -8,10 +8,10 @@
 
 ## Step 1: Telemetry
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] T039: routing-telemetry.ts
-- [ ] T040: Step 7 wire in pipeline
+- [x] T039: routing-telemetry.ts
+- [x] T040: Step 7 wire in pipeline
 
 ## Step 2: Testing and verification
 
