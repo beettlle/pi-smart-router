@@ -539,17 +539,49 @@ function createErrorMessage(
   };
 }
 
+async function resolveDelegationOptions(
+  modelRegistry: ModelRegistry,
+  targetModel: Model<Api>,
+  callerOptions?: SimpleStreamOptions,
+): Promise<SimpleStreamOptions> {
+  const auth = await modelRegistry.getApiKeyAndHeaders(targetModel);
+  if (!auth.ok) {
+    throw new Error(auth.error);
+  }
+
+  const { apiKey: _callerApiKey, headers: _callerHeaders, env: callerEnv, ...restCallerOptions } =
+    callerOptions ?? {};
+
+  const mergedEnv =
+    auth.env || callerEnv
+      ? { ...(auth.env ?? {}), ...(callerEnv ?? {}) }
+      : undefined;
+
+  return {
+    ...restCallerOptions,
+    ...(auth.apiKey !== undefined ? { apiKey: auth.apiKey } : {}),
+    ...(auth.headers !== undefined ? { headers: auth.headers } : {}),
+    ...(mergedEnv !== undefined ? { env: mergedEnv } : {}),
+  };
+}
+
 async function pipeDelegatedStream(
   outer: AssistantMessageEventStream,
   targetModel: Model<Api>,
   context: Context,
+  modelRegistry: ModelRegistry,
   options: SimpleStreamOptions | undefined,
 ): Promise<void> {
   if (options?.signal?.aborted) {
     throw new Error('Request was aborted');
   }
 
-  const inner = delegateStreamSimple(targetModel, context, options);
+  const delegationOptions = await resolveDelegationOptions(
+    modelRegistry,
+    targetModel,
+    options,
+  );
+  const inner = delegateStreamSimple(targetModel, context, delegationOptions);
   for await (const event of inner) {
     if (options?.signal?.aborted) {
       throw new Error('Request was aborted');
@@ -578,7 +610,7 @@ async function routeAndDelegate(
       '[smart-router] routing failed, using safe cloud default',
       error instanceof Error ? error.message : String(error),
     );
-    await pipeDelegatedStream(outer, fallbackModel, context, options);
+    await pipeDelegatedStream(outer, fallbackModel, context, deps.modelRegistry, options);
     return;
   }
 
@@ -606,7 +638,7 @@ async function routeAndDelegate(
   });
 
   try {
-    await pipeDelegatedStream(outer, targetModel, context, options);
+    await pipeDelegatedStream(outer, targetModel, context, deps.modelRegistry, options);
   } catch (error) {
     const fallbackModel = resolveFallbackModel(deps);
     if (!fallbackModel || fallbackModel.id === targetModel.id) {
@@ -616,7 +648,7 @@ async function routeAndDelegate(
       '[smart-router] stream delegation failed, using safe cloud default',
       error instanceof Error ? error.message : String(error),
     );
-    await pipeDelegatedStream(outer, fallbackModel, context, options);
+    await pipeDelegatedStream(outer, fallbackModel, context, deps.modelRegistry, options);
   }
 }
 
@@ -705,6 +737,7 @@ export {
   mapContextMessages,
   parseSmartRouterArgs,
   refreshPricingCatalog,
+  resolveDelegationOptions,
 };
 export { SMART_ROUTER_FULL_INVOCATIONS, SMART_ROUTER_USAGE } from './commands.js';
 

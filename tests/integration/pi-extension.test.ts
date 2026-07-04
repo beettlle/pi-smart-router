@@ -87,7 +87,15 @@ function createMockRegistry(models: Model<Api>[]): ModelRegistry {
     getAvailable() {
       return models;
     },
-  } as ModelRegistry;
+    async getApiKeyAndHeaders(model: Model<Api>) {
+      return {
+        ok: true as const,
+        apiKey: `${model.provider}-integration-key`,
+        headers: undefined,
+        env: undefined,
+      };
+    },
+  } as unknown as ModelRegistry;
 }
 
 function userMessage(content: string): Message {
@@ -290,7 +298,10 @@ describe('Pi extension integration (SP-043)', () => {
       expect(mockDelegateStreamSimple).toHaveBeenCalledWith(
         expectedTarget,
         expect.objectContaining({ messages: expect.any(Array) }),
-        expect.objectContaining({ sessionId: 'ext-stream-001' }),
+        expect.objectContaining({
+          sessionId: 'ext-stream-001',
+          apiKey: `${expectedTarget!.provider}-integration-key`,
+        }),
       );
       expect(events.some((event) => event.type === 'done')).toBe(true);
       expect(infoSpy).toHaveBeenCalledWith(

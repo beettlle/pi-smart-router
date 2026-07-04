@@ -18,6 +18,7 @@ import {
   extractPromptText,
   initHydraMatcher,
   mapContextMessages,
+  resolveDelegationOptions,
 } from '../../.pi/extensions/smart-router/index.js';
 import type { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import { createRouterFromFleet } from '../../src/index.js';
@@ -83,7 +84,10 @@ const registryModels: Model<Api>[] = [
   makeRegistryModel({ provider: 'ollama', id: 'local-llama', api: 'openai-completions' }),
 ];
 
-function createMockRegistry(models: Model<Api>[]): ModelRegistry {
+function createMockRegistry(
+  models: Model<Api>[],
+  authByKey?: Record<string, { apiKey: string; headers?: Record<string, string> }>,
+): ModelRegistry {
   return {
     find(provider: string, id: string) {
       return models.find((model) => model.provider === provider && model.id === id);
@@ -91,7 +95,17 @@ function createMockRegistry(models: Model<Api>[]): ModelRegistry {
     getAvailable() {
       return models;
     },
-  } as ModelRegistry;
+    async getApiKeyAndHeaders(model: Model<Api>) {
+      const key = `${model.provider}/${model.id}`;
+      const configured = authByKey?.[key];
+      return {
+        ok: true as const,
+        apiKey: configured?.apiKey ?? `${model.provider}-delegation-key`,
+        headers: configured?.headers,
+        env: undefined,
+      };
+    },
+  } as unknown as ModelRegistry;
 }
 
 function makeDecision(overrides?: Partial<RoutingDecision>): RoutingDecision {
@@ -302,7 +316,7 @@ describe('createStreamSimple', () => {
     expect(mockDelegateStreamSimple).toHaveBeenCalledWith(
       target,
       expect.objectContaining({ messages: expect.any(Array) }),
-      undefined,
+      expect.objectContaining({ apiKey: 'openai-delegation-key' }),
     );
     expect(events.some((event) => event.type === 'done')).toBe(true);
     expect(infoSpy).toHaveBeenCalledWith(
@@ -327,7 +341,11 @@ describe('createStreamSimple', () => {
       streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
     );
 
-    expect(mockDelegateStreamSimple).toHaveBeenCalledWith(fallback, expect.any(Object), undefined);
+    expect(mockDelegateStreamSimple).toHaveBeenCalledWith(
+      fallback,
+      expect.any(Object),
+      expect.objectContaining({ apiKey: 'openai-delegation-key' }),
+    );
     expect(events.some((event) => event.type === 'done')).toBe(true);
     expect(warnSpy).toHaveBeenCalledWith(
       '[smart-router] routing failed, using safe cloud default',
@@ -353,7 +371,11 @@ describe('createStreamSimple', () => {
       '[smart-router] routed model not found in registry',
       'missing-model',
     );
-    expect(mockDelegateStreamSimple).toHaveBeenCalledWith(fallback, expect.any(Object), undefined);
+    expect(mockDelegateStreamSimple).toHaveBeenCalledWith(
+      fallback,
+      expect.any(Object),
+      expect.objectContaining({ apiKey: 'openai-delegation-key' }),
+    );
   });
 
   it('falls back when stream delegation fails', async () => {
@@ -385,6 +407,67 @@ describe('createStreamSimple', () => {
     );
   });
 
+  it('uses target provider auth instead of smart-router caller apiKey', async () => {
+    const target = registryModels[0]!;
+    mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
+
+    const streamSimple = createStreamSimple({
+      router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' }))),
+      modelRegistry: createMockRegistry(registryModels, {
+        'openai/gpt-4o-mini': { apiKey: 'real-openai-key' },
+      }),
+      fleet,
+    });
+
+    await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')]), {
+        apiKey: 'local',
+        sessionId: 'sess-delegate-auth',
+      }),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledWith(
+      target,
+      expect.any(Object),
+      expect.objectContaining({
+        apiKey: 'real-openai-key',
+        sessionId: 'sess-delegate-auth',
+      }),
+    );
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[2]?.apiKey).not.toBe('local');
+  });
+
+  it('emits error when target provider auth is missing', async () => {
+    const registry = {
+      find(provider: string, id: string) {
+        return registryModels.find((model) => model.provider === provider && model.id === id);
+      },
+      getAvailable() {
+        return registryModels;
+      },
+      async getApiKeyAndHeaders() {
+        return { ok: false as const, error: 'No API key found for "openai"' };
+      },
+    } as unknown as ModelRegistry;
+
+    const streamSimple = createStreamSimple({
+      router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' }))),
+      modelRegistry: registry,
+      fleet,
+    });
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')]), { apiKey: 'local' }),
+    );
+
+    expect(mockDelegateStreamSimple).not.toHaveBeenCalled();
+    const errorEvent = events.find((event) => event.type === 'error');
+    expect(errorEvent?.type).toBe('error');
+    if (errorEvent?.type === 'error') {
+      expect(errorEvent.error.errorMessage).toContain('No API key found for "openai"');
+    }
+  });
+
   it('emits aborted error when signal is already aborted', async () => {
     const controller = new AbortController();
     controller.abort();
@@ -408,6 +491,41 @@ describe('createStreamSimple', () => {
       expect(errorEvent.reason).toBe('aborted');
       expect(errorEvent.error.stopReason).toBe('aborted');
     }
+  });
+});
+
+describe('resolveDelegationOptions', () => {
+  it('merges caller stream options with target provider auth', async () => {
+    const target = registryModels[0]!;
+    const registry = createMockRegistry(registryModels, {
+      'openai/gpt-4o-mini': {
+        apiKey: 'real-openai-key',
+        headers: { 'X-Custom': 'router' },
+      },
+    });
+
+    const options = await resolveDelegationOptions(registry, target, {
+      apiKey: 'local',
+      sessionId: 'sess-1',
+      reasoning: 'medium',
+    });
+
+    expect(options.apiKey).toBe('real-openai-key');
+    expect(options.headers).toEqual({ 'X-Custom': 'router' });
+    expect(options.sessionId).toBe('sess-1');
+    expect(options.reasoning).toBe('medium');
+  });
+
+  it('throws when target auth resolution fails', async () => {
+    const registry = {
+      async getApiKeyAndHeaders() {
+        return { ok: false as const, error: 'missing auth' };
+      },
+    } as unknown as ModelRegistry;
+
+    await expect(
+      resolveDelegationOptions(registry, registryModels[0]!, { apiKey: 'local' }),
+    ).rejects.toThrow('missing auth');
   });
 });
 
