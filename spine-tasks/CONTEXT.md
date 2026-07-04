@@ -1,8 +1,8 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-07-02
+**Last Updated:** 2026-07-03
 **Status:** Active
-**Next Task ID:** SP-037
+**Next Task ID:** SP-044
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -72,6 +72,18 @@
 | SP-034 | Finalize stet guardrails | S | SP-016,SP-020,SP-023,SP-026,SP-033 | T059 |
 | SP-035 | E2E + benchmarks | M | SP-034 | T060,T061,T062 |
 | SP-036 | Quickstart + gate evidence | S | SP-035 | T063,T064 |
+
+### Phase 12 — Pi Provider Extension (SP-037–SP-043)
+
+| Task | Summary | Size | Deps |
+|------|---------|------|------|
+| SP-037 | Add pi-ai dependency | S | SP-036 |
+| SP-038 | Pi model mapper | S | SP-037 |
+| SP-039 | Fleet factory | S | SP-038 |
+| SP-040 | Extension scaffold + provider | M | SP-039 |
+| SP-041 | Stream delegation | M | SP-040 |
+| SP-042 | Settings command + scoped mode | S | SP-041 |
+| SP-043 | Extension integration tests | S | SP-042 |
 
 ---
 
