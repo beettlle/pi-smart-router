@@ -54,7 +54,7 @@ interface StreamDelegationDeps {
 function createHooksAdapter(pi: ExtensionAPI): PiExtensionHooks {
   return {
     on(event, handler) {
-      pi.on(event, handler as never);
+      pi.on(event as never, handler as never);
     },
   };
 }
@@ -266,7 +266,6 @@ async function pipeDelegatedStream(
 }
 
 async function routeAndDelegate(
-  autoModel: Model<Api>,
   context: Context,
   options: SimpleStreamOptions | undefined,
   deps: StreamDelegationDeps,
@@ -335,7 +334,7 @@ function createStreamSimple(deps: StreamDelegationDeps) {
 
     void (async () => {
       try {
-        await routeAndDelegate(model, context, options, deps, stream);
+        await routeAndDelegate(context, options, deps, stream);
       } catch (error) {
         stream.push({
           type: 'error',
@@ -349,6 +348,14 @@ function createStreamSimple(deps: StreamDelegationDeps) {
     return stream;
   };
 }
+
+export {
+  buildRoutingRequest,
+  createStreamSimple,
+  deriveTurnType,
+  extractPromptText,
+  mapContextMessages,
+};
 
 export default async function smartRouterExtension(pi: ExtensionAPI): Promise<void> {
   const authStorage = AuthStorage.create();

@@ -27,6 +27,8 @@
 
 **Status:** Complete
 
+- [x] Add unit tests for stream delegation extension
+- [x] Include extension in typecheck scope
 - [x] Run `npm run typecheck && npm test`
 
 ## Completion Criteria
