@@ -30,6 +30,11 @@ import {
 } from '@earendil-works/pi-coding-agent';
 
 import { mapFleetFromRegistry } from '../../../src/config/pi-model-mapper.js';
+import { DEFAULT_OPERATOR_CONFIG } from '../../../src/config/defaults.js';
+import {
+  HydraMatcher,
+  createOnnxEmbeddingProvider,
+} from '../../../src/domain/matching/hydra-matcher.js';
 import { safeCloudDefault } from '../../../src/domain/pipeline/safe-default.js';
 import type {
   Message as RoutingMessage,
@@ -40,6 +45,7 @@ import type {
 } from '../../../src/domain/types/index.js';
 import {
   createRouterFromFleet,
+  type GatewayDispatchOptions,
   type PiExtensionHooks,
   type RouterHandle,
 } from '../../../src/index.js';
@@ -62,6 +68,8 @@ interface SmartRouterRuntime {
   lastDecision: RoutingDecision | undefined;
   readonly modelRegistry: ModelRegistry;
   streamDeps: StreamDelegationDeps;
+  hydraMatcher: HydraMatcher | undefined;
+  dispatchOptions: GatewayDispatchOptions | undefined;
 }
 
 function createHooksAdapter(pi: ExtensionAPI): PiExtensionHooks {
@@ -160,10 +168,40 @@ async function rebuildFleet(
   cwd: string,
 ): Promise<void> {
   const fleet = await discoverFleet(runtime.modelRegistry, runtime.fleetMode, cwd);
-  const router = createRouterFromFleet(fleet);
+  const router = createRouterFromFleet(fleet, runtime.dispatchOptions);
   router.register(createHooksAdapter(pi));
   runtime.streamDeps.router = router;
   runtime.streamDeps.fleet = fleet;
+}
+
+/**
+ * Optional HyDRA matcher bootstrap.
+ *
+ * Requires `@huggingface/transformers` at runtime (see root package.json).
+ * Install: `npm i @huggingface/transformers`
+ *
+ * pi exposes no extension teardown hook — ONNX provider dispose is a no-op.
+ */
+export interface HydraInitDeps {
+  readonly createOnnxEmbeddingProvider?: typeof createOnnxEmbeddingProvider;
+}
+
+export async function initHydraMatcher(
+  deps?: HydraInitDeps,
+): Promise<HydraMatcher | undefined> {
+  const createProvider = deps?.createOnnxEmbeddingProvider ?? createOnnxEmbeddingProvider;
+  const artifactCachePath = DEFAULT_OPERATOR_CONFIG.hydra.artifact_cache_path;
+
+  try {
+    const provider = await createProvider(artifactCachePath);
+    return new HydraMatcher(provider, { artifactCachePath });
+  } catch (error) {
+    console.warn(
+      '[smart-router] HyDRA matcher disabled',
+      error instanceof Error ? error.message : String(error),
+    );
+    return undefined;
+  }
 }
 
 function parseFleetModeEntry(data: unknown): FleetMode | undefined {
@@ -564,13 +602,17 @@ export {
 export default async function smartRouterExtension(pi: ExtensionAPI): Promise<void> {
   const authStorage = AuthStorage.create();
   const modelRegistry = ModelRegistry.create(authStorage);
+  const hydraMatcher = await initHydraMatcher();
+  const dispatchOptions = hydraMatcher ? { hydraMatcher } : undefined;
 
   const runtime: SmartRouterRuntime = {
     fleetMode: 'scoped',
     lastDecision: undefined,
     modelRegistry,
+    hydraMatcher,
+    dispatchOptions,
     streamDeps: {
-      router: createRouterFromFleet([]),
+      router: createRouterFromFleet([], dispatchOptions),
       modelRegistry,
       fleet: [],
       onRoutingDecision(decision) {

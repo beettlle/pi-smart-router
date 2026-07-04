@@ -6,7 +6,10 @@
 
 import type { ModelProfile, RoutingDecision } from './domain/types/index.js';
 import { loadModels } from './config/models-loader.js';
-import { GatewayDispatch } from './infrastructure/gateway/gateway-dispatch.js';
+import {
+  GatewayDispatch,
+  type GatewayDispatchOptions,
+} from './infrastructure/gateway/gateway-dispatch.js';
 import {
   createPiRouterMiddleware,
   type PiRouterMiddleware,
@@ -40,8 +43,11 @@ export function createRouter(options?: RouterFactoryOptions): RouterHandle {
   return createRouterFromFleet(catalog.models as unknown as ModelProfile[]);
 }
 
-export function createRouterFromFleet(fleet: ModelProfile[]): RouterHandle {
-  const dispatch = new GatewayDispatch(fleet);
+export function createRouterFromFleet(
+  fleet: ModelProfile[],
+  options?: GatewayDispatchOptions,
+): RouterHandle {
+  const dispatch = new GatewayDispatch(fleet, options);
   const middleware = createPiRouterMiddleware({ fleet });
 
   return {
@@ -67,3 +73,5 @@ export type {
   PiSessionManager,
 } from './api/middleware/pi-router-middleware.js';
 export { createPiRouterMiddleware } from './api/middleware/pi-router-middleware.js';
+export type { GatewayDispatchOptions } from './infrastructure/gateway/gateway-dispatch.js';
+export type { PipelineOptions } from './domain/pipeline/router-pipeline.js';
