@@ -57,6 +57,10 @@ import {
   type PiExtensionHooks,
   type RouterHandle,
 } from '../../../src/index.js';
+import {
+  SMART_ROUTER_USAGE,
+  getSmartRouterArgumentCompletions,
+} from './commands.js';
 
 const PROVIDER_NAME = 'smart-router' as const;
 const AUTO_MODEL_ID = 'auto' as const;
@@ -309,9 +313,7 @@ function parseSmartRouterArgs(args: string): SmartRouterCommand {
     return { command: 'pricing', subcommand: 'refresh' };
   }
 
-  throw new Error(
-    'Usage: /smart-router [status] | mode scoped|all | pricing refresh',
-  );
+  throw new Error(`Usage: ${SMART_ROUTER_USAGE}`);
 }
 
 function formatPricingStalenessLine(catalog: PriceCatalog | null): string | undefined {
@@ -648,17 +650,9 @@ function registerSmartRouterCommand(
   runtime: SmartRouterRuntime,
 ): void {
   pi.registerCommand('smart-router', {
-    description: 'Show routing status or switch fleet mode (scoped|all)',
-    getArgumentCompletions: (prefix: string) => {
-      const items = [
-        { value: 'status', label: 'Show last routing decision' },
-        { value: 'mode scoped', label: 'Route among scoped models only' },
-        { value: 'mode all', label: 'Route among all authenticated models' },
-        { value: 'pricing refresh', label: 'Fetch LiteLLM rates and rebuild fleet' },
-      ];
-      const filtered = items.filter((item) => item.value.startsWith(prefix));
-      return filtered.length > 0 ? filtered : null;
-    },
+    description:
+      'Show routing status, switch fleet mode (scoped|all), or refresh pricing',
+    getArgumentCompletions: getSmartRouterArgumentCompletions,
     handler: async (args, ctx) => {
       try {
         const parsed = parseSmartRouterArgs(args);
@@ -707,10 +701,12 @@ export {
   formatPricingStalenessLine,
   formatStatusMessage,
   getRouterStateDbPath,
+  getSmartRouterArgumentCompletions,
   mapContextMessages,
   parseSmartRouterArgs,
   refreshPricingCatalog,
 };
+export { SMART_ROUTER_FULL_INVOCATIONS, SMART_ROUTER_USAGE } from './commands.js';
 
 export default async function smartRouterExtension(pi: ExtensionAPI): Promise<void> {
   const authStorage = AuthStorage.create();

@@ -5,9 +5,11 @@ import {
   formatPricingStalenessLine,
   formatStatusMessage,
   getRouterStateDbPath,
+  getSmartRouterArgumentCompletions,
   parseSmartRouterArgs,
   refreshPricingCatalog,
 } from '../../.pi/extensions/smart-router/index.js';
+import { SMART_ROUTER_FULL_INVOCATIONS } from '../../.pi/extensions/smart-router/commands.js';
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
 import type { ModelProfile, PriceCatalog } from '../../src/domain/types/index.js';
 import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
@@ -59,6 +61,38 @@ describe('parseSmartRouterArgs (SP-045)', () => {
 
   it('rejects unknown pricing subcommands', () => {
     expect(() => parseSmartRouterArgs('pricing stale')).toThrow('Usage:');
+  });
+});
+
+describe('getSmartRouterArgumentCompletions', () => {
+  function completionValues(prefix: string): string[] {
+    const items = getSmartRouterArgumentCompletions(prefix);
+    return items?.map((item) => item.value) ?? [];
+  }
+
+  it('offers top-level subcommands on empty prefix', () => {
+    expect(completionValues('')).toEqual(['status', 'mode', 'pricing']);
+  });
+
+  it('filters top-level subcommands by partial prefix', () => {
+    expect(completionValues('st')).toEqual(['status']);
+    expect(completionValues('pr')).toEqual(['pricing']);
+  });
+
+  it('offers mode subcommands after mode token', () => {
+    expect(completionValues('mode')).toEqual(['mode scoped', 'mode all']);
+    expect(completionValues('mode s')).toEqual(['mode scoped']);
+  });
+
+  it('offers pricing refresh after pricing token', () => {
+    expect(completionValues('pricing')).toEqual(['pricing refresh']);
+    expect(completionValues('pricing r')).toEqual(['pricing refresh']);
+  });
+
+  it('keeps full invocations parseable', () => {
+    for (const invocation of SMART_ROUTER_FULL_INVOCATIONS) {
+      expect(() => parseSmartRouterArgs(invocation)).not.toThrow();
+    }
   });
 });
 

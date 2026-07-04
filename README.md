@@ -109,15 +109,19 @@ If you use **scoped models** (`/scoped-models` or `enabledModels` in settings), 
 
 This registers `smart-router` as a custom provider with a single `auto` model. Every inference request runs through the routing pipeline and delegates to the selected underlying provider's streaming API.
 
-### 4. Inspect routing (optional)
+### 4. Operator commands (optional)
 
 | Command | Purpose |
 |---------|---------|
-| `/smart-router status` | Show the last routing decision (stage, tier, selected model, latency) |
+| `/smart-router` | Same as `status` (default when no subcommand is given) |
+| `/smart-router status` | Show fleet mode, fleet size, pricing freshness/staleness, and the last routing decision (stage, tier, selected model, latency) |
 | `/smart-router mode scoped` | Route only among pi's **enabled model patterns** (default) |
 | `/smart-router mode all` | Route among **all authenticated models** in the registry |
+| `/smart-router pricing refresh` | Manually fetch LiteLLM pricing from `LITELLM_PRICING_URL`, persist to SQLite, and rebuild the fleet with updated rates |
 
 Fleet mode persists in the session. Use `scoped` to respect your `/model` enable-list; use `all` when you want the router to consider every provider you have logged into.
+
+After typing `/smart-router ` (with a trailing space), press **TAB** to see subcommands. Continue TAB-completing after `mode` or `pricing` for sub-options (`scoped`/`all`, `refresh`).
 
 ### 5. Verify
 
