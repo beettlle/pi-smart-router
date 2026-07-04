@@ -1,0 +1,166 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  mapFleetFromRegistry,
+  mapPiModelToProfile,
+  type PiModelInput,
+} from '../../src/config/pi-model-mapper.js';
+
+function makeInput(overrides: PiModelInput): PiModelInput {
+  return overrides;
+}
+
+describe('mapPiModelToProfile', () => {
+  describe('Claude family', () => {
+    it('maps claude-opus to frontier tier', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'anthropic', id: 'claude-opus-4' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.reasoning).toBeGreaterThanOrEqual(0.9);
+      expect(profile.pricing.fallback_cost_per_1m).toBe(3.0);
+    });
+
+    it('maps claude-sonnet to frontier tier', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'anthropic', id: 'claude-3.5-sonnet' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.code_gen).toBe(0.95);
+    });
+
+    it('maps claude-haiku to economical tier', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'anthropic', id: 'claude-3.5-haiku' }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+      expect(profile.capabilities.reasoning).toBe(0.7);
+      expect(profile.pricing.fallback_cost_per_1m).toBe(0.8);
+    });
+  });
+
+  describe('GPT family', () => {
+    it('maps gpt-5.5 to frontier tier', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'openai', id: 'gpt-5.5' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.tool_use).toBe(0.95);
+    });
+
+    it('maps gpt-5.1 to economical tier', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'openai', id: 'gpt-5.1' }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+    });
+
+    it('maps gpt-5-mini to economical tier', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'openai', id: 'gpt-5-mini' }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+      expect(profile.pricing.fallback_cost_per_1m).toBe(0.8);
+    });
+  });
+
+  describe('Gemini family', () => {
+    it('maps gemini-2.5-pro to frontier tier', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'google', id: 'gemini-2.5-pro' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+    });
+
+    it('maps gemini-flash to economical tier', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'google', id: 'gemini-2.5-flash' }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+      expect(profile.capabilities.code_gen).toBe(0.75);
+    });
+  });
+
+  describe('local providers', () => {
+    it('maps lmstudio provider to zero-tier', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'lmstudio', id: 'local-gemma-4-7b' }),
+      );
+
+      expect(profile.tier).toBe('zero-tier');
+      expect(profile.endpoint).toBe('http://localhost:1234/v1');
+      expect(profile.pricing.fallback_cost_per_1m).toBe(0.0);
+      expect(profile.capabilities.tool_use).toBe(0.1);
+    });
+
+    it('maps ollama provider to zero-tier', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'ollama', id: 'llama3.2:3b' }),
+      );
+
+      expect(profile.tier).toBe('zero-tier');
+      expect(profile.provider).toBe('ollama');
+      expect(profile.pricing.registry_key).toBe('local/free');
+    });
+  });
+
+  describe('unknown models', () => {
+    it('assigns conservative economical-cloud defaults', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'custom-vendor', id: 'mystery-model-v9' }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+      expect(profile.capabilities.reasoning).toBeLessThan(0.7);
+      expect(profile.capabilities.code_gen).toBeLessThan(0.75);
+      expect(profile.pricing.fallback_cost_per_1m).toBe(1.0);
+      expect(profile.id).toBe('mystery-model-v9');
+      expect(profile.provider).toBe('custom-vendor');
+    });
+  });
+
+  describe('profile shape', () => {
+    it('preserves input id and provider on mapped profile', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'anthropic', id: 'claude-3.5-haiku', name: 'Haiku' }),
+      );
+
+      expect(profile.id).toBe('claude-3.5-haiku');
+      expect(profile.provider).toBe('anthropic');
+      expect(profile.pricing.registry_key).toBe('anthropic/claude-3.5-haiku');
+    });
+  });
+});
+
+describe('mapFleetFromRegistry', () => {
+  it('maps a mixed model set to a fleet catalog', () => {
+    const models: PiModelInput[] = [
+      { provider: 'anthropic', id: 'claude-3.5-sonnet' },
+      { provider: 'openai', id: 'gpt-5-mini' },
+      { provider: 'lmstudio', id: 'local-gemma' },
+      { provider: 'unknown-co', id: 'model-x' },
+    ];
+
+    const fleet = mapFleetFromRegistry(models);
+
+    expect(fleet).toHaveLength(4);
+    expect(fleet[0]!.tier).toBe('frontier-cloud');
+    expect(fleet[1]!.tier).toBe('economical-cloud');
+    expect(fleet[2]!.tier).toBe('zero-tier');
+    expect(fleet[3]!.tier).toBe('economical-cloud');
+    expect(fleet.map((m) => m.id)).toEqual([
+      'claude-3.5-sonnet',
+      'gpt-5-mini',
+      'local-gemma',
+      'model-x',
+    ]);
+  });
+});
