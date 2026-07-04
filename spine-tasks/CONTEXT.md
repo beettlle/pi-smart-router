@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-03
 **Status:** Active
-**Next Task ID:** SP-044
+**Next Task ID:** SP-047
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -84,6 +84,14 @@
 | SP-041 | Stream delegation | M | SP-040 |
 | SP-042 | Settings command + scoped mode | S | SP-041 |
 | SP-043 | Extension integration tests | S | SP-042 |
+
+### Phase 13 — Extension Dogfooding Gaps (SP-044–SP-046)
+
+| Task | Summary | Size | Deps |
+|------|---------|------|------|
+| SP-044 | Extension HyDRA wiring + optional transformers | M | SP-043 |
+| SP-045 | Extension pricing broker + manual LiteLLM refresh | M | SP-044 |
+| SP-046 | Registry Model.cost → ModelProfile pricing | S | SP-045 |
 
 ---
 
