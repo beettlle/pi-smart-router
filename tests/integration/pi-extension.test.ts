@@ -246,14 +246,19 @@ describe('Pi extension integration (SP-043)', () => {
 
   describe('stream delegation resolves the routed registry target', () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     beforeEach(() => {
       mockDelegateStreamSimple.mockReset();
       infoSpy.mockClear();
+      warnSpy.mockClear();
+      delete process.env.SMART_ROUTER_LOG_ROUTING;
     });
 
     afterEach(() => {
       infoSpy.mockClear();
+      warnSpy.mockClear();
+      delete process.env.SMART_ROUTER_LOG_ROUTING;
     });
 
     it('delegates to the registry model matching the routing decision', async () => {
@@ -304,9 +309,10 @@ describe('Pi extension integration (SP-043)', () => {
         }),
       );
       expect(events.some((event) => event.type === 'done')).toBe(true);
-      expect(infoSpy).toHaveBeenCalledWith(
+      expect(infoSpy).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalledWith(
         '[smart-router] routing decision',
-        expect.stringContaining(capturedDecision!.selected_model_id),
+        expect.any(String),
       );
     });
   });

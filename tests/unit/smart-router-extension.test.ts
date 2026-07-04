@@ -18,6 +18,7 @@ import {
   extractPromptText,
   initHydraMatcher,
   mapContextMessages,
+  logRoutingDecision,
   resolveDelegationOptions,
 } from '../../.pi/extensions/smart-router/index.js';
 import type { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
@@ -286,11 +287,13 @@ describe('createStreamSimple', () => {
     mockDelegateStreamSimple.mockReset();
     warnSpy.mockClear();
     infoSpy.mockClear();
+    delete process.env.SMART_ROUTER_LOG_ROUTING;
   });
 
   afterEach(() => {
     warnSpy.mockClear();
     infoSpy.mockClear();
+    delete process.env.SMART_ROUTER_LOG_ROUTING;
   });
 
   it('delegates to the routed registry model and forwards stream events', async () => {
@@ -319,9 +322,10 @@ describe('createStreamSimple', () => {
       expect.objectContaining({ apiKey: 'openai-delegation-key' }),
     );
     expect(events.some((event) => event.type === 'done')).toBe(true);
-    expect(infoSpy).toHaveBeenCalledWith(
+    expect(infoSpy).not.toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalledWith(
       '[smart-router] routing decision',
-      expect.stringContaining('gpt-4o-mini'),
+      expect.any(String),
     );
   });
 
@@ -491,6 +495,45 @@ describe('createStreamSimple', () => {
       expect(errorEvent.reason).toBe('aborted');
       expect(errorEvent.error.stopReason).toBe('aborted');
     }
+  });
+});
+
+describe('logRoutingDecision', () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    delete process.env.SMART_ROUTER_LOG_ROUTING;
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+    delete process.env.SMART_ROUTER_LOG_ROUTING;
+  });
+
+  it('does not log by default', () => {
+    logRoutingDecision(makeDecision({ selected_model_id: 'gpt-4o-mini' }), {
+      provider: 'openai',
+      modelId: 'gpt-4o-mini',
+      api: 'openai-responses',
+    });
+
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('logs to stderr when SMART_ROUTER_LOG_ROUTING=1', () => {
+    process.env.SMART_ROUTER_LOG_ROUTING = '1';
+
+    logRoutingDecision(makeDecision({ selected_model_id: 'gpt-4o-mini' }), {
+      provider: 'openai',
+      modelId: 'gpt-4o-mini',
+      api: 'openai-responses',
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[smart-router] routing decision',
+      expect.stringContaining('gpt-4o-mini'),
+    );
   });
 });
 

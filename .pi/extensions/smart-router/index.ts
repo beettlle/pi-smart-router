@@ -496,11 +496,19 @@ function resolveFallbackModel(deps: StreamDelegationDeps): Model<Api> | undefine
   return resolveRegistryModel(deps.modelRegistry, fallbackProfile);
 }
 
+function isRoutingLogEnabled(): boolean {
+  return process.env.SMART_ROUTER_LOG_ROUTING === '1';
+}
+
 function logRoutingDecision(
   decision: RoutingDecision,
   delegate?: { provider: string; modelId: string; api: Api },
 ): void {
-  console.info(
+  if (!isRoutingLogEnabled()) {
+    return;
+  }
+
+  console.warn(
     '[smart-router] routing decision',
     JSON.stringify({
       request_id: decision.request_id,
@@ -770,6 +778,7 @@ export {
   parseSmartRouterArgs,
   refreshPricingCatalog,
   resolveDelegationOptions,
+  logRoutingDecision,
 };
 export { SMART_ROUTER_FULL_INVOCATIONS, SMART_ROUTER_USAGE } from './commands.js';
 
