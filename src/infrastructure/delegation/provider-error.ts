@@ -9,6 +9,7 @@ import { isInfraError } from '../gateway/circuit-breaker.js';
 export interface ParsedProviderError {
   readonly statusCode?: number;
   readonly code?: string;
+  readonly message?: string;
 }
 
 function parseNumericCode(value: unknown): number | undefined {
@@ -36,9 +37,10 @@ export function parseProviderError(errorMessage: string): ParsedProviderError | 
 
   try {
     const parsed = JSON.parse(trimmed) as {
-      error?: { code?: unknown; status?: unknown };
+      error?: { code?: unknown; status?: unknown; message?: unknown };
       code?: unknown;
       status?: unknown;
+      message?: unknown;
     };
 
     const nested = parsed.error;
@@ -55,11 +57,22 @@ export function parseProviderError(errorMessage: string): ParsedProviderError | 
           ? parsed.status
           : undefined;
 
-    if (statusCode === undefined && code === undefined) {
+    const message =
+      typeof nested?.message === 'string'
+        ? nested.message
+        : typeof parsed.message === 'string'
+          ? parsed.message
+          : undefined;
+
+    if (statusCode === undefined && code === undefined && message === undefined) {
       return undefined;
     }
 
-    return { ...(statusCode !== undefined ? { statusCode } : {}), ...(code ? { code } : {}) };
+    return {
+      ...(statusCode !== undefined ? { statusCode } : {}),
+      ...(code ? { code } : {}),
+      ...(message ? { message } : {}),
+    };
   } catch {
     return undefined;
   }

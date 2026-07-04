@@ -19,10 +19,14 @@ describe('provider-error', () => {
       }),
     );
 
-    expect(parsed).toEqual({ statusCode: 503, code: 'UNAVAILABLE' });
+    expect(parsed).toEqual({
+      statusCode: 503,
+      code: 'UNAVAILABLE',
+      message: 'This model is currently experiencing high demand.',
+    });
   });
 
-  it('parses 400 INVALID_ARGUMENT as non-infra', () => {
+  it('parses 400 INVALID_ARGUMENT missing thought_signature as infra', () => {
     const parsed = parseProviderError(
       JSON.stringify({
         error: {
@@ -33,12 +37,20 @@ describe('provider-error', () => {
       }),
     );
 
-    expect(parsed).toEqual({ statusCode: 400, code: 'INVALID_ARGUMENT' });
+    expect(parsed).toEqual({
+      statusCode: 400,
+      code: 'INVALID_ARGUMENT',
+      message: 'Function call is missing a thought_signature',
+    });
     expect(isInfraAssistantError(makeErrorAssistant(
       JSON.stringify({
-        error: { code: 400, status: 'INVALID_ARGUMENT' },
+        error: {
+          code: 400,
+          status: 'INVALID_ARGUMENT',
+          message: 'Function call is missing a thought_signature',
+        },
       }),
-    ))).toBe(false);
+    ))).toBe(true);
   });
 
   it('classifies 503 assistant errors as infra', () => {

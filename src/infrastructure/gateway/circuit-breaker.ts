@@ -48,7 +48,7 @@ interface CircuitEntry {
  * trigger the circuit breaker. Policy/safety rejections are excluded
  * per FR-018.
  */
-export function isInfraError(error: { statusCode?: number; code?: string }): boolean {
+export function isInfraError(error: { statusCode?: number; code?: string; message?: string }): boolean {
   if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET' ||
       error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND' ||
       error.code === 'UND_ERR_CONNECT_TIMEOUT' || error.code === 'UND_ERR_SOCKET') {
@@ -56,7 +56,13 @@ export function isInfraError(error: { statusCode?: number; code?: string }): boo
   }
 
   if (error.statusCode !== undefined) {
-    return error.statusCode >= 500 || error.statusCode === 429;
+    if (error.statusCode >= 500 || error.statusCode === 429) {
+      return true;
+    }
+    // Handle Gemini 2.0 thought_signature generation failures as transient infra errors
+    if (error.statusCode === 400 && error.message?.includes('thought_signature')) {
+      return true;
+    }
   }
 
   return false;
