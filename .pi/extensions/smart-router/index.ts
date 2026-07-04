@@ -922,8 +922,7 @@ async function routeAndDelegate(
       if (
         result.failed &&
         result.finalMessage &&
-        isInfraAssistantError(result.finalMessage) &&
-        failedModelIds.length === 0
+        isInfraAssistantError(result.finalMessage)
       ) {
         failedModelIds.push(targetModel.id);
         const failover = deps.router.dispatch.selectFailover(decision, failedModelIds);
@@ -957,25 +956,26 @@ async function routeAndDelegate(
     } catch (error) {
       deps.router.dispatch.recordOutcome(targetModel.id, { code: 'STREAM_DELEGATION_ERROR' });
 
-      if (failedModelIds.length === 0) {
+      if (!failedModelIds.includes(targetModel.id)) {
         failedModelIds.push(targetModel.id);
-        const failover = deps.router.dispatch.selectFailover(decision, failedModelIds);
-        const alternateModel = failover ? resolveTargetModel(deps, failover) : undefined;
+      }
+      
+      const failover = deps.router.dispatch.selectFailover(decision, failedModelIds);
+      const alternateModel = failover ? resolveTargetModel(deps, failover) : undefined;
 
-        if (alternateModel && alternateModel.id !== targetModel.id) {
-          console.warn(
-            '[smart-router] stream delegation failed, failing over',
-            error instanceof Error ? error.message : String(error),
-          );
-          pendingFailoverInfo = {
-            failedModelId: targetModel.id,
-            alternateModelId: alternateModel.id,
-            errorObj: { message: error instanceof Error ? error.message : String(error) },
-          };
-          decision = failover!;
-          targetModel = alternateModel;
-          continue;
-        }
+      if (alternateModel && alternateModel.id !== targetModel.id) {
+        console.warn(
+          '[smart-router] stream delegation failed, failing over',
+          error instanceof Error ? error.message : String(error),
+        );
+        pendingFailoverInfo = {
+          failedModelId: targetModel.id,
+          alternateModelId: alternateModel.id,
+          errorObj: { message: error instanceof Error ? error.message : String(error) },
+        };
+        decision = failover!;
+        targetModel = alternateModel;
+        continue;
       }
 
       const fallbackModel = resolveFallbackModel(deps);
