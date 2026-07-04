@@ -1,0 +1,291 @@
+# pi-smart-router
+
+**Auto-model router middleware for the [pi](https://pi.dev) coding agent.**
+
+pi-smart-router intercepts every LLM inference request pi makes and dynamically routes it to the optimal execution engine — balancing cost, capability, latency, and time-to-first-token (TTFT) — without requiring the developer to manually pick a model.
+
+| pi-smart-router is | pi-smart-router is not |
+|--------------------|------------------------|
+| A pi extension that auto-selects the best model per request | A replacement for pi or your LLM provider |
+| A three-tier router: local, economical cloud, frontier cloud | A post-generation output judger (FrugalGPT-style) |
+| Cache-aware with session pinning to preserve prompt-cache economics | A turn-by-turn model switcher that shatters provider caching |
+| Configuration-decoupled: swap models in YAML without retraining | An RL-trained router requiring agent trace datasets |
+
+## How it works
+
+```text
+request → hardware probe → loop escalation → session pin
+        → deterministic triage → turn envelope → local zero-tier
+        → HyDRA embedding matcher → safe cloud default (fallback)
+```
+
+The pipeline runs **7 stages sequentially with early exit** — the moment any stage reaches a routing decision, subsequent stages are skipped. Every decision includes the stage name, reason code, candidates considered, estimated cost, and routing latency for full observability.
+
+| Stage | Budget | What it does |
+|-------|--------|--------------|
+| Hardware Probe | — | Checks macOS/ARM64/RAM/battery to gate local inference |
+| Loop Escalation | — | Detects repeated identical tool failures; escalates session to frontier |
+| Session Pin | <1ms | Returns pinned model if session has one; breaks pin on compaction or user override |
+| Deterministic Triage | <5ms | Aho-Corasick keyword scan + cyclomatic complexity analysis |
+| Turn Envelope | <2ms | Classifies turn type: tool_result, planning, subagent, main_loop |
+| Local Zero-Tier | <15ms | Pings LM Studio + Ollama in parallel; routes locally if a model is loaded |
+| HyDRA Matcher | 80-120ms | ONNX embeddings, 3D requirement projection, shortfall gate, multi-objective scoring |
+
+If no stage decides, `safeCloudDefault` selects the first healthy economical-cloud model.
+
+## Research lineage
+
+pi-smart-router builds on ideas from several production and research routing systems:
+
+- **Adopted:** [GitHub Copilot HyDRA](https://arxiv.org/abs/2409.08379) (shortfall matching decoupled from model identities), Zero-Tier local edge-cache pattern, [Weave Router](https://github.com/workweave/router) session pinning and multi-objective selection
+- **Rejected:** FrugalGPT sequential cascading (tail latency), RouteLLM matrix factorization (confounder vulnerability), turn-by-turn dynamic routing (cache destruction)
+
+See [docs/PRD.md](docs/PRD.md) for full architectural justification.
+
+## Prerequisites
+
+| Dependency | Required | Notes |
+|------------|----------|-------|
+| [Node.js](https://nodejs.org/) >= 20 | Yes | ES module package |
+| [pi](https://pi.dev) coding agent | Yes | Extension host |
+| macOS Apple Silicon | MVP | Linux/Windows planned for future phases |
+| [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com) | Optional | Required for zero-tier local routing |
+
+## Install
+
+```bash
+npm install pi-smart-router
+```
+
+## Quick start
+
+### 1. Configure the fleet catalog
+
+Copy the example and customize with your available models:
+
+```bash
+cp node_modules/pi-smart-router/config/models.yaml.example ./config/models.yaml
+```
+
+Each model declares its tier, provider, endpoint, capability scores, and pricing:
+
+```yaml
+models:
+  - id: local-gemma-4-7b
+    tier: zero-tier
+    provider: lmstudio
+    endpoint: http://localhost:1234/v1
+    capabilities:
+      reasoning: 0.3
+      code_gen: 0.6
+      tool_use: 0.1
+    performance:
+      latency_p50_ms: 120
+      verbosity_factor: 0.9
+      cache_friendly: true
+    pricing:
+      registry_key: local/free
+      fallback_cost_per_1m: 0.0
+
+  - id: claude-3.5-haiku
+    tier: economical-cloud
+    provider: anthropic
+    capabilities:
+      reasoning: 0.7
+      code_gen: 0.75
+      tool_use: 0.7
+    # ...
+
+  - id: claude-3.5-sonnet
+    tier: frontier-cloud
+    provider: anthropic
+    capabilities:
+      reasoning: 0.95
+      code_gen: 0.95
+      tool_use: 0.95
+    # ...
+```
+
+You need at least one model per tier: `zero-tier`, `economical-cloud`, `frontier-cloud`.
+
+### 2. Register with pi
+
+```typescript
+import { createRouter } from 'pi-smart-router';
+
+const router = createRouter({ modelsPath: './config/models.yaml' });
+router.register(piExtensionHooks);
+```
+
+`createRouter()` returns a `RouterHandle` with:
+
+| Property | Type | Purpose |
+|----------|------|---------|
+| `middleware` | `PiRouterMiddleware` | The pi extension middleware instance |
+| `dispatch` | `GatewayDispatch` | Gateway with circuit breaker, failover, rate limiting |
+| `fleet` | `readonly ModelProfile[]` | Loaded fleet catalog |
+| `register` | `(hooks) => void` | Shorthand to attach all extension hooks |
+
+### 3. Verify it works
+
+```bash
+npm run typecheck && npm test
+```
+
+## Configuration
+
+### Environment variables
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `ROUTER_STATE_DB_PATH` | `./.pi-smart-router/state.db` | SQLite state store location |
+| `MODELS_YAML_PATH` | `./config/models.yaml` | Fleet catalog path |
+| `ROUTER_SAFE_DEFAULT_TIER` | `economical-cloud` | Fallback tier on any routing failure |
+| `LITELLM_PRICING_URL` | — | LiteLLM pricing JSON source |
+
+### Operator tuning (frugality slider)
+
+The multi-objective scoring weights control the cost-vs-quality tradeoff:
+
+| Key | Default | Effect |
+|-----|---------|--------|
+| `frugality.lambda_cost` | 0.5 | Higher favors cheaper models at quality parity |
+| `frugality.lambda_latency` | 0.1 | Higher penalizes slow models |
+| `frugality.lambda_verbosity` | 0.15 | Higher penalizes verbose models |
+
+Additional operator defaults:
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `loop_escalation.threshold` | 3 | Consecutive identical failures before escalating to frontier |
+| `local.min_memory_gb_full` | 16 | Minimum RAM for full local inference |
+| `local.battery_threshold_pct` | 20 | Minimum battery to allow local inference |
+| `pricing.staleness_days` | 14 | Max age before re-fetching pricing data |
+
+### HyDRA model cache
+
+The embedding matcher uses `@huggingface/transformers` with the `Xenova/all-MiniLM-L6-v2` ONNX model (384-dim embeddings). Artifacts are downloaded at runtime and cached under `.pi-smart-router/models/` (configurable via `hydra.artifact_cache_path`). This directory is gitignored.
+
+## Architecture
+
+### Three execution tiers
+
+| Tier | Catalog Name | Purpose | Example |
+|------|-------------|---------|---------|
+| Local | `zero-tier` | Free on-device inference for trivial tasks | Gemma 4 7B via LM Studio |
+| Cheap Cloud | `economical-cloud` | Budget API models for routine work | Claude 3.5 Haiku |
+| Frontier Cloud | `frontier-cloud` | Top-tier models for complex reasoning | Claude 3.5 Sonnet |
+
+### Pi extension integration
+
+The middleware registers on five pi extension events:
+
+| Event | Purpose |
+|-------|---------|
+| `context` | Captures conversation messages for routing context |
+| `session_compact` / `session_before_compact` | Triggers session pin break on compaction |
+| `model_select` | Records user-forced model overrides |
+| `before_provider_request` | Intercepts request, runs pipeline, rewrites provider + model |
+
+### Session pinning
+
+Sessions pin to the first routed model to preserve provider-side prompt prefix caching. Pins break only on:
+
+- Session compaction
+- User model override (`/model` in pi)
+- Loop escalation (repeated identical tool failures)
+- Cache-warmup economics threshold
+
+Sub-routing within a pin is allowed: small `tool_result` turns may use an economical model on the same provider without breaking the pin.
+
+### Gateway resilience
+
+The `GatewayDispatch` layer wraps the pipeline with:
+
+- **Circuit breaker** — Per-model, tracks consecutive 5xx/network errors (CLOSED -> OPEN -> HALF_OPEN). 4xx and safety errors do not trip the breaker.
+- **Failover chains** — On open circuit, routes to same-tier alternative via inverse-cost weighted selection.
+- **Rate limiting** — Per-operator-key token bucket with `429 + Retry-After` responses.
+
+### Explain endpoint
+
+The explain handler runs the identical pipeline but returns the `RoutingDecision` without dispatching upstream inference — guaranteeing bit-for-bit decision equivalence with the live path. Useful for debugging, operator trust, and shadow runs.
+
+## API
+
+### Public exports
+
+```typescript
+import {
+  createRouter,
+  createPiRouterMiddleware,
+  type RoutingDecision,
+  type ModelProfile,
+  type PiRouterMiddleware,
+  type PiExtensionHooks,
+  type RouterHandle,
+} from 'pi-smart-router';
+```
+
+### `RoutingDecision`
+
+Every routing decision includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `selected_model_id` | `string` | Fleet model ID chosen |
+| `tier` | `Tier` | `zero-tier`, `economical-cloud`, or `frontier-cloud` |
+| `stage` | `string` | Pipeline stage that decided (triage, session_pin, local_zero, etc.) |
+| `reason_code` | `string` | Machine-readable reason |
+| `candidates` | `string[]` | Models considered before selection |
+| `estimated_cost_usd` | `number` | Per-request cost estimate |
+| `routing_latency_ms` | `number` | Time spent in the routing pipeline |
+
+## Development
+
+```bash
+git clone https://github.com/beettlle/pi-smart-router.git
+cd pi-smart-router
+npm install
+npm run typecheck && npm test
+```
+
+### Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `npm run typecheck` | TypeScript strict mode check (`tsc --noEmit`) |
+| `npm test` | Run test suite (`vitest run`) |
+| `npm run lint` | ESLint + fleet catalog validation |
+
+### Test suite
+
+614 tests across 30 test files covering:
+
+- Unit tests for every pipeline stage, domain module, and infrastructure component
+- Contract tests validating routing request/decision schemas
+- Integration tests for full pipeline routing, session pinning, latency budgets, and cost baselines
+- Resilience tests for circuit breaker, failover, and rate limiting
+
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [docs/PRD.md](docs/PRD.md) | Product requirements, research lineage, pipeline specification |
+| [docs/constitution.md](docs/constitution.md) | Project principles and non-negotiable rules |
+| [specs/001-build-smart-router/spec.md](specs/001-build-smart-router/spec.md) | Detailed feature specification |
+| [specs/001-build-smart-router/data-model.md](specs/001-build-smart-router/data-model.md) | Entity definitions, schemas, configuration reference |
+| [specs/001-build-smart-router/quickstart.md](specs/001-build-smart-router/quickstart.md) | Setup and verification guide |
+| [config/models.yaml.example](config/models.yaml.example) | Fleet catalog template |
+
+## Built with
+
+- [pi](https://pi.dev) — Coding agent harness (extension host)
+- [pi-spine](https://github.com/beettlle/pi-spine) — Batch orchestration (used to build this project)
+- [stet](https://github.com/beettlle/stet) — Local code review (guardrails during development)
+- [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) — Shared state store
+- [zod](https://zod.dev) — Runtime schema validation
+- [@huggingface/transformers](https://huggingface.co/docs/transformers.js) — ONNX embedding inference for HyDRA matcher
+
+## License
+
+MIT
