@@ -72,3 +72,33 @@ export function resolveFleetPrices(
   }
   return prices;
 }
+
+/**
+ * Apply tri-tier resolved prices to fleet profiles for routing/scoring.
+ * When no catalog is loaded, returns the fleet unchanged.
+ */
+export function applyCatalogPricesToFleet(
+  fleet: readonly ModelProfile[],
+  catalog: PriceCatalog | null,
+): ModelProfile[] {
+  if (!catalog) {
+    return [...fleet];
+  }
+
+  const prices = resolveFleetPrices(fleet, catalog);
+
+  return fleet.map((profile) => {
+    const resolved = prices.get(profile.id);
+    if (!resolved || resolved.source === 'yaml_fallback') {
+      return profile;
+    }
+
+    return {
+      ...profile,
+      pricing: {
+        ...profile.pricing,
+        fallback_cost_per_1m: resolved.cost_per_1m_tokens,
+      },
+    };
+  });
+}

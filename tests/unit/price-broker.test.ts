@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   resolvePrice,
   resolveFleetPrices,
+  applyCatalogPricesToFleet,
 } from '../../src/infrastructure/pricing/price-broker.js';
 import type { ModelProfile, PriceCatalog } from '../../src/domain/types/index.js';
 
@@ -183,5 +184,55 @@ describe('resolveFleetPrices', () => {
     const prices = resolveFleetPrices(fleet, null);
     expect(prices).toBeInstanceOf(Map);
     expect(prices.get('x')).toBeDefined();
+  });
+});
+
+describe('applyCatalogPricesToFleet', () => {
+  it('updates fallback_cost_per_1m from registry snapshot', () => {
+    const fleet = [
+      makeModel({ id: 'gpt-4o-mini', tier: 'economical-cloud', pricing: { fallback_cost_per_1m: 1.0 } }),
+    ];
+    const catalog = makeCatalog({
+      registry_snapshot: { 'gpt-4o-mini': 0.375 },
+    });
+
+    const priced = applyCatalogPricesToFleet(fleet, catalog);
+
+    expect(priced[0]?.pricing.fallback_cost_per_1m).toBe(0.375);
+  });
+
+  it('applies operator overrides over registry rates', () => {
+    const fleet = [makeModel({ id: 'gpt-4o', tier: 'frontier-cloud' })];
+    const catalog = makeCatalog({
+      user_overrides: { 'gpt-4o': 99.0 },
+      registry_snapshot: { 'gpt-4o': 10.0 },
+    });
+
+    const priced = applyCatalogPricesToFleet(fleet, catalog);
+
+    expect(priced[0]?.pricing.fallback_cost_per_1m).toBe(99.0);
+  });
+
+  it('returns fleet unchanged when catalog is null', () => {
+    const fleet = [makeModel({ id: 'a', tier: 'economical-cloud' })];
+    const priced = applyCatalogPricesToFleet(fleet, null);
+
+    expect(priced).toEqual(fleet);
+    expect(priced).not.toBe(fleet);
+  });
+
+  it('keeps yaml fallback when registry has no matching entry', () => {
+    const fleet = [
+      makeModel({
+        id: 'custom',
+        tier: 'economical-cloud',
+        pricing: { registry_key: 'missing/key', fallback_cost_per_1m: 2.5 },
+      }),
+    ];
+    const catalog = makeCatalog({ registry_snapshot: { other: 1.0 } });
+
+    const priced = applyCatalogPricesToFleet(fleet, catalog);
+
+    expect(priced[0]?.pricing.fallback_cost_per_1m).toBe(2.5);
   });
 });
