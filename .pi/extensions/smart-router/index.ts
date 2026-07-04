@@ -3,16 +3,23 @@
  *
  * Discovers authenticated models from pi's model registry, maps them to a
  * router fleet, registers the smart-router/auto provider, and wires middleware
- * hooks for routing state. Real stream delegation is implemented in SP-041.
+ * hooks for routing state. Stream delegation routes each request through the
+ * pipeline and forwards to the selected provider's built-in streaming API.
  */
+
+import { randomUUID } from 'node:crypto';
 
 import {
   type Api,
+  type AssistantMessage,
   type AssistantMessageEventStream,
   type Context,
+  type Message,
   type Model,
   type SimpleStreamOptions,
+  type TextContent,
   createAssistantMessageEventStream,
+  streamSimple as delegateStreamSimple,
 } from '@earendil-works/pi-ai/compat';
 import {
   AuthStorage,
@@ -22,7 +29,13 @@ import {
 
 import { mapFleetFromRegistry } from '../../../src/config/pi-model-mapper.js';
 import { safeCloudDefault } from '../../../src/domain/pipeline/safe-default.js';
-import type { ModelProfile } from '../../../src/domain/types/index.js';
+import type {
+  Message as RoutingMessage,
+  ModelProfile,
+  RoutingDecision,
+  RoutingRequest,
+  TurnType,
+} from '../../../src/domain/types/index.js';
 import {
   createRouterFromFleet,
   type PiExtensionHooks,
@@ -31,6 +44,12 @@ import {
 
 const PROVIDER_NAME = 'smart-router' as const;
 const AUTO_MODEL_ID = 'auto' as const;
+
+interface StreamDelegationDeps {
+  readonly router: RouterHandle;
+  readonly modelRegistry: ModelRegistry;
+  readonly fleet: readonly ModelProfile[];
+}
 
 function createHooksAdapter(pi: ExtensionAPI): PiExtensionHooks {
   return {
@@ -51,58 +70,284 @@ function discoverFleet(modelRegistry: ModelRegistry): ModelProfile[] {
   );
 }
 
-function streamSimplePlaceholder(
-  model: Model<Api>,
-  _context: Context,
-  options: SimpleStreamOptions | undefined,
-  fleet: readonly ModelProfile[],
-): AssistantMessageEventStream {
-  const stream = createAssistantMessageEventStream();
-  const fallback = safeCloudDefault(fleet);
-  const message = fallback
-    ? `[smart-router] Placeholder (SP-041). Safe cloud default: ${fallback.provider}/${fallback.id}`
-    : '[smart-router] Placeholder (SP-041). No safe cloud default available in fleet.';
+function messageContentToString(content: string | readonly (TextContent | { type: string })[]): string {
+  if (typeof content === 'string') {
+    return content;
+  }
 
-  void (async () => {
-    const output = {
-      role: 'assistant' as const,
-      content: [{ type: 'text' as const, text: '' }],
-      api: model.api,
-      provider: model.provider,
-      model: model.id,
-      usage: {
-        input: 0,
-        output: 0,
-        cacheRead: 0,
-        cacheWrite: 0,
-        totalTokens: 0,
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-      },
-      stopReason: 'stop' as const,
-      timestamp: Date.now(),
-    };
+  return content
+    .filter((block): block is TextContent => block.type === 'text')
+    .map((block) => block.text)
+    .join('\n');
+}
 
-    try {
-      if (options?.signal?.aborted) {
-        throw new Error('Request was aborted');
+function extractPromptText(messages: readonly Message[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message?.role === 'user') {
+      const text = messageContentToString(message.content);
+      if (text.trim()) {
+        return text;
       }
-
-      stream.push({ type: 'start', partial: output });
-      output.content[0] = { type: 'text', text: message };
-      stream.push({ type: 'text_start', contentIndex: 0, partial: output });
-      stream.push({ type: 'text_delta', contentIndex: 0, delta: message, partial: output });
-      stream.push({ type: 'text_end', contentIndex: 0, content: message, partial: output });
-      stream.push({ type: 'done', reason: 'stop', message: output });
-      stream.end();
-    } catch (error) {
-      output.stopReason = options?.signal?.aborted ? 'aborted' : 'error';
-      output.errorMessage = error instanceof Error ? error.message : String(error);
-      stream.push({ type: 'error', reason: output.stopReason, error: output });
-      stream.end();
     }
-  })();
+  }
+  return '';
+}
 
-  return stream;
+function deriveTurnType(messages: readonly Message[]): TurnType {
+  if (messages.length === 0) {
+    return 'unknown';
+  }
+
+  const lastMessage = messages[messages.length - 1];
+  if (!lastMessage) {
+    return 'unknown';
+  }
+
+  if (lastMessage.role === 'toolResult') {
+    return 'tool_result';
+  }
+
+  if (lastMessage.role === 'user') {
+    const text = messageContentToString(lastMessage.content).toLowerCase();
+    if (
+      text.includes('plan') ||
+      text.includes('architect') ||
+      text.includes('design')
+    ) {
+      return 'planning';
+    }
+  }
+
+  return 'main_loop';
+}
+
+function mapContextMessages(messages: readonly Message[]): RoutingMessage[] {
+  return messages.map((message) => {
+    if (message.role === 'user') {
+      return {
+        role: message.role,
+        content: messageContentToString(message.content),
+      };
+    }
+
+    if (message.role === 'assistant') {
+      const content = message.content
+        .map((block) => {
+          if (block.type === 'text') {
+            return block.text;
+          }
+          if (block.type === 'thinking') {
+            return block.thinking;
+          }
+          return '';
+        })
+        .filter(Boolean)
+        .join('\n');
+
+      return { role: message.role, content };
+    }
+
+    return {
+      role: 'tool',
+      content: messageContentToString(message.content),
+      tool_blocks: [],
+    };
+  });
+}
+
+function buildRoutingRequest(
+  context: Context,
+  options: SimpleStreamOptions | undefined,
+): RoutingRequest {
+  return {
+    request_id: randomUUID(),
+    session_id: options?.sessionId ?? randomUUID(),
+    prompt_text: extractPromptText(context.messages),
+    messages: mapContextMessages(context.messages),
+    turn_type: deriveTurnType(context.messages),
+  };
+}
+
+function findFleetProfile(
+  fleet: readonly ModelProfile[],
+  modelId: string,
+): ModelProfile | undefined {
+  return fleet.find((profile) => profile.id === modelId);
+}
+
+function resolveRegistryModel(
+  modelRegistry: ModelRegistry,
+  profile: ModelProfile,
+): Model<Api> | undefined {
+  return modelRegistry.find(profile.provider, profile.id);
+}
+
+function resolveTargetModel(
+  deps: StreamDelegationDeps,
+  decision: RoutingDecision,
+): Model<Api> | undefined {
+  const profile = findFleetProfile(deps.fleet, decision.selected_model_id);
+  if (!profile) {
+    return undefined;
+  }
+  return resolveRegistryModel(deps.modelRegistry, profile);
+}
+
+function resolveFallbackModel(deps: StreamDelegationDeps): Model<Api> | undefined {
+  const fallbackProfile = safeCloudDefault(deps.fleet);
+  if (!fallbackProfile) {
+    return undefined;
+  }
+  return resolveRegistryModel(deps.modelRegistry, fallbackProfile);
+}
+
+function logRoutingDecision(
+  decision: RoutingDecision,
+  delegate?: { provider: string; modelId: string; api: Api },
+): void {
+  console.info(
+    '[smart-router] routing decision',
+    JSON.stringify({
+      request_id: decision.request_id,
+      selected_model_id: decision.selected_model_id,
+      tier: decision.tier,
+      stage: decision.stage,
+      reason_code: decision.reason_code,
+      routing_latency_ms: decision.routing_latency_ms,
+      delegate,
+    }),
+  );
+}
+
+function createErrorMessage(
+  model: Model<Api>,
+  options: SimpleStreamOptions | undefined,
+  error: unknown,
+): AssistantMessage {
+  return {
+    role: 'assistant',
+    content: [],
+    api: model.api,
+    provider: model.provider,
+    model: model.id,
+    usage: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
+    stopReason: options?.signal?.aborted ? 'aborted' : 'error',
+    errorMessage: error instanceof Error ? error.message : String(error),
+    timestamp: Date.now(),
+  };
+}
+
+async function pipeDelegatedStream(
+  outer: AssistantMessageEventStream,
+  targetModel: Model<Api>,
+  context: Context,
+  options: SimpleStreamOptions | undefined,
+): Promise<void> {
+  if (options?.signal?.aborted) {
+    throw new Error('Request was aborted');
+  }
+
+  const inner = delegateStreamSimple(targetModel, context, options);
+  for await (const event of inner) {
+    if (options?.signal?.aborted) {
+      throw new Error('Request was aborted');
+    }
+    outer.push(event);
+  }
+  outer.end();
+}
+
+async function routeAndDelegate(
+  autoModel: Model<Api>,
+  context: Context,
+  options: SimpleStreamOptions | undefined,
+  deps: StreamDelegationDeps,
+  outer: AssistantMessageEventStream,
+): Promise<void> {
+  let decision: RoutingDecision;
+  try {
+    const request = buildRoutingRequest(context, options);
+    decision = await deps.router.dispatch.dispatch(request);
+  } catch (error) {
+    const fallbackModel = resolveFallbackModel(deps);
+    if (!fallbackModel) {
+      throw error;
+    }
+    console.warn(
+      '[smart-router] routing failed, using safe cloud default',
+      error instanceof Error ? error.message : String(error),
+    );
+    await pipeDelegatedStream(outer, fallbackModel, context, options);
+    return;
+  }
+
+  let targetModel = resolveTargetModel(deps, decision);
+  if (!targetModel) {
+    console.warn(
+      '[smart-router] routed model not found in registry',
+      decision.selected_model_id,
+    );
+    targetModel = resolveFallbackModel(deps);
+  }
+
+  if (!targetModel) {
+    throw new Error(
+      `No registry model available for routing decision ${decision.selected_model_id}`,
+    );
+  }
+
+  logRoutingDecision(decision, {
+    provider: targetModel.provider,
+    modelId: targetModel.id,
+    api: targetModel.api,
+  });
+
+  try {
+    await pipeDelegatedStream(outer, targetModel, context, options);
+  } catch (error) {
+    const fallbackModel = resolveFallbackModel(deps);
+    if (!fallbackModel || fallbackModel.id === targetModel.id) {
+      throw error;
+    }
+    console.warn(
+      '[smart-router] stream delegation failed, using safe cloud default',
+      error instanceof Error ? error.message : String(error),
+    );
+    await pipeDelegatedStream(outer, fallbackModel, context, options);
+  }
+}
+
+function createStreamSimple(deps: StreamDelegationDeps) {
+  return function streamSimple(
+    model: Model<Api>,
+    context: Context,
+    options?: SimpleStreamOptions,
+  ): AssistantMessageEventStream {
+    const stream = createAssistantMessageEventStream();
+
+    void (async () => {
+      try {
+        await routeAndDelegate(model, context, options, deps, stream);
+      } catch (error) {
+        stream.push({
+          type: 'error',
+          reason: options?.signal?.aborted ? 'aborted' : 'error',
+          error: createErrorMessage(model, options, error),
+        });
+        stream.end();
+      }
+    })();
+
+    return stream;
+  };
 }
 
 export default async function smartRouterExtension(pi: ExtensionAPI): Promise<void> {
@@ -112,6 +357,12 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
   const router: RouterHandle = createRouterFromFleet(fleet);
 
   router.register(createHooksAdapter(pi));
+
+  const streamDeps: StreamDelegationDeps = {
+    router,
+    modelRegistry,
+    fleet,
+  };
 
   pi.registerProvider(PROVIDER_NAME, {
     name: 'Smart Router',
@@ -129,8 +380,6 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
         maxTokens: 16_384,
       },
     ],
-    streamSimple(model, context, options) {
-      return streamSimplePlaceholder(model, context, options, fleet);
-    },
+    streamSimple: createStreamSimple(streamDeps),
   });
 }
