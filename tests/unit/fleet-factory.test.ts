@@ -1,9 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createRouterFromFleet } from '../../src/index.js';
-import type { ModelProfile } from '../../src/domain/types/index.js';
+import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 import type { PiExtensionHooks } from '../../src/api/middleware/pi-router-middleware.js';
 import { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
+import {
+  HydraMatcher,
+  type EmbeddingProvider,
+  type RequirementVector,
+} from '../../src/domain/matching/hydra-matcher.js';
 
 function makeModel(
   overrides: Partial<ModelProfile> & { id: string; tier: ModelProfile['tier'] },
@@ -21,6 +26,24 @@ const minimalFleet: ModelProfile[] = [
   makeModel({ id: 'gpt-4o-mini', tier: 'economical-cloud' }),
   makeModel({ id: 'claude-opus', tier: 'frontier-cloud' }),
 ];
+
+function makeMockProvider(requirements: RequirementVector): EmbeddingProvider {
+  return {
+    extractRequirements: vi.fn(async () => requirements),
+    dispose: vi.fn(async () => {}),
+  };
+}
+
+function makeRoutingRequest(overrides?: Partial<RoutingRequest>): RoutingRequest {
+  return {
+    request_id: 'req-factory-1',
+    session_id: 'sess-factory-1',
+    prompt_text: 'Hello, how are you today?',
+    messages: [{ role: 'user', content: 'Hello, how are you today?' }],
+    turn_type: 'main_loop',
+    ...overrides,
+  };
+}
 
 describe('createRouterFromFleet factory (SP-039)', () => {
   it('accepts a minimal 3-model fleet', () => {
@@ -69,5 +92,29 @@ describe('createRouterFromFleet factory (SP-039)', () => {
     expect(registered).toContain('session_compact');
     expect(registered).toContain('session_before_compact');
     expect(registered).toContain('model_select');
+  });
+
+  it('passes hydraMatcher dispatch options through to routing', async () => {
+    const provider = makeMockProvider({ reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 });
+    const hydraMatcher = new HydraMatcher(provider, {
+      artifactCachePath: '.pi-smart-router/models/',
+    });
+    const handle = createRouterFromFleet(minimalFleet, { hydraMatcher });
+
+    const decision = await handle.dispatch.dispatch(makeRoutingRequest());
+
+    expect(decision.stage).toBe('hydra_match');
+    expect(decision.reason_code).toBe('hydra_embedding_match');
+    expect(['local-llama', 'gpt-4o-mini', 'claude-opus']).toContain(decision.selected_model_id);
+  });
+
+  it('falls back to safe cloud default for ambiguous prompts without hydraMatcher', async () => {
+    const handle = createRouterFromFleet(minimalFleet);
+
+    const decision = await handle.dispatch.dispatch(makeRoutingRequest());
+
+    expect(decision.stage).toBe('fallback');
+    expect(decision.reason_code).toBe('safe_cloud_default');
+    expect(decision.selected_model_id).toBe('gpt-4o-mini');
   });
 });

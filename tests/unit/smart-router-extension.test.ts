@@ -16,11 +16,18 @@ import {
   createStreamSimple,
   deriveTurnType,
   extractPromptText,
+  initHydraMatcher,
   mapContextMessages,
 } from '../../.pi/extensions/smart-router/index.js';
 import type { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
-import type { RouterHandle } from '../../src/index.js';
+import { createRouterFromFleet } from '../../src/index.js';
+import {
+  HydraMatcher,
+  type EmbeddingProvider,
+  type RequirementVector,
+} from '../../src/domain/matching/hydra-matcher.js';
 import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../src/domain/types/index.js';
+import type { RouterHandle } from '../../src/index.js';
 
 const { mockDelegateStreamSimple } = vi.hoisted(() => ({
   mockDelegateStreamSimple: vi.fn(),
@@ -401,5 +408,85 @@ describe('createStreamSimple', () => {
       expect(errorEvent.reason).toBe('aborted');
       expect(errorEvent.error.stopReason).toBe('aborted');
     }
+  });
+});
+
+describe('initHydraMatcher (SP-044)', () => {
+  function makeMockProvider(requirements: RequirementVector): EmbeddingProvider {
+    return {
+      extractRequirements: vi.fn(async () => requirements),
+      dispose: vi.fn(async () => {}),
+    };
+  }
+
+  it('constructs HydraMatcher when ONNX provider loads', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const provider = makeMockProvider({ reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 });
+    const createOnnxEmbeddingProvider = vi.fn(async () => provider);
+
+    const matcher = await initHydraMatcher({ createOnnxEmbeddingProvider });
+
+    expect(matcher).toBeInstanceOf(HydraMatcher);
+    expect(createOnnxEmbeddingProvider).toHaveBeenCalledOnce();
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it('returns undefined and logs once when provider init fails', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const createOnnxEmbeddingProvider = vi.fn(async () => {
+      throw new Error('ONNX embedding requires @huggingface/transformers');
+    });
+
+    const matcher = await initHydraMatcher({ createOnnxEmbeddingProvider });
+
+    expect(matcher).toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[smart-router] HyDRA matcher disabled',
+      'ONNX embedding requires @huggingface/transformers',
+    );
+    warnSpy.mockRestore();
+  });
+});
+
+describe('extension hydra routing (SP-044)', () => {
+  function makeMockProvider(requirements: RequirementVector): EmbeddingProvider {
+    return {
+      extractRequirements: vi.fn(async () => requirements),
+      dispose: vi.fn(async () => {}),
+    };
+  }
+
+  it('routes ambiguous prompts through hydra_match when matcher is configured', async () => {
+    const provider = makeMockProvider({ reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 });
+    const hydraMatcher = new HydraMatcher(provider, {
+      artifactCachePath: '.pi-smart-router/models/',
+    });
+    const router = createRouterFromFleet(fleet, { hydraMatcher });
+    const request = buildRoutingRequest(
+      makeContext([userMessage('Hello, how are you today?')]),
+      { sessionId: 'hydra-ext-001' },
+    );
+
+    const decision = await router.dispatch.dispatch(request);
+
+    expect(decision.stage).toBe('hydra_match');
+    expect(decision.reason_code).toBe('hydra_embedding_match');
+    expect(fleet.map((profile) => profile.id)).toContain(decision.selected_model_id);
+  });
+
+  it('falls back to safe cloud default when matcher is not configured', async () => {
+    const router = createRouterFromFleet(fleet);
+    const request = buildRoutingRequest(
+      makeContext([userMessage('Hello, how are you today?')]),
+      { sessionId: 'hydra-ext-002' },
+    );
+
+    const decision = await router.dispatch.dispatch(request);
+
+    expect(decision.stage).toBe('fallback');
+    expect(decision.reason_code).toBe('safe_cloud_default');
+    expect(decision.selected_model_id).toBe('gpt-4o-mini');
   });
 });

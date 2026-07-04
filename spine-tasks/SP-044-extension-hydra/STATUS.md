@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-04
 **Review Level:** 2
 **Size:** M
@@ -8,30 +8,30 @@
 
 ## Step 1: Factory and dependency wiring
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Extend `createRouterFromFleet()` for pipeline options
-- [ ] Add `@huggingface/transformers` dependency
-- [ ] Verify extension package resolves dependency at runtime
+- [x] Extend `createRouterFromFleet()` for pipeline options
+- [x] Add `@huggingface/transformers` dependency
+- [x] Verify extension package resolves dependency at runtime
 
 ## Step 2: Extension bootstrap
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Create ONNX embedding provider on init
-- [ ] Inject `HydraMatcher` into router factory
-- [ ] Graceful disable when transformers unavailable
+- [x] Create ONNX embedding provider on init
+- [x] Inject `HydraMatcher` into router factory
+- [x] Graceful disable when transformers unavailable
 
 ## Step 3: Tests
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Factory options passthrough tests
-- [ ] Extension hydra_match integration test with mocked provider
-- [ ] Matcher-disabled fallback test
+- [x] Factory options passthrough tests
+- [x] Extension hydra_match integration test with mocked provider
+- [x] Matcher-disabled fallback test
 
 ## Step 4: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
