@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-03
+**Current Step:** Step 2: Testing and verification
+**Status:** In Progress
+**Last Updated:** 2026-07-04
 **Review Level:** 0
 **Size:** S
 
@@ -8,15 +8,15 @@
 
 ## Step 1: Add dependencies
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Add @earendil-works/pi-ai
-- [ ] Add @earendil-works/pi-coding-agent (dev)
-- [ ] Verify type imports compile
+- [x] Add @earendil-works/pi-ai
+- [x] Add @earendil-works/pi-coding-agent (dev)
+- [x] Verify type imports compile
 
 ## Step 2: Testing and verification
 
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Run `npm run typecheck && npm test`
 - [ ] Confirm all tests pass
