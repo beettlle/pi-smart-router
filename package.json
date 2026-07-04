@@ -22,6 +22,7 @@
     "lint": "eslint . --ext .ts && node --input-type=module -e \"import { readFileSync } from 'node:fs'; import { parse } from 'yaml'; const doc = parse(readFileSync('config/models.yaml.example', 'utf8')); if (!Array.isArray(doc.models) || doc.models.length < 3) throw new Error('models.yaml.example must list at least one model per tier'); const tiers = new Set(doc.models.map((m) => m.tier)); for (const tier of ['zero-tier', 'economical-cloud', 'frontier-cloud']) { if (!tiers.has(tier)) throw new Error('missing tier: ' + tier); } console.log('models.yaml.example: valid');\""
   },
   "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.80.3",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.15.21",
     "@typescript-eslint/eslint-plugin": "^8.62.1",
@@ -34,6 +35,7 @@
     "yaml": "^2.9.0"
   },
   "dependencies": {
+    "@earendil-works/pi-ai": "^0.80.3",
     "better-sqlite3": "^12.11.1",
     "zod": "^4.4.3"
   },
@@ -41,6 +43,8 @@
     "better-sqlite3@12.11.1": true
   },
   "pi": {
-    "skills": ["./skills"]
+    "skills": [
+      "./skills"
+    ]
   }
 }
