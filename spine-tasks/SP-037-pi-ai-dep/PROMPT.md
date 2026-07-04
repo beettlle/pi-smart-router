@@ -67,3 +67,5 @@ Add `@earendil-works/pi-ai` as a dependency and `@earendil-works/pi-coding-agent
 ---
 
 ## Amendments (Added During Execution)
+
+- `package.json` already contains `pi.skills` from commit `10b563f` (pre-landed). SP-037 still must add `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent` deps.
