@@ -789,6 +789,54 @@ async function delegateWithOutcome(
   return result;
 }
 
+function injectFailoverNotice(
+  events: AssistantMessageEvent[],
+  failedModelId: string,
+  alternateModelId: string,
+  errorObj?: ReturnType<typeof parseAssistantMessageError>,
+): void {
+  const reason = errorObj?.message || errorObj?.code || 'Unavailable';
+  const notice = `> ⚠️ **pi-smart-router failover:** \`${failedModelId}\` failed (${reason}). Retrying with \`${alternateModelId}\`...`;
+
+  let noticeInjected = false;
+
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i];
+
+    if (event.type === 'start') {
+      const newPartial = { ...event.partial, content: [...event.partial.content] };
+      if (newPartial.content.length > 0 && newPartial.content[0].type === 'text') {
+        newPartial.content[0] = { ...newPartial.content[0], text: notice + '\n\n' + newPartial.content[0].text };
+      } else {
+        newPartial.content.unshift({ type: 'text', text: notice + '\n\n' });
+      }
+      events[i] = { ...event, partial: newPartial };
+    }
+
+    if (!noticeInjected && event.type === 'content' && event.delta.type === 'text') {
+      events[i] = { ...event, delta: { type: 'text', text: notice + '\n\n' + event.delta.text } };
+      noticeInjected = true;
+    }
+
+    if (event.type === 'done' && event.message) {
+      const newMsg = { ...event.message, content: [...event.message.content] };
+      if (newMsg.content.length > 0 && newMsg.content[0].type === 'text') {
+        newMsg.content[0] = { ...newMsg.content[0], text: notice + '\n\n' + newMsg.content[0].text };
+      } else {
+        newMsg.content.unshift({ type: 'text', text: notice + '\n\n' });
+      }
+      events[i] = { ...event, message: newMsg };
+    }
+  }
+
+  if (!noticeInjected) {
+    const startIdx = events.findIndex((e) => e.type === 'start');
+    if (startIdx !== -1) {
+      events.splice(startIdx + 1, 0, { type: 'content', delta: { type: 'text', text: notice + '\n\n' } });
+    }
+  }
+}
+
 async function routeAndDelegate(
   context: Context,
   options: SimpleStreamOptions | undefined,
@@ -845,6 +893,11 @@ async function routeAndDelegate(
   });
 
   const failedModelIds: string[] = [];
+  let pendingFailoverInfo: {
+    failedModelId: string;
+    alternateModelId: string;
+    errorObj?: ReturnType<typeof parseAssistantMessageError>;
+  } | undefined;
 
   while (true) {
     try {
@@ -855,6 +908,16 @@ async function routeAndDelegate(
         options,
         sessionId,
       );
+
+      if (pendingFailoverInfo) {
+        injectFailoverNotice(
+          result.events,
+          pendingFailoverInfo.failedModelId,
+          pendingFailoverInfo.alternateModelId,
+          pendingFailoverInfo.errorObj,
+        );
+        pendingFailoverInfo = undefined;
+      }
 
       if (
         result.failed &&
@@ -879,6 +942,11 @@ async function routeAndDelegate(
           '[smart-router] infra error, failing over to alternate model',
           alternateModel.id,
         );
+        pendingFailoverInfo = {
+          failedModelId: targetModel.id,
+          alternateModelId: alternateModel.id,
+          errorObj: parseAssistantMessageError(result.finalMessage),
+        };
         decision = failover;
         targetModel = alternateModel;
         continue;
@@ -899,6 +967,11 @@ async function routeAndDelegate(
             '[smart-router] stream delegation failed, failing over',
             error instanceof Error ? error.message : String(error),
           );
+          pendingFailoverInfo = {
+            failedModelId: targetModel.id,
+            alternateModelId: alternateModel.id,
+            errorObj: { message: error instanceof Error ? error.message : String(error) },
+          };
           decision = failover!;
           targetModel = alternateModel;
           continue;
@@ -914,6 +987,12 @@ async function routeAndDelegate(
         '[smart-router] stream delegation failed, using safe cloud default',
         error instanceof Error ? error.message : String(error),
       );
+      pendingFailoverInfo = {
+        failedModelId: targetModel.id,
+        alternateModelId: fallbackModel.id,
+        errorObj: { message: error instanceof Error ? error.message : String(error) },
+      };
+
       const fallbackResult = await delegateWithOutcome(
         fallbackModel,
         context,
@@ -921,6 +1000,14 @@ async function routeAndDelegate(
         options,
         sessionId,
       );
+      if (pendingFailoverInfo) {
+        injectFailoverNotice(
+          fallbackResult.events,
+          pendingFailoverInfo.failedModelId,
+          pendingFailoverInfo.alternateModelId,
+          pendingFailoverInfo.errorObj,
+        );
+      }
       flushDelegatedEvents(outer, fallbackResult.events);
       return;
     }

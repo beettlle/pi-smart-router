@@ -447,6 +447,17 @@ describe('createStreamSimple', () => {
     expect(mockDelegateStreamSimple.mock.calls[0]?.[0]).toEqual(target);
     expect(mockDelegateStreamSimple.mock.calls[1]?.[0].id).not.toBe('claude-opus');
     expect(events.some((event) => event.type === 'done')).toBe(true);
+
+    const doneEvent = events.find((e) => e.type === 'done');
+    expect(doneEvent?.type).toBe('done');
+    if (doneEvent?.type === 'done') {
+      const textBlock = doneEvent.message?.content[0];
+      expect(textBlock?.type).toBe('text');
+      if (textBlock?.type === 'text') {
+        expect(textBlock.text).toContain('⚠️ **pi-smart-router failover:** `claude-opus` failed (stream broke). Retrying with');
+      }
+    }
+
     expect(warnSpy).toHaveBeenCalledWith(
       '[smart-router] stream delegation failed, failing over',
       'stream broke',
@@ -666,6 +677,18 @@ describe('createStreamSimple', () => {
       expect.objectContaining({ statusCode: 503 }),
     );
     expect(events.some((event) => event.type === 'done')).toBe(true);
+    
+    const doneEvent = events.find((e) => e.type === 'done');
+    expect(doneEvent?.type).toBe('done');
+    if (doneEvent?.type === 'done') {
+      const textBlock = doneEvent.message?.content[0];
+      expect(textBlock?.type).toBe('text');
+      if (textBlock?.type === 'text') {
+        expect(textBlock.text).toContain('⚠️ **pi-smart-router failover:** `gpt-4o-mini` failed');
+        expect(textBlock.text).toContain('Retrying with `gemini-flash`...');
+      }
+    }
+
     expect(warnSpy).toHaveBeenCalledWith(
       '[smart-router] infra error, failing over to alternate model',
       'gemini-flash',

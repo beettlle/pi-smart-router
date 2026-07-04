@@ -57,12 +57,23 @@ export function parseProviderError(errorMessage: string): ParsedProviderError | 
           ? parsed.status
           : undefined;
 
-    const message =
+    let message =
       typeof nested?.message === 'string'
         ? nested.message
         : typeof parsed.message === 'string'
           ? parsed.message
           : undefined;
+
+    if (message && message.trim().startsWith('{')) {
+      try {
+        const inner = JSON.parse(message) as { error?: { message?: unknown }; message?: unknown };
+        if (typeof inner.error?.message === 'string') {
+          message = inner.error.message;
+        } else if (typeof inner.message === 'string') {
+          message = inner.message;
+        }
+      } catch {}
+    }
 
     if (statusCode === undefined && code === undefined && message === undefined) {
       return undefined;
