@@ -1,4 +1,4 @@
-**Current Step:** Step 1: Fleet factory function
+**Current Step:** Step 2: Unit tests
 **Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 1
@@ -8,7 +8,7 @@
 
 ## Step 1: Fleet factory function
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Add createRouterFromFleet to src/index.ts
 - [x] Reuse GatewayDispatch and createPiRouterMiddleware from existing factory
@@ -16,9 +16,10 @@
 
 ## Step 2: Unit tests
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Test with minimal fleet, verify RouterHandle shape
+- [x] Test createRouterFromFleet with a minimal 3-model fleet
+- [x] Test it returns a valid RouterHandle with middleware, dispatch, fleet, register
 
 ## Step 3: Testing and verification
 
