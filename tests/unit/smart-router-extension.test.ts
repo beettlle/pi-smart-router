@@ -17,6 +17,7 @@ import {
   createStreamSimple,
   deriveTurnType,
   extractPromptText,
+  formatLmuStatus,
   initHydraMatcher,
   mapContextMessages,
   logRoutingDecision,
@@ -145,6 +146,7 @@ function makeStreamDeps(
     fleet: ModelProfile[];
     executionLedger: ExecutionLedger;
     onRoutingDecision: (decision: RoutingDecision) => void;
+    onDelegatedModel: (model: { provider: string; id: string }) => void;
   }> = {},
 ) {
   return {
@@ -259,6 +261,12 @@ function makeAutoModel(): Model<Api> {
 }
 
 describe('smart-router extension helpers', () => {
+  it('formatLmuStatus labels the last model used', () => {
+    expect(formatLmuStatus('gpt-4o-mini')).toBe('LMU: gpt-4o-mini');
+    expect(formatLmuStatus('gemini-flash', { fg: (_name, text) => `[${text}]` }))
+      .toBe('[LMU: gemini-flash]');
+  });
+
   it('extractPromptText returns the latest non-empty user message', () => {
     const text = extractPromptText([
       userMessage('first'),
@@ -623,9 +631,10 @@ describe('createStreamSimple', () => {
     );
     const recordOutcome = vi.spyOn(router.dispatch, 'recordOutcome');
     const executionLedger = new ExecutionLedger();
+    const onDelegatedModel = vi.fn();
 
     const streamSimple = createStreamSimple(
-      makeStreamDeps({ router, executionLedger }),
+      makeStreamDeps({ router, executionLedger, onDelegatedModel }),
     );
 
     await collectEvents(
@@ -635,6 +644,10 @@ describe('createStreamSimple', () => {
     );
 
     expect(recordOutcome).toHaveBeenCalledWith('gpt-4o-mini');
+    expect(onDelegatedModel).toHaveBeenCalledWith({
+      provider: 'openai',
+      id: 'gpt-4o-mini',
+    });
     expect(executionLedger.getLastExecution('ledger-sess-1')).toEqual({
       provider: 'openai',
       api: 'openai-responses',

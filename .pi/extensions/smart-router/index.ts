@@ -95,6 +95,8 @@ interface StreamDelegationDeps {
   fleet: ModelProfile[];
   readonly executionLedger: ExecutionLedger;
   onRoutingDecision?: (decision: RoutingDecision) => void;
+  /** Fired when a delegated provider stream completes successfully. */
+  onDelegatedModel?: (model: { readonly provider: string; readonly id: string }) => void;
 }
 
 interface SmartRouterRuntime {
@@ -107,6 +109,17 @@ interface SmartRouterRuntime {
   readonly executionLedger: ExecutionLedger;
   streamDeps: StreamDelegationDeps;
   hydraMatcher: HydraMatcher | undefined;
+  setLmuStatus?: (modelId: string) => void;
+  clearLmuStatus?: () => void;
+}
+
+/** Footer label for the last model that successfully served a delegated stream. */
+function formatLmuStatus(
+  modelId: string,
+  theme?: { fg: (name: string, text: string) => string },
+): string {
+  const label = `LMU: ${modelId}`;
+  return theme ? theme.fg('dim', label) : label;
 }
 
 function createHooksAdapter(pi: ExtensionAPI): PiExtensionHooks {
@@ -784,6 +797,10 @@ async function delegateWithOutcome(
     if (sessionId) {
       deps.executionLedger.recordSuccess(sessionId, modelToExecutionModel(targetModel));
     }
+    deps.onDelegatedModel?.({
+      provider: targetModel.provider,
+      id: targetModel.id,
+    });
   }
 
   return result;
@@ -1099,6 +1116,7 @@ export {
   deriveTurnType,
   discoverFleet,
   extractPromptText,
+  formatLmuStatus,
   formatPricingStalenessLine,
   formatHistoryMessage,
   formatStatusMessage,
@@ -1141,6 +1159,9 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
       onRoutingDecision(decision) {
         runtime.lastDecision = decision;
       },
+      onDelegatedModel(model) {
+        runtime.setLmuStatus?.(model.id);
+      },
     },
   };
 
@@ -1157,6 +1178,27 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
     notifyPricingStalenessIfNeeded(runtime, (message, level) => {
       ctx.ui.notify(message, level);
     });
+
+    runtime.setLmuStatus = (modelId) => {
+      ctx.ui.setStatus('smart-router-lmu', formatLmuStatus(modelId, ctx.ui.theme));
+    };
+    runtime.clearLmuStatus = () => {
+      ctx.ui.setStatus('smart-router-lmu', undefined);
+    };
+
+    const sessionId = ctx.sessionManager.getSessionId();
+    const lastExec = runtime.executionLedger.getLastExecution(sessionId);
+    if (lastExec) {
+      runtime.setLmuStatus(lastExec.id);
+    } else if (runtime.lastDecision) {
+      runtime.setLmuStatus(runtime.lastDecision.selected_model_id);
+    }
+  });
+
+  pi.on('session_shutdown', async (_event, ctx) => {
+    runtime.setLmuStatus = undefined;
+    runtime.clearLmuStatus = undefined;
+    ctx.ui.setStatus('smart-router-lmu', undefined);
   });
 
   pi.registerProvider(PROVIDER_NAME, {
