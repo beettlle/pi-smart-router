@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-03
+**Current Step:** Complete
+**Status:** Complete
+**Last Updated:** 2026-07-04
 **Review Level:** 1
 **Size:** S
 
@@ -8,20 +8,20 @@
 
 ## Step 1: Command registration
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Register /smart-router command
-- [ ] Status display and mode toggle
-- [ ] Persist preference via appendEntry
+- [x] Register /smart-router command
+- [x] Status display and mode toggle
+- [x] Persist preference via appendEntry
 
 ## Step 2: Fleet rebuild on mode change
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Rebuild fleet when mode switches
+- [x] Rebuild fleet when mode switches
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
