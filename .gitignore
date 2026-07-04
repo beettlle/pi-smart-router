@@ -1,5 +1,7 @@
-# pi-spine runtime
-.pi/
+# pi local state (track project extensions under .pi/extensions/)
+.pi/*
+!.pi/extensions/
+!.pi/extensions/**
 .spine/runtime/
 .spine/batch-state.json
 .spine/batch-history.json
