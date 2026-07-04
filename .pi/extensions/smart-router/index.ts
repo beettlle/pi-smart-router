@@ -24,7 +24,9 @@ import {
 import {
   AuthStorage,
   ModelRegistry,
+  SettingsManager,
   type ExtensionAPI,
+  type ExtensionContext,
 } from '@earendil-works/pi-coding-agent';
 
 import { mapFleetFromRegistry } from '../../../src/config/pi-model-mapper.js';
@@ -44,11 +46,22 @@ import {
 
 const PROVIDER_NAME = 'smart-router' as const;
 const AUTO_MODEL_ID = 'auto' as const;
+const FLEET_MODE_ENTRY_TYPE = 'smart-router-fleet-mode' as const;
+
+type FleetMode = 'scoped' | 'all';
 
 interface StreamDelegationDeps {
-  readonly router: RouterHandle;
+  router: RouterHandle;
   readonly modelRegistry: ModelRegistry;
-  readonly fleet: readonly ModelProfile[];
+  fleet: ModelProfile[];
+  onRoutingDecision?: (decision: RoutingDecision) => void;
+}
+
+interface SmartRouterRuntime {
+  fleetMode: FleetMode;
+  lastDecision: RoutingDecision | undefined;
+  readonly modelRegistry: ModelRegistry;
+  streamDeps: StreamDelegationDeps;
 }
 
 function createHooksAdapter(pi: ExtensionAPI): PiExtensionHooks {
@@ -59,15 +72,157 @@ function createHooksAdapter(pi: ExtensionAPI): PiExtensionHooks {
   };
 }
 
-function discoverFleet(modelRegistry: ModelRegistry): ModelProfile[] {
+const THINKING_LEVELS = new Set(['off', 'minimal', 'low', 'medium', 'high', 'xhigh']);
+
+function stripThinkingLevelSuffix(pattern: string): string {
+  const colonIdx = pattern.lastIndexOf(':');
+  if (colonIdx === -1) {
+    return pattern;
+  }
+
+  const suffix = pattern.substring(colonIdx + 1);
+  if (THINKING_LEVELS.has(suffix)) {
+    return pattern.substring(0, colonIdx);
+  }
+
+  return pattern;
+}
+
+function patternToRegExp(pattern: string): RegExp {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+  const regexSource = `^${escaped.replace(/\*/g, '.*').replace(/\?/g, '.')}$`;
+  return new RegExp(regexSource, 'i');
+}
+
+function matchesScopedPattern(model: Model<Api>, pattern: string): boolean {
+  const modelPattern = stripThinkingLevelSuffix(pattern);
+  const fullId = `${model.provider}/${model.id}`;
+
+  if (modelPattern.includes('*') || modelPattern.includes('?') || modelPattern.includes('[')) {
+    const regex = patternToRegExp(modelPattern);
+    return regex.test(fullId) || regex.test(model.id);
+  }
+
+  if (modelPattern.includes('/')) {
+    return fullId === modelPattern;
+  }
+
+  return model.id === modelPattern || fullId === modelPattern;
+}
+
+function filterScopedModels(available: readonly Model<Api>[], patterns: readonly string[]): Model<Api>[] {
+  const matched = new Set<string>();
+  const result: Model<Api>[] = [];
+
+  for (const pattern of patterns) {
+    for (const model of available) {
+      const key = `${model.provider}/${model.id}`;
+      if (matchesScopedPattern(model, pattern) && !matched.has(key)) {
+        matched.add(key);
+        result.push(model);
+      }
+    }
+  }
+
+  return result;
+}
+
+function registryModelsToFleetInput(models: readonly Model<Api>[]) {
+  return models.map((model) => ({
+    provider: model.provider,
+    id: model.id,
+    ...(model.name !== undefined ? { name: model.name } : {}),
+  }));
+}
+
+async function discoverFleet(
+  modelRegistry: ModelRegistry,
+  mode: FleetMode,
+  cwd: string,
+): Promise<ModelProfile[]> {
   const available = modelRegistry.getAvailable();
-  return mapFleetFromRegistry(
-    available.map((model) => ({
-      provider: model.provider,
-      id: model.id,
-      ...(model.name !== undefined ? { name: model.name } : {}),
-    })),
+  let models = available;
+
+  if (mode === 'scoped') {
+    const settings = SettingsManager.create(cwd);
+    const patterns = settings.getEnabledModels();
+    if (patterns && patterns.length > 0) {
+      models = filterScopedModels(available, patterns);
+    }
+  }
+
+  return mapFleetFromRegistry(registryModelsToFleetInput(models));
+}
+
+async function rebuildFleet(
+  runtime: SmartRouterRuntime,
+  pi: ExtensionAPI,
+  cwd: string,
+): Promise<void> {
+  const fleet = await discoverFleet(runtime.modelRegistry, runtime.fleetMode, cwd);
+  const router = createRouterFromFleet(fleet);
+  router.register(createHooksAdapter(pi));
+  runtime.streamDeps.router = router;
+  runtime.streamDeps.fleet = fleet;
+}
+
+function parseFleetModeEntry(data: unknown): FleetMode | undefined {
+  if (
+    typeof data === 'object' &&
+    data !== null &&
+    'mode' in data &&
+    (data.mode === 'scoped' || data.mode === 'all')
+  ) {
+    return data.mode;
+  }
+  return undefined;
+}
+
+function restoreFleetModeFromSession(ctx: ExtensionContext): FleetMode | undefined {
+  const entries = ctx.sessionManager.getEntries();
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = entries[i];
+    if (entry?.type === 'custom' && entry.customType === FLEET_MODE_ENTRY_TYPE) {
+      return parseFleetModeEntry(entry.data);
+    }
+  }
+  return undefined;
+}
+
+function parseSmartRouterArgs(args: string): { command: 'status' } | { command: 'mode'; mode: FleetMode } {
+  const tokens = args.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0 || tokens[0] === 'status') {
+    return { command: 'status' };
+  }
+
+  if (tokens[0] === 'mode' && (tokens[1] === 'scoped' || tokens[1] === 'all')) {
+    return { command: 'mode', mode: tokens[1] };
+  }
+
+  throw new Error('Usage: /smart-router [status] | mode scoped|all');
+}
+
+function formatStatusMessage(
+  runtime: SmartRouterRuntime,
+  decision: RoutingDecision | undefined,
+): string {
+  const lines = [
+    `Fleet mode: ${runtime.fleetMode}`,
+    `Fleet size: ${runtime.streamDeps.fleet.length}`,
+  ];
+
+  if (!decision) {
+    lines.push('Last routing decision: (none yet)');
+    return lines.join('\n');
+  }
+
+  lines.push(
+    `Model: ${decision.selected_model_id}`,
+    `Stage: ${decision.stage}`,
+    `Reason: ${decision.reason_code}`,
+    `Latency: ${decision.routing_latency_ms}ms`,
   );
+  return lines.join('\n');
 }
 
 function messageContentToString(content: string | readonly (TextContent | { type: string })[]): string {
@@ -288,6 +443,8 @@ async function routeAndDelegate(
     return;
   }
 
+  deps.onRoutingDecision?.(decision);
+
   let targetModel = resolveTargetModel(deps, decision);
   if (!targetModel) {
     console.warn(
@@ -349,27 +506,90 @@ function createStreamSimple(deps: StreamDelegationDeps) {
   };
 }
 
+function registerSmartRouterCommand(
+  pi: ExtensionAPI,
+  runtime: SmartRouterRuntime,
+): void {
+  pi.registerCommand('smart-router', {
+    description: 'Show routing status or switch fleet mode (scoped|all)',
+    getArgumentCompletions: (prefix: string) => {
+      const items = [
+        { value: 'status', label: 'Show last routing decision' },
+        { value: 'mode scoped', label: 'Route among scoped models only' },
+        { value: 'mode all', label: 'Route among all authenticated models' },
+      ];
+      const filtered = items.filter((item) => item.value.startsWith(prefix));
+      return filtered.length > 0 ? filtered : null;
+    },
+    handler: async (args, ctx) => {
+      try {
+        const parsed = parseSmartRouterArgs(args);
+
+        if (parsed.command === 'status') {
+          ctx.ui.notify(formatStatusMessage(runtime, runtime.lastDecision), 'info');
+          return;
+        }
+
+        if (parsed.mode === runtime.fleetMode) {
+          ctx.ui.notify(`Fleet mode already set to ${parsed.mode}`, 'info');
+          return;
+        }
+
+        runtime.fleetMode = parsed.mode;
+        await rebuildFleet(runtime, pi, ctx.cwd);
+        pi.appendEntry(FLEET_MODE_ENTRY_TYPE, { mode: parsed.mode });
+        ctx.ui.notify(
+          `Fleet mode set to ${parsed.mode} (${runtime.streamDeps.fleet.length} models)`,
+          'info',
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        ctx.ui.notify(message, 'error');
+      }
+    },
+  });
+}
+
 export {
   buildRoutingRequest,
   createStreamSimple,
   deriveTurnType,
+  discoverFleet,
   extractPromptText,
+  formatStatusMessage,
   mapContextMessages,
+  parseSmartRouterArgs,
 };
 
 export default async function smartRouterExtension(pi: ExtensionAPI): Promise<void> {
   const authStorage = AuthStorage.create();
   const modelRegistry = ModelRegistry.create(authStorage);
-  const fleet = discoverFleet(modelRegistry);
-  const router: RouterHandle = createRouterFromFleet(fleet);
 
-  router.register(createHooksAdapter(pi));
-
-  const streamDeps: StreamDelegationDeps = {
-    router,
+  const runtime: SmartRouterRuntime = {
+    fleetMode: 'scoped',
+    lastDecision: undefined,
     modelRegistry,
-    fleet,
+    streamDeps: {
+      router: createRouterFromFleet([]),
+      modelRegistry,
+      fleet: [],
+      onRoutingDecision(decision) {
+        runtime.lastDecision = decision;
+      },
+    },
   };
+
+  await rebuildFleet(runtime, pi, process.cwd());
+
+  registerSmartRouterCommand(pi, runtime);
+
+  pi.on('session_start', async (_event, ctx) => {
+    const restoredMode = restoreFleetModeFromSession(ctx);
+    if (restoredMode && restoredMode !== runtime.fleetMode) {
+      runtime.fleetMode = restoredMode;
+      await rebuildFleet(runtime, pi, ctx.cwd);
+    }
+  });
 
   pi.registerProvider(PROVIDER_NAME, {
     name: 'Smart Router',
@@ -387,6 +607,6 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
         maxTokens: 16_384,
       },
     ],
-    streamSimple: createStreamSimple(streamDeps),
+    streamSimple: createStreamSimple(runtime.streamDeps),
   });
 }
