@@ -37,7 +37,10 @@ export function createRouter(options?: RouterFactoryOptions): RouterHandle {
     options?.modelsPath ? { filePath: options.modelsPath } : undefined,
   );
 
-  const fleet = catalog.models as unknown as ModelProfile[];
+  return createRouterFromFleet(catalog.models as unknown as ModelProfile[]);
+}
+
+export function createRouterFromFleet(fleet: ModelProfile[]): RouterHandle {
   const dispatch = new GatewayDispatch(fleet);
   const middleware = createPiRouterMiddleware({ fleet });
 

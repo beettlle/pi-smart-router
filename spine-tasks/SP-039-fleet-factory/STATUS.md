@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-03
+**Current Step:** Complete
+**Status:** Complete
+**Last Updated:** 2026-07-04
 **Review Level:** 1
 **Size:** S
 
@@ -8,19 +8,26 @@
 
 ## Step 1: Fleet factory function
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Add createRouterFromFleet to src/index.ts
-- [ ] Export from package
+- [x] Add createRouterFromFleet to src/index.ts
+- [x] Reuse GatewayDispatch and createPiRouterMiddleware from existing factory
+- [x] Export createRouterFromFleet in package exports
 
 ## Step 2: Unit tests
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Test with minimal fleet, verify RouterHandle shape
+- [x] Test createRouterFromFleet with a minimal 3-model fleet
+- [x] Test it returns a valid RouterHandle with middleware, dispatch, fleet, register
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
+
+## Completion Criteria
+
+- [x] All steps complete
+- [x] Tests pass
