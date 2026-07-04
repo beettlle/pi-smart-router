@@ -527,6 +527,96 @@ describe('resolveDelegationOptions', () => {
       resolveDelegationOptions(registry, registryModels[0]!, { apiKey: 'local' }),
     ).rejects.toThrow('missing auth');
   });
+
+  it('strips pi agent-loop callbacks and forwards only stream options', async () => {
+    const target = registryModels[0]!;
+    const registry = createMockRegistry(registryModels);
+    const onPayload = vi.fn((payload: unknown) => payload);
+    const onResponse = vi.fn();
+
+    const options = await resolveDelegationOptions(registry, target, {
+      apiKey: 'local',
+      sessionId: 'sess-1',
+      reasoning: 'medium',
+      onPayload,
+      onResponse,
+      transformContext: vi.fn(),
+      getSteeringMessages: vi.fn(),
+      getFollowUpMessages: vi.fn(),
+    } as Parameters<typeof resolveDelegationOptions>[2]);
+
+    expect(options.apiKey).toBe('openai-delegation-key');
+    expect(options.sessionId).toBe('sess-1');
+    expect(options.reasoning).toBe('medium');
+    expect(options).not.toHaveProperty('onPayload');
+    expect(options).not.toHaveProperty('onResponse');
+    expect(options).not.toHaveProperty('transformContext');
+    expect(options).not.toHaveProperty('getSteeringMessages');
+    expect(options).not.toHaveProperty('getFollowUpMessages');
+  });
+});
+
+describe('delegation onPayload regression', () => {
+  beforeEach(() => {
+    mockDelegateStreamSimple.mockReset();
+  });
+
+  it('does not forward caller onPayload through createStreamSimple delegation', async () => {
+    const target = registryModels[0]!;
+    const callerOnPayload = vi.fn((payload: unknown) => payload);
+
+    mockDelegateStreamSimple.mockImplementation((_model, _context, options) => {
+      expect(options?.onPayload).toBeUndefined();
+      expect(options?.onResponse).toBeUndefined();
+      return makeSuccessStream(target);
+    });
+
+    const streamSimple = createStreamSimple({
+      router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' }))),
+      modelRegistry: createMockRegistry(registryModels),
+      fleet,
+    });
+
+    await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')]), {
+        onPayload: callerOnPayload,
+        onResponse: vi.fn(),
+      } as Parameters<ReturnType<typeof createStreamSimple>>[2]),
+    );
+
+    expect(callerOnPayload).not.toHaveBeenCalled();
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+  });
+
+  it('completes delegation when caller passes pi-style onPayload that would corrupt provider payloads', async () => {
+    const target = registryModels[0]!;
+    const corruptingBeforeProviderRequest = (event: { payload: unknown }) => ({
+      ...event,
+      provider: 'google',
+      model: 'gemini-flash-latest',
+    });
+
+    mockDelegateStreamSimple.mockImplementation((_model, _context, options) => {
+      expect(options?.onPayload).toBeUndefined();
+      return makeSuccessStream(target);
+    });
+
+    const streamSimple = createStreamSimple({
+      router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' }))),
+      modelRegistry: createMockRegistry(registryModels),
+      fleet,
+    });
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('what is 2+2?')]), {
+        onPayload: async (payload: unknown) =>
+          corruptingBeforeProviderRequest({ payload }),
+      } as Parameters<ReturnType<typeof createStreamSimple>>[2]),
+    );
+
+    expect(events.some((event) => event.type === 'done')).toBe(true);
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+  });
 });
 
 describe('initHydraMatcher (SP-044)', () => {

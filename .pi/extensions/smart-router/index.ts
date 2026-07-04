@@ -539,6 +539,40 @@ function createErrorMessage(
   };
 }
 
+/** Stream options safe to forward to a delegated provider call. */
+const DELEGATION_CALLER_OPTION_KEYS = [
+  'signal',
+  'sessionId',
+  'reasoning',
+  'thinkingBudgets',
+  'temperature',
+  'maxTokens',
+  'transport',
+  'cacheRetention',
+  'timeoutMs',
+  'maxRetries',
+  'maxRetryDelayMs',
+  'metadata',
+  'websocketConnectTimeoutMs',
+] as const satisfies readonly (keyof SimpleStreamOptions)[];
+
+function pickDelegationCallerOptions(
+  callerOptions?: SimpleStreamOptions,
+): SimpleStreamOptions {
+  if (!callerOptions) {
+    return {};
+  }
+
+  const picked: SimpleStreamOptions = {};
+  const source = callerOptions as SimpleStreamOptions & Record<string, unknown>;
+  for (const key of DELEGATION_CALLER_OPTION_KEYS) {
+    if (source[key] !== undefined) {
+      (picked as Record<string, unknown>)[key] = source[key];
+    }
+  }
+  return picked;
+}
+
 async function resolveDelegationOptions(
   modelRegistry: ModelRegistry,
   targetModel: Model<Api>,
@@ -549,16 +583,14 @@ async function resolveDelegationOptions(
     throw new Error(auth.error);
   }
 
-  const { apiKey: _callerApiKey, headers: _callerHeaders, env: callerEnv, ...restCallerOptions } =
-    callerOptions ?? {};
-
+  const callerEnv = callerOptions?.env;
   const mergedEnv =
     auth.env || callerEnv
       ? { ...(auth.env ?? {}), ...(callerEnv ?? {}) }
       : undefined;
 
   return {
-    ...restCallerOptions,
+    ...pickDelegationCallerOptions(callerOptions),
     ...(auth.apiKey !== undefined ? { apiKey: auth.apiKey } : {}),
     ...(auth.headers !== undefined ? { headers: auth.headers } : {}),
     ...(mergedEnv !== undefined ? { env: mergedEnv } : {}),

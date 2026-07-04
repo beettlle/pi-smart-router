@@ -87,11 +87,11 @@ describe('createRouterFromFleet factory (SP-039)', () => {
 
     handle.register(mockHooks);
 
-    expect(registered).toContain('before_provider_request');
     expect(registered).toContain('context');
     expect(registered).toContain('session_compact');
     expect(registered).toContain('session_before_compact');
     expect(registered).toContain('model_select');
+    expect(registered).not.toContain('before_provider_request');
   });
 
   it('passes hydraMatcher dispatch options through to routing', async () => {
