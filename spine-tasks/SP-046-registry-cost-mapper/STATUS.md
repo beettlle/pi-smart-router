@@ -1,4 +1,4 @@
-**Current Step:** Step 1: Mapper cost derivation
+**Current Step:** Step 2: Extension pass-through
 **Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 1
@@ -8,7 +8,7 @@
 
 ## Step 1: Mapper cost derivation
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Extend `PiModelInput` with optional cost fields
 - [x] Derive `fallback_cost_per_1m` from registry cost
@@ -16,10 +16,10 @@
 
 ## Step 2: Extension pass-through
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Forward cost in `registryModelsToFleetInput`
-- [ ] Verify scoped and all modes
+- [x] Forward cost in `registryModelsToFleetInput`
+- [x] Verify scoped and all modes
 
 ## Step 3: Testing and verification
 
