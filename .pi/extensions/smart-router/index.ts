@@ -7,6 +7,8 @@
  * pipeline and forwards to the selected provider's built-in streaming API.
  */
 
+import { join } from 'node:path';
+
 import { randomUUID } from 'node:crypto';
 
 import {
@@ -39,10 +41,16 @@ import { safeCloudDefault } from '../../../src/domain/pipeline/safe-default.js';
 import type {
   Message as RoutingMessage,
   ModelProfile,
+  PriceCatalog,
   RoutingDecision,
   RoutingRequest,
   TurnType,
 } from '../../../src/domain/types/index.js';
+import { createResilientStore } from '../../../src/infrastructure/persistence/sqlite-store.js';
+import type { StorePort } from '../../../src/domain/types/store-port.js';
+import { applyCatalogPricesToFleet } from '../../../src/infrastructure/pricing/price-broker.js';
+import { fetchLitellmPriceCatalog } from '../../../src/infrastructure/pricing/litellm-fetch.js';
+import { checkStaleness } from '../../../src/infrastructure/pricing/pricing-monitor.js';
 import {
   createRouterFromFleet,
   type GatewayDispatchOptions,
@@ -53,8 +61,14 @@ import {
 const PROVIDER_NAME = 'smart-router' as const;
 const AUTO_MODEL_ID = 'auto' as const;
 const FLEET_MODE_ENTRY_TYPE = 'smart-router-fleet-mode' as const;
+const DEFAULT_ROUTER_STATE_DB_PATH = '.pi-smart-router/state.db';
 
 type FleetMode = 'scoped' | 'all';
+
+type SmartRouterCommand =
+  | { command: 'status' }
+  | { command: 'mode'; mode: FleetMode }
+  | { command: 'pricing'; subcommand: 'refresh' };
 
 interface StreamDelegationDeps {
   router: RouterHandle;
@@ -66,7 +80,9 @@ interface StreamDelegationDeps {
 interface SmartRouterRuntime {
   fleetMode: FleetMode;
   lastDecision: RoutingDecision | undefined;
+  priceCatalog: PriceCatalog | null;
   readonly modelRegistry: ModelRegistry;
+  readonly store: StorePort;
   streamDeps: StreamDelegationDeps;
   hydraMatcher: HydraMatcher | undefined;
   dispatchOptions: GatewayDispatchOptions | undefined;
@@ -143,11 +159,27 @@ function registryModelsToFleetInput(models: readonly Model<Api>[]) {
   }));
 }
 
+function getRouterStateDbPath(cwd: string): string {
+  const configured = process.env.ROUTER_STATE_DB_PATH?.trim();
+  if (configured && configured.length > 0) {
+    return configured;
+  }
+  return join(cwd, DEFAULT_ROUTER_STATE_DB_PATH);
+}
+
+function createExtensionStore(cwd: string): StorePort {
+  return createResilientStore({
+    dbPath: getRouterStateDbPath(cwd),
+    models: [],
+  }).store;
+}
+
 async function discoverFleet(
   modelRegistry: ModelRegistry,
   mode: FleetMode,
   cwd: string,
-): Promise<ModelProfile[]> {
+  store: StorePort,
+): Promise<{ fleet: ModelProfile[]; catalog: PriceCatalog | null }> {
   const available = modelRegistry.getAvailable();
   let models = available;
 
@@ -159,7 +191,11 @@ async function discoverFleet(
     }
   }
 
-  return mapFleetFromRegistry(registryModelsToFleetInput(models));
+  const mappedFleet = mapFleetFromRegistry(registryModelsToFleetInput(models));
+  const catalog = await store.getPriceCatalog();
+  const fleet = applyCatalogPricesToFleet(mappedFleet, catalog);
+
+  return { fleet, catalog };
 }
 
 async function rebuildFleet(
@@ -167,11 +203,37 @@ async function rebuildFleet(
   pi: ExtensionAPI,
   cwd: string,
 ): Promise<void> {
-  const fleet = await discoverFleet(runtime.modelRegistry, runtime.fleetMode, cwd);
+  const { fleet, catalog } = await discoverFleet(
+    runtime.modelRegistry,
+    runtime.fleetMode,
+    cwd,
+    runtime.store,
+  );
+  runtime.priceCatalog = catalog;
   const router = createRouterFromFleet(fleet, runtime.dispatchOptions);
   router.register(createHooksAdapter(pi));
   runtime.streamDeps.router = router;
   runtime.streamDeps.fleet = fleet;
+}
+
+async function refreshPricingCatalog(
+  runtime: SmartRouterRuntime,
+  fetchFn?: typeof fetch,
+): Promise<{ modelCount: number; lastUpdated: string }> {
+  const existing = await runtime.store.getPriceCatalog();
+  const { catalog: fetched, model_count: modelCount } = await fetchLitellmPriceCatalog(
+    fetchFn ? { fetchFn } : {},
+  );
+
+  const catalog: PriceCatalog = {
+    ...fetched,
+    user_overrides: existing?.user_overrides ?? {},
+  };
+
+  await runtime.store.putPriceCatalog(catalog);
+  runtime.priceCatalog = catalog;
+
+  return { modelCount, lastUpdated: catalog.last_updated };
 }
 
 /**
@@ -227,7 +289,7 @@ function restoreFleetModeFromSession(ctx: ExtensionContext): FleetMode | undefin
   return undefined;
 }
 
-function parseSmartRouterArgs(args: string): { command: 'status' } | { command: 'mode'; mode: FleetMode } {
+function parseSmartRouterArgs(args: string): SmartRouterCommand {
   const tokens = args.trim().split(/\s+/).filter(Boolean);
   if (tokens.length === 0 || tokens[0] === 'status') {
     return { command: 'status' };
@@ -237,7 +299,21 @@ function parseSmartRouterArgs(args: string): { command: 'status' } | { command: 
     return { command: 'mode', mode: tokens[1] };
   }
 
-  throw new Error('Usage: /smart-router [status] | mode scoped|all');
+  if (tokens[0] === 'pricing' && tokens[1] === 'refresh') {
+    return { command: 'pricing', subcommand: 'refresh' };
+  }
+
+  throw new Error(
+    'Usage: /smart-router [status] | mode scoped|all | pricing refresh',
+  );
+}
+
+function formatPricingStalenessLine(catalog: PriceCatalog | null): string | undefined {
+  const staleness = checkStaleness(
+    catalog,
+    DEFAULT_OPERATOR_CONFIG.pricing.staleness_days,
+  );
+  return staleness.warning;
 }
 
 function formatStatusMessage(
@@ -248,6 +324,13 @@ function formatStatusMessage(
     `Fleet mode: ${runtime.fleetMode}`,
     `Fleet size: ${runtime.streamDeps.fleet.length}`,
   ];
+
+  const stalenessLine = formatPricingStalenessLine(runtime.priceCatalog);
+  if (stalenessLine) {
+    lines.push(`Pricing: ${stalenessLine}`);
+  } else if (runtime.priceCatalog) {
+    lines.push(`Pricing: fresh (last_updated ${runtime.priceCatalog.last_updated})`);
+  }
 
   if (!decision) {
     lines.push('Last routing decision: (none yet)');
@@ -261,6 +344,16 @@ function formatStatusMessage(
     `Latency: ${decision.routing_latency_ms}ms`,
   );
   return lines.join('\n');
+}
+
+function notifyPricingStalenessIfNeeded(
+  runtime: SmartRouterRuntime,
+  notify: (message: string, level: 'info' | 'warning' | 'error') => void,
+): void {
+  const stalenessLine = formatPricingStalenessLine(runtime.priceCatalog);
+  if (stalenessLine) {
+    notify(stalenessLine, 'warning');
+  }
 }
 
 function messageContentToString(content: string | readonly (TextContent | { type: string })[]): string {
@@ -555,6 +648,7 @@ function registerSmartRouterCommand(
         { value: 'status', label: 'Show last routing decision' },
         { value: 'mode scoped', label: 'Route among scoped models only' },
         { value: 'mode all', label: 'Route among all authenticated models' },
+        { value: 'pricing refresh', label: 'Fetch LiteLLM rates and rebuild fleet' },
       ];
       const filtered = items.filter((item) => item.value.startsWith(prefix));
       return filtered.length > 0 ? filtered : null;
@@ -565,6 +659,16 @@ function registerSmartRouterCommand(
 
         if (parsed.command === 'status') {
           ctx.ui.notify(formatStatusMessage(runtime, runtime.lastDecision), 'info');
+          return;
+        }
+
+        if (parsed.command === 'pricing') {
+          const { modelCount, lastUpdated } = await refreshPricingCatalog(runtime);
+          await rebuildFleet(runtime, pi, ctx.cwd);
+          ctx.ui.notify(
+            `Pricing refreshed: ${modelCount} models loaded (last_updated: ${lastUpdated}). Fleet rebuilt (${runtime.streamDeps.fleet.length} models).`,
+            'info',
+          );
           return;
         }
 
@@ -594,9 +698,12 @@ export {
   deriveTurnType,
   discoverFleet,
   extractPromptText,
+  formatPricingStalenessLine,
   formatStatusMessage,
+  getRouterStateDbPath,
   mapContextMessages,
   parseSmartRouterArgs,
+  refreshPricingCatalog,
 };
 
 export default async function smartRouterExtension(pi: ExtensionAPI): Promise<void> {
@@ -604,11 +711,15 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
   const modelRegistry = ModelRegistry.create(authStorage);
   const hydraMatcher = await initHydraMatcher();
   const dispatchOptions = hydraMatcher ? { hydraMatcher } : undefined;
+  const cwd = process.cwd();
+  const store = createExtensionStore(cwd);
 
   const runtime: SmartRouterRuntime = {
     fleetMode: 'scoped',
     lastDecision: undefined,
+    priceCatalog: null,
     modelRegistry,
+    store,
     hydraMatcher,
     dispatchOptions,
     streamDeps: {
@@ -621,7 +732,7 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
     },
   };
 
-  await rebuildFleet(runtime, pi, process.cwd());
+  await rebuildFleet(runtime, pi, cwd);
 
   registerSmartRouterCommand(pi, runtime);
 
@@ -631,6 +742,9 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
       runtime.fleetMode = restoredMode;
       await rebuildFleet(runtime, pi, ctx.cwd);
     }
+    notifyPricingStalenessIfNeeded(runtime, (message, level) => {
+      ctx.ui.notify(message, level);
+    });
   });
 
   pi.registerProvider(PROVIDER_NAME, {
