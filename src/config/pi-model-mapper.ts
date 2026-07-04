@@ -14,10 +14,19 @@ import type {
   Tier,
 } from '../domain/types/entities.js';
 
+/** Pi registry `Model.cost` shape — per-token USD rates. */
+export interface PiRegistryCost {
+  readonly input: number;
+  readonly output: number;
+  readonly cacheRead: number;
+  readonly cacheWrite: number;
+}
+
 export interface PiModelInput {
   readonly provider: string;
   readonly id: string;
   readonly name?: string;
+  readonly cost?: PiRegistryCost;
 }
 
 interface ModelFamilyDefaults {
@@ -112,6 +121,34 @@ function matchPatternRules(id: string): ModelFamilyDefaults | undefined {
   return undefined;
 }
 
+/**
+ * Registry cost → USD per 1M tokens: average of input and output rates scaled to 1M.
+ * Matches `computeCostPer1MTokens` in litellm-fetch (SP-045/SP-046).
+ * Returns undefined when both input and output rates are zero (use pattern default).
+ */
+function deriveFallbackCostPer1M(cost: PiRegistryCost): number | undefined {
+  const { input, output } = cost;
+  if (input === 0 && output === 0) {
+    return undefined;
+  }
+
+  const inputPer1M = input * 1_000_000;
+  const outputPer1M = output * 1_000_000;
+  return (inputPer1M + outputPer1M) / 2;
+}
+
+function resolveFallbackCost(
+  input: PiModelInput,
+  defaults: ModelFamilyDefaults,
+): number {
+  if (input.cost === undefined) {
+    return defaults.pricing.fallback_cost_per_1m;
+  }
+
+  const fromRegistry = deriveFallbackCostPer1M(input.cost);
+  return fromRegistry ?? defaults.pricing.fallback_cost_per_1m;
+}
+
 function buildProfile(input: PiModelInput, defaults: ModelFamilyDefaults): ModelProfile {
   const provider = input.provider.trim();
   const registryKey = `${normalizeProvider(provider)}/${input.id}`;
@@ -123,7 +160,7 @@ function buildProfile(input: PiModelInput, defaults: ModelFamilyDefaults): Model
     capabilities: { ...defaults.capabilities },
     pricing: {
       registry_key: defaults.pricing.registry_key ?? registryKey,
-      fallback_cost_per_1m: defaults.pricing.fallback_cost_per_1m,
+      fallback_cost_per_1m: resolveFallbackCost(input, defaults),
     },
   };
 
@@ -146,7 +183,13 @@ export function mapPiModelToProfile(input: PiModelInput): ModelProfile {
   const provider = normalizeProvider(input.provider);
 
   if (LOCAL_PROVIDERS.has(provider)) {
-    return buildProfile(input, LOCAL_DEFAULTS);
+    // Local models stay free — registry cost must not override zero-tier pricing.
+    const localInput: PiModelInput = {
+      provider: input.provider,
+      id: input.id,
+      ...(input.name !== undefined ? { name: input.name } : {}),
+    };
+    return buildProfile(localInput, LOCAL_DEFAULTS);
   }
 
   const matched = matchPatternRules(input.id);

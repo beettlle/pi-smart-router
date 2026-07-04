@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-04
 **Review Level:** 1
 **Size:** S
@@ -8,22 +8,27 @@
 
 ## Step 1: Mapper cost derivation
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Extend `PiModelInput` with optional cost fields
-- [ ] Derive `fallback_cost_per_1m` from registry cost
-- [ ] Keep pattern tier/capability defaults
+- [x] Extend `PiModelInput` with optional cost fields
+- [x] Derive `fallback_cost_per_1m` from registry cost
+- [x] Keep pattern tier/capability defaults
 
 ## Step 2: Extension pass-through
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Forward cost in `registryModelsToFleetInput`
-- [ ] Verify scoped and all modes
+- [x] Forward cost in `registryModelsToFleetInput`
+- [x] Verify scoped and all modes
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Unit tests for cost override and fallback paths
-- [ ] Run `npm run typecheck && npm test`
+- [x] Unit tests for cost override and fallback paths
+- [x] Run `npm run typecheck && npm test`
+
+## Completion Criteria
+
+- [x] All steps complete
+- [x] Tests pass

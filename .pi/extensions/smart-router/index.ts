@@ -156,6 +156,12 @@ function registryModelsToFleetInput(models: readonly Model<Api>[]) {
     provider: model.provider,
     id: model.id,
     ...(model.name !== undefined ? { name: model.name } : {}),
+    cost: {
+      input: model.cost.input,
+      output: model.cost.output,
+      cacheRead: model.cost.cacheRead,
+      cacheWrite: model.cost.cacheWrite,
+    },
   }));
 }
 

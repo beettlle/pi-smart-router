@@ -23,14 +23,14 @@ function makeProfile(id: string): ModelProfile {
   };
 }
 
-function makeRegistryModel(id: string): Model<Api> {
+function makeRegistryModel(id: string, cost?: Model<Api>['cost']): Model<Api> {
   return {
     name: id,
     api: 'openai-responses',
     baseUrl: 'https://example.com',
     reasoning: false,
     input: ['text'],
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    cost: cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: 128_000,
     maxTokens: 4096,
     provider: 'openai',
@@ -95,6 +95,39 @@ describe('discoverFleet pricing integration (SP-045)', () => {
     expect(catalog).not.toBeNull();
     expect(fleet).toHaveLength(1);
     expect(fleet[0]?.pricing.fallback_cost_per_1m).toBe(0.375);
+  });
+});
+
+describe('discoverFleet registry cost pass-through (SP-046)', () => {
+  const registryCost = {
+    input: 1.5e-7,
+    output: 6e-7,
+    cacheRead: 0,
+    cacheWrite: 0,
+  };
+
+  it('maps registry Model.cost into fleet profiles in all mode', async () => {
+    const store = new MemoryStore([]);
+    const registry = createMockRegistry([
+      makeRegistryModel('gpt-4o-mini', registryCost),
+    ]);
+
+    const { fleet } = await discoverFleet(registry, 'all', '/tmp', store);
+
+    expect(fleet).toHaveLength(1);
+    expect(fleet[0]?.pricing.fallback_cost_per_1m).toBeCloseTo(0.375, 5);
+  });
+
+  it('maps registry Model.cost into fleet profiles in scoped mode', async () => {
+    const store = new MemoryStore([]);
+    const registry = createMockRegistry([
+      makeRegistryModel('gpt-4o-mini', registryCost),
+    ]);
+
+    const { fleet } = await discoverFleet(registry, 'scoped', '/tmp', store);
+
+    expect(fleet).toHaveLength(1);
+    expect(fleet[0]?.pricing.fallback_cost_per_1m).toBeCloseTo(0.375, 5);
   });
 });
 
