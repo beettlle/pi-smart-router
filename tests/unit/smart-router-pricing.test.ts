@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   discoverFleet,
+  formatHistoryMessage,
   formatPricingStalenessLine,
   formatStatusMessage,
   getRouterStateDbPath,
@@ -63,6 +64,16 @@ describe('parseSmartRouterArgs (SP-045)', () => {
   it('rejects unknown pricing subcommands', () => {
     expect(() => parseSmartRouterArgs('pricing stale')).toThrow('Usage:');
   });
+
+  it('parses history with default and explicit limits', () => {
+    expect(parseSmartRouterArgs('history')).toEqual({ command: 'history', limit: 10 });
+    expect(parseSmartRouterArgs('history 25')).toEqual({ command: 'history', limit: 25 });
+  });
+
+  it('rejects invalid history limits', () => {
+    expect(() => parseSmartRouterArgs('history 0')).toThrow('Usage:');
+    expect(() => parseSmartRouterArgs('history abc')).toThrow('Usage:');
+  });
 });
 
 describe('getSmartRouterArgumentCompletions', () => {
@@ -72,11 +83,12 @@ describe('getSmartRouterArgumentCompletions', () => {
   }
 
   it('offers top-level subcommands on empty prefix', () => {
-    expect(completionValues('')).toEqual(['status', 'mode', 'pricing']);
+    expect(completionValues('')).toEqual(['status', 'history', 'mode', 'pricing']);
   });
 
   it('filters top-level subcommands by partial prefix', () => {
     expect(completionValues('st')).toEqual(['status']);
+    expect(completionValues('hi')).toEqual(['history']);
     expect(completionValues('pr')).toEqual(['pricing']);
   });
 
@@ -88,6 +100,10 @@ describe('getSmartRouterArgumentCompletions', () => {
   it('offers pricing refresh after pricing token', () => {
     expect(completionValues('pricing')).toEqual(['pricing refresh']);
     expect(completionValues('pricing r')).toEqual(['pricing refresh']);
+  });
+
+  it('offers history completion after history token', () => {
+    expect(completionValues('history')).toEqual(['history']);
   });
 
   it('keeps full invocations parseable', () => {
@@ -208,6 +224,33 @@ describe('refreshPricingCatalog (SP-045)', () => {
     expect(saved?.user_overrides).toEqual({ 'gpt-4o': 42.0 });
     expect(saved?.registry_snapshot['gpt-4o-mini']).toBeCloseTo(0.375, 5);
     expect(saved?.last_updated).toBe(result.lastUpdated);
+  });
+});
+
+describe('formatHistoryMessage', () => {
+  it('formats empty history', () => {
+    expect(formatHistoryMessage([])).toBe('No routing history yet.');
+  });
+
+  it('formats telemetry rows', () => {
+    const message = formatHistoryMessage([
+      {
+        timestamp: '2026-07-04T12:00:00.000Z',
+        session_id: 'sess-1',
+        request_id: 'req-2',
+        turn_type: 'main_loop',
+        stage: 'hydra_match',
+        reason_code: 'hydra_embedding_match',
+        selected_model_id: 'gemini-flash-latest',
+        estimated_cost_usd: 0,
+        routing_latency_ms: 4,
+        pin_reason: null,
+      },
+    ]);
+
+    expect(message).toContain('gemini-flash-latest');
+    expect(message).toContain('hydra_match');
+    expect(message).toContain('4ms');
   });
 });
 

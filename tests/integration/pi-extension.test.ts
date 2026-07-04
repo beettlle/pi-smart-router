@@ -30,7 +30,10 @@ import {
 } from '../../src/config/pi-model-mapper.js';
 import type { ModelProfile, RoutingDecision } from '../../src/domain/types/index.js';
 import { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
+import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
+import { RoutingTelemetryEmitter } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 import { createRouterFromFleet } from '../../src/index.js';
+import { ExecutionLedger } from '../../src/domain/delegation/execution-ledger.js';
 
 const { mockDelegateStreamSimple } = vi.hoisted(() => ({
   mockDelegateStreamSimple: vi.fn(),
@@ -271,6 +274,7 @@ describe('Pi extension integration (SP-043)', () => {
         router,
         modelRegistry,
         fleet,
+        executionLedger: new ExecutionLedger(),
         onRoutingDecision(decision) {
           capturedDecision = decision;
         },
@@ -314,6 +318,47 @@ describe('Pi extension integration (SP-043)', () => {
         '[smart-router] routing decision',
         expect.any(String),
       );
+    });
+  });
+
+  describe('routing telemetry persistence', () => {
+    beforeEach(() => {
+      mockDelegateStreamSimple.mockReset();
+    });
+
+    it('persists a telemetry row after stream delegation', async () => {
+      const fleet = mapFleetFromRegistry(REGISTRY_MODELS);
+      const store = new MemoryStore();
+      const router = createRouterFromFleet(fleet, {
+        telemetryEmitter: new RoutingTelemetryEmitter({
+          onRecord: (record) => store.appendTelemetry(record),
+        }),
+      });
+      const modelRegistry = createMockRegistry(piRegistryModels);
+
+      const target = piRegistryModels.find((model) => model.id === 'gpt-5-mini')!;
+      mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
+
+      const streamSimple = createStreamSimple({
+        router,
+        modelRegistry,
+        fleet,
+        executionLedger: new ExecutionLedger(),
+      });
+
+      await collectEvents(
+        streamSimple(
+          makeAutoModel(),
+          makeContext([userMessage('Persist this route')]),
+          { sessionId: 'telemetry-session' },
+        ),
+      );
+
+      const rows = await store.listTelemetry({ limit: 5 });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.session_id).toBe('telemetry-session');
+      expect(rows[0]?.selected_model_id).toBeDefined();
+      expect(fleet.map((profile) => profile.id)).toContain(rows[0]?.selected_model_id);
     });
   });
 });

@@ -6,17 +6,26 @@
  */
 
 import type { RoutingDecision, RoutingRequest, RoutingTelemetry } from '../../domain/types/index.js';
+import {
+  TELEMETRY_MAX_ENTRIES,
+  TELEMETRY_WINDOW_MS,
+  evictExpiredTelemetryEntries,
+  makeTelemetryRoom,
+} from './telemetry-limits.js';
 
-// ─── Configuration ───────────────────────────────────────────────────────────
-
-const WINDOW_HOURS = 168;
-const WINDOW_MS = WINDOW_HOURS * 60 * 60 * 1000;
-const MAX_ENTRIES = 1111;
+export {
+  DEFAULT_HISTORY_LIMIT,
+  MAX_HISTORY_LIMIT,
+  TELEMETRY_MAX_ENTRIES,
+  TELEMETRY_WINDOW_HOURS,
+  TELEMETRY_WINDOW_MS,
+} from './telemetry-limits.js';
 
 export interface TelemetryEmitterOptions {
   readonly maxEntries?: number;
   readonly windowMs?: number;
   readonly clock?: () => string;
+  readonly onRecord?: (record: RoutingTelemetry) => void;
 }
 
 // ─── Emitter ─────────────────────────────────────────────────────────────────
@@ -26,11 +35,13 @@ export class RoutingTelemetryEmitter {
   private readonly maxEntries: number;
   private readonly windowMs: number;
   private readonly clock: () => string;
+  private readonly onRecord: ((record: RoutingTelemetry) => void) | undefined;
 
   constructor(options?: TelemetryEmitterOptions) {
-    this.maxEntries = options?.maxEntries ?? MAX_ENTRIES;
-    this.windowMs = options?.windowMs ?? WINDOW_MS;
+    this.maxEntries = options?.maxEntries ?? TELEMETRY_MAX_ENTRIES;
+    this.windowMs = options?.windowMs ?? TELEMETRY_WINDOW_MS;
     this.clock = options?.clock ?? (() => new Date().toISOString());
+    this.onRecord = options?.onRecord;
   }
 
   /**
@@ -38,7 +49,7 @@ export class RoutingTelemetryEmitter {
    * Enforces the rolling window (time + count) before appending.
    */
   emit(request: RoutingRequest, decision: RoutingDecision): RoutingTelemetry {
-    this.evict();
+    makeTelemetryRoom(this.entries, this.maxEntries);
 
     const record: RoutingTelemetry = {
       timestamp: this.clock(),
@@ -54,6 +65,7 @@ export class RoutingTelemetryEmitter {
     };
 
     this.entries.push(record);
+    this.onRecord?.(record);
     return record;
   }
 
@@ -64,29 +76,7 @@ export class RoutingTelemetryEmitter {
 
   /** Snapshot of all retained entries (newest last). */
   snapshot(): readonly RoutingTelemetry[] {
-    this.evict();
+    evictExpiredTelemetryEntries(this.entries, this.windowMs);
     return [...this.entries];
-  }
-
-  /**
-   * Evict entries outside the rolling window.
-   * Removes time-expired entries first, then trims oldest if count exceeds max.
-   */
-  private evict(): void {
-    const now = Date.now();
-    const cutoff = now - this.windowMs;
-
-    while (this.entries.length > 0) {
-      const oldest = this.entries[0]!;
-      if (new Date(oldest.timestamp).getTime() < cutoff) {
-        this.entries.shift();
-      } else {
-        break;
-      }
-    }
-
-    while (this.entries.length >= this.maxEntries) {
-      this.entries.shift();
-    }
   }
 }

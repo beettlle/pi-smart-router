@@ -3,7 +3,12 @@
  * Implementations live in infrastructure/ (SQLite, in-memory for tests).
  */
 
-import type { ModelProfile, PriceCatalog, SessionPin } from './entities.js';
+import type { ModelProfile, PriceCatalog, RoutingTelemetry, SessionPin } from './entities.js';
+
+export interface ListTelemetryOptions {
+  readonly limit?: number;
+  readonly sessionId?: string;
+}
 
 export interface StorePort {
   /** Retrieve an active session pin, or null if unpinned. */
@@ -23,4 +28,10 @@ export interface StorePort {
 
   /** Persist an updated price catalog. */
   putPriceCatalog(catalog: PriceCatalog): Promise<void>;
+
+  /** Append a routing telemetry audit record (sync hot path). */
+  appendTelemetry(entry: RoutingTelemetry): void;
+
+  /** List recent telemetry rows, newest first. */
+  listTelemetry(options?: ListTelemetryOptions): Promise<readonly RoutingTelemetry[]>;
 }

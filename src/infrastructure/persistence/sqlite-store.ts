@@ -14,8 +14,14 @@ import Database from 'better-sqlite3';
 import type BetterSqlite3 from 'better-sqlite3';
 
 import type { ModelProfile, PriceCatalog, RoutingTelemetry, SessionPin } from '../../domain/types/entities.js';
-import type { StorePort } from '../../domain/types/store-port.js';
+import type { ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
 import { MemoryStore } from './memory-store.js';
+import {
+  DEFAULT_HISTORY_LIMIT,
+  MAX_HISTORY_LIMIT,
+  TELEMETRY_MAX_ENTRIES,
+  TELEMETRY_WINDOW_MS,
+} from '../telemetry/telemetry-limits.js';
 
 // ─── Schema version & migrations ────────────────────────────────────────────
 
@@ -247,6 +253,57 @@ export class SqliteStore implements StorePort {
         )`,
       )
       .run(entry);
+
+    this.evictTelemetryRows();
+  }
+
+  async listTelemetry(options?: ListTelemetryOptions): Promise<readonly RoutingTelemetry[]> {
+    const limit = clampHistoryLimit(options?.limit);
+    const sessionId = options?.sessionId;
+
+    const rows = sessionId
+      ? (this.db
+          .prepare(
+            `SELECT * FROM telemetry
+             WHERE session_id = ?
+             ORDER BY id DESC
+             LIMIT ?`,
+          )
+          .all(sessionId, limit) as TelemetryRow[])
+      : (this.db
+          .prepare(
+            `SELECT * FROM telemetry
+             ORDER BY id DESC
+             LIMIT ?`,
+          )
+          .all(limit) as TelemetryRow[]);
+
+    return rows.map(telemetryRowToEntity);
+  }
+
+  private evictTelemetryRows(): void {
+    const cutoff = new Date(Date.now() - TELEMETRY_WINDOW_MS).toISOString();
+    this.db.prepare('DELETE FROM telemetry WHERE timestamp < ?').run(cutoff);
+
+    const countRow = this.db
+      .prepare('SELECT COUNT(*) AS count FROM telemetry')
+      .get() as { count: number };
+
+    const excess = countRow.count - TELEMETRY_MAX_ENTRIES;
+    if (excess <= 0) {
+      return;
+    }
+
+    this.db
+      .prepare(
+        `DELETE FROM telemetry
+         WHERE id IN (
+           SELECT id FROM telemetry
+           ORDER BY id ASC
+           LIMIT ?
+         )`,
+      )
+      .run(excess);
   }
 
   // ─── Token bucket (BEGIN IMMEDIATE) ─────────────────────────────────────
@@ -380,7 +437,43 @@ interface RateLimitRow {
   last_refill_at: string;
 }
 
+interface TelemetryRow {
+  id: number;
+  timestamp: string;
+  session_id: string;
+  request_id: string;
+  turn_type: string;
+  stage: string;
+  reason_code: string;
+  selected_model_id: string;
+  estimated_cost_usd: number;
+  routing_latency_ms: number;
+  pin_reason: string | null;
+}
+
 // ─── Row mappers ──────────────────────────────────────────────────────────
+
+function clampHistoryLimit(limit: number | undefined): number {
+  if (limit === undefined) {
+    return DEFAULT_HISTORY_LIMIT;
+  }
+  return Math.min(Math.max(1, Math.floor(limit)), MAX_HISTORY_LIMIT);
+}
+
+function telemetryRowToEntity(row: TelemetryRow): RoutingTelemetry {
+  return {
+    timestamp: row.timestamp,
+    session_id: row.session_id,
+    request_id: row.request_id,
+    turn_type: row.turn_type,
+    stage: row.stage,
+    reason_code: row.reason_code,
+    selected_model_id: row.selected_model_id,
+    estimated_cost_usd: row.estimated_cost_usd,
+    routing_latency_ms: row.routing_latency_ms,
+    pin_reason: row.pin_reason,
+  };
+}
 
 function pinRowToEntity(row: PinRow): SessionPin {
   return {

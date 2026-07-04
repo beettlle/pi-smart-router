@@ -1,10 +1,11 @@
 export const SMART_ROUTER_USAGE =
-  '/smart-router [status] | mode scoped|all | pricing refresh';
+  '/smart-router [status] | history [limit] | mode scoped|all | pricing refresh';
 
 type CompletionItem = { value: string; label: string };
 
 const TOP_LEVEL: CompletionItem[] = [
   { value: 'status', label: 'Show last routing decision' },
+  { value: 'history', label: 'Show recent routing history' },
   { value: 'mode', label: 'Switch fleet mode (scoped or all)' },
   { value: 'pricing', label: 'Manage pricing catalog' },
 ];
@@ -22,6 +23,8 @@ const PRICING_COMPLETIONS: CompletionItem[] = [
 export const SMART_ROUTER_FULL_INVOCATIONS = [
   '',
   'status',
+  'history',
+  'history 10',
   'mode scoped',
   'mode all',
   'pricing refresh',
@@ -45,6 +48,10 @@ export function getSmartRouterArgumentCompletions(prefix: string): CompletionIte
     const subPrefix = tokens.slice(1).join(' ');
     const filtered = filterByPrefix(PRICING_COMPLETIONS, `pricing${subPrefix ? ` ${subPrefix}` : ''}`);
     return filtered.length > 0 ? filtered : null;
+  }
+
+  if (tokens[0] === 'history') {
+    return [{ value: 'history', label: 'Show recent routing history' }];
   }
 
   const firstToken = tokens[0] ?? '';

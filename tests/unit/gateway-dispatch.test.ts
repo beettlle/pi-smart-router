@@ -161,6 +161,55 @@ describe('GatewayDispatch', () => {
     });
   });
 
+  describe('selectFailover', () => {
+    it('returns same-tier alternative excluding failed models', () => {
+      const multiFleet = [
+        makeModel({ id: 'econ-a', tier: 'economical-cloud', pricing: { fallback_cost_per_1m: 0.5 } }),
+        makeModel({ id: 'econ-b', tier: 'economical-cloud', pricing: { fallback_cost_per_1m: 0.5 } }),
+        makeModel({ id: 'frontier-a', tier: 'frontier-cloud' }),
+      ];
+      const gateway = new GatewayDispatch(multiFleet);
+
+      const failover = gateway.selectFailover(
+        {
+          request_id: 'req-1',
+          selected_model_id: 'econ-a',
+          tier: 'economical-cloud',
+          stage: 'fallback',
+          reason_code: 'safe_cloud_default',
+          routing_latency_ms: 1,
+          pin_reason: null,
+        },
+        ['econ-a'],
+      );
+
+      expect(failover?.selected_model_id).toBe('econ-b');
+      expect(failover?.reason_code).toBe('circuit_breaker_failover');
+    });
+
+    it('returns undefined when no healthy alternative exists', () => {
+      const singleFleet = [
+        makeModel({ id: 'econ-a', tier: 'economical-cloud', pricing: { fallback_cost_per_1m: 0.5 } }),
+      ];
+      const gateway = new GatewayDispatch(singleFleet);
+
+      const failover = gateway.selectFailover(
+        {
+          request_id: 'req-1',
+          selected_model_id: 'econ-a',
+          tier: 'economical-cloud',
+          stage: 'fallback',
+          reason_code: 'safe_cloud_default',
+          routing_latency_ms: 1,
+          pin_reason: null,
+        },
+        ['econ-a'],
+      );
+
+      expect(failover).toBeUndefined();
+    });
+  });
+
   // ─── Rate limiting (T057, FR-017) ──────────────────────────────────────
 
   describe('rate limiting', () => {

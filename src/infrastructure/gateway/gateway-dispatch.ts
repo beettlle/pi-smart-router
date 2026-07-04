@@ -170,28 +170,29 @@ export class GatewayDispatch {
   }
 
   /**
-   * If the selected model's circuit is open, attempt to fail over to
-   * an alternative model on the same tier (T056 weighted distribution).
-   * Falls back to any healthy model on any tier if no same-tier alternative exists.
+   * Select an alternate model when the current target is unavailable or failed.
+   * Prefers same-tier healthy models with closed circuits, then any tier.
    */
-  private applyCircuitBreaker(decision: RoutingDecision): RoutingDecision {
-    if (this.circuitBreaker.canDispatch(decision.selected_model_id)) {
-      return decision;
-    }
+  selectFailover(
+    decision: RoutingDecision,
+    excludeModelIds: readonly string[] = [],
+  ): RoutingDecision | undefined {
+    const excluded = new Set(excludeModelIds);
 
     const sameTier = this.fleet.filter(
       (m) =>
         m.tier === decision.tier &&
         m.id !== decision.selected_model_id &&
+        !excluded.has(m.id) &&
         m.healthy !== false &&
         this.circuitBreaker.canDispatch(m.id),
     );
 
-    const alternative = weightedSelect(sameTier);
-    if (alternative) {
+    const sameTierAlternative = weightedSelect(sameTier);
+    if (sameTierAlternative) {
       return {
         ...decision,
-        selected_model_id: alternative.id,
+        selected_model_id: sameTierAlternative.id,
         reason_code: 'circuit_breaker_failover',
       };
     }
@@ -199,6 +200,7 @@ export class GatewayDispatch {
     const anyHealthy = this.fleet.filter(
       (m) =>
         m.id !== decision.selected_model_id &&
+        !excluded.has(m.id) &&
         m.healthy !== false &&
         this.circuitBreaker.canDispatch(m.id),
     );
@@ -213,7 +215,20 @@ export class GatewayDispatch {
       };
     }
 
-    return decision;
+    return undefined;
+  }
+
+  /**
+   * If the selected model's circuit is open, attempt to fail over to
+   * an alternative model on the same tier (T056 weighted distribution).
+   * Falls back to any healthy model on any tier if no same-tier alternative exists.
+   */
+  private applyCircuitBreaker(decision: RoutingDecision): RoutingDecision {
+    if (this.circuitBreaker.canDispatch(decision.selected_model_id)) {
+      return decision;
+    }
+
+    return this.selectFailover(decision) ?? decision;
   }
 
   /**

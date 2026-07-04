@@ -200,6 +200,59 @@ describe('SqliteStore', () => {
         }),
       ).not.toThrow();
     });
+
+    it('lists telemetry newest first', async () => {
+      store.appendTelemetry({
+        timestamp: '2026-07-02T00:00:00.000Z',
+        session_id: 'sess-1',
+        request_id: 'req-1',
+        turn_type: 'main_loop',
+        stage: 'fallback',
+        reason_code: 'safe_cloud_default',
+        selected_model_id: 'gpt-4o-mini',
+        estimated_cost_usd: 0,
+        routing_latency_ms: 1,
+        pin_reason: null,
+      });
+      store.appendTelemetry({
+        timestamp: '2026-07-02T00:01:00.000Z',
+        session_id: 'sess-1',
+        request_id: 'req-2',
+        turn_type: 'main_loop',
+        stage: 'hydra_match',
+        reason_code: 'hydra_embedding_match',
+        selected_model_id: 'gemini-flash-latest',
+        estimated_cost_usd: 0,
+        routing_latency_ms: 4,
+        pin_reason: null,
+      });
+
+      const rows = await store.listTelemetry({ limit: 10 });
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.request_id).toBe('req-2');
+      expect(rows[1]?.request_id).toBe('req-1');
+    });
+
+    it('evicts oldest rows beyond max entry count', async () => {
+      for (let i = 0; i < 1112; i++) {
+        store.appendTelemetry({
+          timestamp: new Date(Date.now() + i).toISOString(),
+          session_id: 'sess-1',
+          request_id: `req-${i}`,
+          turn_type: 'main_loop',
+          stage: 'fallback',
+          reason_code: 'safe_cloud_default',
+          selected_model_id: 'gpt-4o-mini',
+          estimated_cost_usd: 0,
+          routing_latency_ms: 1,
+          pin_reason: null,
+        });
+      }
+
+      const rows = await store.listTelemetry({ limit: 2000 });
+      expect(rows.length).toBeLessThanOrEqual(1111);
+      expect(rows[0]?.request_id).toBe('req-1111');
+    });
   });
 
   // ─── Token bucket ─────────────────────────────────────────────────────

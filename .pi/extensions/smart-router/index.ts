@@ -14,6 +14,7 @@ import { randomUUID } from 'node:crypto';
 import {
   type Api,
   type AssistantMessage,
+  type AssistantMessageEvent,
   type AssistantMessageEventStream,
   type Context,
   type Message,
@@ -38,19 +39,32 @@ import {
   createOnnxEmbeddingProvider,
 } from '../../../src/domain/matching/hydra-matcher.js';
 import { safeCloudDefault } from '../../../src/domain/pipeline/safe-default.js';
+import { normalizeDelegationContext } from '../../../src/domain/delegation/delegation-context.js';
+import { ExecutionLedger } from '../../../src/domain/delegation/execution-ledger.js';
+import { SessionPinner } from '../../../src/domain/pinning/session-pinner.js';
 import type {
   Message as RoutingMessage,
   ModelProfile,
   PriceCatalog,
   RoutingDecision,
   RoutingRequest,
+  RoutingTelemetry,
   TurnType,
 } from '../../../src/domain/types/index.js';
 import { createResilientStore } from '../../../src/infrastructure/persistence/sqlite-store.js';
 import type { StorePort } from '../../../src/domain/types/store-port.js';
+import { RoutingTelemetryEmitter } from '../../../src/infrastructure/telemetry/routing-telemetry.js';
+import {
+  DEFAULT_HISTORY_LIMIT,
+  MAX_HISTORY_LIMIT,
+} from '../../../src/infrastructure/telemetry/telemetry-limits.js';
 import { applyCatalogPricesToFleet } from '../../../src/infrastructure/pricing/price-broker.js';
 import { fetchLitellmPriceCatalog } from '../../../src/infrastructure/pricing/litellm-fetch.js';
 import { checkStaleness } from '../../../src/infrastructure/pricing/pricing-monitor.js';
+import {
+  isInfraAssistantError,
+  parseAssistantMessageError,
+} from '../../../src/infrastructure/delegation/provider-error.js';
 import {
   createRouterFromFleet,
   type GatewayDispatchOptions,
@@ -71,6 +85,7 @@ type FleetMode = 'scoped' | 'all';
 
 type SmartRouterCommand =
   | { command: 'status' }
+  | { command: 'history'; limit: number }
   | { command: 'mode'; mode: FleetMode }
   | { command: 'pricing'; subcommand: 'refresh' };
 
@@ -78,6 +93,7 @@ interface StreamDelegationDeps {
   router: RouterHandle;
   readonly modelRegistry: ModelRegistry;
   fleet: ModelProfile[];
+  readonly executionLedger: ExecutionLedger;
   onRoutingDecision?: (decision: RoutingDecision) => void;
 }
 
@@ -87,9 +103,10 @@ interface SmartRouterRuntime {
   priceCatalog: PriceCatalog | null;
   readonly modelRegistry: ModelRegistry;
   readonly store: StorePort;
+  readonly sessionPinner: SessionPinner;
+  readonly executionLedger: ExecutionLedger;
   streamDeps: StreamDelegationDeps;
   hydraMatcher: HydraMatcher | undefined;
-  dispatchOptions: GatewayDispatchOptions | undefined;
 }
 
 function createHooksAdapter(pi: ExtensionAPI): PiExtensionHooks {
@@ -208,6 +225,24 @@ async function discoverFleet(
   return { fleet, catalog };
 }
 
+function createDispatchOptions(
+  store: StorePort,
+  sessionPinner: SessionPinner,
+  hydraMatcher?: HydraMatcher,
+): GatewayDispatchOptions {
+  const telemetryEmitter = new RoutingTelemetryEmitter({
+    onRecord: (record) => {
+      store.appendTelemetry(record);
+    },
+  });
+
+  return {
+    sessionPinner,
+    ...(hydraMatcher ? { hydraMatcher } : {}),
+    telemetryEmitter,
+  };
+}
+
 async function rebuildFleet(
   runtime: SmartRouterRuntime,
   pi: ExtensionAPI,
@@ -220,7 +255,10 @@ async function rebuildFleet(
     runtime.store,
   );
   runtime.priceCatalog = catalog;
-  const router = createRouterFromFleet(fleet, runtime.dispatchOptions);
+  const router = createRouterFromFleet(
+    fleet,
+    createDispatchOptions(runtime.store, runtime.sessionPinner, runtime.hydraMatcher),
+  );
   router.register(createHooksAdapter(pi));
   runtime.streamDeps.router = router;
   runtime.streamDeps.fleet = fleet;
@@ -299,10 +337,27 @@ function restoreFleetModeFromSession(ctx: ExtensionContext): FleetMode | undefin
   return undefined;
 }
 
+function parseHistoryLimit(raw: string | undefined): number {
+  if (raw === undefined) {
+    return DEFAULT_HISTORY_LIMIT;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    throw new Error(`Usage: ${SMART_ROUTER_USAGE}`);
+  }
+
+  return Math.min(parsed, MAX_HISTORY_LIMIT);
+}
+
 function parseSmartRouterArgs(args: string): SmartRouterCommand {
   const tokens = args.trim().split(/\s+/).filter(Boolean);
   if (tokens.length === 0 || tokens[0] === 'status') {
     return { command: 'status' };
+  }
+
+  if (tokens[0] === 'history') {
+    return { command: 'history', limit: parseHistoryLimit(tokens[1]) };
   }
 
   if (tokens[0] === 'mode' && (tokens[1] === 'scoped' || tokens[1] === 'all')) {
@@ -352,6 +407,19 @@ function formatStatusMessage(
     `Latency: ${decision.routing_latency_ms}ms`,
   );
   return lines.join('\n');
+}
+
+function formatHistoryMessage(entries: readonly RoutingTelemetry[]): string {
+  if (entries.length === 0) {
+    return 'No routing history yet.';
+  }
+
+  return entries
+    .map(
+      (entry) =>
+        `${entry.timestamp} | ${entry.selected_model_id} | ${entry.stage} | ${entry.turn_type} | ${entry.routing_latency_ms}ms`,
+    )
+    .join('\n');
 }
 
 function notifyPricingStalenessIfNeeded(
@@ -605,13 +673,51 @@ async function resolveDelegationOptions(
   };
 }
 
-async function pipeDelegatedStream(
+interface DelegatedStreamResult {
+  readonly finalMessage: AssistantMessage | undefined;
+  readonly failed: boolean;
+  readonly events: AssistantMessageEvent[];
+}
+
+function modelToExecutionModel(model: Model<Api>) {
+  return {
+    provider: model.provider,
+    api: model.api,
+    id: model.id,
+  };
+}
+
+function buildDelegationContext(
+  context: Context,
+  targetModel: Model<Api>,
+  deps: StreamDelegationDeps,
+  sessionId: string | undefined,
+): Context {
+  const sessionExecution = sessionId
+    ? deps.executionLedger.getLastExecution(sessionId)
+    : null;
+
+  return normalizeDelegationContext(context, targetModel, {
+    sessionExecution,
+  });
+}
+
+function flushDelegatedEvents(
   outer: AssistantMessageEventStream,
+  events: readonly AssistantMessageEvent[],
+): void {
+  for (const event of events) {
+    outer.push(event);
+  }
+  outer.end();
+}
+
+async function collectDelegatedStream(
   targetModel: Model<Api>,
   context: Context,
   modelRegistry: ModelRegistry,
   options: SimpleStreamOptions | undefined,
-): Promise<void> {
+): Promise<DelegatedStreamResult> {
   if (options?.signal?.aborted) {
     throw new Error('Request was aborted');
   }
@@ -622,13 +728,65 @@ async function pipeDelegatedStream(
     options,
   );
   const inner = delegateStreamSimple(targetModel, context, delegationOptions);
+  const events: AssistantMessageEvent[] = [];
+  let finalMessage: AssistantMessage | undefined;
+
   for await (const event of inner) {
     if (options?.signal?.aborted) {
       throw new Error('Request was aborted');
     }
-    outer.push(event);
+    events.push(event);
+
+    if (event.type === 'done') {
+      finalMessage = event.message;
+    } else if (event.type === 'error') {
+      finalMessage = event.error;
+    }
   }
-  outer.end();
+
+  const failed =
+    finalMessage !== undefined &&
+    (finalMessage.stopReason === 'error' || finalMessage.stopReason === 'aborted');
+
+  return { finalMessage, failed, events };
+}
+
+async function delegateWithOutcome(
+  targetModel: Model<Api>,
+  context: Context,
+  deps: StreamDelegationDeps,
+  options: SimpleStreamOptions | undefined,
+  sessionId: string | undefined,
+): Promise<DelegatedStreamResult> {
+  const delegationContext = buildDelegationContext(
+    context,
+    targetModel,
+    deps,
+    sessionId,
+  );
+
+  const result = await collectDelegatedStream(
+    targetModel,
+    delegationContext,
+    deps.modelRegistry,
+    options,
+  );
+
+  if (!result.finalMessage) {
+    return result;
+  }
+
+  if (result.failed) {
+    const parsed = parseAssistantMessageError(result.finalMessage);
+    deps.router.dispatch.recordOutcome(targetModel.id, parsed);
+  } else {
+    deps.router.dispatch.recordOutcome(targetModel.id);
+    if (sessionId) {
+      deps.executionLedger.recordSuccess(sessionId, modelToExecutionModel(targetModel));
+    }
+  }
+
+  return result;
 }
 
 async function routeAndDelegate(
@@ -637,7 +795,9 @@ async function routeAndDelegate(
   deps: StreamDelegationDeps,
   outer: AssistantMessageEventStream,
 ): Promise<void> {
+  const sessionId = options?.sessionId;
   let decision: RoutingDecision;
+
   try {
     const request = buildRoutingRequest(context, options);
     decision = await deps.router.dispatch.dispatch(request);
@@ -650,7 +810,14 @@ async function routeAndDelegate(
       '[smart-router] routing failed, using safe cloud default',
       error instanceof Error ? error.message : String(error),
     );
-    await pipeDelegatedStream(outer, fallbackModel, context, deps.modelRegistry, options);
+    const fallbackResult = await delegateWithOutcome(
+      fallbackModel,
+      context,
+      deps,
+      options,
+      sessionId,
+    );
+    flushDelegatedEvents(outer, fallbackResult.events);
     return;
   }
 
@@ -677,18 +844,86 @@ async function routeAndDelegate(
     api: targetModel.api,
   });
 
-  try {
-    await pipeDelegatedStream(outer, targetModel, context, deps.modelRegistry, options);
-  } catch (error) {
-    const fallbackModel = resolveFallbackModel(deps);
-    if (!fallbackModel || fallbackModel.id === targetModel.id) {
-      throw error;
+  const failedModelIds: string[] = [];
+
+  while (true) {
+    try {
+      const result = await delegateWithOutcome(
+        targetModel,
+        context,
+        deps,
+        options,
+        sessionId,
+      );
+
+      if (
+        result.failed &&
+        result.finalMessage &&
+        isInfraAssistantError(result.finalMessage) &&
+        failedModelIds.length === 0
+      ) {
+        failedModelIds.push(targetModel.id);
+        const failover = deps.router.dispatch.selectFailover(decision, failedModelIds);
+        if (!failover) {
+          flushDelegatedEvents(outer, result.events);
+          return;
+        }
+
+        const alternateModel = resolveTargetModel(deps, failover);
+        if (!alternateModel || alternateModel.id === targetModel.id) {
+          flushDelegatedEvents(outer, result.events);
+          return;
+        }
+
+        console.warn(
+          '[smart-router] infra error, failing over to alternate model',
+          alternateModel.id,
+        );
+        decision = failover;
+        targetModel = alternateModel;
+        continue;
+      }
+
+      flushDelegatedEvents(outer, result.events);
+      return;
+    } catch (error) {
+      deps.router.dispatch.recordOutcome(targetModel.id, { code: 'STREAM_DELEGATION_ERROR' });
+
+      if (failedModelIds.length === 0) {
+        failedModelIds.push(targetModel.id);
+        const failover = deps.router.dispatch.selectFailover(decision, failedModelIds);
+        const alternateModel = failover ? resolveTargetModel(deps, failover) : undefined;
+
+        if (alternateModel && alternateModel.id !== targetModel.id) {
+          console.warn(
+            '[smart-router] stream delegation failed, failing over',
+            error instanceof Error ? error.message : String(error),
+          );
+          decision = failover!;
+          targetModel = alternateModel;
+          continue;
+        }
+      }
+
+      const fallbackModel = resolveFallbackModel(deps);
+      if (!fallbackModel || fallbackModel.id === targetModel.id) {
+        throw error;
+      }
+
+      console.warn(
+        '[smart-router] stream delegation failed, using safe cloud default',
+        error instanceof Error ? error.message : String(error),
+      );
+      const fallbackResult = await delegateWithOutcome(
+        fallbackModel,
+        context,
+        deps,
+        options,
+        sessionId,
+      );
+      flushDelegatedEvents(outer, fallbackResult.events);
+      return;
     }
-    console.warn(
-      '[smart-router] stream delegation failed, using safe cloud default',
-      error instanceof Error ? error.message : String(error),
-    );
-    await pipeDelegatedStream(outer, fallbackModel, context, deps.modelRegistry, options);
   }
 }
 
@@ -723,7 +958,7 @@ function registerSmartRouterCommand(
 ): void {
   pi.registerCommand('smart-router', {
     description:
-      'Show routing status, switch fleet mode (scoped|all), or refresh pricing',
+      'Show routing status/history, switch fleet mode (scoped|all), or refresh pricing',
     getArgumentCompletions: getSmartRouterArgumentCompletions,
     handler: async (args, ctx) => {
       try {
@@ -731,6 +966,12 @@ function registerSmartRouterCommand(
 
         if (parsed.command === 'status') {
           ctx.ui.notify(formatStatusMessage(runtime, runtime.lastDecision), 'info');
+          return;
+        }
+
+        if (parsed.command === 'history') {
+          const rows = await runtime.store.listTelemetry({ limit: parsed.limit });
+          ctx.ui.notify(formatHistoryMessage(rows), 'info');
           return;
         }
 
@@ -766,11 +1007,13 @@ function registerSmartRouterCommand(
 
 export {
   buildRoutingRequest,
+  buildDelegationContext,
   createStreamSimple,
   deriveTurnType,
   discoverFleet,
   extractPromptText,
   formatPricingStalenessLine,
+  formatHistoryMessage,
   formatStatusMessage,
   getRouterStateDbPath,
   getSmartRouterArgumentCompletions,
@@ -786,9 +1029,10 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
   const authStorage = AuthStorage.create();
   const modelRegistry = ModelRegistry.create(authStorage);
   const hydraMatcher = await initHydraMatcher();
-  const dispatchOptions = hydraMatcher ? { hydraMatcher } : undefined;
   const cwd = process.cwd();
   const store = createExtensionStore(cwd);
+  const sessionPinner = new SessionPinner();
+  const executionLedger = new ExecutionLedger();
 
   const runtime: SmartRouterRuntime = {
     fleetMode: 'scoped',
@@ -796,12 +1040,17 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
     priceCatalog: null,
     modelRegistry,
     store,
+    sessionPinner,
+    executionLedger,
     hydraMatcher,
-    dispatchOptions,
     streamDeps: {
-      router: createRouterFromFleet([], dispatchOptions),
+      router: createRouterFromFleet(
+        [],
+        createDispatchOptions(store, sessionPinner, hydraMatcher),
+      ),
       modelRegistry,
       fleet: [],
+      executionLedger,
       onRoutingDecision(decision) {
         runtime.lastDecision = decision;
       },

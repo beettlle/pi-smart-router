@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildRoutingRequest,
+  buildDelegationContext,
   createStreamSimple,
   deriveTurnType,
   extractPromptText,
@@ -23,6 +24,8 @@ import {
 } from '../../.pi/extensions/smart-router/index.js';
 import type { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import { createRouterFromFleet } from '../../src/index.js';
+import { ExecutionLedger } from '../../src/domain/delegation/execution-ledger.js';
+import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import {
   HydraMatcher,
   type EmbeddingProvider,
@@ -57,6 +60,7 @@ function makeProfile(
 const fleet: ModelProfile[] = [
   makeProfile({ id: 'local-llama', tier: 'zero-tier', provider: 'ollama' }),
   makeProfile({ id: 'gpt-4o-mini', tier: 'economical-cloud', provider: 'openai' }),
+  makeProfile({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
   makeProfile({ id: 'claude-opus', tier: 'frontier-cloud', provider: 'anthropic' }),
 ];
 
@@ -81,6 +85,7 @@ function makeRegistryModel(
 
 const registryModels: Model<Api>[] = [
   makeRegistryModel({ provider: 'openai', id: 'gpt-4o-mini', api: 'openai-responses' }),
+  makeRegistryModel({ provider: 'google', id: 'gemini-flash', api: 'google-generative-ai' }),
   makeRegistryModel({ provider: 'anthropic', id: 'claude-opus', api: 'anthropic-messages' }),
   makeRegistryModel({ provider: 'ollama', id: 'local-llama', api: 'openai-completions' }),
 ];
@@ -122,13 +127,32 @@ function makeDecision(overrides?: Partial<RoutingDecision>): RoutingDecision {
   };
 }
 
-function createMockRouter(dispatch: GatewayDispatch['dispatch']): RouterHandle {
+function createMockRouter(
+  dispatch: GatewayDispatch['dispatch'],
+  fleetOverride: ModelProfile[] = fleet,
+): RouterHandle {
+  const router = createRouterFromFleet(fleetOverride, {
+    sessionPinner: new SessionPinner(),
+  });
+  vi.spyOn(router.dispatch, 'dispatch').mockImplementation(dispatch);
+  return router;
+}
+
+function makeStreamDeps(
+  overrides: Partial<{
+    router: RouterHandle;
+    modelRegistry: ModelRegistry;
+    fleet: ModelProfile[];
+    executionLedger: ExecutionLedger;
+    onRoutingDecision: (decision: RoutingDecision) => void;
+  }> = {},
+) {
   return {
-    version: 'pi-smart-router',
-    fleet,
-    dispatch: { dispatch } as GatewayDispatch,
-    middleware: { register: vi.fn(), getLastDecision: vi.fn(() => undefined) },
-    register: vi.fn(),
+    router: overrides.router ?? createMockRouter(vi.fn(async () => makeDecision())),
+    modelRegistry: overrides.modelRegistry ?? createMockRegistry(registryModels),
+    fleet: overrides.fleet ?? fleet,
+    executionLedger: overrides.executionLedger ?? new ExecutionLedger(),
+    ...overrides,
   };
 }
 
@@ -159,6 +183,21 @@ function makeSuccessStream(model: Model<Api>) {
     stream.push({ type: 'start', partial });
     stream.push({ type: 'done', reason: 'stop', message: partial });
     stream.end(partial);
+  })();
+  return stream;
+}
+
+function makeErrorStream(model: Model<Api>, errorMessage: string) {
+  const stream = createAssistantMessageEventStream();
+  const errorMessageObj: AssistantMessage = {
+    ...makeAssistantPartial(model),
+    content: [],
+    stopReason: 'error',
+    errorMessage,
+  };
+  void (async () => {
+    stream.push({ type: 'error', reason: 'error', error: errorMessageObj });
+    stream.end(errorMessageObj);
   })();
   return stream;
 }
@@ -309,6 +348,7 @@ describe('createStreamSimple', () => {
       router: createMockRouter(dispatch),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
+      executionLedger: new ExecutionLedger(),
     });
 
     const events = await collectEvents(
@@ -339,6 +379,7 @@ describe('createStreamSimple', () => {
       })),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
+      executionLedger: new ExecutionLedger(),
     });
 
     const events = await collectEvents(
@@ -365,6 +406,7 @@ describe('createStreamSimple', () => {
       router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'missing-model' }))),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
+      executionLedger: new ExecutionLedger(),
     });
 
     await collectEvents(
@@ -383,18 +425,18 @@ describe('createStreamSimple', () => {
   });
 
   it('falls back when stream delegation fails', async () => {
-    const target = registryModels[1]!;
-    const fallback = registryModels[0]!;
+    const target = registryModels[2]!;
     mockDelegateStreamSimple
       .mockImplementationOnce(() => {
         throw new Error('stream broke');
       })
-      .mockImplementationOnce(() => makeSuccessStream(fallback));
+      .mockImplementationOnce((model) => makeSuccessStream(model));
 
     const streamSimple = createStreamSimple({
       router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'claude-opus' }))),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
+      executionLedger: new ExecutionLedger(),
     });
 
     const events = await collectEvents(
@@ -403,10 +445,10 @@ describe('createStreamSimple', () => {
 
     expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(2);
     expect(mockDelegateStreamSimple.mock.calls[0]?.[0]).toEqual(target);
-    expect(mockDelegateStreamSimple.mock.calls[1]?.[0]).toEqual(fallback);
+    expect(mockDelegateStreamSimple.mock.calls[1]?.[0].id).not.toBe('claude-opus');
     expect(events.some((event) => event.type === 'done')).toBe(true);
     expect(warnSpy).toHaveBeenCalledWith(
-      '[smart-router] stream delegation failed, using safe cloud default',
+      '[smart-router] stream delegation failed, failing over',
       'stream broke',
     );
   });
@@ -421,6 +463,7 @@ describe('createStreamSimple', () => {
         'openai/gpt-4o-mini': { apiKey: 'real-openai-key' },
       }),
       fleet,
+      executionLedger: new ExecutionLedger(),
     });
 
     await collectEvents(
@@ -458,6 +501,7 @@ describe('createStreamSimple', () => {
       router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' }))),
       modelRegistry: registry,
       fleet,
+      executionLedger: new ExecutionLedger(),
     });
 
     const events = await collectEvents(
@@ -480,6 +524,7 @@ describe('createStreamSimple', () => {
       router: createMockRouter(vi.fn(async () => makeDecision())),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
+      executionLedger: new ExecutionLedger(),
     });
 
     const events = await collectEvents(
@@ -495,6 +540,136 @@ describe('createStreamSimple', () => {
       expect(errorEvent.reason).toBe('aborted');
       expect(errorEvent.error.stopReason).toBe('aborted');
     }
+  });
+
+  it('rewrites virtual router history before delegating to preserve replay identity', async () => {
+    const target = registryModels[1]!;
+    const signature = 'dGhvdWdodC1zaWduYXR1cmU=';
+    mockDelegateStreamSimple.mockImplementation((_model, context: Context) => {
+      const assistant = context.messages.find((message: Message) => message.role === 'assistant');
+      expect(assistant?.role).toBe('assistant');
+      if (assistant?.role === 'assistant') {
+        expect(assistant.provider).toBe('google');
+        expect(assistant.model).toBe('gemini-flash');
+        const toolCall = assistant.content[0];
+        if (toolCall?.type === 'toolCall') {
+          expect(toolCall.thoughtSignature).toBe(signature);
+        }
+      }
+      return makeSuccessStream(target);
+    });
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router: createMockRouter(
+          vi.fn(async () => makeDecision({ selected_model_id: 'gemini-flash' })),
+        ),
+      }),
+    );
+
+    await collectEvents(
+      streamSimple(
+        makeAutoModel(),
+        makeContext([
+          userMessage('search scuba tanks'),
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'toolCall',
+                id: 'call-1',
+                name: 'web_search',
+                arguments: { query: 'scuba' },
+                thoughtSignature: signature,
+              },
+            ],
+            api: 'openai-responses',
+            provider: 'smart-router',
+            model: 'auto',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: 'toolUse',
+            timestamp: 2,
+          },
+          toolResultMessage('results'),
+        ]),
+        { sessionId: 'replay-sess-1' },
+      ),
+    );
+  });
+
+  it('records success outcome and execution ledger after delegated stream completes', async () => {
+    const target = registryModels[0]!;
+    mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
+    const router = createMockRouter(
+      vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' })),
+    );
+    const recordOutcome = vi.spyOn(router.dispatch, 'recordOutcome');
+    const executionLedger = new ExecutionLedger();
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({ router, executionLedger }),
+    );
+
+    await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')]), {
+        sessionId: 'ledger-sess-1',
+      }),
+    );
+
+    expect(recordOutcome).toHaveBeenCalledWith('gpt-4o-mini');
+    expect(executionLedger.getLastExecution('ledger-sess-1')).toEqual({
+      provider: 'openai',
+      api: 'openai-responses',
+      id: 'gpt-4o-mini',
+    });
+  });
+
+  it('fails over on infra stream errors within the same tier', async () => {
+    const primary = registryModels[0]!;
+    const alternate = registryModels[1]!;
+    const errorMessage = JSON.stringify({
+      error: { code: 503, status: 'UNAVAILABLE', message: 'high demand' },
+    });
+
+    mockDelegateStreamSimple
+      .mockImplementationOnce(() => makeErrorStream(primary, errorMessage))
+      .mockImplementationOnce(() => makeSuccessStream(alternate));
+
+    const router = createMockRouter(
+      vi.fn(async () =>
+        makeDecision({
+          selected_model_id: 'gpt-4o-mini',
+          tier: 'economical-cloud',
+        }),
+      ),
+    );
+    const recordOutcome = vi.spyOn(router.dispatch, 'recordOutcome');
+
+    const streamSimple = createStreamSimple(makeStreamDeps({ router }));
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(2);
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]).toEqual(primary);
+    expect(mockDelegateStreamSimple.mock.calls[1]?.[0]).toEqual(alternate);
+    expect(recordOutcome).toHaveBeenCalledWith(
+      'gpt-4o-mini',
+      expect.objectContaining({ statusCode: 503 }),
+    );
+    expect(events.some((event) => event.type === 'done')).toBe(true);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[smart-router] infra error, failing over to alternate model',
+      'gemini-flash',
+    );
   });
 });
 
@@ -618,6 +793,7 @@ describe('delegation onPayload regression', () => {
       router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' }))),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
+      executionLedger: new ExecutionLedger(),
     });
 
     await collectEvents(
@@ -648,6 +824,7 @@ describe('delegation onPayload regression', () => {
       router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' }))),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
+      executionLedger: new ExecutionLedger(),
     });
 
     const events = await collectEvents(
