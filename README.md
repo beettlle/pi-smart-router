@@ -2,14 +2,14 @@
 
 **Auto-model router middleware for the [pi](https://pi.dev) coding agent.**
 
-pi-smart-router intercepts every LLM inference request pi makes and dynamically routes it to the optimal execution engine — balancing cost, capability, latency, and time-to-first-token (TTFT) — without requiring the developer to manually pick a model.
+pi-smart-router intercepts every LLM inference request and dynamically routes it to the optimal execution engine — balancing cost, capability, latency, and time-to-first-token (TTFT) — without requiring you to manually pick a model for each turn.
 
 | pi-smart-router is | pi-smart-router is not |
 |--------------------|------------------------|
 | A pi extension that auto-selects the best model per request | A replacement for pi or your LLM provider |
 | A three-tier router: local, economical cloud, frontier cloud | A post-generation output judger (FrugalGPT-style) |
 | Cache-aware with session pinning to preserve prompt-cache economics | A turn-by-turn model switcher that shatters provider caching |
-| Configuration-decoupled: swap models in YAML without retraining | An RL-trained router requiring agent trace datasets |
+| Registry-driven in pi (no YAML copy for normal use) | An RL-trained router requiring agent trace datasets |
 
 ## How it works
 
@@ -50,24 +50,108 @@ See [docs/PRD.md](docs/PRD.md) for full architectural justification.
 | [pi](https://pi.dev) coding agent | Yes | Extension host |
 | macOS Apple Silicon | MVP | Linux/Windows planned for future phases |
 | [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com) | Optional | Required for zero-tier local routing |
+| Authenticated cloud providers in pi | Recommended | Anthropic, OpenAI, Google, etc. |
 
 ## Install
 
-```bash
-npm install pi-smart-router
-```
-
-## Quick start
-
-### 1. Configure the fleet catalog
-
-Copy the example and customize with your available models:
+Clone this repository and install dependencies:
 
 ```bash
-cp node_modules/pi-smart-router/config/models.yaml.example ./config/models.yaml
+git clone https://github.com/beettlle/pi-smart-router.git
+cd pi-smart-router
+npm install
 ```
 
-Each model declares its tier, provider, endpoint, capability scores, and pricing:
+The project ships a **project-local pi extension** at `.pi/extensions/smart-router/`. pi auto-discovers it when you run `pi` from the repo root (after the project is trusted — see below).
+
+> **Note:** A standalone `npm install pi-smart-router` publish path is not the primary install flow yet. Use the repo clone for the bundled extension.
+
+## Use with pi
+
+This is the recommended path for pi users.
+
+### 1. Authenticate your providers
+
+Configure API keys for the providers you use in pi as usual (`/login`, pi settings, or environment variables). The router builds its fleet from **pi's model registry** — models you have not authenticated are not candidates.
+
+### 2. Trust the project
+
+Project-local extensions under `.pi/extensions/` load only after the project is trusted. On first run from this repo, pi prompts you to trust the project. Accept to load the smart-router extension.
+
+### 3. Select the auto model
+
+In pi, switch to the smart-router provider:
+
+```text
+/model smart-router/auto
+```
+
+This registers `smart-router` as a custom provider with a single `auto` model. Every inference request runs through the routing pipeline and delegates to the selected underlying provider's streaming API.
+
+### 4. Inspect routing (optional)
+
+| Command | Purpose |
+|---------|---------|
+| `/smart-router status` | Show the last routing decision (stage, tier, selected model, latency) |
+| `/smart-router mode scoped` | Route only among pi's **enabled model patterns** (default) |
+| `/smart-router mode all` | Route among **all authenticated models** in the registry |
+
+Fleet mode persists in the session. Use `scoped` to respect your `/model` enable-list; use `all` when you want the router to consider every provider you have logged into.
+
+### 5. Verify
+
+```bash
+npm run typecheck && npm test
+```
+
+## Fleet behavior
+
+When you use `smart-router/auto`, the extension does **not** read `config/models.yaml`. Instead:
+
+1. **Discover** — `modelRegistry.getAvailable()` returns authenticated models from pi.
+2. **Scope** — In `scoped` mode, filter to patterns from pi settings (`getEnabledModels()`). In `all` mode, use the full registry.
+3. **Map** — `src/config/pi-model-mapper.ts` maps each pi model to a `ModelProfile` (tier, capabilities, pricing) using provider and model-id patterns.
+4. **Route** — `createRouterFromFleet()` runs the 7-stage pipeline on each request.
+5. **Delegate** — The extension resolves the chosen model in the registry and forwards the stream via pi-ai's built-in provider APIs.
+
+Unknown models receive conservative economical-cloud defaults. Local providers (`lmstudio`, `ollama`) map to `zero-tier`.
+
+To refresh after auth or settings changes, restart pi or `/reload` extensions.
+
+## Optional: YAML fleet (library API)
+
+For programmatic integration without the pi extension, load a static fleet catalog from YAML:
+
+```bash
+cp config/models.yaml.example ./config/models.yaml
+# Edit config/models.yaml — at least one model per tier
+```
+
+```typescript
+import { createRouter } from 'pi-smart-router';
+
+const router = createRouter({ modelsPath: './config/models.yaml' });
+router.register(piExtensionHooks);
+```
+
+`createRouter()` returns a `RouterHandle`:
+
+| Property | Type | Purpose |
+|----------|------|---------|
+| `middleware` | `PiRouterMiddleware` | Pi extension middleware instance |
+| `dispatch` | `GatewayDispatch` | Gateway with circuit breaker, failover, rate limiting |
+| `fleet` | `readonly ModelProfile[]` | Loaded fleet catalog |
+| `register` | `(hooks) => void` | Attach extension hooks |
+
+You can also pass a pre-built fleet:
+
+```typescript
+import { createRouterFromFleet } from 'pi-smart-router';
+
+const router = createRouterFromFleet(myFleetProfiles);
+```
+
+Example fleet entry:
 
 ```yaml
 models:
@@ -79,10 +163,6 @@ models:
       reasoning: 0.3
       code_gen: 0.6
       tool_use: 0.1
-    performance:
-      latency_p50_ms: 120
-      verbosity_factor: 0.9
-      cache_friendly: true
     pricing:
       registry_key: local/free
       fallback_cost_per_1m: 0.0
@@ -90,47 +170,15 @@ models:
   - id: claude-3.5-haiku
     tier: economical-cloud
     provider: anthropic
-    capabilities:
-      reasoning: 0.7
-      code_gen: 0.75
-      tool_use: 0.7
     # ...
 
   - id: claude-3.5-sonnet
     tier: frontier-cloud
     provider: anthropic
-    capabilities:
-      reasoning: 0.95
-      code_gen: 0.95
-      tool_use: 0.95
     # ...
 ```
 
-You need at least one model per tier: `zero-tier`, `economical-cloud`, `frontier-cloud`.
-
-### 2. Register with pi
-
-```typescript
-import { createRouter } from 'pi-smart-router';
-
-const router = createRouter({ modelsPath: './config/models.yaml' });
-router.register(piExtensionHooks);
-```
-
-`createRouter()` returns a `RouterHandle` with:
-
-| Property | Type | Purpose |
-|----------|------|---------|
-| `middleware` | `PiRouterMiddleware` | The pi extension middleware instance |
-| `dispatch` | `GatewayDispatch` | Gateway with circuit breaker, failover, rate limiting |
-| `fleet` | `readonly ModelProfile[]` | Loaded fleet catalog |
-| `register` | `(hooks) => void` | Shorthand to attach all extension hooks |
-
-### 3. Verify it works
-
-```bash
-npm run typecheck && npm test
-```
+Tiers: `zero-tier`, `economical-cloud`, `frontier-cloud`. See [config/models.yaml.example](config/models.yaml.example).
 
 ## Configuration
 
@@ -139,7 +187,7 @@ npm run typecheck && npm test
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `ROUTER_STATE_DB_PATH` | `./.pi-smart-router/state.db` | SQLite state store location |
-| `MODELS_YAML_PATH` | `./config/models.yaml` | Fleet catalog path |
+| `MODELS_YAML_PATH` | `./config/models.yaml` | Fleet catalog path (library API only) |
 | `ROUTER_SAFE_DEFAULT_TIER` | `economical-cloud` | Fallback tier on any routing failure |
 | `LITELLM_PRICING_URL` | — | LiteLLM pricing JSON source |
 
@@ -172,20 +220,26 @@ The embedding matcher uses `@huggingface/transformers` with the `Xenova/all-Mini
 
 | Tier | Catalog Name | Purpose | Example |
 |------|-------------|---------|---------|
-| Local | `zero-tier` | Free on-device inference for trivial tasks | Gemma 4 7B via LM Studio |
-| Cheap Cloud | `economical-cloud` | Budget API models for routine work | Claude 3.5 Haiku |
-| Frontier Cloud | `frontier-cloud` | Top-tier models for complex reasoning | Claude 3.5 Sonnet |
+| Local | `zero-tier` | Free on-device inference for trivial tasks | Gemma via LM Studio |
+| Cheap Cloud | `economical-cloud` | Budget API models for routine work | Claude Haiku |
+| Frontier Cloud | `frontier-cloud` | Top-tier models for complex reasoning | Claude Sonnet |
 
-### Pi extension integration
+### Pi extension (`.pi/extensions/smart-router/`)
 
-The middleware registers on five pi extension events:
+The project-local extension:
+
+- Registers provider **`smart-router`** with model **`auto`**
+- Implements **`streamSimple`** — runs the pipeline, resolves the target in `ModelRegistry`, delegates to the built-in streaming API for that provider
+- Wires middleware hooks via `router.register()` for session state:
 
 | Event | Purpose |
 |-------|---------|
 | `context` | Captures conversation messages for routing context |
-| `session_compact` / `session_before_compact` | Triggers session pin break on compaction |
+| `session_compact` / `session_before_compact` | Breaks session pin on compaction |
 | `model_select` | Records user-forced model overrides |
-| `before_provider_request` | Intercepts request, runs pipeline, rewrites provider + model |
+| `session_start` | Restores fleet mode from session entries |
+
+The library middleware also supports `before_provider_request` for embedders that intercept requests instead of using a custom provider.
 
 ### Session pinning
 
@@ -202,7 +256,7 @@ Sub-routing within a pin is allowed: small `tool_result` turns may use an econom
 
 The `GatewayDispatch` layer wraps the pipeline with:
 
-- **Circuit breaker** — Per-model, tracks consecutive 5xx/network errors (CLOSED -> OPEN -> HALF_OPEN). 4xx and safety errors do not trip the breaker.
+- **Circuit breaker** — Per-model, tracks consecutive 5xx/network errors (CLOSED → OPEN → HALF_OPEN). 4xx and safety errors do not trip the breaker.
 - **Failover chains** — On open circuit, routes to same-tier alternative via inverse-cost weighted selection.
 - **Rate limiting** — Per-operator-key token bucket with `429 + Retry-After` responses.
 
@@ -217,6 +271,7 @@ The explain handler runs the identical pipeline but returns the `RoutingDecision
 ```typescript
 import {
   createRouter,
+  createRouterFromFleet,
   createPiRouterMiddleware,
   type RoutingDecision,
   type ModelProfile,
@@ -259,11 +314,12 @@ npm run typecheck && npm test
 
 ### Test suite
 
-614 tests across 30 test files covering:
+647 tests across 34 test files covering:
 
 - Unit tests for every pipeline stage, domain module, and infrastructure component
 - Contract tests validating routing request/decision schemas
 - Integration tests for full pipeline routing, session pinning, latency budgets, and cost baselines
+- Pi extension tests (`tests/integration/pi-extension.test.ts`) for registry → fleet → stream delegation
 - Resilience tests for circuit breaker, failover, and rate limiting
 
 ## Documentation
@@ -275,11 +331,12 @@ npm run typecheck && npm test
 | [specs/001-build-smart-router/spec.md](specs/001-build-smart-router/spec.md) | Detailed feature specification |
 | [specs/001-build-smart-router/data-model.md](specs/001-build-smart-router/data-model.md) | Entity definitions, schemas, configuration reference |
 | [specs/001-build-smart-router/quickstart.md](specs/001-build-smart-router/quickstart.md) | Setup and verification guide |
-| [config/models.yaml.example](config/models.yaml.example) | Fleet catalog template |
+| [config/models.yaml.example](config/models.yaml.example) | Fleet catalog template (library API) |
 
 ## Built with
 
 - [pi](https://pi.dev) — Coding agent harness (extension host)
+- [@earendil-works/pi-ai](https://pi.dev) — Provider streaming APIs
 - [pi-spine](https://github.com/beettlle/pi-spine) — Batch orchestration (used to build this project)
 - [stet](https://github.com/beettlle/stet) — Local code review (guardrails during development)
 - [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) — Shared state store
