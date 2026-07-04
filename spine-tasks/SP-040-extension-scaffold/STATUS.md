@@ -1,6 +1,6 @@
-**Current Step:** Step 1: Not started
-**Status:** Ready
-**Last Updated:** 2026-07-03
+**Current Step:** Complete
+**Status:** Complete
+**Last Updated:** 2026-07-04
 **Review Level:** 2
 **Size:** M
 
@@ -8,22 +8,28 @@
 
 ## Step 1: Extension package.json
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Create .pi/extensions/smart-router/package.json
+- [x] Create .pi/extensions/smart-router/package.json
 
 ## Step 2: Extension entry point
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Create index.ts with async factory
-- [ ] Model discovery via modelRegistry
-- [ ] Provider registration with auto model
-- [ ] Hook context/session_compact/model_select
-- [ ] Placeholder streamSimple
+- [x] Create index.ts with async factory
+- [x] Model discovery via modelRegistry
+- [x] Provider registration with auto model
+- [x] Hook context/session_compact/model_select
+- [x] Placeholder streamSimple
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run typecheck && npm test`
+- [x] Run `npm run typecheck && npm test`
+- [x] Verify extension loads without errors in dry run
+
+## Completion Criteria
+
+- [x] All steps complete
+- [x] Tests pass
