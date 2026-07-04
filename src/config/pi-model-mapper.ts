@@ -183,7 +183,13 @@ export function mapPiModelToProfile(input: PiModelInput): ModelProfile {
   const provider = normalizeProvider(input.provider);
 
   if (LOCAL_PROVIDERS.has(provider)) {
-    return buildProfile(input, LOCAL_DEFAULTS);
+    // Local models stay free — registry cost must not override zero-tier pricing.
+    const localInput: PiModelInput = {
+      provider: input.provider,
+      id: input.id,
+      ...(input.name !== undefined ? { name: input.name } : {}),
+    };
+    return buildProfile(localInput, LOCAL_DEFAULTS);
   }
 
   const matched = matchPatternRules(input.id);

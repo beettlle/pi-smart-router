@@ -138,6 +138,61 @@ describe('mapPiModelToProfile', () => {
       expect(profile.pricing.registry_key).toBe('anthropic/claude-3.5-haiku');
     });
   });
+
+  describe('registry cost pricing (SP-046)', () => {
+    const registryCost = {
+      input: 1.5e-7,
+      output: 6e-7,
+      cacheRead: 0,
+      cacheWrite: 0,
+    };
+
+    it('overrides pattern default when registry provides non-zero input/output rates', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({
+          provider: 'anthropic',
+          id: 'claude-3.5-haiku',
+          cost: registryCost,
+        }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+      expect(profile.pricing.fallback_cost_per_1m).toBeCloseTo(0.375, 5);
+    });
+
+    it('keeps pattern default when cost is omitted', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'anthropic', id: 'claude-3.5-haiku' }),
+      );
+
+      expect(profile.pricing.fallback_cost_per_1m).toBe(0.8);
+    });
+
+    it('keeps pattern default when registry input and output are both zero', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({
+          provider: 'openai',
+          id: 'gpt-5-mini',
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        }),
+      );
+
+      expect(profile.pricing.fallback_cost_per_1m).toBe(0.8);
+    });
+
+    it('leaves zero-cost local models free even when cost is present', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({
+          provider: 'ollama',
+          id: 'llama3.2:3b',
+          cost: registryCost,
+        }),
+      );
+
+      expect(profile.tier).toBe('zero-tier');
+      expect(profile.pricing.fallback_cost_per_1m).toBe(0.0);
+    });
+  });
 });
 
 describe('mapFleetFromRegistry', () => {
