@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 1: Mapper cost derivation
+**Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 1
 **Size:** S
@@ -8,11 +8,11 @@
 
 ## Step 1: Mapper cost derivation
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Extend `PiModelInput` with optional cost fields
-- [ ] Derive `fallback_cost_per_1m` from registry cost
-- [ ] Keep pattern tier/capability defaults
+- [x] Extend `PiModelInput` with optional cost fields
+- [x] Derive `fallback_cost_per_1m` from registry cost
+- [x] Keep pattern tier/capability defaults
 
 ## Step 2: Extension pass-through
 
