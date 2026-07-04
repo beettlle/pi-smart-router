@@ -76,15 +76,36 @@ Configure API keys for the providers you use in pi as usual (`/login`, pi settin
 
 ### 2. Trust the project
 
-Project-local extensions under `.pi/extensions/` load only after the project is trusted. On first run from this repo, pi prompts you to trust the project. Accept to load the smart-router extension.
+Project-local extensions under `.pi/extensions/` load only after the project is trusted. Without trust, the smart-router provider is never registered — `smart-router` will not appear in `/scoped-models` or `/model`, and `/smart-router` commands will not exist.
+
+**On first run**, pi prompts you to trust the project when it detects `.pi/extensions/`. Accept the prompt.
+
+**Later or missed prompt:** run `/trust` inside pi to save a trust decision for this directory (or its parent) to `~/.pi/agent/trust.json`. Trust on a **parent folder** (for example `~/Documents/github`) applies to this repo as well. After `/trust`, **restart pi** — the current session is not reloaded automatically.
+
+**Verify the extension loaded** (from the repo root, before or after starting pi):
+
+```bash
+cd pi-smart-router
+pi --list-models | grep smart-router
+```
+
+You should see `smart-router  auto`. If the line is missing:
+
+1. Confirm `pi` was started with cwd at this repo root (not a parent directory).
+2. Confirm the project is trusted (`/trust`, or check `~/.pi/agent/trust.json`).
+3. Restart pi or run `/reload` after trusting.
+
+Non-interactive one-shot checks can pass `--approve` to trust project-local resources for that run only.
 
 ### 3. Select the auto model
 
-In pi, switch to the smart-router provider:
+Start pi from the repo root, then switch to the smart-router provider:
 
 ```text
 /model smart-router/auto
 ```
+
+If you use **scoped models** (`/scoped-models` or `enabledModels` in settings), enable `smart-router/auto` there first — when a scoped list is active, `/model` only resolves models in that list.
 
 This registers `smart-router` as a custom provider with a single `auto` model. Every inference request runs through the routing pipeline and delegates to the selected underlying provider's streaming API.
 
