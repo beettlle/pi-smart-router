@@ -1,4 +1,4 @@
-**Current Step:** Step 1: Stream delegation
+**Current Step:** Step 2: Error handling
 **Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 2
@@ -8,7 +8,7 @@
 
 ## Step 1: Stream delegation
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Real streamSimple with pipeline routing
 - [x] Target resolution via modelRegistry.find
@@ -17,7 +17,7 @@
 
 ## Step 2: Error handling
 
-**Status:** Not Started
+**Status:** In Progress
 
 - [x] Model not found fallback
 - [x] Stream failure fallback
