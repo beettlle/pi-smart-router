@@ -50,6 +50,20 @@ Add `@earendil-works/pi-ai` as a dependency and `@earendil-works/pi-coding-agent
 - [ ] Run `npm run typecheck && npm test`
 - [ ] Confirm 614+ tests still pass
 
+## Completion Criteria
+
+- [ ] All steps complete
+- [ ] Tests pass
+
+## Git Commit Convention
+
+- `feat(SP-037): description`
+
+## Do NOT
+
+- Modify any existing source files under `src/`
+- Add application logic; this is a dependency-only change
+
 ---
 
 ## Amendments (Added During Execution)

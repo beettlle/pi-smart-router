@@ -54,6 +54,20 @@ Register a `/smart-router` command via `pi.registerCommand()` that shows the las
 
 - [ ] Run `npm run typecheck && npm test`
 
+## Completion Criteria
+
+- [ ] All steps complete
+- [ ] Tests pass
+
+## Git Commit Convention
+
+- `feat(SP-042): description`
+
+## Do NOT
+
+- Modify domain layer (`src/domain/**`)
+- Write integration tests (SP-043)
+
 ---
 
 ## Amendments (Added During Execution)

@@ -57,6 +57,20 @@ Create `src/config/pi-model-mapper.ts` with a function `mapPiModelToProfile()` t
 
 - [ ] Run `npm run typecheck && npm test`
 
+## Completion Criteria
+
+- [ ] All steps complete
+- [ ] Tests pass
+
+## Git Commit Convention
+
+- `feat(SP-038): description`
+
+## Do NOT
+
+- Modify domain types (`src/domain/types/**`)
+- Import from `@earendil-works/pi-coding-agent` at runtime (types only)
+
 ---
 
 ## Amendments (Added During Execution)

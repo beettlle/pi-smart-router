@@ -53,6 +53,20 @@ Write integration tests for the pi extension entry point. Mock `modelRegistry` w
 - [ ] Run `npm run typecheck && npm test`
 - [ ] Confirm all existing 614+ tests still pass alongside new tests
 
+## Completion Criteria
+
+- [ ] All steps complete
+- [ ] Tests pass
+
+## Git Commit Convention
+
+- `feat(SP-043): description`
+
+## Do NOT
+
+- Modify domain layer (`src/domain/**`)
+- Require a running pi instance; mock the extension API surface
+
 ---
 
 ## Amendments (Added During Execution)

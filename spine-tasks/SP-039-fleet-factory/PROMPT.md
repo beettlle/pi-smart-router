@@ -53,6 +53,20 @@ Add `createRouterFromFleet(fleet: ModelProfile[]): RouterHandle` to `src/index.t
 
 - [ ] Run `npm run typecheck && npm test`
 
+## Completion Criteria
+
+- [ ] All steps complete
+- [ ] Tests pass
+
+## Git Commit Convention
+
+- `feat(SP-039): description`
+
+## Do NOT
+
+- Modify `RouterPipeline` internals (`src/domain/pipeline/**`)
+- Remove or change `createRouter()` behavior
+
 ---
 
 ## Amendments (Added During Execution)

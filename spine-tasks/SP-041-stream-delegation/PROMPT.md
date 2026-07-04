@@ -60,6 +60,20 @@ Implement the real `streamSimple` function for the `smart-router/auto` model. On
 
 - [ ] Run `npm run typecheck && npm test`
 
+## Completion Criteria
+
+- [ ] All steps complete
+- [ ] Tests pass
+
+## Git Commit Convention
+
+- `feat(SP-041): description`
+
+## Do NOT
+
+- Modify pipeline internals (`src/domain/pipeline/**`)
+- Add slash commands (SP-042)
+
 ---
 
 ## Amendments (Added During Execution)

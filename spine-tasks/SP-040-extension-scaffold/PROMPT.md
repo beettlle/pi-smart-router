@@ -61,6 +61,21 @@ The `streamSimple` function is a placeholder in this task — it delegates to sa
 - [ ] Run `npm run typecheck && npm test`
 - [ ] Verify extension loads without errors in dry run
 
+## Completion Criteria
+
+- [ ] All steps complete
+- [ ] Tests pass
+
+## Git Commit Convention
+
+- `feat(SP-040): description`
+
+## Do NOT
+
+- Modify domain layer (`src/domain/**`)
+- Implement real stream delegation (SP-041)
+- Add user-facing commands (SP-042)
+
 ---
 
 ## Amendments (Added During Execution)
