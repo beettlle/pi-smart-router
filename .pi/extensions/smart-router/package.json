@@ -1,0 +1,16 @@
+{
+  "name": "pi-extension-smart-router",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "dependencies": {
+    "@earendil-works/pi-ai": "^0.80.3",
+    "@earendil-works/pi-coding-agent": "^0.80.3",
+    "pi-smart-router": "file:../../.."
+  }
+}
