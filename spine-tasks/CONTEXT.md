@@ -1,8 +1,8 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-07-03
+**Last Updated:** 2026-07-04
 **Status:** Active
-**Next Task ID:** SP-047
+**Next Task ID:** SP-053
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -92,6 +92,17 @@
 | SP-044 | Extension HyDRA wiring + optional transformers | M | SP-043 |
 | SP-045 | Extension pricing broker + manual LiteLLM refresh | M | SP-044 |
 | SP-046 | Registry Model.cost → ModelProfile pricing | S | SP-045 |
+
+### Phase 14 — Backlog Orchestrator Cycle 1 (SP-047–SP-052)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-047 | Dogfooding docs + operator env vars | S | SP-046 | #13 |
+| SP-048 | ESLint fixes + GitHub Actions CI | M | SP-046 | #17 |
+| SP-049 | Extension pipeline wiring (P0) | M | SP-046 | #14 |
+| SP-050 | Pipeline stage order fix (P0) | M | SP-046 | #15 |
+| SP-051 | Lifecycle hook wiring (P0) | M | SP-049 | #16 |
+| SP-052 | npm run build + dist exports | M | SP-048 | #18 |
 
 ---
 
