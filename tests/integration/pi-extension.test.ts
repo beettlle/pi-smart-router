@@ -50,13 +50,9 @@ const { mockDelegateStreamSimple } = vi.hoisted(() => ({
   mockDelegateStreamSimple: vi.fn(),
 }));
 
-vi.mock('@earendil-works/pi-ai/compat', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@earendil-works/pi-ai/compat')>();
-  return {
-    ...original,
-    streamSimple: mockDelegateStreamSimple,
-  };
-});
+function withDelegateStream<T extends Record<string, unknown>>(deps: T) {
+  return { ...deps, delegateStream: mockDelegateStreamSimple };
+}
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -281,15 +277,15 @@ describe('Pi extension integration (SP-043)', () => {
       const modelRegistry = createMockRegistry(piRegistryModels);
 
       let capturedDecision: RoutingDecision | undefined;
-      const streamSimple = createStreamSimple({
+      const streamSimple = createStreamSimple(withDelegateStream({
         router,
         modelRegistry,
         fleet,
         executionLedger: new ExecutionLedger(),
-        onRoutingDecision(decision) {
+        onRoutingDecision(decision: RoutingDecision) {
           capturedDecision = decision;
         },
-      });
+      }));
 
       const target = piRegistryModels.find((model) => model.id === 'gpt-5-mini')!;
       mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
@@ -355,12 +351,12 @@ describe('Pi extension integration (SP-043)', () => {
       const target = piRegistryModels.find((model) => model.id === 'gpt-5-mini')!;
       mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
 
-      const streamSimple = createStreamSimple({
+      const streamSimple = createStreamSimple(withDelegateStream({
         router,
         modelRegistry,
         fleet,
         executionLedger: new ExecutionLedger(),
-      });
+      }));
 
       await collectEvents(
         streamSimple(
@@ -403,13 +399,13 @@ describe('Pi extension integration (SP-043)', () => {
       const target = piRegistryModels.find((model) => model.id === 'gpt-5-mini')!;
       mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
 
-      const streamSimple = createStreamSimple({
+      const streamSimple = createStreamSimple(withDelegateStream({
         router,
         modelRegistry,
         fleet,
         executionLedger: new ExecutionLedger(),
         datasetRecorder,
-      });
+      }));
 
       await collectEvents(
         streamSimple(
@@ -435,13 +431,13 @@ describe('Pi extension integration (SP-043)', () => {
       mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
 
       const prompt = 'Persist dataset metadata only';
-      const streamSimple = createStreamSimple({
+      const streamSimple = createStreamSimple(withDelegateStream({
         router,
         modelRegistry,
         fleet,
         executionLedger: new ExecutionLedger(),
         datasetRecorder,
-      });
+      }));
 
       await collectEvents(
         streamSimple(
@@ -492,7 +488,7 @@ describe('Pi extension integration (SP-043)', () => {
       const target = piRegistryModels.find((model) => model.id === 'gpt-5-mini')!;
       mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
 
-      const streamSimple = createStreamSimple({
+      const streamSimple = createStreamSimple(withDelegateStream({
         router,
         modelRegistry,
         fleet,
@@ -501,7 +497,7 @@ describe('Pi extension integration (SP-043)', () => {
         sessionPinner,
         sessionRouting,
         outcomeRecorder,
-      });
+      }));
 
       await collectEvents(
         streamSimple(

@@ -5,6 +5,9 @@
  * router fleet, registers the smart-router/auto provider, and wires middleware
  * hooks for routing state. Stream delegation routes each request through the
  * pipeline and forwards to the selected provider's built-in streaming API.
+ *
+ * Imports from ../../../src/** (not dist/) because the extension is loaded by pi
+ * from source at dev time and is excluded from the npm dist artifact.
  */
 
 import {

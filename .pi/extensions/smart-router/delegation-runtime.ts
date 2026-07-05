@@ -1,6 +1,5 @@
 /**
- * Stream delegation runtime: routeAndDelegate failover loop and delegateWithOutcome.
- * Kept as one module (~330 lines) to preserve the atomic failover state machine from #33 split.
+ * Delegation helpers: auth merge, event flush/sanitize, failover notice injection, registry lookups.
  */
 
 import {
@@ -11,7 +10,6 @@ import {
   type Context,
   type Model,
   type SimpleStreamOptions,
-  streamSimple as delegateStreamSimple,
 } from '@earendil-works/pi-ai/compat';
 import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
 
@@ -178,87 +176,6 @@ export function flushDelegatedEvents(
     outer.push(event);
   }
   outer.end();
-}
-
-export async function collectDelegatedStream(
-  targetModel: Model<Api>,
-  context: Context,
-  modelRegistry: ModelRegistry,
-  options: SimpleStreamOptions | undefined,
-): Promise<DelegatedStreamResult> {
-  if (options?.signal?.aborted) {
-    throw new Error('Request was aborted');
-  }
-
-  const delegationOptions = await resolveDelegationOptions(
-    modelRegistry,
-    targetModel,
-    options,
-  );
-  const inner = delegateStreamSimple(targetModel, context, delegationOptions);
-  const events: AssistantMessageEvent[] = [];
-  let finalMessage: AssistantMessage | undefined;
-
-  for await (const event of inner) {
-    if (options?.signal?.aborted) {
-      throw new Error('Request was aborted');
-    }
-    events.push(event);
-
-    if (event.type === 'done') {
-      finalMessage = event.message;
-    } else if (event.type === 'error') {
-      finalMessage = event.error;
-    }
-  }
-
-  const failed =
-    finalMessage !== undefined &&
-    (finalMessage.stopReason === 'error' || finalMessage.stopReason === 'aborted');
-
-  return { finalMessage, failed, events };
-}
-
-export async function delegateWithOutcome(
-  targetModel: Model<Api>,
-  context: Context,
-  deps: StreamDelegationDeps,
-  options: SimpleStreamOptions | undefined,
-  sessionId: string | undefined,
-): Promise<DelegatedStreamResult> {
-  const delegationContext = buildDelegationContext(
-    context,
-    targetModel,
-    deps,
-    sessionId,
-  );
-
-  const result = await collectDelegatedStream(
-    targetModel,
-    delegationContext,
-    deps.modelRegistry,
-    options,
-  );
-
-  if (!result.finalMessage) {
-    return result;
-  }
-
-  if (result.failed) {
-    const parsed = parseAssistantMessageError(result.finalMessage);
-    deps.router.dispatch.recordOutcome(targetModel.id, parsed);
-  } else {
-    deps.router.dispatch.recordOutcome(targetModel.id);
-    if (sessionId) {
-      deps.executionLedger.recordSuccess(sessionId, modelToExecutionModel(targetModel));
-    }
-    deps.onDelegatedModel?.({
-      provider: targetModel.provider,
-      id: targetModel.id,
-    });
-  }
-
-  return result;
 }
 
 export function injectFailoverNotice(

@@ -1,3 +1,10 @@
+import type {
+  Api,
+  AssistantMessageEventStream,
+  Context,
+  Model,
+  SimpleStreamOptions,
+} from '@earendil-works/pi-ai/compat';
 import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
 
 import type { HydraMatcher } from '../../../src/domain/matching/hydra-matcher.js';
@@ -31,11 +38,20 @@ export type SmartRouterCommand =
   | { command: 'export'; subcommand: 'dataset'; limit: number }
   | { command: 'feedback'; rating: 'good' | 'bad' };
 
+/** Provider stream delegate; defaults to pi-ai streamSimple when omitted. */
+export type DelegateStreamFn = (
+  model: Model<Api>,
+  context: Context,
+  options?: SimpleStreamOptions,
+) => AssistantMessageEventStream;
+
 export interface StreamDelegationDeps {
   router: RouterHandle;
   readonly modelRegistry: ModelRegistry;
   fleet: ModelProfile[];
   readonly executionLedger: ExecutionLedger;
+  /** Injectable for tests; production uses pi-ai streamSimple. */
+  delegateStream?: DelegateStreamFn;
   readonly lifecycleHookState?: LifecycleHookState;
   readonly datasetRecorder?: DatasetRecorder;
   readonly outcomeRecorder?: OutcomeRecorder;

@@ -26,6 +26,15 @@ import {
 import type { FleetMode, SmartRouterRuntime } from './types.js';
 import { resolveRateLimiter } from './utils.js';
 
+/** Minimal settings surface used for scoped fleet discovery. */
+export interface ScopedSettingsReader {
+  getEnabledModels(): string[] | null | undefined;
+}
+
+export interface DiscoverFleetDeps {
+  settingsFactory?: (cwd: string) => ScopedSettingsReader;
+}
+
 /** Footer label for the last model that successfully served a delegated stream. */
 export function formatLmuStatus(
   modelId: string,
@@ -38,6 +47,7 @@ export function formatLmuStatus(
 export function createHooksAdapter(pi: ExtensionAPI): PiExtensionHooks {
   return {
     on(event, handler) {
+      // PiExtensionHooks event names are a subset of ExtensionAPI; cast bridges the gap.
       pi.on(event as never, handler as never);
     },
   };
@@ -117,12 +127,14 @@ export async function discoverFleet(
   mode: FleetMode,
   cwd: string,
   store: StorePort,
+  deps?: DiscoverFleetDeps,
 ): Promise<{ fleet: ModelProfile[]; catalog: PriceCatalog | null }> {
   const available = modelRegistry.getAvailable();
   let models = available;
 
   if (mode === 'scoped') {
-    const settings = SettingsManager.create(cwd);
+    const settingsFactory = deps?.settingsFactory ?? SettingsManager.create;
+    const settings = settingsFactory(cwd);
     const patterns = settings.getEnabledModels();
     if (patterns && patterns.length > 0) {
       models = filterScopedModels(available, patterns);

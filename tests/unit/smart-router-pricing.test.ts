@@ -1,4 +1,3 @@
-import { SettingsManager } from '@earendil-works/pi-coding-agent';
 import { describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -337,18 +336,15 @@ describe('discoverFleet registry cost pass-through (SP-046)', () => {
     const registry = createMockRegistry([
       makeRegistryModel('gpt-4o-mini', registryCost),
     ]);
-    const settingsSpy = vi.spyOn(SettingsManager, 'create').mockReturnValue({
-      getEnabledModels: () => ['openai/gpt-4o-mini'],
-    } as ReturnType<typeof SettingsManager.create>);
 
-    try {
-      const { fleet } = await discoverFleet(registry, 'scoped', '/tmp', store);
+    const { fleet } = await discoverFleet(registry, 'scoped', '/tmp', store, {
+      settingsFactory: () => ({
+        getEnabledModels: () => ['openai/gpt-4o-mini'],
+      }),
+    });
 
-      expect(fleet).toHaveLength(1);
-      expect(fleet[0]?.pricing.fallback_cost_per_1m).toBeCloseTo(0.375, 5);
-    } finally {
-      settingsSpy.mockRestore();
-    }
+    expect(fleet).toHaveLength(1);
+    expect(fleet[0]?.pricing.fallback_cost_per_1m).toBeCloseTo(0.375, 5);
   });
 });
 

@@ -43,14 +43,6 @@ const { mockDelegateStreamSimple } = vi.hoisted(() => ({
   mockDelegateStreamSimple: vi.fn(),
 }));
 
-vi.mock('@earendil-works/pi-ai/compat', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@earendil-works/pi-ai/compat')>();
-  return {
-    ...original,
-    streamSimple: mockDelegateStreamSimple,
-  };
-});
-
 function makeProfile(
   overrides: Partial<ModelProfile> & { id: string; tier: ModelProfile['tier']; provider?: string },
 ): ModelProfile {
@@ -158,6 +150,7 @@ function makeStreamDeps(
     modelRegistry: overrides.modelRegistry ?? createMockRegistry(registryModels),
     fleet: overrides.fleet ?? fleet,
     executionLedger: overrides.executionLedger ?? new ExecutionLedger(),
+    delegateStream: mockDelegateStreamSimple,
     ...overrides,
   };
 }
@@ -388,12 +381,12 @@ describe('createStreamSimple', () => {
       return makeDecision({ selected_model_id: 'gpt-4o-mini' });
     });
 
-    const streamSimple = createStreamSimple({
+    const streamSimple = createStreamSimple(makeStreamDeps({
       router: createMockRouter(dispatch),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
       executionLedger: new ExecutionLedger(),
-    });
+    }));
 
     const events = await collectEvents(
       streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
@@ -417,14 +410,14 @@ describe('createStreamSimple', () => {
     const fallback = registryModels[0]!;
     mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(fallback));
 
-    const streamSimple = createStreamSimple({
+    const streamSimple = createStreamSimple(makeStreamDeps({
       router: createMockRouter(vi.fn(async () => {
         throw new Error('routing unavailable');
       })),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
       executionLedger: new ExecutionLedger(),
-    });
+    }));
 
     const events = await collectEvents(
       streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
@@ -446,12 +439,12 @@ describe('createStreamSimple', () => {
     const fallback = registryModels[0]!;
     mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(fallback));
 
-    const streamSimple = createStreamSimple({
+    const streamSimple = createStreamSimple(makeStreamDeps({
       router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'missing-model' }))),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
       executionLedger: new ExecutionLedger(),
-    });
+    }));
 
     await collectEvents(
       streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
@@ -476,12 +469,12 @@ describe('createStreamSimple', () => {
       })
       .mockImplementationOnce((model) => makeSuccessStream(model));
 
-    const streamSimple = createStreamSimple({
+    const streamSimple = createStreamSimple(makeStreamDeps({
       router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'claude-opus' }))),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
       executionLedger: new ExecutionLedger(),
-    });
+    }));
 
     const events = await collectEvents(
       streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
@@ -512,14 +505,14 @@ describe('createStreamSimple', () => {
     const target = registryModels[0]!;
     mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
 
-    const streamSimple = createStreamSimple({
+    const streamSimple = createStreamSimple(makeStreamDeps({
       router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' }))),
       modelRegistry: createMockRegistry(registryModels, {
         'openai/gpt-4o-mini': { apiKey: 'real-openai-key' },
       }),
       fleet,
       executionLedger: new ExecutionLedger(),
-    });
+    }));
 
     await collectEvents(
       streamSimple(makeAutoModel(), makeContext([userMessage('hello')]), {
@@ -552,12 +545,12 @@ describe('createStreamSimple', () => {
       },
     } as unknown as ModelRegistry;
 
-    const streamSimple = createStreamSimple({
+    const streamSimple = createStreamSimple(makeStreamDeps({
       router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' }))),
       modelRegistry: registry,
       fleet,
       executionLedger: new ExecutionLedger(),
-    });
+    }));
 
     const events = await collectEvents(
       streamSimple(makeAutoModel(), makeContext([userMessage('hello')]), { apiKey: 'local' }),
@@ -575,12 +568,12 @@ describe('createStreamSimple', () => {
     const controller = new AbortController();
     controller.abort();
 
-    const streamSimple = createStreamSimple({
+    const streamSimple = createStreamSimple(makeStreamDeps({
       router: createMockRouter(vi.fn(async () => makeDecision())),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
       executionLedger: new ExecutionLedger(),
-    });
+    }));
 
     const events = await collectEvents(
       streamSimple(makeAutoModel(), makeContext([userMessage('hello')]), {
@@ -909,12 +902,12 @@ describe('delegation onPayload regression', () => {
       return makeSuccessStream(target);
     });
 
-    const streamSimple = createStreamSimple({
+    const streamSimple = createStreamSimple(makeStreamDeps({
       router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' }))),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
       executionLedger: new ExecutionLedger(),
-    });
+    }));
 
     await collectEvents(
       streamSimple(makeAutoModel(), makeContext([userMessage('hello')]), {
@@ -940,12 +933,12 @@ describe('delegation onPayload regression', () => {
       return makeSuccessStream(target);
     });
 
-    const streamSimple = createStreamSimple({
+    const streamSimple = createStreamSimple(makeStreamDeps({
       router: createMockRouter(vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' }))),
       modelRegistry: createMockRegistry(registryModels),
       fleet,
       executionLedger: new ExecutionLedger(),
-    });
+    }));
 
     const events = await collectEvents(
       streamSimple(makeAutoModel(), makeContext([userMessage('what is 2+2?')]), {
