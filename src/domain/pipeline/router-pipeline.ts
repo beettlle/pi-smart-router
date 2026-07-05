@@ -94,7 +94,7 @@ export class RouterPipeline {
       }
     } catch (error: unknown) {
       // Constitution VI: zero-crash resilience — degrade to safe default
-      const failedStage = this.resolveFailedStage(currentStage, error);
+      const failedStage = this.resolveFailedStage(currentStage);
       const elapsedMs = Date.now() - start;
       const fallback = this.buildFallbackDecision(request, elapsedMs);
       this.logPipelineError(request, failedStage, error);
@@ -109,10 +109,7 @@ export class RouterPipeline {
     return fallback;
   }
 
-  private resolveFailedStage(
-    stage: NamedPipelineStage | undefined,
-    _error: unknown,
-  ): string {
+  private resolveFailedStage(stage: NamedPipelineStage | undefined): string {
     return stage?.name ?? 'unknown';
   }
 
