@@ -74,6 +74,7 @@ import {
 } from '../../../src/infrastructure/delegation/provider-error.js';
 import {
   createRouterFromFleet,
+  LifecycleHookState,
   type GatewayDispatchOptions,
   type PiExtensionHooks,
   type RouterHandle,
@@ -103,6 +104,7 @@ interface StreamDelegationDeps {
   readonly modelRegistry: ModelRegistry;
   fleet: ModelProfile[];
   readonly executionLedger: ExecutionLedger;
+  readonly lifecycleHookState?: LifecycleHookState;
   onRoutingDecision?: (decision: RoutingDecision) => void;
   /** Fired when a delegated provider stream completes successfully. */
   onDelegatedModel?: (model: { readonly provider: string; readonly id: string }) => void;
@@ -116,6 +118,7 @@ interface SmartRouterRuntime {
   readonly store: StorePort;
   readonly sessionPinner: SessionPinner;
   readonly executionLedger: ExecutionLedger;
+  readonly lifecycleHookState: LifecycleHookState;
   streamDeps: StreamDelegationDeps;
   hydraMatcher: HydraMatcher | undefined;
   setLmuStatus?: (modelId: string) => void;
@@ -313,10 +316,10 @@ async function rebuildFleet(
     runtime.store,
   );
   runtime.priceCatalog = catalog;
-  const router = createRouterFromFleet(
-    fleet,
-    createDispatchOptions(runtime.store, runtime.sessionPinner, runtime.hydraMatcher),
-  );
+  const router = createRouterFromFleet(fleet, {
+    ...createDispatchOptions(runtime.store, runtime.sessionPinner, runtime.hydraMatcher),
+    lifecycleHookState: runtime.lifecycleHookState,
+  });
   router.register(createHooksAdapter(pi));
   runtime.streamDeps.router = router;
   runtime.streamDeps.fleet = fleet;
@@ -579,13 +582,18 @@ function mapContextMessages(messages: readonly Message[]): RoutingMessage[] {
 function buildRoutingRequest(
   context: Context,
   options: SimpleStreamOptions | undefined,
+  lifecycleHookState?: LifecycleHookState,
 ): RoutingRequest {
+  const sessionId = options?.sessionId ?? randomUUID();
+  const lifecycleFlags = lifecycleHookState?.consume(sessionId) ?? {};
+
   return {
     request_id: randomUUID(),
-    session_id: options?.sessionId ?? randomUUID(),
+    session_id: sessionId,
     prompt_text: extractPromptText(context.messages),
     messages: mapContextMessages(context.messages),
     turn_type: deriveTurnType(context.messages),
+    ...lifecycleFlags,
   };
 }
 
@@ -920,7 +928,11 @@ async function routeAndDelegate(
   let decision: RoutingDecision;
 
   try {
-    const request = buildRoutingRequest(context, options);
+    const request = buildRoutingRequest(
+      context,
+      options,
+      deps.lifecycleHookState,
+    );
     decision = await deps.router.dispatch.dispatch(request);
   } catch (error) {
     const fallbackModel = resolveFallbackModel(deps);
@@ -1195,6 +1207,7 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
   const store = createExtensionStore(cwd);
   const sessionPinner = new SessionPinner();
   const executionLedger = new ExecutionLedger();
+  const lifecycleHookState = new LifecycleHookState();
 
   const runtime: SmartRouterRuntime = {
     fleetMode: 'scoped',
@@ -1204,15 +1217,17 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
     store,
     sessionPinner,
     executionLedger,
+    lifecycleHookState,
     hydraMatcher,
     streamDeps: {
-      router: createRouterFromFleet(
-        [],
-        createDispatchOptions(store, sessionPinner, hydraMatcher),
-      ),
+      router: createRouterFromFleet([], {
+        ...createDispatchOptions(store, sessionPinner, hydraMatcher),
+        lifecycleHookState,
+      }),
       modelRegistry,
       fleet: [],
       executionLedger,
+      lifecycleHookState,
       onRoutingDecision(decision) {
         runtime.lastDecision = decision;
       },

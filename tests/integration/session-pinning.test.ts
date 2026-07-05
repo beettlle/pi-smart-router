@@ -11,12 +11,26 @@
 
 import { describe, expect, it } from 'vitest';
 
+import {
+  buildRoutingRequest,
+  createDispatchOptions,
+  formatStatusMessage,
+} from '../../.pi/extensions/smart-router/index.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import {
   GatewayDispatch,
 } from '../../src/infrastructure/gateway/gateway-dispatch.js';
-import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
+import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
+import {
+  createPiRouterMiddleware,
+  LifecycleHookState,
+  type PiExtensionContext,
+  type PiExtensionHooks,
+  type PiSessionManager,
+} from '../../src/api/middleware/pi-router-middleware.js';
+import { createRouterFromFleet } from '../../src/index.js';
+import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../src/domain/types/index.js';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -69,6 +83,59 @@ const fleet: ModelProfile[] = [
   openaiEcon,
   openaiFrontier,
 ];
+
+function makeExtensionCtx(sessionId: string): PiExtensionContext {
+  const sessionManager: PiSessionManager = {
+    getSessionFile: () => undefined,
+    getSessionId: () => sessionId,
+  };
+  return { cwd: '/tmp/pi-smart-router-test', sessionManager };
+}
+
+function createHookCapture(): {
+  hooks: PiExtensionHooks;
+  fireCompaction: (sessionId: string) => void;
+  fireModelSelect: (sessionId: string, modelId: string) => void;
+} {
+  const handlers: {
+    session_compact: ((event: unknown, ctx: PiExtensionContext) => void)[];
+    model_select: ((event: { source: string; model: { provider: string; id: string } }, ctx: PiExtensionContext) => void)[];
+  } = {
+    session_compact: [],
+    model_select: [],
+  };
+
+  const hooks = {
+    on(event: string, handler: unknown): void {
+      if (event === 'session_compact') {
+        handlers.session_compact.push(
+          handler as (event: unknown, ctx: PiExtensionContext) => void,
+        );
+      }
+      if (event === 'model_select') {
+        handlers.model_select.push(
+          handler as (
+            event: { source: string; model: { provider: string; id: string } },
+            ctx: PiExtensionContext,
+          ) => void,
+        );
+      }
+    },
+  } as PiExtensionHooks;
+
+  return {
+    hooks,
+    fireCompaction(sessionId: string) {
+      handlers.session_compact[0]!({}, makeExtensionCtx(sessionId));
+    },
+    fireModelSelect(sessionId: string, modelId: string) {
+      handlers.model_select[0]!(
+        { source: 'set', model: { provider: 'openai', id: modelId } },
+        makeExtensionCtx(sessionId),
+      );
+    },
+  };
+}
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
@@ -401,6 +468,173 @@ describe('Session pinning integration', () => {
       expect(yDecision.stage).toBe('session_pin');
       expect(yDecision.reason_code).toBe('session_pinned');
       expect(yDecision.selected_model_id).toBe(yPinBefore!.pinned_model_id);
+    });
+  });
+
+  describe('SP-051: extension-path lifecycle hook wiring', () => {
+    it('compaction hook breaks pin on next extension routing request', async () => {
+      const sessionId = 'ext-compact-sess';
+      const lifecycleHookState = new LifecycleHookState();
+      const sessionPinner = new SessionPinner();
+      const store = new MemoryStore();
+      const router = createRouterFromFleet(fleet, {
+        ...createDispatchOptions(store, sessionPinner),
+        lifecycleHookState,
+      });
+      const { hooks, fireCompaction } = createHookCapture();
+      router.register(hooks);
+
+      const initial = await router.dispatch.dispatch(
+        buildRoutingRequest(
+          { messages: [{ role: 'user', content: 'initial turn' }] } as never,
+          { sessionId },
+          lifecycleHookState,
+        ),
+      );
+      expect(initial.stage).not.toBe('session_pin');
+      const pinnedModelId = sessionPinner.getPin(sessionId)?.pinned_model_id;
+      expect(pinnedModelId).toBeDefined();
+
+      const pinnedTurn = await router.dispatch.dispatch(
+        buildRoutingRequest(
+          { messages: [{ role: 'user', content: 'pinned turn' }] } as never,
+          { sessionId },
+          lifecycleHookState,
+        ),
+      );
+      expect(pinnedTurn.stage).toBe('session_pin');
+      expect(pinnedTurn.selected_model_id).toBe(pinnedModelId);
+
+      fireCompaction(sessionId);
+
+      const postCompaction = await router.dispatch.dispatch(
+        buildRoutingRequest(
+          { messages: [{ role: 'user', content: 'after compaction' }] } as never,
+          { sessionId },
+          lifecycleHookState,
+        ),
+      );
+
+      expect(postCompaction.stage).not.toBe('session_pin');
+      expect(sessionPinner.getPin(sessionId)?.pinned_model_id).toBe(
+        postCompaction.selected_model_id,
+      );
+    });
+
+    it('model_select hook applies force_model_id on next extension routing request', async () => {
+      const sessionId = 'ext-force-sess';
+      const lifecycleHookState = new LifecycleHookState();
+      const sessionPinner = new SessionPinner();
+      const store = new MemoryStore();
+      const router = createRouterFromFleet(fleet, {
+        ...createDispatchOptions(store, sessionPinner),
+        lifecycleHookState,
+      });
+      const { hooks, fireModelSelect } = createHookCapture();
+      router.register(hooks);
+
+      await router.dispatch.dispatch(
+        buildRoutingRequest(
+          { messages: [{ role: 'user', content: 'initial' }] } as never,
+          { sessionId },
+          lifecycleHookState,
+        ),
+      );
+
+      fireModelSelect(sessionId, 'gpt-4o');
+
+      const forced = await router.dispatch.dispatch(
+        buildRoutingRequest(
+          { messages: [{ role: 'user', content: 'forced turn' }] } as never,
+          { sessionId },
+          lifecycleHookState,
+        ),
+      );
+
+      expect(forced.selected_model_id).toBe('gpt-4o');
+      expect(forced.stage).toBe('session_pin');
+      expect(sessionPinner.getPin(sessionId)?.pin_reason).toBe('user_forced');
+    });
+
+    it('status reflects reroute after compaction break via lifecycle hooks', async () => {
+      const sessionId = 'ext-status-sess';
+      const lifecycleHookState = new LifecycleHookState();
+      const sessionPinner = new SessionPinner();
+      const store = new MemoryStore();
+      const router = createRouterFromFleet(fleet, {
+        ...createDispatchOptions(store, sessionPinner),
+        lifecycleHookState,
+      });
+      const middleware = createPiRouterMiddleware({ fleet, lifecycleHookState });
+      const { hooks, fireCompaction } = createHookCapture();
+      router.register(hooks);
+      middleware.register(hooks);
+
+      let lastDecision: RoutingDecision | undefined;
+      const initial = await router.dispatch.dispatch(
+        buildRoutingRequest(
+          { messages: [{ role: 'user', content: 'seed pin' }] } as never,
+          { sessionId },
+          lifecycleHookState,
+        ),
+      );
+      lastDecision = initial;
+
+      const pinned = await router.dispatch.dispatch(
+        buildRoutingRequest(
+          { messages: [{ role: 'user', content: 'still pinned' }] } as never,
+          { sessionId },
+          lifecycleHookState,
+        ),
+      );
+      lastDecision = pinned;
+      expect(pinned.stage).toBe('session_pin');
+
+      const statusWhilePinned = formatStatusMessage(
+        {
+          fleetMode: 'scoped',
+          lastDecision,
+          priceCatalog: null,
+          modelRegistry: {} as never,
+          store,
+          sessionPinner,
+          executionLedger: {} as never,
+          lifecycleHookState,
+          hydraMatcher: undefined,
+          streamDeps: { router, modelRegistry: {} as never, fleet, executionLedger: {} as never },
+        },
+        lastDecision,
+      );
+      expect(statusWhilePinned).toContain('session_pin');
+
+      fireCompaction(sessionId);
+      const rerouted = await router.dispatch.dispatch(
+        buildRoutingRequest(
+          { messages: [{ role: 'user', content: 'post compaction reroute' }] } as never,
+          { sessionId },
+          lifecycleHookState,
+        ),
+      );
+      lastDecision = rerouted;
+
+      expect(rerouted.stage).not.toBe('session_pin');
+      const statusAfterBreak = formatStatusMessage(
+        {
+          fleetMode: 'scoped',
+          lastDecision,
+          priceCatalog: null,
+          modelRegistry: {} as never,
+          store,
+          sessionPinner,
+          executionLedger: {} as never,
+          lifecycleHookState,
+          hydraMatcher: undefined,
+          streamDeps: { router, modelRegistry: {} as never, fleet, executionLedger: {} as never },
+        },
+        lastDecision,
+      );
+      expect(statusAfterBreak).toContain(`Stage: ${rerouted.stage}`);
+      expect(statusAfterBreak).not.toContain('Stage: session_pin');
     });
   });
 });

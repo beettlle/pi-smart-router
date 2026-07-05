@@ -12,6 +12,7 @@ import {
 } from './infrastructure/gateway/gateway-dispatch.js';
 import {
   createPiRouterMiddleware,
+  LifecycleHookState,
   type PiRouterMiddleware,
   type PiExtensionHooks,
 } from './api/middleware/pi-router-middleware.js';
@@ -43,12 +44,20 @@ export function createRouter(options?: RouterFactoryOptions): RouterHandle {
   return createRouterFromFleet(catalog.models as unknown as ModelProfile[]);
 }
 
+export interface CreateRouterFromFleetOptions extends GatewayDispatchOptions {
+  readonly lifecycleHookState?: LifecycleHookState;
+}
+
 export function createRouterFromFleet(
   fleet: ModelProfile[],
-  options?: GatewayDispatchOptions,
+  options?: CreateRouterFromFleetOptions,
 ): RouterHandle {
-  const dispatch = new GatewayDispatch(fleet, options);
-  const middleware = createPiRouterMiddleware({ fleet });
+  const { lifecycleHookState, ...dispatchOptions } = options ?? {};
+  const dispatch = new GatewayDispatch(fleet, dispatchOptions);
+  const middleware = createPiRouterMiddleware({
+    fleet,
+    ...(lifecycleHookState !== undefined ? { lifecycleHookState } : {}),
+  });
 
   return {
     version: 'pi-smart-router',
@@ -71,7 +80,8 @@ export type {
   PiContextEvent,
   PiModelSelectEvent,
   PiSessionManager,
+  LifecycleFlags,
 } from './api/middleware/pi-router-middleware.js';
-export { createPiRouterMiddleware } from './api/middleware/pi-router-middleware.js';
+export { createPiRouterMiddleware, LifecycleHookState } from './api/middleware/pi-router-middleware.js';
 export type { GatewayDispatchOptions } from './infrastructure/gateway/gateway-dispatch.js';
 export type { PipelineOptions } from './domain/pipeline/router-pipeline.js';

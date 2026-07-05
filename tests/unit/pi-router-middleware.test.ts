@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createPiRouterMiddleware,
+  LifecycleHookState,
   type PiExtensionHooks,
   type PiExtensionContext,
   type PiContextEvent,
@@ -108,30 +109,38 @@ describe('createPiRouterMiddleware', () => {
   });
 
   describe('session_compact / session_before_compact', () => {
-    it('session_compact handler runs without throwing', () => {
-      const middleware = createPiRouterMiddleware({ fleet });
+    it('session_compact sets compaction flag for next consume', () => {
+      const lifecycleHookState = new LifecycleHookState();
+      const middleware = createPiRouterMiddleware({ fleet, lifecycleHookState });
       const { hooks, handlers } = createMockHooks();
       middleware.register(hooks);
 
-      expect(() => {
-        handlers.session_compact[0]!({}, makeCtx());
-      }).not.toThrow();
+      handlers.session_compact[0]!({}, makeCtx({ sessionId: 'compact-sess' }));
+
+      expect(lifecycleHookState.consume('compact-sess')).toEqual({
+        compaction_flag: true,
+      });
+      expect(lifecycleHookState.consume('compact-sess')).toEqual({});
     });
 
-    it('session_before_compact handler runs without throwing', () => {
-      const middleware = createPiRouterMiddleware({ fleet });
+    it('session_before_compact sets compaction flag for next consume', () => {
+      const lifecycleHookState = new LifecycleHookState();
+      const middleware = createPiRouterMiddleware({ fleet, lifecycleHookState });
       const { hooks, handlers } = createMockHooks();
       middleware.register(hooks);
 
-      expect(() => {
-        handlers.session_before_compact[0]!({}, makeCtx());
-      }).not.toThrow();
+      handlers.session_before_compact[0]!({}, makeCtx({ sessionId: 'before-compact' }));
+
+      expect(lifecycleHookState.consume('before-compact')).toEqual({
+        compaction_flag: true,
+      });
     });
   });
 
   describe('model_select event', () => {
-    it('accepts model_select when source is "set"', () => {
-      const middleware = createPiRouterMiddleware({ fleet });
+    it('sets force_model_id when source is "set"', () => {
+      const lifecycleHookState = new LifecycleHookState();
+      const middleware = createPiRouterMiddleware({ fleet, lifecycleHookState });
       const { hooks, handlers } = createMockHooks();
       middleware.register(hooks);
 
@@ -140,13 +149,16 @@ describe('createPiRouterMiddleware', () => {
         model: { provider: 'anthropic', id: 'claude-3' },
       };
 
-      expect(() => {
-        handlers.model_select[0]!(selectEvent, makeCtx());
-      }).not.toThrow();
+      handlers.model_select[0]!(selectEvent, makeCtx({ sessionId: 'override-sess' }));
+
+      expect(lifecycleHookState.consume('override-sess')).toEqual({
+        force_model_id: 'claude-3',
+      });
     });
 
-    it('accepts model_select when source is not "set"', () => {
-      const middleware = createPiRouterMiddleware({ fleet });
+    it('ignores model_select when source is not "set"', () => {
+      const lifecycleHookState = new LifecycleHookState();
+      const middleware = createPiRouterMiddleware({ fleet, lifecycleHookState });
       const { hooks, handlers } = createMockHooks();
       middleware.register(hooks);
 
@@ -155,9 +167,9 @@ describe('createPiRouterMiddleware', () => {
         model: { provider: 'openai', id: 'gpt-4' },
       };
 
-      expect(() => {
-        handlers.model_select[0]!(selectEvent, makeCtx());
-      }).not.toThrow();
+      handlers.model_select[0]!(selectEvent, makeCtx({ sessionId: 'auto-sess' }));
+
+      expect(lifecycleHookState.consume('auto-sess')).toEqual({});
     });
   });
 
