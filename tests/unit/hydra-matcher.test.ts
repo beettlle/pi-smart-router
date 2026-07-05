@@ -193,8 +193,10 @@ describe('HydraMatcher', () => {
       const result = await matcher.match(makeRequest(), fleet);
 
       expect(result.selected!.model_id).toBe('good-enough');
-      expect(result.candidates[0]!.rejected_reason).toBe('shortfall_gate');
-      expect(result.candidates[1]!.rejected_reason).toBeNull();
+      const tooWeak = result.candidates.find((c) => c.model_id === 'too-weak');
+      const goodEnough = result.candidates.find((c) => c.model_id === 'good-enough');
+      expect(tooWeak!.rejected_reason).toBe('shortfall_gate');
+      expect(goodEnough!.rejected_reason).toBeNull();
     });
 
     it('returns score=0 for rejected candidates', async () => {
@@ -374,6 +376,114 @@ describe('HydraMatcher', () => {
       await matcher.dispose();
 
       expect(provider.dispose).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('multi-objective selection (FR-021)', () => {
+    /** Models with nearly identical cosine scores — frugality weights decide the winner. */
+    const parityRequirements: RequirementVector = {
+      reasoning: 0.5,
+      code_gen: 0.5,
+      tool_use: 0.5,
+    };
+
+    it('prefers cheaper model at quality parity when lambda_cost is high', async () => {
+      const provider = makeMockProvider(parityRequirements);
+      const matcher = new HydraMatcher(provider, {
+        ...DEFAULT_CONFIG,
+        frugality: { lambda_cost: 0.9, lambda_latency: 0, lambda_verbosity: 0 },
+      });
+
+      const fleet: ModelProfile[] = [
+        makeModel({
+          id: 'premium',
+          capabilities: { reasoning: 0.71, code_gen: 0.71, tool_use: 0.71 },
+          pricing: { fallback_cost_per_1m: 60 },
+        }),
+        makeModel({
+          id: 'economy',
+          capabilities: { reasoning: 0.7, code_gen: 0.7, tool_use: 0.7 },
+          pricing: { fallback_cost_per_1m: 0.5 },
+        }),
+      ];
+
+      const result = await matcher.match(makeRequest(), fleet);
+
+      expect(result.selected!.model_id).toBe('economy');
+    });
+
+    it('prefers lower-latency model at quality parity when lambda_latency is high', async () => {
+      const provider = makeMockProvider(parityRequirements);
+      const matcher = new HydraMatcher(provider, {
+        ...DEFAULT_CONFIG,
+        frugality: { lambda_cost: 0, lambda_latency: 0.9, lambda_verbosity: 0 },
+      });
+
+      const fleet: ModelProfile[] = [
+        makeModel({
+          id: 'slow',
+          capabilities: { reasoning: 0.71, code_gen: 0.71, tool_use: 0.71 },
+          pricing: { fallback_cost_per_1m: 1 },
+          performance: { latency_p50_ms: 2000 },
+        }),
+        makeModel({
+          id: 'fast',
+          capabilities: { reasoning: 0.7, code_gen: 0.7, tool_use: 0.7 },
+          pricing: { fallback_cost_per_1m: 1 },
+          performance: { latency_p50_ms: 100 },
+        }),
+      ];
+
+      const result = await matcher.match(makeRequest(), fleet);
+
+      expect(result.selected!.model_id).toBe('fast');
+    });
+
+    it('prefers less verbose model at quality parity when lambda_verbosity is high', async () => {
+      const provider = makeMockProvider(parityRequirements);
+      const matcher = new HydraMatcher(provider, {
+        ...DEFAULT_CONFIG,
+        frugality: { lambda_cost: 0, lambda_latency: 0, lambda_verbosity: 0.9 },
+      });
+
+      const fleet: ModelProfile[] = [
+        makeModel({
+          id: 'verbose',
+          capabilities: { reasoning: 0.71, code_gen: 0.71, tool_use: 0.71 },
+          pricing: { fallback_cost_per_1m: 1 },
+          performance: { verbosity_factor: 3.0 },
+        }),
+        makeModel({
+          id: 'concise',
+          capabilities: { reasoning: 0.7, code_gen: 0.7, tool_use: 0.7 },
+          pricing: { fallback_cost_per_1m: 1 },
+          performance: { verbosity_factor: 0.5 },
+        }),
+      ];
+
+      const result = await matcher.match(makeRequest(), fleet);
+
+      expect(result.selected!.model_id).toBe('concise');
+    });
+
+    it('preserves cosine-only ranking at default frugality weights with uniform fleet metrics', async () => {
+      const provider = makeMockProvider(parityRequirements);
+      const matcher = new HydraMatcher(provider, DEFAULT_CONFIG);
+
+      const fleet: ModelProfile[] = [
+        makeModel({
+          id: 'low-match',
+          capabilities: { reasoning: 0.6, code_gen: 0.5, tool_use: 0.5 },
+        }),
+        makeModel({
+          id: 'high-match',
+          capabilities: { reasoning: 0.9, code_gen: 0.9, tool_use: 0.9 },
+        }),
+      ];
+
+      const result = await matcher.match(makeRequest(), fleet);
+
+      expect(result.selected!.model_id).toBe('high-match');
     });
   });
 });
