@@ -1,15 +1,18 @@
 /**
  * Hardware probe — T044, FR-012.
  *
- * Three-state gate: inspects Apple Silicon, unified memory, and battery
+ * Three-state gate: inspects platform/arch, unified memory, and battery
  * to return `full_local`, `classification_only`, or `disabled`.
  *
  * Pure function of SystemInfo × config; side-effect-free for testability.
- * Default SystemInfo provider reads from Node.js `os` and macOS `pmset`.
+ * Default SystemInfo provider reads from Node.js `os` and platform-specific
+ * power sources (macOS pmset, Linux /sys/class/power_supply).
  */
 
 import * as os from 'node:os';
 import { execSync } from 'node:child_process';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -36,11 +39,21 @@ export interface SystemInfoPort {
 
 // ─── Pure probe logic ────────────────────────────────────────────────────────
 
+function isSupportedPlatform(info: SystemInfo): boolean {
+  if (info.platform === 'darwin' && info.arch === 'arm64') {
+    return true;
+  }
+  if (info.platform === 'linux' && (info.arch === 'x64' || info.arch === 'arm64')) {
+    return true;
+  }
+  return false;
+}
+
 export function probeHardware(
   config: HardwareProbeConfig,
   info: SystemInfo,
 ): HardwareProbeResult {
-  if (info.platform !== 'darwin' || info.arch !== 'arm64') {
+  if (!isSupportedPlatform(info)) {
     return 'disabled';
   }
 
@@ -63,7 +76,7 @@ export function probeHardware(
   return 'disabled';
 }
 
-// ─── Default system info provider ────────────────────────────────────────────
+// ─── Platform-specific system info providers ───────────────────────────────
 
 function parseBatteryInfo(output: string): {
   batteryLevel: number | null;
@@ -77,11 +90,71 @@ function parseBatteryInfo(output: string): {
   return { batteryLevel, isOnAcPower };
 }
 
-export async function getDefaultSystemInfo(): Promise<SystemInfo> {
-  let batteryLevel: number | null = null;
-  let isOnAcPower: boolean | null = null;
+function readLinuxPowerInfo(): {
+  batteryLevel: number | null;
+  isOnAcPower: boolean | null;
+} {
+  const powerSupplyDir = '/sys/class/power_supply';
+  if (!existsSync(powerSupplyDir)) {
+    return { batteryLevel: null, isOnAcPower: true };
+  }
 
-  if (os.platform() === 'darwin') {
+  try {
+    const entries = readdirSync(powerSupplyDir);
+    let batteryLevel: number | null = null;
+    let isOnAcPower: boolean | null = null;
+
+    for (const name of entries) {
+      const base = join(powerSupplyDir, name);
+      const typePath = join(base, 'type');
+      if (!existsSync(typePath)) {
+        continue;
+      }
+
+      const type = readFileSync(typePath, 'utf8').trim();
+      if (type !== 'Battery') {
+        continue;
+      }
+
+      const capacityPath = join(base, 'capacity');
+      if (existsSync(capacityPath)) {
+        const capacity = parseInt(readFileSync(capacityPath, 'utf8').trim(), 10);
+        if (!Number.isNaN(capacity)) {
+          batteryLevel = capacity;
+        }
+      }
+
+      const statusPath = join(base, 'status');
+      if (existsSync(statusPath)) {
+        const status = readFileSync(statusPath, 'utf8').trim();
+        isOnAcPower = status === 'Charging' || status === 'Full' || status === 'Not charging';
+      }
+      break;
+    }
+
+    if (batteryLevel === null && isOnAcPower === null) {
+      return { batteryLevel: null, isOnAcPower: true };
+    }
+
+    return { batteryLevel, isOnAcPower };
+  } catch {
+    return { batteryLevel: null, isOnAcPower: true };
+  }
+}
+
+function buildBaseSystemInfo(): Pick<SystemInfo, 'totalMemoryGb' | 'arch' | 'platform'> {
+  return {
+    totalMemoryGb: os.totalmem() / 1024 ** 3,
+    arch: os.arch(),
+    platform: os.platform(),
+  };
+}
+
+const macOsSystemInfoPort: SystemInfoPort = {
+  async getSystemInfo(): Promise<SystemInfo> {
+    let batteryLevel: number | null = null;
+    let isOnAcPower: boolean | null = null;
+
     try {
       const output = execSync('pmset -g batt', {
         timeout: 2000,
@@ -91,18 +164,51 @@ export async function getDefaultSystemInfo(): Promise<SystemInfo> {
       batteryLevel = parsed.batteryLevel;
       isOnAcPower = parsed.isOnAcPower;
     } catch {
-      // Battery info unavailable — assume AC power (safe default per FR-022)
       isOnAcPower = true;
     }
-  }
 
-  return {
-    totalMemoryGb: os.totalmem() / 1024 ** 3,
-    arch: os.arch(),
-    platform: os.platform(),
-    batteryLevel,
-    isOnAcPower,
-  };
+    return {
+      ...buildBaseSystemInfo(),
+      batteryLevel,
+      isOnAcPower,
+    };
+  },
+};
+
+const linuxSystemInfoPort: SystemInfoPort = {
+  async getSystemInfo(): Promise<SystemInfo> {
+    const power = readLinuxPowerInfo();
+    return {
+      ...buildBaseSystemInfo(),
+      batteryLevel: power.batteryLevel,
+      isOnAcPower: power.isOnAcPower,
+    };
+  },
+};
+
+const genericSystemInfoPort: SystemInfoPort = {
+  async getSystemInfo(): Promise<SystemInfo> {
+    return {
+      ...buildBaseSystemInfo(),
+      batteryLevel: null,
+      isOnAcPower: null,
+    };
+  },
+};
+
+export function getDefaultSystemInfoPort(): SystemInfoPort {
+  switch (os.platform()) {
+    case 'darwin':
+      return macOsSystemInfoPort;
+    case 'linux':
+      return linuxSystemInfoPort;
+    default:
+      return genericSystemInfoPort;
+  }
+}
+
+export async function getDefaultSystemInfo(): Promise<SystemInfo> {
+  return getDefaultSystemInfoPort().getSystemInfo();
 }
 
 // ─── Convenience: probe with real system info ────────────────────────────────

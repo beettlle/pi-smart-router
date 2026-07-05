@@ -376,13 +376,14 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
     });
   });
 
-  describe('non-Apple Silicon hardware', () => {
-    it('disables local when platform is not darwin', async () => {
+  describe('unsupported or ineligible hardware', () => {
+    it('disables local when platform is not supported (Windows)', async () => {
       const pipeline = new RouterPipeline(FLEET, {
         hardwareConfig: HARDWARE_CONFIG,
         localConfig: TEST_CONFIG,
         systemInfoProvider: () => Promise.resolve(makeSystemInfo({
-          platform: 'linux',
+          platform: 'win32',
+          arch: 'x64',
           totalMemoryGb: 64,
         })),
         httpFetchPort: READY_FETCH,
@@ -392,7 +393,23 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
       expect(decision.tier).not.toBe('zero-tier');
     });
 
-    it('disables local when arch is not arm64', async () => {
+    it('routes to zero-tier on Linux x64 with sufficient RAM', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({
+          platform: 'linux',
+          arch: 'x64',
+          totalMemoryGb: 64,
+        })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(makeRequest());
+      expect(decision.tier).toBe('zero-tier');
+    });
+
+    it('disables local when arch is not arm64 on darwin', async () => {
       const pipeline = new RouterPipeline(FLEET, {
         hardwareConfig: HARDWARE_CONFIG,
         localConfig: TEST_CONFIG,

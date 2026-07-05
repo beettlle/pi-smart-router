@@ -23,7 +23,7 @@ The pipeline runs **7 stages sequentially with early exit** — the moment any s
 
 | Stage | Budget | What it does |
 |-------|--------|--------------|
-| Hardware Probe | — | Checks macOS/ARM64/RAM/battery to gate local inference |
+| Hardware Probe | — | Checks platform/RAM/battery to gate local inference |
 | Loop Escalation | — | Detects repeated identical tool failures; escalates session to frontier |
 | Session Pin | <1ms | Returns pinned model if session has one; breaks pin on compaction or user override |
 | Deterministic Triage | <5ms | Aho-Corasick keyword scan + cyclomatic complexity analysis |
@@ -48,7 +48,8 @@ See [docs/PRD.md](docs/PRD.md) for full architectural justification.
 |------------|----------|-------|
 | [Node.js](https://nodejs.org/) >= 20 | Yes | ES module package |
 | [pi](https://pi.dev) coding agent | Yes | Extension host |
-| macOS Apple Silicon | MVP | Linux/Windows planned for future phases |
+| macOS Apple Silicon | MVP | Primary supported platform |
+| Linux (x64/arm64) | Experimental | Probe logic supported; not validated on real hardware |
 | [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com) | Optional | Required for zero-tier local routing |
 | Authenticated cloud providers in pi | Recommended | Anthropic, OpenAI, Google, etc. |
 
