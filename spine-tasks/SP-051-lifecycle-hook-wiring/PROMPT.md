@@ -91,3 +91,5 @@ Unit and integration tests pass because they inject these flags directly — pro
 ---
 
 ## Amendments (Added During Execution)
+
+- **2026-07-04:** SP-049 prelanded dispatch wiring in `index.ts` (hardware, local, loop escalation, rate limiter). This task adds lifecycle hooks only — do not revert SP-049 wiring.

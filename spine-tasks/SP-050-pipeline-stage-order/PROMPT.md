@@ -93,3 +93,5 @@ Proposed fix (pick one):
 ---
 
 ## Amendments (Added During Execution)
+
+- **2026-07-04:** SP-048 landed a 3-line lint fix in `router-pipeline.ts` (`_request` unused var). Stage-order work remains; amend contract if spine flags prelanded path.
