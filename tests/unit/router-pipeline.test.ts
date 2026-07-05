@@ -32,6 +32,12 @@ const fleet: ModelProfile[] = [
   makeModel({ id: 'claude-opus', tier: 'frontier-cloud' }),
 ];
 
+const HARDWARE_CONFIG = {
+  min_memory_gb_full: 16,
+  min_memory_gb_classification: 8,
+  battery_threshold_pct: 20,
+} as const;
+
 describe('RouterPipeline', () => {
   describe('stage chain with placeholders', () => {
     it('runs through all placeholder stages and returns safe default', async () => {
@@ -214,7 +220,7 @@ describe('RouterPipeline', () => {
       const secretPrompt = 'super-secret-prompt-content';
       const pipeline = new RouterPipeline(fleet, {
         telemetryEmitter,
-        hardwareConfig: { minRamGb: 8, minCpuCores: 4 },
+        hardwareConfig: HARDWARE_CONFIG,
         systemInfoProvider: async () => {
           throw new Error(`probe failed for prompt: ${secretPrompt}`);
         },
@@ -245,7 +251,7 @@ describe('RouterPipeline', () => {
 
     it('never propagates stage exceptions to the caller', async () => {
       const pipeline = new RouterPipeline(fleet, {
-        hardwareConfig: { minRamGb: 8, minCpuCores: 4 },
+        hardwareConfig: HARDWARE_CONFIG,
         systemInfoProvider: async () => {
           throw new Error('hardware probe unavailable');
         },
