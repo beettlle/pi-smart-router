@@ -29,7 +29,7 @@ import {
 
 // ─── Schema version & migrations ────────────────────────────────────────────
 
-const CURRENT_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 3;
 
 const MIGRATION_V1 = `
   CREATE TABLE IF NOT EXISTS pins (
@@ -109,6 +109,10 @@ const MIGRATION_V2 = `
 
   CREATE INDEX IF NOT EXISTS idx_dataset_timestamp ON dataset(timestamp);
   CREATE INDEX IF NOT EXISTS idx_dataset_request ON dataset(request_id);
+`;
+
+const MIGRATION_V3 = `
+  ALTER TABLE dataset ADD COLUMN prompt_fingerprint TEXT;
 `;
 
 // ─── Token bucket result ────────────────────────────────────────────────────
@@ -360,7 +364,7 @@ export class SqliteStore implements StorePort {
           triage_verdict, triage_reason_code, triage_cyclomatic_score,
           triage_trivial_hits, triage_complex_hits, triage_sanitized_length_delta,
           requirement_reasoning, requirement_code_gen, requirement_tool_use,
-          routing_latency_ms, estimated_cost_usd
+          routing_latency_ms, estimated_cost_usd, prompt_fingerprint
         ) VALUES (
           @request_id, @timestamp, @turn_type, @stage, @reason_code,
           @selected_model_id, @tier, @candidates_json,
@@ -369,7 +373,7 @@ export class SqliteStore implements StorePort {
           @triage_verdict, @triage_reason_code, @triage_cyclomatic_score,
           @triage_trivial_hits, @triage_complex_hits, @triage_sanitized_length_delta,
           @requirement_reasoning, @requirement_code_gen, @requirement_tool_use,
-          @routing_latency_ms, @estimated_cost_usd
+          @routing_latency_ms, @estimated_cost_usd, @prompt_fingerprint
         )`,
       )
       .run({
@@ -397,6 +401,7 @@ export class SqliteStore implements StorePort {
         requirement_tool_use: entry.requirement_tool_use,
         routing_latency_ms: entry.routing_latency_ms,
         estimated_cost_usd: entry.estimated_cost_usd,
+        prompt_fingerprint: entry.prompt_fingerprint,
       });
 
     this.evictDatasetRows();
@@ -502,6 +507,12 @@ export class SqliteStore implements StorePort {
 
     if (version < 2) {
       this.db.exec(MIGRATION_V2);
+      version = 2;
+      this.db.pragma('user_version = 2');
+    }
+
+    if (version < 3) {
+      this.db.exec(MIGRATION_V3);
       this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`);
     }
   }
@@ -620,6 +631,7 @@ interface DatasetRow {
   requirement_tool_use: number | null;
   routing_latency_ms: number;
   estimated_cost_usd: number | null;
+  prompt_fingerprint: string | null;
 }
 
 // ─── Row mappers ──────────────────────────────────────────────────────────
@@ -672,6 +684,7 @@ function datasetRowToEntity(row: DatasetRow): RoutingDatasetRecord {
     requirement_tool_use: row.requirement_tool_use,
     routing_latency_ms: row.routing_latency_ms,
     estimated_cost_usd: row.estimated_cost_usd,
+    prompt_fingerprint: row.prompt_fingerprint,
   };
 }
 

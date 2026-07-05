@@ -132,6 +132,8 @@ export interface RoutingDatasetRecord {
     readonly requirement_tool_use: number | null;
     readonly routing_latency_ms: number;
     readonly estimated_cost_usd: number | null;
+    /** HMAC-SHA256 fingerprint for dedup when SMART_ROUTER_DATASET_FINGERPRINT=1. */
+    readonly prompt_fingerprint: string | null;
 }
 export interface RoutingTelemetry {
     readonly timestamp: string;

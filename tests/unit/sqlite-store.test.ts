@@ -78,6 +78,7 @@ function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): Routi
     requirement_tool_use: 0.6,
     routing_latency_ms: 45,
     estimated_cost_usd: 0.002,
+    prompt_fingerprint: null,
     ...overrides,
   };
 }
@@ -109,7 +110,7 @@ describe('SqliteStore', () => {
       store2.close();
     });
 
-    it('migrates to schema v2 with dataset table and no prompt columns', () => {
+    it('migrates to schema v3 with prompt_fingerprint column and no prompt columns', () => {
       const dir = mkdtempSync(join(tmpdir(), 'sqlite-store-'));
       const dbPath = join(dir, 'router.db');
       let store: SqliteStore | undefined;
@@ -120,12 +121,13 @@ describe('SqliteStore', () => {
         db = new Database(dbPath);
 
         const version = db.pragma('user_version', { simple: true });
-        expect(version).toBe(2);
+        expect(version).toBe(3);
 
         const columns = db.prepare('PRAGMA table_info(dataset)').all() as Array<{ name: string }>;
         const columnNames = columns.map((column) => column.name);
 
         expect(columnNames).toContain('prompt_length_chars');
+        expect(columnNames).toContain('prompt_fingerprint');
         expect(columnNames).not.toContain('prompt_text');
         expect(columnNames).not.toContain('messages');
         expect(columnNames).not.toContain('prompt');
@@ -134,6 +136,14 @@ describe('SqliteStore', () => {
         db?.close();
         rmSync(dir, { recursive: true, force: true });
       }
+    });
+
+    it('round-trips prompt_fingerprint on dataset records', async () => {
+      const fingerprint = 'a'.repeat(64);
+      store.appendDatasetRecord(makeDatasetRecord({ prompt_fingerprint: fingerprint }));
+
+      const rows = await store.listDatasetRecords({ limit: 1 });
+      expect(rows[0]?.prompt_fingerprint).toBe(fingerprint);
     });
   });
 

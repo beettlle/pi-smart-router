@@ -49,6 +49,7 @@ function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): Routi
     requirement_tool_use: 0.5,
     routing_latency_ms: 12,
     estimated_cost_usd: 0.001,
+    prompt_fingerprint: null,
     ...overrides,
   };
 }
@@ -189,10 +190,14 @@ describe('dataset export (SP-060)', () => {
       session_id: 'sess-secret',
       prompt_text: 'do not export',
       messages: [{ role: 'user', content: 'nope' }],
+      pepper: 'never-export-install-pepper',
+      dataset_key: 'never-export-key',
     } as RoutingDatasetRecord & {
       session_id: string;
       prompt_text: string;
       messages: unknown[];
+      pepper: string;
+      dataset_key: string;
     };
 
     const exported = toDatasetExportRecord(withSession);
@@ -200,9 +205,20 @@ describe('dataset export (SP-060)', () => {
     expect(exported).not.toHaveProperty('session_id');
     expect(exported).not.toHaveProperty('prompt_text');
     expect(exported).not.toHaveProperty('messages');
+    expect(exported).not.toHaveProperty('pepper');
+    expect(exported).not.toHaveProperty('dataset_key');
     expect(exported.session_id_hash).toMatch(/^[a-f0-9]{64}$/);
     expect(exported.request_id).toBe('req-export-1');
     expect(exported.prompt_length_chars).toBe(42);
+  });
+
+  it('exports prompt_fingerprint when present', () => {
+    const fingerprint = 'c'.repeat(64);
+    const exported = toDatasetExportRecord(
+      makeDatasetRecord({ prompt_fingerprint: fingerprint }),
+    );
+
+    expect(exported.prompt_fingerprint).toBe(fingerprint);
   });
 
   it('formats JSONL with one object per line', () => {

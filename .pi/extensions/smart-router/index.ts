@@ -321,14 +321,26 @@ function createDispatchOptions(
 
 function createExtensionDatasetRecorder(
   store: StorePort,
+  cwdOrNotify?: string | ((message: string) => void),
   notifyEnabled?: (message: string) => void,
 ): DatasetRecorder {
+  let cwd = process.cwd();
+  let notify: ((message: string) => void) | undefined;
+
+  if (typeof cwdOrNotify === 'string') {
+    cwd = cwdOrNotify;
+    notify = notifyEnabled;
+  } else if (typeof cwdOrNotify === 'function') {
+    notify = cwdOrNotify;
+  }
+
   return new DatasetRecorder({
+    cwd,
     onRecord: (record) => {
       store.appendDatasetRecord(record);
     },
     onFirstEnable: () => {
-      notifyEnabled?.(DATASET_ENABLED_NOTIFY_MESSAGE);
+      notify?.(DATASET_ENABLED_NOTIFY_MESSAGE);
     },
   });
 }
@@ -560,6 +572,10 @@ const DATASET_EXPORT_FORBIDDEN_KEYS = [
   'prompt_text',
   'messages',
   'prompt',
+  'pepper',
+  'install_pepper',
+  'dataset_pepper',
+  'dataset_key',
 ] as const;
 
 function hashSessionIdForExport(sessionId: string): string {
@@ -1383,7 +1399,7 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
   const datasetNotify = {
     fn: undefined as ((message: string) => void) | undefined,
   };
-  const datasetRecorder = createExtensionDatasetRecorder(store, (message) => {
+  const datasetRecorder = createExtensionDatasetRecorder(store, cwd, (message) => {
     datasetNotify.fn?.(message);
   });
 

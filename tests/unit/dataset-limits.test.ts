@@ -35,6 +35,7 @@ function makeDatasetRecord(timestamp: string): RoutingDatasetRecord {
     requirement_tool_use: null,
     routing_latency_ms: 1,
     estimated_cost_usd: null,
+    prompt_fingerprint: null,
   };
 }
 
