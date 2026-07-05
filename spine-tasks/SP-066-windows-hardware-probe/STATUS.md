@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Pending
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-05
 **Review Level:** 1
 **Size:** M
@@ -8,27 +8,31 @@
 
 ## Step 1: Windows SystemInfoPort
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Implement Windows provider
-- [ ] Wire default provider selection
+- [x] Implement Windows provider
+- [x] Wire default provider selection
 
 ## Step 2: Extend probeHardware policy
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Add win32 support
-- [ ] Keep shared threshold logic
+- [x] Add win32 support
+- [x] Keep shared threshold logic
 
 ## Step 3: Tests and README
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Windows fixture matrix
-- [ ] README experimental note
-- [ ] Run typecheck and test
+- [x] Windows fixture matrix
+- [x] README experimental note
+- [x] Run typecheck and test
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] Windows probe logic covered by fixtures
+- [x] All steps complete
+- [x] Windows probe logic covered by fixtures
+
+## Discoveries
+
+- Updated `tests/unit/local-zero-tier.test.ts` (out of listed File Scope) so Windows integration expectation matches enabled probe policy; required for `npm test` to pass.
