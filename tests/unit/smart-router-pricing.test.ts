@@ -128,6 +128,14 @@ describe('parseSmartRouterArgs (SP-045)', () => {
       subcommand: 'dataset',
       limit: 50,
     });
+    expect(parseSmartRouterArgs('feedback good')).toEqual({
+      command: 'feedback',
+      rating: 'good',
+    });
+    expect(parseSmartRouterArgs('feedback bad')).toEqual({
+      command: 'feedback',
+      rating: 'bad',
+    });
   });
 
   it('rejects invalid export dataset invocations', () => {
@@ -146,7 +154,7 @@ describe('getSmartRouterArgumentCompletions', () => {
   }
 
   it('offers top-level subcommands on empty prefix', () => {
-    expect(completionValues('')).toEqual(['status', 'history', 'mode', 'pricing', 'export']);
+    expect(completionValues('')).toEqual(['status', 'history', 'mode', 'pricing', 'export', 'feedback']);
   });
 
   it('filters top-level subcommands by partial prefix', () => {

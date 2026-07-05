@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
 
-import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, SessionPin } from '../../src/domain/types/entities.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, SessionPin } from '../../src/domain/types/entities.js';
 import { SqliteStore, SqliteStoreError } from '../../src/infrastructure/persistence/sqlite-store.js';
 
 const TEST_MODELS: readonly ModelProfile[] = [
@@ -110,7 +110,7 @@ describe('SqliteStore', () => {
       store2.close();
     });
 
-    it('migrates to schema v3 with prompt_fingerprint column and no prompt columns', () => {
+    it('migrates to schema v4 with outcomes table and dataset privacy columns', () => {
       const dir = mkdtempSync(join(tmpdir(), 'sqlite-store-'));
       const dbPath = join(dir, 'router.db');
       let store: SqliteStore | undefined;
@@ -121,16 +121,28 @@ describe('SqliteStore', () => {
         db = new Database(dbPath);
 
         const version = db.pragma('user_version', { simple: true });
-        expect(version).toBe(3);
+        expect(version).toBe(4);
 
-        const columns = db.prepare('PRAGMA table_info(dataset)').all() as Array<{ name: string }>;
-        const columnNames = columns.map((column) => column.name);
+        const datasetColumns = db.prepare('PRAGMA table_info(dataset)').all() as Array<{ name: string }>;
+        const datasetColumnNames = datasetColumns.map((column) => column.name);
 
-        expect(columnNames).toContain('prompt_length_chars');
-        expect(columnNames).toContain('prompt_fingerprint');
-        expect(columnNames).not.toContain('prompt_text');
-        expect(columnNames).not.toContain('messages');
-        expect(columnNames).not.toContain('prompt');
+        expect(datasetColumnNames).toContain('prompt_length_chars');
+        expect(datasetColumnNames).toContain('prompt_fingerprint');
+        expect(datasetColumnNames).not.toContain('prompt_text');
+        expect(datasetColumnNames).not.toContain('messages');
+        expect(datasetColumnNames).not.toContain('prompt');
+
+        const outcomeColumns = db.prepare('PRAGMA table_info(outcomes)').all() as Array<{ name: string }>;
+        const outcomeColumnNames = outcomeColumns.map((column) => column.name);
+        expect(outcomeColumnNames).toEqual([
+          'id',
+          'request_id',
+          'session_id',
+          'timestamp',
+          'signal_type',
+          'routed_model_id',
+          'override_model_id',
+        ]);
       } finally {
         store?.close();
         db?.close();
@@ -371,6 +383,53 @@ describe('SqliteStore', () => {
       const rows = await store.listDatasetRecords({ limit: 20_000 });
       expect(rows.length).toBeLessThanOrEqual(10_000);
       expect(rows[0]?.request_id).toBe('req-10000');
+    });
+  });
+
+  // ─── Outcomes ─────────────────────────────────────────────────────────
+
+  describe('outcomes', () => {
+    function makeOutcome(overrides: Partial<RoutingOutcomeRecord> = {}): RoutingOutcomeRecord {
+      return {
+        request_id: 'req-1',
+        session_id: 'sess-1',
+        timestamp: '2026-07-05T00:00:00.000Z',
+        signal_type: 'model_override',
+        routed_model_id: 'gpt-5-mini',
+        override_model_id: 'gpt-4o',
+        ...overrides,
+      };
+    }
+
+    it('appends and lists outcome records newest first', async () => {
+      store.appendOutcomeRecord(makeOutcome({
+        request_id: 'req-1',
+        timestamp: '2026-07-05T00:00:00.000Z',
+      }));
+      store.appendOutcomeRecord(makeOutcome({
+        request_id: 'req-2',
+        timestamp: '2026-07-05T00:01:00.000Z',
+        signal_type: 'feedback_good',
+        override_model_id: null,
+      }));
+
+      const rows = await store.listOutcomeRecords({ limit: 10 });
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.request_id).toBe('req-2');
+      expect(rows[1]?.request_id).toBe('req-1');
+    });
+
+    it('filters outcomes by request_id and session_id', async () => {
+      store.appendOutcomeRecord(makeOutcome({ request_id: 'req-a', session_id: 'sess-a' }));
+      store.appendOutcomeRecord(makeOutcome({ request_id: 'req-b', session_id: 'sess-b' }));
+
+      const byRequest = await store.listOutcomeRecords({ requestId: 'req-a' });
+      const bySession = await store.listOutcomeRecords({ sessionId: 'sess-b' });
+
+      expect(byRequest).toHaveLength(1);
+      expect(byRequest[0]?.request_id).toBe('req-a');
+      expect(bySession).toHaveLength(1);
+      expect(bySession[0]?.session_id).toBe('sess-b');
     });
   });
 

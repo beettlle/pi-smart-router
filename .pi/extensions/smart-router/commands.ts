@@ -1,5 +1,5 @@
 export const SMART_ROUTER_USAGE =
-  '/smart-router [status] | history [limit] | mode scoped|all | pricing refresh | export dataset [--limit N]';
+  '/smart-router [status] | history [limit] | mode scoped|all | pricing refresh | export dataset [--limit N] | feedback good|bad';
 
 type CompletionItem = { value: string; label: string };
 
@@ -9,6 +9,7 @@ const TOP_LEVEL: CompletionItem[] = [
   { value: 'mode', label: 'Switch fleet mode (scoped or all)' },
   { value: 'pricing', label: 'Manage pricing catalog' },
   { value: 'export', label: 'Export opt-in routing dataset' },
+  { value: 'feedback', label: 'Label last routing outcome good or bad' },
 ];
 
 const MODE_COMPLETIONS: CompletionItem[] = [
@@ -24,6 +25,11 @@ const EXPORT_COMPLETIONS: CompletionItem[] = [
   { value: 'export dataset', label: 'Export privacy-safe dataset JSONL' },
 ];
 
+const FEEDBACK_COMPLETIONS: CompletionItem[] = [
+  { value: 'feedback good', label: 'Mark last routing outcome as good' },
+  { value: 'feedback bad', label: 'Mark last routing outcome as bad' },
+];
+
 /** Full invocations used to keep completions and parseSmartRouterArgs in sync. */
 export const SMART_ROUTER_FULL_INVOCATIONS = [
   '',
@@ -35,6 +41,8 @@ export const SMART_ROUTER_FULL_INVOCATIONS = [
   'pricing refresh',
   'export dataset',
   'export dataset --limit 100',
+  'feedback good',
+  'feedback bad',
 ] as const;
 
 function filterByPrefix(items: CompletionItem[], prefix: string): CompletionItem[] {
@@ -60,6 +68,12 @@ export function getSmartRouterArgumentCompletions(prefix: string): CompletionIte
   if (tokens[0] === 'export') {
     const subPrefix = tokens.slice(1).join(' ');
     const filtered = filterByPrefix(EXPORT_COMPLETIONS, `export${subPrefix ? ` ${subPrefix}` : ''}`);
+    return filtered.length > 0 ? filtered : null;
+  }
+
+  if (tokens[0] === 'feedback') {
+    const subPrefix = tokens.slice(1).join(' ');
+    const filtered = filterByPrefix(FEEDBACK_COMPLETIONS, `feedback${subPrefix ? ` ${subPrefix}` : ''}`);
     return filtered.length > 0 ? filtered : null;
   }
 

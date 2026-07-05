@@ -23,6 +23,7 @@ import {
   buildRoutingRequest,
   createDispatchOptions,
   createExtensionDatasetRecorder,
+  createExtensionOutcomeRecorder,
   createStreamSimple,
   getRoutingFeatureSidecar,
 } from '../../.pi/extensions/smart-router/index.js';
@@ -457,6 +458,81 @@ describe('Pi extension integration (SP-043)', () => {
       expect(JSON.stringify(rows[0])).not.toContain(prompt);
       expect(rows[0]).not.toHaveProperty('prompt_text');
       expect(notifySpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('outcome labels (SP-062)', () => {
+    const originalDatasetEnv = process.env.SMART_ROUTER_DATASET;
+
+    beforeEach(() => {
+      process.env.SMART_ROUTER_DATASET = '1';
+      mockDelegateStreamSimple.mockReset();
+    });
+
+    afterEach(() => {
+      if (originalDatasetEnv === undefined) {
+        delete process.env.SMART_ROUTER_DATASET;
+      } else {
+        process.env.SMART_ROUTER_DATASET = originalDatasetEnv;
+      }
+    });
+
+    it('records model_override outcome after user model override', async () => {
+      const fleet = mapFleetFromRegistry(REGISTRY_MODELS);
+      const store = new MemoryStore();
+      const sessionPinner = new SessionPinner({ store });
+      const lifecycleHookState = new LifecycleHookState();
+      const sessionRouting = new Map<string, { lastRequestId: string; lastSelectedModelId: string }>();
+      const outcomeRecorder = createExtensionOutcomeRecorder(store);
+      const router = createRouterFromFleet(fleet, {
+        ...createDispatchOptions(store, sessionPinner),
+        lifecycleHookState,
+      });
+      const modelRegistry = createMockRegistry(piRegistryModels);
+      const target = piRegistryModels.find((model) => model.id === 'gpt-5-mini')!;
+      mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
+
+      const streamSimple = createStreamSimple({
+        router,
+        modelRegistry,
+        fleet,
+        executionLedger: new ExecutionLedger(),
+        lifecycleHookState,
+        sessionPinner,
+        sessionRouting,
+        outcomeRecorder,
+      });
+
+      await collectEvents(
+        streamSimple(
+          makeAutoModel(),
+          makeContext([userMessage('First auto route')]),
+          { sessionId: 'outcome-override' },
+        ),
+      );
+
+      const firstSnapshot = sessionRouting.get('outcome-override');
+      expect(firstSnapshot).toBeDefined();
+
+      lifecycleHookState.setForceModel('outcome-override', 'claude-3.5-sonnet');
+      mockDelegateStreamSimple.mockImplementation(() =>
+        makeSuccessStream(piRegistryModels.find((model) => model.id === 'claude-3.5-sonnet')!),
+      );
+
+      await collectEvents(
+        streamSimple(
+          makeAutoModel(),
+          makeContext([userMessage('Override model')]),
+          { sessionId: 'outcome-override' },
+        ),
+      );
+
+      const outcomes = await store.listOutcomeRecords({ sessionId: 'outcome-override' });
+      expect(outcomes).toHaveLength(1);
+      expect(outcomes[0]?.signal_type).toBe('model_override');
+      expect(outcomes[0]?.request_id).toBe(firstSnapshot!.lastRequestId);
+      expect(outcomes[0]?.override_model_id).toBe('claude-3.5-sonnet');
+      expect(JSON.stringify(outcomes[0])).not.toContain('Override model');
     });
   });
 

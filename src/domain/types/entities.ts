@@ -187,6 +187,30 @@ export interface RoutingDatasetRecord {
   readonly prompt_fingerprint: string | null;
 }
 
+// ─── RoutingOutcomeRecord ────────────────────────────────────────────────────
+
+/** Behavioral outcome signal for policy learning (SP-062). No prompt text. */
+export type OutcomeSignalType =
+  | 'model_override'
+  | 'compaction_pin_break'
+  | 'feedback_good'
+  | 'feedback_bad';
+
+/**
+ * Privacy-safe routing outcome label keyed by request_id.
+ * Links to a dataset record; never stores prompt text or messages.
+ */
+export interface RoutingOutcomeRecord {
+  readonly request_id: string;
+  readonly session_id: string;
+  readonly timestamp: string;
+  readonly signal_type: OutcomeSignalType;
+  /** Model selected by the router for the linked request. */
+  readonly routed_model_id: string | null;
+  /** User-chosen model after override; only for model_override. */
+  readonly override_model_id: string | null;
+}
+
 // ─── RoutingTelemetry ────────────────────────────────────────────────────────
 
 export interface RoutingTelemetry {

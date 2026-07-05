@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { RoutingDatasetRecord } from '../../src/domain/types/entities.js';
+import type { RoutingDatasetRecord, RoutingOutcomeRecord } from '../../src/domain/types/entities.js';
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
 
 function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): RoutingDatasetRecord {
@@ -82,5 +82,24 @@ describe('MemoryStore dataset', () => {
     const record = makeDatasetRecord();
     expect(record).not.toHaveProperty('prompt_text');
     expect(record).not.toHaveProperty('messages');
+  });
+});
+
+describe('MemoryStore outcomes', () => {
+  it('appends and lists outcome records', async () => {
+    const store = new MemoryStore();
+    const outcome: RoutingOutcomeRecord = {
+      request_id: 'req-1',
+      session_id: 'sess-1',
+      timestamp: '2026-07-05T00:00:00.000Z',
+      signal_type: 'feedback_good',
+      routed_model_id: 'gpt-5-mini',
+      override_model_id: null,
+    };
+
+    store.appendOutcomeRecord(outcome);
+
+    const rows = await store.listOutcomeRecords({ limit: 1 });
+    expect(rows[0]).toEqual(outcome);
   });
 });

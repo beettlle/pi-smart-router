@@ -10,6 +10,7 @@ export type {
   RoutingDatasetRecord,
   RoutingDecision,
   RoutingFeatureSidecar,
+  RoutingOutcomeRecord,
   RoutingRequest,
   RoutingTelemetry,
   SessionPin,
@@ -19,6 +20,7 @@ export type {
 export type {
   PinReason,
   PriceSource,
+  OutcomeSignalType,
   RoutingStage,
   Tier,
   TurnType,

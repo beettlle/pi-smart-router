@@ -7,12 +7,14 @@
  */
 import { DEFAULT_HISTORY_LIMIT, MAX_HISTORY_LIMIT, TELEMETRY_MAX_ENTRIES, makeTelemetryRoom, } from '../telemetry/telemetry-limits.js';
 import { makeDatasetRoom, } from '../telemetry/dataset-limits.js';
+import { makeOutcomeRoom, } from '../telemetry/outcome-limits.js';
 export class MemoryStore {
     pins = new Map();
     models;
     priceCatalog = null;
     telemetry = [];
     dataset = [];
+    outcomes = [];
     constructor(models = []) {
         this.models = models;
     }
@@ -55,6 +57,23 @@ export class MemoryStore {
     async listDatasetRecords(options) {
         const limit = clampHistoryLimit(options?.limit);
         return [...this.dataset]
+            .reverse()
+            .slice(0, limit);
+    }
+    appendOutcomeRecord(entry) {
+        makeOutcomeRoom(this.outcomes);
+        this.outcomes.push(entry);
+    }
+    async listOutcomeRecords(options) {
+        const limit = clampHistoryLimit(options?.limit);
+        const requestId = options?.requestId;
+        const sessionId = options?.sessionId;
+        const filtered = requestId
+            ? this.outcomes.filter((entry) => entry.request_id === requestId)
+            : sessionId
+                ? this.outcomes.filter((entry) => entry.session_id === sessionId)
+                : this.outcomes;
+        return [...filtered]
             .reverse()
             .slice(0, limit);
     }
