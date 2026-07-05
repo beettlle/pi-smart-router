@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-05
 **Status:** Active
-**Next Task ID:** SP-075
+**Next Task ID:** SP-078
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -164,6 +164,14 @@
 | Task | Summary | Size | Deps | GitHub |
 |------|---------|------|------|--------|
 | SP-074 | Wire cache-warmup economics into session pin break rules | S | SP-073 | #32 |
+
+### Phase 23 — Gemini Tool Session Fixes (SP-075–SP-077)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-075 | Stop thought_signature 400 infra failover; terminal error UX | S | SP-074 | #37 |
+| SP-076 | `/smart-router unpin` subcommand for dogfooding | S | SP-074 | #35 |
+| SP-077 | Exclude Gemini when session has tool-call history | M | SP-075 | #38 |
 
 ---
 
