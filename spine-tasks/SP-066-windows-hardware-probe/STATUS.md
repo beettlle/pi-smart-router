@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-05
 **Review Level:** 1
 **Size:** M
@@ -8,10 +8,10 @@
 
 ## Step 1: Windows SystemInfoPort
 
-**Status:** ⬜ Pending
+**Status:** 🔄 In Progress
 
-- [ ] Implement Windows provider
-- [ ] Wire default provider selection
+- [x] Implement Windows provider
+- [x] Wire default provider selection
 
 ## Step 2: Extend probeHardware policy
 

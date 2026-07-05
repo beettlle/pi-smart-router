@@ -6,7 +6,7 @@
  *
  * Pure function of SystemInfo × config; side-effect-free for testability.
  * Default SystemInfo provider reads from Node.js `os` and platform-specific
- * power sources (macOS pmset, Linux /sys/class/power_supply).
+ * power sources (macOS pmset, Linux /sys/class/power_supply, Windows WMI).
  */
 
 import * as os from 'node:os';
@@ -44,6 +44,9 @@ function isSupportedPlatform(info: SystemInfo): boolean {
     return true;
   }
   if (info.platform === 'linux' && (info.arch === 'x64' || info.arch === 'arm64')) {
+    return true;
+  }
+  if (info.platform === 'win32' && (info.arch === 'x64' || info.arch === 'arm64')) {
     return true;
   }
   return false;
@@ -186,6 +189,56 @@ const linuxSystemInfoPort: SystemInfoPort = {
   },
 };
 
+function readWindowsPowerInfo(): {
+  batteryLevel: number | null;
+  isOnAcPower: boolean | null;
+} {
+  try {
+    const output = execSync(
+      'powershell -NoProfile -Command "Get-CimInstance -ClassName Win32_Battery -ErrorAction SilentlyContinue | Select-Object -First 1 EstimatedChargeRemaining, BatteryStatus | ConvertTo-Json -Compress"',
+      { timeout: 3000, encoding: 'utf8' },
+    ).trim();
+
+    if (!output) {
+      return { batteryLevel: null, isOnAcPower: true };
+    }
+
+    const parsed = JSON.parse(output) as {
+      EstimatedChargeRemaining?: number;
+      BatteryStatus?: number;
+    };
+
+    const batteryLevel = typeof parsed.EstimatedChargeRemaining === 'number'
+      ? parsed.EstimatedChargeRemaining
+      : null;
+
+    let isOnAcPower: boolean | null = null;
+    if (typeof parsed.BatteryStatus === 'number') {
+      // 1 = discharging; other values indicate AC/charging/full states.
+      isOnAcPower = parsed.BatteryStatus !== 1;
+    }
+
+    if (batteryLevel === null && isOnAcPower === null) {
+      return { batteryLevel: null, isOnAcPower: true };
+    }
+
+    return { batteryLevel, isOnAcPower };
+  } catch {
+    return { batteryLevel: null, isOnAcPower: true };
+  }
+}
+
+const windowsSystemInfoPort: SystemInfoPort = {
+  async getSystemInfo(): Promise<SystemInfo> {
+    const power = readWindowsPowerInfo();
+    return {
+      ...buildBaseSystemInfo(),
+      batteryLevel: power.batteryLevel,
+      isOnAcPower: power.isOnAcPower,
+    };
+  },
+};
+
 const genericSystemInfoPort: SystemInfoPort = {
   async getSystemInfo(): Promise<SystemInfo> {
     return {
@@ -202,6 +255,8 @@ export function getDefaultSystemInfoPort(): SystemInfoPort {
       return macOsSystemInfoPort;
     case 'linux':
       return linuxSystemInfoPort;
+    case 'win32':
+      return windowsSystemInfoPort;
     default:
       return genericSystemInfoPort;
   }
