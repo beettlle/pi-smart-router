@@ -1,8 +1,13 @@
 import { SettingsManager } from '@earendil-works/pi-coding-agent';
 import { describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import {
   discoverFleet,
+  exportDatasetToFile,
+  formatDatasetExportJsonl,
   formatHistoryMessage,
   formatPricingStalenessLine,
   formatStatusMessage,
@@ -10,12 +15,43 @@ import {
   getSmartRouterArgumentCompletions,
   parseSmartRouterArgs,
   refreshPricingCatalog,
+  toDatasetExportRecord,
 } from '../../.pi/extensions/smart-router/index.js';
 import { SMART_ROUTER_FULL_INVOCATIONS } from '../../.pi/extensions/smart-router/commands.js';
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
-import type { ModelProfile, PriceCatalog } from '../../src/domain/types/index.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord } from '../../src/domain/types/index.js';
 import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
 import type { Api, Model } from '@earendil-works/pi-ai/compat';
+
+function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): RoutingDatasetRecord {
+  return {
+    request_id: 'req-export-1',
+    timestamp: '2026-07-05T12:00:00.000Z',
+    turn_type: 'main_loop',
+    stage: 'hydra_match',
+    reason_code: 'hydra_embedding_match',
+    selected_model_id: 'gpt-4o-mini',
+    tier: 'economical-cloud',
+    candidates_json: null,
+    prompt_length_chars: 42,
+    estimated_input_tokens: 10,
+    message_count: 2,
+    has_tool_context: false,
+    compaction_flag: false,
+    triage_verdict: 'ambiguous',
+    triage_reason_code: 'mixed_signals',
+    triage_cyclomatic_score: 1,
+    triage_trivial_hits: 0,
+    triage_complex_hits: 1,
+    triage_sanitized_length_delta: 0,
+    requirement_reasoning: 0.5,
+    requirement_code_gen: 0.5,
+    requirement_tool_use: 0.5,
+    routing_latency_ms: 12,
+    estimated_cost_usd: 0.001,
+    ...overrides,
+  };
+}
 
 function makeProfile(id: string): ModelProfile {
   return {
@@ -74,6 +110,32 @@ describe('parseSmartRouterArgs (SP-045)', () => {
     expect(() => parseSmartRouterArgs('history 0')).toThrow('Usage:');
     expect(() => parseSmartRouterArgs('history abc')).toThrow('Usage:');
   });
+
+  it('parses export dataset with default and explicit limits', () => {
+    expect(parseSmartRouterArgs('export dataset')).toEqual({
+      command: 'export',
+      subcommand: 'dataset',
+      limit: 10_000,
+    });
+    expect(parseSmartRouterArgs('export dataset --limit 25')).toEqual({
+      command: 'export',
+      subcommand: 'dataset',
+      limit: 25,
+    });
+    expect(parseSmartRouterArgs('export dataset --limit=50')).toEqual({
+      command: 'export',
+      subcommand: 'dataset',
+      limit: 50,
+    });
+  });
+
+  it('rejects invalid export dataset invocations', () => {
+    expect(() => parseSmartRouterArgs('export')).toThrow('Usage:');
+    expect(() => parseSmartRouterArgs('export telemetry')).toThrow('Usage:');
+    expect(() => parseSmartRouterArgs('export dataset --limit')).toThrow('Usage:');
+    expect(() => parseSmartRouterArgs('export dataset --limit 0')).toThrow('Usage:');
+    expect(() => parseSmartRouterArgs('export dataset --limit abc')).toThrow('Usage:');
+  });
 });
 
 describe('getSmartRouterArgumentCompletions', () => {
@@ -83,13 +145,14 @@ describe('getSmartRouterArgumentCompletions', () => {
   }
 
   it('offers top-level subcommands on empty prefix', () => {
-    expect(completionValues('')).toEqual(['status', 'history', 'mode', 'pricing']);
+    expect(completionValues('')).toEqual(['status', 'history', 'mode', 'pricing', 'export']);
   });
 
   it('filters top-level subcommands by partial prefix', () => {
     expect(completionValues('st')).toEqual(['status']);
     expect(completionValues('hi')).toEqual(['history']);
     expect(completionValues('pr')).toEqual(['pricing']);
+    expect(completionValues('ex')).toEqual(['export']);
   });
 
   it('offers mode subcommands after mode token', () => {
@@ -106,9 +169,85 @@ describe('getSmartRouterArgumentCompletions', () => {
     expect(completionValues('history')).toEqual(['history']);
   });
 
+  it('offers export dataset after export token', () => {
+    expect(completionValues('export')).toEqual(['export dataset']);
+    expect(completionValues('export d')).toEqual(['export dataset']);
+  });
+
   it('keeps full invocations parseable', () => {
     for (const invocation of SMART_ROUTER_FULL_INVOCATIONS) {
       expect(() => parseSmartRouterArgs(invocation)).not.toThrow();
+    }
+  });
+});
+
+describe('dataset export (SP-060)', () => {
+  it('exports Tier 1 fields only and hashes session_id when present', () => {
+    const record = makeDatasetRecord();
+    const withSession = {
+      ...record,
+      session_id: 'sess-secret',
+      prompt_text: 'do not export',
+      messages: [{ role: 'user', content: 'nope' }],
+    } as RoutingDatasetRecord & {
+      session_id: string;
+      prompt_text: string;
+      messages: unknown[];
+    };
+
+    const exported = toDatasetExportRecord(withSession);
+
+    expect(exported).not.toHaveProperty('session_id');
+    expect(exported).not.toHaveProperty('prompt_text');
+    expect(exported).not.toHaveProperty('messages');
+    expect(exported.session_id_hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(exported.request_id).toBe('req-export-1');
+    expect(exported.prompt_length_chars).toBe(42);
+  });
+
+  it('formats JSONL with one object per line', () => {
+    const jsonl = formatDatasetExportJsonl([
+      makeDatasetRecord({ request_id: 'req-a' }),
+      makeDatasetRecord({ request_id: 'req-b' }),
+    ]);
+
+    const lines = jsonl.split('\n');
+    expect(lines).toHaveLength(2);
+    expect(JSON.parse(lines[0]!)).toMatchObject({ request_id: 'req-a' });
+    expect(JSON.parse(lines[1]!)).toMatchObject({ request_id: 'req-b' });
+    expect(jsonl).not.toContain('prompt_text');
+  });
+
+  it('writes export file under .pi-smart-router/exports', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'smart-router-export-'));
+    try {
+      const store = new MemoryStore([]);
+      store.appendDatasetRecord(makeDatasetRecord({ request_id: 'req-file' }));
+
+      const result = await exportDatasetToFile(store, cwd, 10);
+
+      expect(result).not.toBeNull();
+      expect(result?.recordCount).toBe(1);
+      expect(result?.path).toContain(join(cwd, '.pi-smart-router/exports/dataset-'));
+      expect(result?.path.endsWith('.jsonl')).toBe(true);
+
+      const written = readFileSync(result!.path, 'utf8').trim();
+      const parsed = JSON.parse(written);
+      expect(parsed.request_id).toBe('req-file');
+      expect(written).not.toContain('prompt_text');
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('returns null for empty dataset without writing a file', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'smart-router-export-empty-'));
+    try {
+      const store = new MemoryStore([]);
+      const result = await exportDatasetToFile(store, cwd, 10);
+      expect(result).toBeNull();
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
     }
   });
 });

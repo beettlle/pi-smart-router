@@ -1,5 +1,5 @@
 export const SMART_ROUTER_USAGE =
-  '/smart-router [status] | history [limit] | mode scoped|all | pricing refresh';
+  '/smart-router [status] | history [limit] | mode scoped|all | pricing refresh | export dataset [--limit N]';
 
 type CompletionItem = { value: string; label: string };
 
@@ -8,6 +8,7 @@ const TOP_LEVEL: CompletionItem[] = [
   { value: 'history', label: 'Show recent routing history' },
   { value: 'mode', label: 'Switch fleet mode (scoped or all)' },
   { value: 'pricing', label: 'Manage pricing catalog' },
+  { value: 'export', label: 'Export opt-in routing dataset' },
 ];
 
 const MODE_COMPLETIONS: CompletionItem[] = [
@@ -19,6 +20,10 @@ const PRICING_COMPLETIONS: CompletionItem[] = [
   { value: 'pricing refresh', label: 'Fetch LiteLLM rates and rebuild fleet' },
 ];
 
+const EXPORT_COMPLETIONS: CompletionItem[] = [
+  { value: 'export dataset', label: 'Export privacy-safe dataset JSONL' },
+];
+
 /** Full invocations used to keep completions and parseSmartRouterArgs in sync. */
 export const SMART_ROUTER_FULL_INVOCATIONS = [
   '',
@@ -28,6 +33,8 @@ export const SMART_ROUTER_FULL_INVOCATIONS = [
   'mode scoped',
   'mode all',
   'pricing refresh',
+  'export dataset',
+  'export dataset --limit 100',
 ] as const;
 
 function filterByPrefix(items: CompletionItem[], prefix: string): CompletionItem[] {
@@ -47,6 +54,12 @@ export function getSmartRouterArgumentCompletions(prefix: string): CompletionIte
   if (tokens[0] === 'pricing') {
     const subPrefix = tokens.slice(1).join(' ');
     const filtered = filterByPrefix(PRICING_COMPLETIONS, `pricing${subPrefix ? ` ${subPrefix}` : ''}`);
+    return filtered.length > 0 ? filtered : null;
+  }
+
+  if (tokens[0] === 'export') {
+    const subPrefix = tokens.slice(1).join(' ');
+    const filtered = filterByPrefix(EXPORT_COMPLETIONS, `export${subPrefix ? ` ${subPrefix}` : ''}`);
     return filtered.length > 0 ? filtered : null;
   }
 

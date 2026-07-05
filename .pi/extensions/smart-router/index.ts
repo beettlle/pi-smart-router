@@ -8,8 +8,9 @@
  */
 
 import { join } from 'node:path';
+import { mkdirSync, writeFileSync } from 'node:fs';
 
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import {
   type Api,
@@ -46,6 +47,7 @@ import type {
   Message as RoutingMessage,
   ModelProfile,
   PriceCatalog,
+  RoutingDatasetRecord,
   RoutingDecision,
   RoutingFeatureSidecar,
   RoutingRequest,
@@ -66,6 +68,7 @@ import {
   DatasetRecorder,
   DATASET_ENABLED_NOTIFY_MESSAGE,
 } from '../../../src/infrastructure/telemetry/dataset-recorder.js';
+import { DATASET_MAX_ENTRIES } from '../../../src/infrastructure/telemetry/dataset-limits.js';
 import {
   DEFAULT_HISTORY_LIMIT,
   MAX_HISTORY_LIMIT,
@@ -93,6 +96,9 @@ const PROVIDER_NAME = 'smart-router' as const;
 const AUTO_MODEL_ID = 'auto' as const;
 const FLEET_MODE_ENTRY_TYPE = 'smart-router-fleet-mode' as const;
 const DEFAULT_ROUTER_STATE_DB_PATH = '.pi-smart-router/state.db';
+const DEFAULT_DATASET_EXPORT_DIR = '.pi-smart-router/exports';
+const DEFAULT_DATASET_EXPORT_LIMIT = DATASET_MAX_ENTRIES;
+const MAX_DATASET_EXPORT_LIMIT = DATASET_MAX_ENTRIES;
 const DEFAULT_RATE_LIMIT_MAX_TOKENS = 60;
 const DEFAULT_RATE_LIMIT_REFILL_RATE = 1;
 
@@ -102,7 +108,8 @@ type SmartRouterCommand =
   | { command: 'status' }
   | { command: 'history'; limit: number }
   | { command: 'mode'; mode: FleetMode }
-  | { command: 'pricing'; subcommand: 'refresh' };
+  | { command: 'pricing'; subcommand: 'refresh' }
+  | { command: 'export'; subcommand: 'dataset'; limit: number };
 
 interface StreamDelegationDeps {
   router: RouterHandle;
@@ -433,6 +440,41 @@ function parseHistoryLimit(raw: string | undefined): number {
   return Math.min(parsed, MAX_HISTORY_LIMIT);
 }
 
+function parseExportLimit(tokens: string[]): number {
+  let limit = DEFAULT_DATASET_EXPORT_LIMIT;
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token === '--limit') {
+      const raw = tokens[i + 1];
+      if (raw === undefined) {
+        throw new Error(`Usage: ${SMART_ROUTER_USAGE}`);
+      }
+      const parsed = Number.parseInt(raw, 10);
+      if (!Number.isFinite(parsed) || parsed < 1) {
+        throw new Error(`Usage: ${SMART_ROUTER_USAGE}`);
+      }
+      limit = Math.min(parsed, MAX_DATASET_EXPORT_LIMIT);
+      i += 1;
+      continue;
+    }
+
+    if (token?.startsWith('--limit=')) {
+      const raw = token.slice('--limit='.length);
+      const parsed = Number.parseInt(raw, 10);
+      if (!Number.isFinite(parsed) || parsed < 1) {
+        throw new Error(`Usage: ${SMART_ROUTER_USAGE}`);
+      }
+      limit = Math.min(parsed, MAX_DATASET_EXPORT_LIMIT);
+      continue;
+    }
+
+    throw new Error(`Usage: ${SMART_ROUTER_USAGE}`);
+  }
+
+  return limit;
+}
+
 function parseSmartRouterArgs(args: string): SmartRouterCommand {
   const tokens = args.trim().split(/\s+/).filter(Boolean);
   if (tokens.length === 0 || tokens[0] === 'status') {
@@ -449,6 +491,14 @@ function parseSmartRouterArgs(args: string): SmartRouterCommand {
 
   if (tokens[0] === 'pricing' && tokens[1] === 'refresh') {
     return { command: 'pricing', subcommand: 'refresh' };
+  }
+
+  if (tokens[0] === 'export' && tokens[1] === 'dataset') {
+    return {
+      command: 'export',
+      subcommand: 'dataset',
+      limit: parseExportLimit(tokens.slice(2)),
+    };
   }
 
   throw new Error(`Usage: ${SMART_ROUTER_USAGE}`);
@@ -503,6 +553,76 @@ function formatHistoryMessage(entries: readonly RoutingTelemetry[]): string {
         `${entry.timestamp} | ${entry.selected_model_id} | ${entry.stage} | ${entry.turn_type} | ${entry.routing_latency_ms}ms`,
     )
     .join('\n');
+}
+
+const DATASET_EXPORT_FORBIDDEN_KEYS = [
+  'session_id',
+  'prompt_text',
+  'messages',
+  'prompt',
+] as const;
+
+function hashSessionIdForExport(sessionId: string): string {
+  return createHash('sha256').update(sessionId).digest('hex');
+}
+
+/** Map a stored dataset row to a privacy-safe JSON export object (Tier 1 only). */
+function toDatasetExportRecord(
+  record: RoutingDatasetRecord,
+): Record<string, unknown> {
+  const raw = record as RoutingDatasetRecord & Record<string, unknown>;
+  const exportable: Record<string, unknown> = { ...record };
+
+  for (const key of DATASET_EXPORT_FORBIDDEN_KEYS) {
+    delete exportable[key];
+  }
+
+  const sessionId = raw.session_id;
+  if (typeof sessionId === 'string' && sessionId.length > 0) {
+    delete exportable.session_id;
+    exportable.session_id_hash = hashSessionIdForExport(sessionId);
+  }
+
+  return exportable;
+}
+
+function formatDatasetExportJsonl(records: readonly RoutingDatasetRecord[]): string {
+  return records
+    .map((record) => JSON.stringify(toDatasetExportRecord(record)))
+    .join('\n');
+}
+
+function formatDatasetExportTimestamp(date: Date = new Date()): string {
+  return date.toISOString().replace(/[:.]/g, '-');
+}
+
+function getDatasetExportPath(cwd: string, timestamp: string): string {
+  return join(cwd, DEFAULT_DATASET_EXPORT_DIR, `dataset-${timestamp}.jsonl`);
+}
+
+export interface DatasetExportResult {
+  readonly path: string;
+  readonly recordCount: number;
+}
+
+async function exportDatasetToFile(
+  store: StorePort,
+  cwd: string,
+  limit: number,
+): Promise<DatasetExportResult | null> {
+  const records = await store.listDatasetRecords({ limit });
+  if (records.length === 0) {
+    return null;
+  }
+
+  const timestamp = formatDatasetExportTimestamp();
+  const exportDir = join(cwd, DEFAULT_DATASET_EXPORT_DIR);
+  mkdirSync(exportDir, { recursive: true });
+  const exportPath = getDatasetExportPath(cwd, timestamp);
+  const jsonl = formatDatasetExportJsonl(records);
+  writeFileSync(exportPath, jsonl.length > 0 ? `${jsonl}\n` : '', 'utf8');
+
+  return { path: exportPath, recordCount: records.length };
 }
 
 function notifyPricingStalenessIfNeeded(
@@ -1162,7 +1282,7 @@ function registerSmartRouterCommand(
 ): void {
   pi.registerCommand('smart-router', {
     description:
-      'Show routing status/history, switch fleet mode (scoped|all), or refresh pricing',
+      'Show routing status/history, switch fleet mode (scoped|all), refresh pricing, or export dataset',
     getArgumentCompletions: getSmartRouterArgumentCompletions,
     handler: async (args, ctx) => {
       try {
@@ -1184,6 +1304,19 @@ function registerSmartRouterCommand(
           await rebuildFleet(runtime, pi, ctx.cwd);
           ctx.ui.notify(
             `Pricing refreshed: ${modelCount} models loaded (last_updated: ${lastUpdated}). Fleet rebuilt (${runtime.streamDeps.fleet.length} models).`,
+            'info',
+          );
+          return;
+        }
+
+        if (parsed.command === 'export') {
+          const result = await exportDatasetToFile(runtime.store, ctx.cwd, parsed.limit);
+          if (!result) {
+            ctx.ui.notify('No routing dataset records to export.', 'info');
+            return;
+          }
+          ctx.ui.notify(
+            `Exported ${result.recordCount} dataset record(s) to ${result.path}`,
             'info',
           );
           return;
@@ -1217,11 +1350,15 @@ export {
   createStreamSimple,
   deriveTurnType,
   discoverFleet,
+  exportDatasetToFile,
   extractPromptText,
+  formatDatasetExportJsonl,
+  formatDatasetExportTimestamp,
   formatLmuStatus,
   formatPricingStalenessLine,
   formatHistoryMessage,
   formatStatusMessage,
+  getDatasetExportPath,
   getRouterStateDbPath,
   getRoutingFeatureSidecar,
   getSmartRouterArgumentCompletions,
@@ -1230,6 +1367,7 @@ export {
   refreshPricingCatalog,
   resolveDelegationOptions,
   logRoutingDecision,
+  toDatasetExportRecord,
 };
 export { SMART_ROUTER_FULL_INVOCATIONS, SMART_ROUTER_USAGE } from './commands.js';
 
