@@ -1,5 +1,5 @@
-**Current Step:** Step 3
-**Status:** In Progress
+**Current Step:** Step 4
+**Status:** Complete
 **Last Updated:** 2026-07-04
 **Review Level:** 2
 **Size:** M
@@ -20,18 +20,18 @@
 
 ## Step 3: MemoryStore mirror and tests
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] MemoryStore + unit tests
 
 ## Step 4: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run typecheck and test
-- [ ] Run coverage check
+- [x] Run typecheck and test
+- [x] Run coverage check (unavailable — no coverage:check script in package.json)
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] Schema and StorePort ready for SP-057/058
+- [x] All steps complete
+- [x] Schema and StorePort ready for SP-057/058
