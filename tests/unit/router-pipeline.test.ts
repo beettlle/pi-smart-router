@@ -298,6 +298,38 @@ describe('RouterPipeline', () => {
         reason_code: 'safe_cloud_default',
       });
     });
+
+    it('reports triage_cloud_fallback (not triage) when cloud fallback stage throws (SP-071)', async () => {
+      const onRecord = vi.fn();
+      const telemetryEmitter = new RoutingTelemetryEmitter({ onRecord });
+
+      const cloudFallbackSpy = vi
+        .spyOn(
+          RouterPipeline.prototype as unknown as {
+            triageCloudFallback: (request: RoutingRequest) => Promise<unknown>;
+          },
+          'triageCloudFallback',
+        )
+        .mockRejectedValue(new Error('cloud fallback failed'));
+
+      const pipeline = new RouterPipeline(fleet, { telemetryEmitter });
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Fix the typo in the README' }),
+      );
+
+      expect(decision.stage).toBe('fallback');
+      expect(decision.reason_code).toBe('safe_cloud_default');
+
+      expect(onRecord).toHaveBeenCalledOnce();
+      expect(onRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reason_code: 'pipeline_error',
+          stage: 'triage_cloud_fallback',
+        }),
+      );
+
+      cloudFallbackSpy.mockRestore();
+    });
   });
 
   describe('loop escalation integration (FR-014, Step 3b)', () => {

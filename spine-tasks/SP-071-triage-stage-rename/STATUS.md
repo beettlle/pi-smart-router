@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-05
 **Review Level:** 1
@@ -8,16 +8,16 @@
 
 ## Step 1: Rename duplicate stage
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Rename second triage stage to unique name
 - [x] Update schema if needed (not required — `RoutingStageSchema` covers routing decisions; pipeline error telemetry uses internal stage names like `hardware_probe`)
 
 ## Step 2: Add regression test
 
-**Status:** ⏳ Pending
+**Status:** 🔄 In Progress
 
-- [ ] Assert correct failedStage for cloud fallback failure
+- [x] Assert correct failedStage for cloud fallback failure
 
 ## Step 3: Testing and verification
 
