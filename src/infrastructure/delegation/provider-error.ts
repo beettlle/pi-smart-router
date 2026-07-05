@@ -107,3 +107,38 @@ export function isInfraAssistantError(message: AssistantMessage): boolean {
   }
   return isInfraError(parsed);
 }
+const FORMATTED_ERROR_MAX_LENGTH = 200;
+
+/**
+ * Format a provider error blob for user-facing display (terminal/session).
+ * Never returns raw nested JSON.
+ */
+export function formatProviderErrorMessage(errorMessage: string): string {
+  const parsed = parseProviderError(errorMessage);
+  if (parsed) {
+    const prefixParts: string[] = [];
+    if (parsed.statusCode !== undefined) {
+      prefixParts.push(String(parsed.statusCode));
+    }
+    if (parsed.code) {
+      prefixParts.push(parsed.code);
+    }
+    const prefix = prefixParts.length > 0 ? `${prefixParts.join(' ')}: ` : '';
+    if (parsed.message) {
+      return `${prefix}${parsed.message}`;
+    }
+    if (prefixParts.length > 0) {
+      return `Provider error (${prefixParts.join(' ')})`;
+    }
+  }
+
+  const trimmed = errorMessage.trim();
+  if (trimmed.startsWith('{')) {
+    return 'Provider error (unparseable response)';
+  }
+  if (trimmed.length > FORMATTED_ERROR_MAX_LENGTH) {
+    return `${trimmed.slice(0, FORMATTED_ERROR_MAX_LENGTH)}…`;
+  }
+  return trimmed;
+}
+

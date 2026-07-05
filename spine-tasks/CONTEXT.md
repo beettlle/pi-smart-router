@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-04
 **Status:** Active
-**Next Task ID:** SP-063
+**Next Task ID:** SP-064
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -127,6 +127,12 @@
 | SP-060 | Export dataset JSONL command | M | SP-058 | #9 |
 | SP-061 | Prompt fingerprint (Tier 2 opt-in) | M | SP-060 | #10 |
 | SP-062 | Outcome labels for training | M | SP-061 | #11 |
+
+### Phase 18 — Backlog Orchestrator Cycle 3.5 (SP-059)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-059 | Provider error UX (no raw JSON) | S | SP-062 | #22 |
 
 ---
 

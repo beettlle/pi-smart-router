@@ -13,4 +13,9 @@ export interface ParsedProviderError {
 export declare function parseProviderError(errorMessage: string): ParsedProviderError | undefined;
 export declare function parseAssistantMessageError(message: AssistantMessage): ParsedProviderError | undefined;
 export declare function isInfraAssistantError(message: AssistantMessage): boolean;
+/**
+ * Format a provider error blob for user-facing display (terminal/session).
+ * Never returns raw nested JSON.
+ */
+export declare function formatProviderErrorMessage(errorMessage: string): string;
 //# sourceMappingURL=provider-error.d.ts.map

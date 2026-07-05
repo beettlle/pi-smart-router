@@ -739,6 +739,54 @@ describe('createStreamSimple', () => {
       'gemini-flash',
     );
   });
+  it('sanitizes terminal infra errors when no failover alternate exists', async () => {
+    const primary = registryModels[0]!;
+    const doubleWrapped = JSON.stringify({
+      error: {
+        message: JSON.stringify({
+          error: {
+            code: 503,
+            message: 'This model is currently experiencing high demand.',
+            status: 'UNAVAILABLE',
+          },
+        }),
+        code: 503,
+        status: 'Service Unavailable',
+      },
+    });
+
+    mockDelegateStreamSimple.mockImplementationOnce(() => makeErrorStream(primary, doubleWrapped));
+
+    const singleModelFleet = [fleet[1]!];
+    const router = createMockRouter(
+      vi.fn(async () =>
+        makeDecision({
+          selected_model_id: 'gpt-4o-mini',
+          tier: 'economical-cloud',
+        }),
+      ),
+      singleModelFleet,
+    );
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({ router, fleet: singleModelFleet }),
+    );
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(1);
+    const errorEvent = events.find((event) => event.type === 'error');
+    expect(errorEvent?.type).toBe('error');
+    if (errorEvent?.type === 'error') {
+      expect(errorEvent.error.errorMessage).toBe(
+        '503 Service Unavailable: This model is currently experiencing high demand.',
+      );
+      expect(errorEvent.error.errorMessage).not.toContain('{"error"');
+    }
+  });
+
 });
 
 describe('logRoutingDecision', () => {

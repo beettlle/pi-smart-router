@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isInfraAssistantError,
   parseAssistantMessageError,
+  formatProviderErrorMessage,
   parseProviderError,
 } from '../../src/infrastructure/delegation/provider-error.js';
 
@@ -65,6 +66,34 @@ describe('provider-error', () => {
       code: 'UNAVAILABLE',
     });
     expect(isInfraAssistantError(message)).toBe(true);
+  });
+
+
+  it('formats double-wrapped LiteLLM 503 for user display', () => {
+    const raw = JSON.stringify({
+      error: {
+        message: JSON.stringify({
+          error: {
+            code: 503,
+            message:
+              'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.',
+            status: 'UNAVAILABLE',
+          },
+        }),
+        code: 503,
+        status: 'Service Unavailable',
+      },
+    });
+
+    expect(formatProviderErrorMessage(raw)).toBe(
+      '503 Service Unavailable: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.',
+    );
+  });
+
+  it('returns generic message for unparseable JSON blobs', () => {
+    expect(formatProviderErrorMessage('{not-json')).toBe(
+      'Provider error (unparseable response)',
+    );
   });
 
   it('handles non-JSON error strings with embedded status codes', () => {

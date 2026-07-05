@@ -81,6 +81,7 @@ import { applyCatalogPricesToFleet } from '../../../src/infrastructure/pricing/p
 import { fetchLitellmPriceCatalog } from '../../../src/infrastructure/pricing/litellm-fetch.js';
 import { checkStaleness } from '../../../src/infrastructure/pricing/pricing-monitor.js';
 import {
+  formatProviderErrorMessage,
   isInfraAssistantError,
   parseAssistantMessageError,
 } from '../../../src/infrastructure/delegation/provider-error.js';
@@ -905,7 +906,9 @@ function createErrorMessage(
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
     },
     stopReason: options?.signal?.aborted ? 'aborted' : 'error',
-    errorMessage: error instanceof Error ? error.message : String(error),
+    errorMessage: formatProviderErrorMessage(
+      error instanceof Error ? error.message : String(error),
+    ),
     timestamp: Date.now(),
   };
 }
@@ -997,11 +1000,45 @@ function buildDelegationContext(
   });
 }
 
+
+function sanitizeAssistantErrorMessage(message: AssistantMessage): AssistantMessage {
+  if (message.stopReason !== 'error' || !message.errorMessage) {
+    return message;
+  }
+  const formatted = formatProviderErrorMessage(message.errorMessage);
+  if (formatted === message.errorMessage) {
+    return message;
+  }
+  return { ...message, errorMessage: formatted };
+}
+
+function sanitizeDelegatedErrorEvents(events: AssistantMessageEvent[]): void {
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i];
+    if (!event) {
+      continue;
+    }
+    if (event.type === 'error') {
+      events[i] = { ...event, error: sanitizeAssistantErrorMessage(event.error) };
+    } else if (event.type === 'done' && event.message.stopReason === 'error') {
+      events[i] = {
+        ...event,
+        message: sanitizeAssistantErrorMessage(event.message),
+      };
+    }
+  }
+}
+
 function flushDelegatedEvents(
   outer: AssistantMessageEventStream,
   events: readonly AssistantMessageEvent[],
+  options?: { sanitizeErrors?: boolean },
 ): void {
-  for (const event of events) {
+  const mutableEvents = options?.sanitizeErrors ? [...events] : events;
+  if (options?.sanitizeErrors) {
+    sanitizeDelegatedErrorEvents(mutableEvents as AssistantMessageEvent[]);
+  }
+  for (const event of mutableEvents) {
     outer.push(event);
   }
   outer.end();
@@ -1251,13 +1288,13 @@ async function routeAndDelegate(
         failedModelIds.push(targetModel.id);
         const failover = deps.router.dispatch.selectFailover(decision, failedModelIds);
         if (!failover) {
-          flushDelegatedEvents(outer, result.events);
+          flushDelegatedEvents(outer, result.events, { sanitizeErrors: true });
           return;
         }
 
         const alternateModel = resolveTargetModel(deps, failover);
         if (!alternateModel || alternateModel.id === targetModel.id) {
-          flushDelegatedEvents(outer, result.events);
+          flushDelegatedEvents(outer, result.events, { sanitizeErrors: true });
           return;
         }
 
@@ -1275,7 +1312,9 @@ async function routeAndDelegate(
         continue;
       }
 
-      flushDelegatedEvents(outer, result.events);
+      flushDelegatedEvents(outer, result.events, {
+        sanitizeErrors: result.failed,
+      });
       return;
     } catch (error) {
       deps.router.dispatch.recordOutcome(targetModel.id, { code: 'STREAM_DELEGATION_ERROR' });
