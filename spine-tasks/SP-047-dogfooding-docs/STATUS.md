@@ -1,5 +1,5 @@
-**Current Step:** Step 2
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-04
 **Review Level:** 0
 **Size:** S
@@ -22,12 +22,16 @@
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Verify docs match extension code
-- [ ] Run `npm run typecheck && npm test`
+- [x] Verify docs match extension code
+- [x] Run `npm run typecheck && npm test`
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] README dogfooding section is accurate and complete
+- [x] All steps complete
+- [x] README dogfooding section is accurate and complete
+
+## Discoveries
+
+- `npm test` passes (711 tests). `npm run typecheck` fails with pre-existing TS errors in `.pi/extensions/smart-router/index.ts` (out of scope for SP-047). Documented env vars and commands verified against extension source.
