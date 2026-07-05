@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 1
@@ -8,16 +8,16 @@
 
 ## Step 1: Instrument catch block
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Capture error in catch with redacted logging
 - [x] Emit pipeline_error telemetry
 
 ## Step 2: Unit test for silent-failure regression
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Test injected stage throw → telemetry + safe default
+- [x] Test injected stage throw → telemetry + safe default
 
 ## Step 3: Testing and verification
 
