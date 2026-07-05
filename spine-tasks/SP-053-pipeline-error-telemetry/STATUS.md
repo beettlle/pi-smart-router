@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Not Started
+**Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 1
 **Size:** S
@@ -8,10 +8,10 @@
 
 ## Step 1: Instrument catch block
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Capture error in catch with redacted logging
-- [ ] Emit pipeline_error telemetry
+- [x] Capture error in catch with redacted logging
+- [x] Emit pipeline_error telemetry
 
 ## Step 2: Unit test for silent-failure regression
 
