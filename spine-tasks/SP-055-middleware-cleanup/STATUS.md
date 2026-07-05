@@ -31,6 +31,7 @@
 
 - [x] Run typecheck, test, build
 - [x] Run coverage check (script not defined; typecheck + 729 tests pass)
+- [x] Commit refreshed dist/ after build
 
 ## Completion Criteria
 
