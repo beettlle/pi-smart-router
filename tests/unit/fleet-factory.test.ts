@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createRouterFromFleet } from '../../src/index.js';
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 import type { PiExtensionHooks } from '../../src/api/middleware/pi-router-middleware.js';
+import { LifecycleHookState } from '../../src/api/middleware/pi-router-middleware.js';
 import { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import {
   HydraMatcher,
@@ -71,8 +72,7 @@ describe('createRouterFromFleet factory (SP-039)', () => {
     expect(handle.dispatch).toBeInstanceOf(GatewayDispatch);
     expect(typeof handle.register).toBe('function');
     expect(handle.register).toBe(handle.middleware.register);
-    expect(typeof handle.middleware.getLastDecision).toBe('function');
-    expect(handle.middleware.getLastDecision()).toBeUndefined();
+    expect(handle.middleware.lifecycleHookState).toBeInstanceOf(LifecycleHookState);
   });
 
   it('register delegates to middleware.register', () => {
@@ -87,11 +87,11 @@ describe('createRouterFromFleet factory (SP-039)', () => {
 
     handle.register(mockHooks);
 
-    expect(registered).toContain('context');
     expect(registered).toContain('session_compact');
     expect(registered).toContain('session_before_compact');
     expect(registered).toContain('model_select');
     expect(registered).not.toContain('before_provider_request');
+    expect(registered).not.toContain('context');
   });
 
   it('passes hydraMatcher dispatch options through to routing', async () => {

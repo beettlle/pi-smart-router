@@ -160,7 +160,7 @@ To refresh after auth or settings changes, restart pi or `/reload` extensions.
 
 ## Optional: YAML fleet (library API)
 
-For programmatic integration without the pi extension, load a static fleet catalog from YAML:
+For programmatic integration **without** the pi extension, load a static fleet catalog from YAML and route via `GatewayDispatch.dispatch()`:
 
 ```bash
 cp config/models.yaml.example ./config/models.yaml
@@ -171,17 +171,29 @@ cp config/models.yaml.example ./config/models.yaml
 import { createRouter } from 'pi-smart-router';
 
 const router = createRouter({ modelsPath: './config/models.yaml' });
-router.register(piExtensionHooks);
+router.register(piExtensionHooks); // lifecycle only: compaction + model override
+
+const decision = await router.dispatch.dispatch(routingRequest);
+// Embedder forwards inference to decision.selected_model_id
 ```
+
+### Embedder integration paths
+
+| Path | When to use | Routing | Lifecycle hooks |
+|------|-------------|---------|-----------------|
+| **Pi extension** (recommended) | Running inside pi | `.pi/extensions/smart-router/` registers `smart-router/auto` and delegates streams | Extension calls `router.register()`; compaction/model overrides wired automatically |
+| **Library API** | Custom host, tests, or non-pi embedders | Your code calls `router.dispatch.dispatch()` (or wraps the pipeline) | Call `router.register(hooks)` to wire compaction and `model_select` events |
+
+The library `createPiRouterMiddleware()` / `RouterHandle.register()` registers **lifecycle hooks only** — not routing, context capture, or `before_provider_request`. Do not expect `middleware` to intercept LLM streams; that is the extension's `streamSimple` path or your embedder's dispatch loop.
 
 `createRouter()` returns a `RouterHandle`:
 
 | Property | Type | Purpose |
 |----------|------|---------|
-| `middleware` | `PiRouterMiddleware` | Pi extension middleware instance |
+| `middleware` | `PiRouterMiddleware` | Lifecycle hook registrar (`register`, `lifecycleHookState`) |
 | `dispatch` | `GatewayDispatch` | Gateway with circuit breaker, failover, rate limiting |
 | `fleet` | `readonly ModelProfile[]` | Loaded fleet catalog |
-| `register` | `(hooks) => void` | Attach extension hooks |
+| `register` | `(hooks) => void` | Alias for `middleware.register` — attach pi lifecycle hooks |
 
 You can also pass a pre-built fleet:
 
@@ -268,20 +280,19 @@ The embedding matcher uses `@huggingface/transformers` with the `Xenova/all-Mini
 
 ### Pi extension (`.pi/extensions/smart-router/`)
 
-The project-local extension:
+The project-local extension (primary pi integration path):
 
 - Registers provider **`smart-router`** with model **`auto`**
 - Implements **`streamSimple`** — runs the pipeline, resolves the target in `ModelRegistry`, delegates to the built-in streaming API for that provider
-- Wires middleware hooks via `router.register()` for session state:
+- Wires lifecycle hooks via `router.register()` for session state:
 
 | Event | Purpose |
 |-------|---------|
-| `context` | Captures conversation messages for routing context |
-| `session_compact` / `session_before_compact` | Breaks session pin on compaction |
-| `model_select` | Records user-forced model overrides |
+| `session_compact` / `session_before_compact` | Breaks session pin on compaction (via `LifecycleHookState`) |
+| `model_select` | Records user-forced model overrides when `source === "set"` |
 | `session_start` | Restores fleet mode from session entries |
 
-The library middleware also supports `before_provider_request` for embedders that intercept requests instead of using a custom provider.
+Conversation context for routing is read from the stream delegation path (`buildRoutingRequest`), not from a library `context` hook. Library embedders supply `messages` / `prompt_text` when calling `dispatch.dispatch()`.
 
 ### Session pinning
 
@@ -315,6 +326,7 @@ import {
   createRouter,
   createRouterFromFleet,
   createPiRouterMiddleware,
+  LifecycleHookState,
   type RoutingDecision,
   type ModelProfile,
   type PiRouterMiddleware,
@@ -322,6 +334,8 @@ import {
   type RouterHandle,
 } from 'pi-smart-router';
 ```
+
+`createPiRouterMiddleware()` is exported for advanced embedders that need a standalone lifecycle hook registrar. Most callers should use `createRouter()` / `createRouterFromFleet()` and call `register()` on the returned handle.
 
 ### `RoutingDecision`
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createRouter } from '../../src/index.js';
 import type { PiExtensionHooks } from '../../src/api/middleware/pi-router-middleware.js';
+import { LifecycleHookState } from '../../src/api/middleware/pi-router-middleware.js';
 
 const MODELS_PATH = 'config/models.yaml.example';
 
@@ -45,18 +46,17 @@ describe('createRouter factory (T022)', () => {
 
     handle.register(mockHooks);
 
-    expect(registered).toContain('context');
     expect(registered).toContain('session_compact');
     expect(registered).toContain('session_before_compact');
     expect(registered).toContain('model_select');
     expect(registered).not.toContain('before_provider_request');
+    expect(registered).not.toContain('context');
   });
 
-  it('middleware has getLastDecision method', () => {
+  it('middleware exposes lifecycle hook state', () => {
     const handle = createRouter({ modelsPath: MODELS_PATH });
 
-    expect(typeof handle.middleware.getLastDecision).toBe('function');
-    expect(handle.middleware.getLastDecision()).toBeUndefined();
+    expect(handle.middleware.lifecycleHookState).toBeInstanceOf(LifecycleHookState);
   });
 
   it('throws when models file does not exist', () => {

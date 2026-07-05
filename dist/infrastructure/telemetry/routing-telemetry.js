@@ -24,6 +24,20 @@ export class RoutingTelemetryEmitter {
      * Enforces the rolling window (time + count) before appending.
      */
     emit(request, decision) {
+        return this.appendRecord(request, decision);
+    }
+    /**
+     * Emit telemetry when a pipeline stage throws and routing degrades to safe default.
+     */
+    emitPipelineError(request, failedStage, fallback) {
+        const errorDecision = {
+            ...fallback,
+            stage: failedStage,
+            reason_code: 'pipeline_error',
+        };
+        return this.appendRecord(request, errorDecision);
+    }
+    appendRecord(request, decision) {
         makeTelemetryRoom(this.entries, this.maxEntries);
         const record = {
             timestamp: this.clock(),

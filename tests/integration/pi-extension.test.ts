@@ -40,7 +40,7 @@ import {
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
 import { SqliteStore } from '../../src/infrastructure/persistence/sqlite-store.js';
 import { RoutingTelemetryEmitter } from '../../src/infrastructure/telemetry/routing-telemetry.js';
-import { createRouterFromFleet } from '../../src/index.js';
+import { createRouterFromFleet, LifecycleHookState } from '../../src/index.js';
 import { ExecutionLedger } from '../../src/domain/delegation/execution-ledger.js';
 
 const { mockDelegateStreamSimple } = vi.hoisted(() => ({
@@ -232,7 +232,7 @@ describe('Pi extension integration (SP-043)', () => {
       expect(router.fleet).toBe(fleet);
       expect(router.dispatch).toBeInstanceOf(GatewayDispatch);
       expect(typeof router.register).toBe('function');
-      expect(typeof router.middleware.getLastDecision).toBe('function');
+      expect(router.middleware.lifecycleHookState).toBeInstanceOf(LifecycleHookState);
     });
   });
 

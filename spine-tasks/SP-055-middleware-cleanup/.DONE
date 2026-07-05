@@ -1,0 +1,3 @@
+SP-055 middleware cleanup complete.
+Option B: lifecycle hooks only; ghost layer removed.
+dist/ committed; typecheck + 729 tests pass.
