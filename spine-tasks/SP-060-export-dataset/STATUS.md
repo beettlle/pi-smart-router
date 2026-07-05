@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-07-05
 **Review Level:** 2
 **Size:** M
@@ -8,30 +8,30 @@
 
 ## Step 1: Command parsing and completions
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] export dataset subcommand + --limit flag
+- [x] export dataset subcommand + --limit flag
 
 ## Step 2: Export handler
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] JSONL write to .pi-smart-router/exports/
+- [x] JSONL write to .pi-smart-router/exports/
 
 ## Step 3: Tests
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Parsing + export shape + privacy tests
+- [x] Parsing + export shape + privacy tests
 
 ## Step 4: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run typecheck, test, build
-- [ ] Run coverage check
+- [x] Run typecheck, test, build
+- [x] Run coverage check (N/A — `coverage:check` script not defined in package.json; typecheck + 760 tests pass)
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] Export command live
+- [x] All steps complete
+- [x] Export command live
