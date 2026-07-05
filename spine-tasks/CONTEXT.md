@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-05
 **Status:** Active
-**Next Task ID:** SP-070
+**Next Task ID:** SP-074
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -149,6 +149,15 @@
 | SP-067 | CI Node 22 fix (undici crash) | S | SP-066 | #24 |
 | SP-068 | Gitignore `.pi/` spine doctor entry | S | SP-067 | #28 |
 | SP-069 | coverage:check script for buildGate | M | SP-068 | #27 |
+
+### Phase 21 — Backlog Orchestrator Cycle 7 (SP-070–SP-073)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-070 | CI enforce coverage:check in GitHub Actions | S | SP-069 | #29 |
+| SP-071 | Rename duplicate triage pipeline stage | S | SP-070 | #31 |
+| SP-072 | Remove unsafe double-cast in createRouter() | S | SP-070 | #34 |
+| SP-073 | Wire multi-objective scoring into HyDRA matcher | M | SP-071, SP-072 | #30 |
 
 ---
 
