@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-05
 **Status:** Active
-**Next Task ID:** SP-067
+**Next Task ID:** SP-070
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -141,6 +141,14 @@
 | SP-064 | Turn envelope before session pin (global reorder) | M | SP-059 | #23 |
 | SP-065 | Linux hardware probe + SystemInfoPort refactor | M | SP-064 | #1 |
 | SP-066 | Windows hardware probe | M | SP-065 | #1 |
+
+### Phase 20 — Backlog Orchestrator Cycle 6 (SP-067–SP-069)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-067 | CI Node 22 fix (undici crash) | S | SP-066 | #24 |
+| SP-068 | Gitignore `.pi/` spine doctor entry | S | SP-067 | #28 |
+| SP-069 | coverage:check script for buildGate | M | SP-068 | #27 |
 
 ---
 
