@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 2
@@ -8,15 +8,15 @@
 
 ## Step 1: Add RoutingDatasetRecord type
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Define type in entities.ts with Tier 1 fields only
 
 ## Step 2: SQLite v2 migration and StorePort methods
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] dataset table + append/list/trim
+- [x] dataset table + append/list/trim
 
 ## Step 3: MemoryStore mirror and tests
 
