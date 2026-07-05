@@ -1,0 +1,1 @@
+SP-049 complete — extension pipeline wiring passes hardware, local, loop-escalation, and rate-limiter options into GatewayDispatchOptions with integration test coverage.
