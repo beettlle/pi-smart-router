@@ -72,7 +72,9 @@ export function parseProviderError(errorMessage: string): ParsedProviderError | 
         } else if (typeof inner.message === 'string') {
           message = inner.message;
         }
-      } catch {}
+      } catch {
+        // Nested provider error payloads may be malformed JSON — keep outer message.
+      }
     }
 
     if (statusCode === undefined && code === undefined && message === undefined) {

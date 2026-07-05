@@ -116,7 +116,8 @@ export class RouterPipeline {
 
   // ─── Implemented stages ─────────────────────────────────────────────────────
 
-  private async hardwareProbeStage(_request: RoutingRequest): Promise<StageResult> {
+  private async hardwareProbeStage(request: RoutingRequest): Promise<StageResult> {
+    void request;
     if (!this.options.hardwareConfig || !this.options.systemInfoProvider) {
       return { decided: false, stage: 'hardware_probe' };
     }

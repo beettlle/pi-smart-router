@@ -263,7 +263,7 @@ const MATCHER = new AhoCorasick([
 // ─── AST Cyclomatic Scan (T025b) ─────────────────────────────────────────────
 
 const RE_CODE_FENCE = /```[\w]*\n([\s\S]*?)```/g;
-const RE_INDENTED_BLOCK = /(?:^|\n)((?:(?:    |\t).+(?:\n|$))+)/g;
+const RE_INDENTED_BLOCK = /(?:^|\n)((?:(?: {4}|\t).+(?:\n|$))+)/g;
 
 function extractCode(text: string): string {
   const blocks: string[] = [];

@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Not Started
+**Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 1
 **Size:** M
@@ -8,11 +8,11 @@
 
 ## Step 1: Fix production ESLint errors
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Fix `router-pipeline.ts` unused var
-- [ ] Fix `triage-engine.ts` regex spaces
-- [ ] Fix `sqlite-store.ts` error context
+- [x] Fix `router-pipeline.ts` unused var
+- [x] Fix `triage-engine.ts` regex spaces
+- [x] Fix `sqlite-store.ts` error context
 
 ## Step 2: Fix test lint errors
 

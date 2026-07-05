@@ -116,6 +116,10 @@ export function createResilientStore(options: SqliteStoreOptions): CreateStoreRe
   try {
     return { store: new SqliteStore(options), degraded: false };
   } catch (firstError: unknown) {
+    console.warn(
+      'SQLite store open failed; attempting corrupt-DB recovery',
+      firstError,
+    );
     try {
       const corruptPath = `${options.dbPath}.corrupt.${Date.now()}`;
       renameSync(options.dbPath, corruptPath);
