@@ -31,6 +31,11 @@ export interface StageResult {
 
 export type PipelineStage = (request: RoutingRequest) => Promise<StageResult>;
 
+interface NamedPipelineStage {
+  readonly name: string;
+  readonly run: PipelineStage;
+}
+
 // ─── Pipeline configuration ──────────────────────────────────────────────────
 
 export interface PipelineOptions {
@@ -47,7 +52,7 @@ export interface PipelineOptions {
 // ─── Orchestrator ────────────────────────────────────────────────────────────
 
 export class RouterPipeline {
-  private readonly stages: PipelineStage[];
+  private readonly stages: readonly NamedPipelineStage[];
   private readonly fleet: readonly ModelProfile[];
   private readonly options: PipelineOptions;
 
@@ -59,14 +64,14 @@ export class RouterPipeline {
     this.fleet = fleet;
     this.options = options ?? {};
     this.stages = [
-      this.hardwareProbeStage.bind(this),
-      this.loopEscalation.bind(this),
-      this.sessionPin.bind(this),
-      this.triage.bind(this),
-      this.turnEnvelope.bind(this),
-      this.localZeroTierStage.bind(this),
-      this.triageCloudFallback.bind(this),
-      this.hydraMatcher.bind(this),
+      { name: 'hardware_probe', run: this.hardwareProbeStage.bind(this) },
+      { name: 'loop_escalation', run: this.loopEscalation.bind(this) },
+      { name: 'session_pin', run: this.sessionPin.bind(this) },
+      { name: 'triage', run: this.triage.bind(this) },
+      { name: 'turn_envelope', run: this.turnEnvelope.bind(this) },
+      { name: 'local_zero', run: this.localZeroTierStage.bind(this) },
+      { name: 'triage', run: this.triageCloudFallback.bind(this) },
+      { name: 'hydra_match', run: this.hydraMatcher.bind(this) },
     ];
   }
 
@@ -75,23 +80,66 @@ export class RouterPipeline {
     this.currentHardwareResult = 'disabled';
     this.currentTriageResult = null;
 
+    let currentStage: NamedPipelineStage | undefined;
+
     try {
       for (const stage of this.stages) {
-        const result = await stage(request);
+        currentStage = stage;
+        const result = await stage.run(request);
         if (result.decided && result.decision) {
           this.persistPinIfNeeded(request, result.decision);
           this.emitTelemetry(request, result.decision);
           return result.decision;
         }
       }
-    } catch {
+    } catch (error: unknown) {
       // Constitution VI: zero-crash resilience — degrade to safe default
+      const failedStage = this.resolveFailedStage(currentStage);
+      const elapsedMs = Date.now() - start;
+      const fallback = this.buildFallbackDecision(request, elapsedMs);
+      this.logPipelineError(request, failedStage, error);
+      this.emitPipelineErrorTelemetry(request, failedStage, fallback);
+      this.persistPinIfNeeded(request, fallback);
+      return fallback;
     }
 
     const fallback = this.buildFallbackDecision(request, Date.now() - start);
     this.persistPinIfNeeded(request, fallback);
     this.emitTelemetry(request, fallback);
     return fallback;
+  }
+
+  private resolveFailedStage(stage: NamedPipelineStage | undefined): string {
+    return stage?.name ?? 'unknown';
+  }
+
+  private logPipelineError(
+    request: RoutingRequest,
+    stage: string,
+    error: unknown,
+  ): void {
+    console.warn('Router pipeline stage failed; degrading to safe default', {
+      stage,
+      request_id: request.request_id,
+      session_id: request.session_id,
+      error: this.redactPromptFromError(error, request.prompt_text),
+    });
+  }
+
+  private redactPromptFromError(error: unknown, promptText: string): string {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!promptText || !message.includes(promptText)) {
+      return message;
+    }
+    return message.replaceAll(promptText, '[REDACTED]');
+  }
+
+  private emitPipelineErrorTelemetry(
+    request: RoutingRequest,
+    failedStage: string,
+    fallback: RoutingDecision,
+  ): void {
+    this.options.telemetryEmitter?.emitPipelineError(request, failedStage, fallback);
   }
 
   /** Step 7: emit routing telemetry after decision (T040). */
