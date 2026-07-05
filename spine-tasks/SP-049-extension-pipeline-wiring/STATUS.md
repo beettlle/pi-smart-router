@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 2
@@ -8,17 +8,17 @@
 
 ## Step 1: Wire hardware and local config
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Pass hardware settings and systemInfoProvider
 - [x] Pass localConfig for local backends
 
 ## Step 2: Wire loop escalation and rate limiter
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Pass loopEscalationConfig
-- [ ] Wire rate limiter via StorePort
+- [x] Pass loopEscalationConfig
+- [x] Wire rate limiter via StorePort
 
 ## Step 3: Extension wiring integration test
 

@@ -51,10 +51,15 @@ import type {
   RoutingTelemetry,
   TurnType,
 } from '../../../src/domain/types/index.js';
-import { createResilientStore } from '../../../src/infrastructure/persistence/sqlite-store.js';
+import {
+  createResilientStore,
+  SqliteStore,
+  SqliteStoreError,
+} from '../../../src/infrastructure/persistence/sqlite-store.js';
 import type { StorePort } from '../../../src/domain/types/store-port.js';
 import { getDefaultSystemInfo } from '../../../src/infrastructure/hardware/hardware-probe.js';
 import { DEFAULT_LOCAL_CONFIG } from '../../../src/infrastructure/local/local-zero-tier.js';
+import type { RateLimitPort } from '../../../src/infrastructure/gateway/gateway-dispatch.js';
 import { RoutingTelemetryEmitter } from '../../../src/infrastructure/telemetry/routing-telemetry.js';
 import {
   DEFAULT_HISTORY_LIMIT,
@@ -82,6 +87,8 @@ const PROVIDER_NAME = 'smart-router' as const;
 const AUTO_MODEL_ID = 'auto' as const;
 const FLEET_MODE_ENTRY_TYPE = 'smart-router-fleet-mode' as const;
 const DEFAULT_ROUTER_STATE_DB_PATH = '.pi-smart-router/state.db';
+const DEFAULT_RATE_LIMIT_MAX_TOKENS = 60;
+const DEFAULT_RATE_LIMIT_REFILL_RATE = 1;
 
 type FleetMode = 'scoped' | 'all';
 
@@ -216,6 +223,36 @@ function createExtensionStore(cwd: string): StorePort {
   }).store;
 }
 
+function createSqliteRateLimiter(sqliteStore: SqliteStore): RateLimitPort {
+  return {
+    consumeToken(key: string, cost = 1) {
+      try {
+        return sqliteStore.consumeToken(key, cost);
+      } catch (error) {
+        if (
+          error instanceof SqliteStoreError &&
+          error.message.includes('Token bucket not found')
+        ) {
+          sqliteStore.initBucket(
+            key,
+            DEFAULT_RATE_LIMIT_MAX_TOKENS,
+            DEFAULT_RATE_LIMIT_REFILL_RATE,
+          );
+          return sqliteStore.consumeToken(key, cost);
+        }
+        throw error;
+      }
+    },
+  };
+}
+
+function resolveRateLimiter(store: StorePort): RateLimitPort | undefined {
+  if (!(store instanceof SqliteStore)) {
+    return undefined;
+  }
+  return createSqliteRateLimiter(store);
+}
+
 async function discoverFleet(
   modelRegistry: ModelRegistry,
   mode: FleetMode,
@@ -250,13 +287,16 @@ function createDispatchOptions(
       store.appendTelemetry(record);
     },
   });
+  const rateLimiter = resolveRateLimiter(store);
 
   return {
     sessionPinner,
     hardwareConfig: DEFAULT_OPERATOR_CONFIG.local,
     systemInfoProvider: getDefaultSystemInfo,
     localConfig: DEFAULT_LOCAL_CONFIG,
+    loopEscalationConfig: DEFAULT_OPERATOR_CONFIG.loop_escalation,
     ...(hydraMatcher ? { hydraMatcher } : {}),
+    ...(rateLimiter ? { rateLimiter } : {}),
     telemetryEmitter,
   };
 }
