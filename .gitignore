@@ -8,8 +8,9 @@
 .spine/run-metrics.jsonl
 .worktrees/
 
-# Router runtime state (SQLite + ONNX model cache)
+# Router runtime state (SQLite + ONNX model cache + install-local dataset pepper)
 .pi-smart-router/
+.pi-smart-router/.dataset-key
 
 #SpecKit
 .specify/

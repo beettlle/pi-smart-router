@@ -29,6 +29,7 @@ function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): Routi
     requirement_tool_use: 0.2,
     routing_latency_ms: 8,
     estimated_cost_usd: 0.001,
+    prompt_fingerprint: null,
     ...overrides,
   };
 }

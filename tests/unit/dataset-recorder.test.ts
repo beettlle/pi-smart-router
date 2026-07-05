@@ -1,10 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { createHmac } from 'node:crypto';
 
 import type { RoutingDecision, RoutingRequest } from '../../src/domain/types/index.js';
 import {
   DatasetRecorder,
   buildDatasetRecord,
+  computePromptFingerprint,
+  getDatasetPepperPath,
+  isDatasetFingerprintEnabled,
   isDatasetRecordingEnabled,
+  loadOrCreateDatasetPepper,
+  normalizePromptForFingerprint,
 } from '../../src/infrastructure/telemetry/dataset-recorder.js';
 
 function makeRequest(overrides: Partial<RoutingRequest> = {}): RoutingRequest {
@@ -55,9 +64,11 @@ function makeDecision(overrides: Partial<RoutingDecision> = {}): RoutingDecision
 
 describe('dataset-recorder', () => {
   const originalDatasetEnv = process.env.SMART_ROUTER_DATASET;
+  const originalFingerprintEnv = process.env.SMART_ROUTER_DATASET_FINGERPRINT;
 
   beforeEach(() => {
     delete process.env.SMART_ROUTER_DATASET;
+    delete process.env.SMART_ROUTER_DATASET_FINGERPRINT;
   });
 
   afterEach(() => {
@@ -65,6 +76,12 @@ describe('dataset-recorder', () => {
       delete process.env.SMART_ROUTER_DATASET;
     } else {
       process.env.SMART_ROUTER_DATASET = originalDatasetEnv;
+    }
+
+    if (originalFingerprintEnv === undefined) {
+      delete process.env.SMART_ROUTER_DATASET_FINGERPRINT;
+    } else {
+      process.env.SMART_ROUTER_DATASET_FINGERPRINT = originalFingerprintEnv;
     }
   });
 
@@ -82,6 +99,55 @@ describe('dataset-recorder', () => {
     });
   });
 
+  describe('isDatasetFingerprintEnabled', () => {
+    it('is off by default', () => {
+      expect(isDatasetFingerprintEnabled()).toBe(false);
+    });
+
+    it('requires SMART_ROUTER_DATASET=1 and SMART_ROUTER_DATASET_FINGERPRINT=1', () => {
+      process.env.SMART_ROUTER_DATASET_FINGERPRINT = '1';
+      expect(isDatasetFingerprintEnabled()).toBe(false);
+
+      process.env.SMART_ROUTER_DATASET = '1';
+      expect(isDatasetFingerprintEnabled()).toBe(true);
+    });
+  });
+
+  describe('normalizePromptForFingerprint', () => {
+    it('trims and collapses whitespace', () => {
+      expect(normalizePromptForFingerprint('  hello   world  ')).toBe('hello world');
+    });
+  });
+
+  describe('computePromptFingerprint', () => {
+    it('returns HMAC-SHA256 hex of normalized prompt', () => {
+      const pepper = Buffer.from('a'.repeat(64), 'hex');
+      const prompt = '  duplicate   prompt  ';
+      const expected = createHmac('sha256', pepper)
+        .update('duplicate prompt')
+        .digest('hex');
+
+      expect(computePromptFingerprint(pepper, prompt)).toBe(expected);
+    });
+  });
+
+  describe('loadOrCreateDatasetPepper', () => {
+    it('creates and reuses install-local pepper file', () => {
+      const cwd = mkdtempSync(join(tmpdir(), 'dataset-pepper-'));
+      try {
+        const pepperPath = getDatasetPepperPath(cwd);
+        const first = loadOrCreateDatasetPepper(cwd);
+        const second = loadOrCreateDatasetPepper(cwd);
+
+        expect(first).toHaveLength(32);
+        expect(second.equals(first)).toBe(true);
+        expect(readFileSync(pepperPath, 'utf8')).toMatch(/^[a-f0-9]{64}$/);
+      } finally {
+        rmSync(cwd, { recursive: true, force: true });
+      }
+    });
+  });
+
   describe('buildDatasetRecord', () => {
     it('maps routing metadata and feature sidecar without prompt text', () => {
       const request = makeRequest();
@@ -96,6 +162,7 @@ describe('dataset-recorder', () => {
       expect(record.requirement_code_gen).toBe(0.8);
       expect(record.candidates_json).toContain('gpt-5-mini');
       expect(record.prompt_length_chars).toBe(request.prompt_text.length);
+      expect(record.prompt_fingerprint).toBeNull();
       expect(JSON.stringify(record)).not.toContain(request.prompt_text);
       expect(record).not.toHaveProperty('prompt_text');
       expect(record).not.toHaveProperty('messages');
@@ -135,6 +202,36 @@ describe('dataset-recorder', () => {
       expect(JSON.stringify(onRecord.mock.calls[0]?.[0])).not.toContain(
         'Fix the failing unit test for dataset capture',
       );
+    });
+
+    it('stores fingerprint when fingerprint mode is enabled', () => {
+      process.env.SMART_ROUTER_DATASET = '1';
+      process.env.SMART_ROUTER_DATASET_FINGERPRINT = '1';
+      const pepper = Buffer.from('b'.repeat(64), 'hex');
+      const onRecord = vi.fn();
+      const recorder = new DatasetRecorder({
+        onRecord,
+        loadPepper: () => pepper,
+      });
+
+      recorder.record(makeRequest(), makeDecision());
+
+      const record = onRecord.mock.calls[0]?.[0];
+      expect(record?.prompt_fingerprint).toMatch(/^[a-f0-9]{64}$/);
+      expect(record?.prompt_fingerprint).toBe(
+        computePromptFingerprint(pepper, makeRequest().prompt_text),
+      );
+      expect(JSON.stringify(record)).not.toContain(pepper.toString('hex'));
+    });
+
+    it('leaves fingerprint null when fingerprint mode is disabled', () => {
+      process.env.SMART_ROUTER_DATASET = '1';
+      const onRecord = vi.fn();
+      const recorder = new DatasetRecorder({ onRecord });
+
+      recorder.record(makeRequest(), makeDecision());
+
+      expect(onRecord.mock.calls[0]?.[0]?.prompt_fingerprint).toBeNull();
     });
   });
 });
