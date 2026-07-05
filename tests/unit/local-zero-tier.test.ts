@@ -224,7 +224,7 @@ function makeRequest(overrides?: Partial<RoutingRequest>): RoutingRequest {
   return {
     request_id: 'test-req-001',
     session_id: 'test-session',
-    prompt_text: 'hello world',
+    prompt_text: 'Format this JSON file',
     ...overrides,
   };
 }
@@ -282,7 +282,7 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
       expect(decision.stage).not.toBe('local_zero');
     });
 
-    it('falls through to safe cloud default', async () => {
+    it('falls through to economical cloud via triage when classification_only', async () => {
       const pipeline = new RouterPipeline(FLEET, {
         hardwareConfig: HARDWARE_CONFIG,
         localConfig: TEST_CONFIG,
@@ -292,7 +292,8 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
 
       const decision = await pipeline.route(makeRequest());
       expect(decision.tier).toBe('economical-cloud');
-      expect(decision.reason_code).toBe('safe_cloud_default');
+      expect(decision.stage).toBe('triage');
+      expect(decision.reason_code).toBe('keyword_economical');
     });
   });
 
@@ -311,7 +312,8 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
 
       const decision = await pipeline.route(makeRequest());
       expect(decision.tier).not.toBe('zero-tier');
-      expect(decision.stage).toBe('fallback');
+      expect(decision.stage).toBe('triage');
+      expect(decision.tier).toBe('economical-cloud');
     });
 
     it('routes to local when battery is low but on AC power', async () => {
@@ -333,7 +335,7 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
   });
 
   describe('local services unreachable (T047)', () => {
-    it('falls through when services are unreachable despite full_local hardware', async () => {
+    it('falls through to economical cloud when services are unreachable despite full_local hardware', async () => {
       const pipeline = new RouterPipeline(FLEET, {
         hardwareConfig: HARDWARE_CONFIG,
         localConfig: TEST_CONFIG,
@@ -343,8 +345,8 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
 
       const decision = await pipeline.route(makeRequest());
       expect(decision.tier).not.toBe('zero-tier');
-      expect(decision.stage).toBe('fallback');
-      expect(decision.reason_code).toBe('safe_cloud_default');
+      expect(decision.stage).toBe('triage');
+      expect(decision.reason_code).toBe('keyword_economical');
     });
 
     it('never throws when both local services are down', async () => {
@@ -370,7 +372,7 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
 
       const decision = await pipeline.route(makeRequest());
       expect(decision.tier).toBe('economical-cloud');
-      expect(decision.stage).toBe('fallback');
+      expect(decision.stage).toBe('triage');
     });
   });
 
@@ -402,6 +404,69 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
       });
 
       const decision = await pipeline.route(makeRequest());
+      expect(decision.tier).not.toBe('zero-tier');
+    });
+  });
+
+  describe('SP-050: trivial prompts prefer local before cloud exit', () => {
+    it('routes trivial + full_local + ready local to zero-tier before triage cloud exit', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 16 })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Lint the source file' }),
+      );
+
+      expect(decision.stage).toBe('local_zero');
+      expect(decision.tier).toBe('zero-tier');
+      expect(decision.reason_code).toBe('local_model_ready');
+    });
+
+    it('falls back to economical cloud when trivial but local services unavailable', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 16 })),
+        httpFetchPort: UNREACHABLE_FETCH,
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Format this JSON file' }),
+      );
+
+      expect(decision.stage).toBe('triage');
+      expect(decision.tier).toBe('economical-cloud');
+      expect(decision.reason_code).toBe('keyword_economical');
+    });
+
+    it('falls back to economical cloud when trivial but hardware disabled', async () => {
+      const pipeline = new RouterPipeline(FLEET);
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Format this JSON file' }),
+      );
+
+      expect(decision.stage).toBe('triage');
+      expect(decision.tier).toBe('economical-cloud');
+    });
+
+    it('does not route ambiguous prompts to local even when hardware is full_local', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 16 })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'hello world' }),
+      );
+
+      expect(decision.stage).not.toBe('local_zero');
       expect(decision.tier).not.toBe('zero-tier');
     });
   });

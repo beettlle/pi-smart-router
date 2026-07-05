@@ -430,7 +430,7 @@ describe('Pi extension integration (SP-043)', () => {
 
       const decision = await router.dispatch.dispatch(
         buildRoutingRequest(
-          makeContext([userMessage('hello world')]),
+          makeContext([userMessage('Format this JSON file')]),
           { sessionId: 'ext-wiring-001' },
         ),
       );

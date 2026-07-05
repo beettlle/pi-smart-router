@@ -1,40 +1,45 @@
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-04
 **Review Level:** 2
 **Size:** M
+
+## Discoveries
+
+- **Approach:** Triage pass-through for `trivial` (store verdict on pipeline state); run `localZeroTier` before cloud exit; add `triageCloudFallback` stage after local to route trivial → economical-cloud when local unavailable. Complex verdict still early-exits to frontier. Gate `localZeroTier` on trivial verdict per PRD Step 4.
+- **Coverage:** `npm run coverage:check` not defined in package.json; verification used `npm run typecheck && npm test` (718 tests pass).
 
 ---
 
 ## Step 1: Analyze and choose fix approach
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Read current stage order
-- [ ] Choose reorder vs pass-through approach
+- [x] Read current stage order
+- [x] Choose reorder vs pass-through approach
 
 ## Step 2: Implement stage order fix
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Local zero-tier before triage cloud exit for trivial prompts
-- [ ] Preserve economical cloud fallback
+- [x] Local zero-tier before triage cloud exit for trivial prompts
+- [x] Preserve economical cloud fallback
 
 ## Step 3: Ordering regression tests
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Add ordering regression tests
-- [ ] Update PRD if semantics change
+- [x] Add ordering regression tests
+- [x] Update PRD if semantics change
 
 ## Step 4: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run typecheck and test
-- [ ] Run coverage check
+- [x] Run typecheck and test
+- [x] Run coverage check (N/A — script absent; tests pass)
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] Ordering regression tests pass
+- [x] All steps complete
+- [x] Ordering regression tests pass
