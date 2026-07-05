@@ -63,6 +63,10 @@ import { DEFAULT_LOCAL_CONFIG } from '../../../src/infrastructure/local/local-ze
 import type { RateLimitPort } from '../../../src/infrastructure/gateway/gateway-dispatch.js';
 import { RoutingTelemetryEmitter } from '../../../src/infrastructure/telemetry/routing-telemetry.js';
 import {
+  DatasetRecorder,
+  DATASET_ENABLED_NOTIFY_MESSAGE,
+} from '../../../src/infrastructure/telemetry/dataset-recorder.js';
+import {
   DEFAULT_HISTORY_LIMIT,
   MAX_HISTORY_LIMIT,
 } from '../../../src/infrastructure/telemetry/telemetry-limits.js';
@@ -106,6 +110,7 @@ interface StreamDelegationDeps {
   fleet: ModelProfile[];
   readonly executionLedger: ExecutionLedger;
   readonly lifecycleHookState?: LifecycleHookState;
+  readonly datasetRecorder?: DatasetRecorder;
   onRoutingDecision?: (decision: RoutingDecision) => void;
   /** Fired when a delegated provider stream completes successfully. */
   onDelegatedModel?: (model: { readonly provider: string; readonly id: string }) => void;
@@ -120,10 +125,12 @@ interface SmartRouterRuntime {
   readonly sessionPinner: SessionPinner;
   readonly executionLedger: ExecutionLedger;
   readonly lifecycleHookState: LifecycleHookState;
+  readonly datasetRecorder?: DatasetRecorder;
   streamDeps: StreamDelegationDeps;
   hydraMatcher: HydraMatcher | undefined;
   setLmuStatus?: (modelId: string) => void;
   clearLmuStatus?: () => void;
+  notifyDatasetEnabled?: (message: string) => void;
 }
 
 /** Footer label for the last model that successfully served a delegated stream. */
@@ -303,6 +310,20 @@ function createDispatchOptions(
     ...(rateLimiter ? { rateLimiter } : {}),
     telemetryEmitter,
   };
+}
+
+function createExtensionDatasetRecorder(
+  store: StorePort,
+  notifyEnabled?: (message: string) => void,
+): DatasetRecorder {
+  return new DatasetRecorder({
+    onRecord: (record) => {
+      store.appendDatasetRecord(record);
+    },
+    onFirstEnable: () => {
+      notifyEnabled?.(DATASET_ENABLED_NOTIFY_MESSAGE);
+    },
+  });
 }
 
 async function rebuildFleet(
@@ -935,9 +956,10 @@ async function routeAndDelegate(
 ): Promise<void> {
   const sessionId = options?.sessionId;
   let decision: RoutingDecision;
+  let request: RoutingRequest;
 
   try {
-    const request = buildRoutingRequest(
+    request = buildRoutingRequest(
       context,
       options,
       deps.lifecycleHookState,
@@ -964,6 +986,7 @@ async function routeAndDelegate(
   }
 
   deps.onRoutingDecision?.(decision);
+  deps.datasetRecorder?.record(request, decision);
 
   let targetModel = resolveTargetModel(deps, decision);
   if (!targetModel) {
@@ -1190,6 +1213,7 @@ export {
   buildRoutingRequest,
   buildDelegationContext,
   createDispatchOptions,
+  createExtensionDatasetRecorder,
   createStreamSimple,
   deriveTurnType,
   discoverFleet,
@@ -1218,6 +1242,12 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
   const sessionPinner = new SessionPinner({ store });
   const executionLedger = new ExecutionLedger();
   const lifecycleHookState = new LifecycleHookState();
+  const datasetNotify = {
+    fn: undefined as ((message: string) => void) | undefined,
+  };
+  const datasetRecorder = createExtensionDatasetRecorder(store, (message) => {
+    datasetNotify.fn?.(message);
+  });
 
   const runtime: SmartRouterRuntime = {
     fleetMode: 'scoped',
@@ -1229,6 +1259,7 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
     executionLedger,
     lifecycleHookState,
     hydraMatcher,
+    datasetRecorder,
     streamDeps: {
       router: createRouterFromFleet([], {
         ...createDispatchOptions(store, sessionPinner, hydraMatcher),
@@ -1238,6 +1269,7 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
       fleet: [],
       executionLedger,
       lifecycleHookState,
+      datasetRecorder,
       onRoutingDecision(decision) {
         runtime.lastDecision = decision;
       },
@@ -1267,6 +1299,10 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
     runtime.clearLmuStatus = () => {
       ctx.ui.setStatus('smart-router-lmu', undefined);
     };
+    runtime.notifyDatasetEnabled = (message) => {
+      ctx.ui.notify(message, 'info');
+    };
+    datasetNotify.fn = runtime.notifyDatasetEnabled;
 
     const sessionId = ctx.sessionManager.getSessionId();
     await sessionPinner.restoreSessionPin(sessionId);
@@ -1282,6 +1318,8 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
   pi.on('session_shutdown', async (_event, ctx) => {
     delete runtime.setLmuStatus;
     delete runtime.clearLmuStatus;
+    delete runtime.notifyDatasetEnabled;
+    datasetNotify.fn = undefined;
     ctx.ui.setStatus('smart-router-lmu', undefined);
   });
 

@@ -14,10 +14,9 @@ import {
   TELEMETRY_MAX_ENTRIES,
   makeTelemetryRoom,
 } from '../telemetry/telemetry-limits.js';
-
-/** Dataset retention: 30 days / 10k rows (GitHub #8). */
-const DATASET_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-const DATASET_MAX_ENTRIES = 10_000;
+import {
+  makeDatasetRoom,
+} from '../telemetry/dataset-limits.js';
 
 export class MemoryStore implements StorePort {
   private readonly pins = new Map<string, SessionPin>();
@@ -73,7 +72,7 @@ export class MemoryStore implements StorePort {
   }
 
   appendDatasetRecord(entry: RoutingDatasetRecord): void {
-    makeDatasetRoom(this.dataset, DATASET_MAX_ENTRIES, DATASET_WINDOW_MS);
+    makeDatasetRoom(this.dataset);
     this.dataset.push(entry);
   }
 
@@ -85,27 +84,6 @@ export class MemoryStore implements StorePort {
     return [...this.dataset]
       .reverse()
       .slice(0, limit);
-  }
-}
-
-function makeDatasetRoom(
-  entries: RoutingDatasetRecord[],
-  maxEntries: number,
-  windowMs: number,
-): void {
-  const cutoff = Date.now() - windowMs;
-
-  while (entries.length > 0) {
-    const oldest = entries[0]!;
-    if (new Date(oldest.timestamp).getTime() < cutoff) {
-      entries.shift();
-    } else {
-      break;
-    }
-  }
-
-  while (entries.length >= maxEntries) {
-    entries.shift();
   }
 }
 

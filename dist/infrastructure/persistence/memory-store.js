@@ -6,11 +6,13 @@
  * state store is unavailable, degrade to in-memory rather than crash.
  */
 import { DEFAULT_HISTORY_LIMIT, MAX_HISTORY_LIMIT, TELEMETRY_MAX_ENTRIES, makeTelemetryRoom, } from '../telemetry/telemetry-limits.js';
+import { makeDatasetRoom, } from '../telemetry/dataset-limits.js';
 export class MemoryStore {
     pins = new Map();
     models;
     priceCatalog = null;
     telemetry = [];
+    dataset = [];
     constructor(models = []) {
         this.models = models;
     }
@@ -43,6 +45,16 @@ export class MemoryStore {
             ? this.telemetry.filter((entry) => entry.session_id === sessionId)
             : this.telemetry;
         return [...filtered]
+            .reverse()
+            .slice(0, limit);
+    }
+    appendDatasetRecord(entry) {
+        makeDatasetRoom(this.dataset);
+        this.dataset.push(entry);
+    }
+    async listDatasetRecords(options) {
+        const limit = clampHistoryLimit(options?.limit);
+        return [...this.dataset]
             .reverse()
             .slice(0, limit);
     }

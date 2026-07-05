@@ -22,6 +22,10 @@ import {
   TELEMETRY_MAX_ENTRIES,
   TELEMETRY_WINDOW_MS,
 } from '../telemetry/telemetry-limits.js';
+import {
+  DATASET_MAX_ENTRIES,
+  DATASET_WINDOW_MS,
+} from '../telemetry/dataset-limits.js';
 
 // ─── Schema version & migrations ────────────────────────────────────────────
 
@@ -106,10 +110,6 @@ const MIGRATION_V2 = `
   CREATE INDEX IF NOT EXISTS idx_dataset_timestamp ON dataset(timestamp);
   CREATE INDEX IF NOT EXISTS idx_dataset_request ON dataset(request_id);
 `;
-
-/** Dataset retention: 30 days / 10k rows (GitHub #8). */
-const DATASET_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-const DATASET_MAX_ENTRIES = 10_000;
 
 // ─── Token bucket result ────────────────────────────────────────────────────
 
