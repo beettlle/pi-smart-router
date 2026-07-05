@@ -6,7 +6,7 @@
  * Any stage failure falls back to safeCloudDefault(); never throws to host.
  */
 
-import type { ModelProfile, RoutingDecision, RoutingRequest, Tier } from '../types/index.js';
+import type { ModelProfile, RoutingDecision, RoutingFeatureSidecar, RoutingRequest, Tier } from '../types/index.js';
 import type { HardwareProbeConfig, HardwareProbeResult, SystemInfo } from '../../infrastructure/hardware/hardware-probe.js';
 import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
 import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
@@ -19,7 +19,7 @@ import type { SessionPinner } from '../pinning/session-pinner.js';
 import { evaluateLoopEscalation } from '../pinning/loop-escalation.js';
 import type { LoopEscalationConfig } from '../pinning/loop-escalation.js';
 import { RoutingTelemetryEmitter } from '../../infrastructure/telemetry/routing-telemetry.js';
-import type { HydraMatcher as HydraMatcherType } from '../matching/hydra-matcher.js';
+import type { HydraMatcher as HydraMatcherType, MatchResult } from '../matching/hydra-matcher.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
 
@@ -59,6 +59,7 @@ export class RouterPipeline {
   /** Per-route transient state — reset on each route() call. */
   private currentHardwareResult: HardwareProbeResult = 'disabled';
   private currentTriageResult: TriageResult | null = null;
+  private currentHydraResult: MatchResult | null = null;
 
   constructor(fleet: readonly ModelProfile[], options?: PipelineOptions) {
     this.fleet = fleet;
@@ -79,6 +80,7 @@ export class RouterPipeline {
     const start = Date.now();
     this.currentHardwareResult = 'disabled';
     this.currentTriageResult = null;
+    this.currentHydraResult = null;
 
     let currentStage: NamedPipelineStage | undefined;
 
@@ -89,7 +91,7 @@ export class RouterPipeline {
         if (result.decided && result.decision) {
           this.persistPinIfNeeded(request, result.decision);
           this.emitTelemetry(request, result.decision);
-          return result.decision;
+          return this.attachFeatures(result.decision);
         }
       }
     } catch (error: unknown) {
@@ -100,13 +102,30 @@ export class RouterPipeline {
       this.logPipelineError(request, failedStage, error);
       this.emitPipelineErrorTelemetry(request, failedStage, fallback);
       this.persistPinIfNeeded(request, fallback);
-      return fallback;
+      return this.attachFeatures(fallback);
     }
 
     const fallback = this.buildFallbackDecision(request, Date.now() - start);
     this.persistPinIfNeeded(request, fallback);
     this.emitTelemetry(request, fallback);
-    return fallback;
+    return this.attachFeatures(fallback);
+  }
+
+  /** Attach privacy-safe dataset features captured during pipeline stages (SP-057). */
+  private attachFeatures(decision: RoutingDecision): RoutingDecision {
+    const features: RoutingFeatureSidecar = {
+      triage: this.currentTriageResult
+        ? {
+            verdict: this.currentTriageResult.verdict,
+            reason_code: this.currentTriageResult.reason_code,
+            cyclomatic_score: this.currentTriageResult.cyclomatic_score,
+          }
+        : null,
+      requirements: this.currentHydraResult?.requirements ?? null,
+      candidates: this.currentHydraResult?.candidates ?? null,
+    };
+
+    return { ...decision, features };
   }
 
   private resolveFailedStage(stage: NamedPipelineStage | undefined): string {
@@ -450,6 +469,7 @@ export class RouterPipeline {
     }
 
     const result = await matcher.match(request, this.fleet);
+    this.currentHydraResult = result;
 
     if (!result.selected) {
       return { decided: false, stage: 'hydra_match' };
