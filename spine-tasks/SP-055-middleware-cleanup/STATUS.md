@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Step 4
+**Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 2
 **Size:** M
@@ -8,22 +8,22 @@
 
 ## Step 1: Choose and implement Option A or B
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Read middleware vs extension after SP-051
-- [ ] Deprecate/remove or wire real behavior
+- [x] Read middleware vs extension after SP-051
+- [x] Deprecate/remove or wire real behavior (Option B: lifecycle hooks only)
 
 ## Step 2: Update public exports and docs
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Update src/index.ts and README
+- [x] Update src/index.ts and README
 
 ## Step 3: Update tests
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Adjust middleware contract tests
+- [x] Adjust middleware contract tests
 
 ## Step 4: Testing and verification
 

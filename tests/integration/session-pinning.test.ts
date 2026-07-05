@@ -27,7 +27,6 @@ import {
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
 import { SqliteStore } from '../../src/infrastructure/persistence/sqlite-store.js';
 import {
-  createPiRouterMiddleware,
   LifecycleHookState,
   type PiExtensionContext,
   type PiExtensionHooks,
@@ -569,10 +568,8 @@ describe('Session pinning integration', () => {
         ...createDispatchOptions(store, sessionPinner),
         lifecycleHookState,
       });
-      const middleware = createPiRouterMiddleware({ fleet, lifecycleHookState });
       const { hooks, fireCompaction } = createHookCapture();
       router.register(hooks);
-      middleware.register(hooks);
 
       let lastDecision: RoutingDecision | undefined;
       const initial = await router.dispatch.dispatch(

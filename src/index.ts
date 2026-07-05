@@ -1,7 +1,9 @@
 /**
  * Public package exports — pi-smart-router.
  *
- * Exposes the router factory (T022) and pi extension middleware (T021).
+ * Exposes the router factory (T022) and pi lifecycle hook registrar (T021).
+ * Full pi integration uses `.pi/extensions/smart-router/`; library embedders
+ * route via `dispatch.dispatch()` after calling `register(hooks)`.
  */
 
 import type { ModelProfile, RoutingDecision } from './domain/types/index.js';
@@ -54,10 +56,9 @@ export function createRouterFromFleet(
 ): RouterHandle {
   const { lifecycleHookState, ...dispatchOptions } = options ?? {};
   const dispatch = new GatewayDispatch(fleet, dispatchOptions);
-  const middleware = createPiRouterMiddleware({
-    fleet,
-    ...(lifecycleHookState !== undefined ? { lifecycleHookState } : {}),
-  });
+  const middleware = createPiRouterMiddleware(
+    lifecycleHookState !== undefined ? { lifecycleHookState } : undefined,
+  );
 
   return {
     version: 'pi-smart-router',
