@@ -12,12 +12,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
-import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import { resolvePrice, resolveFleetPrices } from '../../src/infrastructure/pricing/price-broker.js';
 import type {
   ModelProfile,
   PriceCatalog,
-  RoutingDecision,
   RoutingRequest,
 } from '../../src/domain/types/index.js';
 
@@ -126,7 +124,6 @@ describe('Cost baseline (T062, SC-009)', () => {
   describe('SC-009: routed cost < always-frontier baseline', () => {
     it('mixed workload routed cost is measurably less than frontier-only', async () => {
       const gateway = new GatewayDispatch(costFleet);
-      const priceMap = resolveFleetPrices(costFleet, null);
 
       let routedTotalCost = 0;
       let frontierTotalCost = 0;

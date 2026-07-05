@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   SessionPinner,
-  type PinLookupResult,
 } from '../../src/domain/pinning/session-pinner.js';
 import {
   evaluateCacheEconomics,

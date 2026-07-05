@@ -19,7 +19,10 @@ function makeFetchPort(
   handler: (url: string) => Promise<{ ok: boolean; json(): Promise<unknown> }>,
 ): HttpFetchPort {
   return {
-    fetch: (url, _init) => handler(url),
+    fetch: (url, init) => {
+      void init;
+      return handler(url);
+    },
   };
 }
 

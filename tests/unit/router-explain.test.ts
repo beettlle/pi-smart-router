@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createExplainHandler,
-  type ExplainResult,
 } from '../../src/api/explain/router-explain.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import type { ModelProfile } from '../../src/domain/types/index.js';

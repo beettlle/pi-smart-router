@@ -15,7 +15,6 @@ import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import {
   GatewayDispatch,
-  type CacheMarker,
 } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 
@@ -296,7 +295,6 @@ describe('Session pinning integration', () => {
       const gateway = new GatewayDispatch(fleet, { sessionPinner: pinner });
 
       await gateway.dispatch(makeRequest({ request_id: 'init' }));
-      const initialMarker = gateway.getCacheMarker('session-pin-int');
 
       await gateway.dispatch(
         makeRequest({
@@ -385,7 +383,6 @@ describe('Session pinning integration', () => {
       );
 
       const yPinBefore = pinner.getPin('sess-y');
-      const xPinBefore = pinner.getPin('sess-x');
 
       await pipeline.route(
         makeRequest({

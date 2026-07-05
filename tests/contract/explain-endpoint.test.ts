@@ -129,7 +129,8 @@ describe('explain-endpoint contract', () => {
 
   describe('400 — invalid request returns validation error', () => {
     it('rejects missing request_id', async () => {
-      const { request_id: _, ...body } = validRequestBody();
+      const body = { ...validRequestBody() };
+      delete (body as { request_id?: string }).request_id;
       const result = await explain(body);
       expect(result.status).toBe(400);
       expect(result.body).toMatchObject({
@@ -139,14 +140,16 @@ describe('explain-endpoint contract', () => {
     });
 
     it('rejects missing session_id', async () => {
-      const { session_id: _, ...body } = validRequestBody();
+      const body = { ...validRequestBody() };
+      delete (body as { session_id?: string }).session_id;
       const result = await explain(body);
       expect(result.status).toBe(400);
       expect((result.body as { error: string }).error).toBe('validation_failed');
     });
 
     it('rejects missing prompt_text', async () => {
-      const { prompt_text: _, ...body } = validRequestBody();
+      const body = { ...validRequestBody() };
+      delete (body as { prompt_text?: string }).prompt_text;
       const result = await explain(body);
       expect(result.status).toBe(400);
       expect((result.body as { error: string }).error).toBe('validation_failed');

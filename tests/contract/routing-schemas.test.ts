@@ -160,19 +160,22 @@ describe('routing-request.schema.json', () => {
 
   describe('invalid payloads', () => {
     it('rejects missing request_id', () => {
-      const { request_id: _, ...payload } = validRoutingRequest();
+      const payload = { ...validRoutingRequest() };
+      delete (payload as { request_id?: string }).request_id;
       expect(validate(payload)).toBe(false);
       expect(RoutingRequestSchema.safeParse(payload).success).toBe(false);
     });
 
     it('rejects missing session_id', () => {
-      const { session_id: _, ...payload } = validRoutingRequest();
+      const payload = { ...validRoutingRequest() };
+      delete (payload as { session_id?: string }).session_id;
       expect(validate(payload)).toBe(false);
       expect(RoutingRequestSchema.safeParse(payload).success).toBe(false);
     });
 
     it('rejects missing prompt_text', () => {
-      const { prompt_text: _, ...payload } = validRoutingRequest();
+      const payload = { ...validRoutingRequest() };
+      delete (payload as { prompt_text?: string }).prompt_text;
       expect(validate(payload)).toBe(false);
       expect(RoutingRequestSchema.safeParse(payload).success).toBe(false);
     });

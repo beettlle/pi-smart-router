@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 1
@@ -8,7 +8,7 @@
 
 ## Step 1: Fix production ESLint errors
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Fix `router-pipeline.ts` unused var
 - [x] Fix `triage-engine.ts` regex spaces
@@ -16,10 +16,10 @@
 
 ## Step 2: Fix test lint errors
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Remove unused test imports
-- [ ] Confirm lint clean
+- [x] Remove unused test imports
+- [x] Confirm lint clean
 
 ## Step 3: Add CI workflow
 
