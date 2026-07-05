@@ -72,7 +72,7 @@ export class RouterPipeline {
       { name: 'session_pin', run: this.sessionPin.bind(this) },
       { name: 'triage', run: this.triage.bind(this) },
       { name: 'local_zero', run: this.localZeroTierStage.bind(this) },
-      { name: 'triage', run: this.triageCloudFallback.bind(this) },
+      { name: 'triage_cloud_fallback', run: this.triageCloudFallback.bind(this) },
       { name: 'hydra_match', run: this.hydraMatcher.bind(this) },
     ];
   }
