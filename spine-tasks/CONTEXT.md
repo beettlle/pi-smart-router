@@ -1,8 +1,8 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-07-04
+**Last Updated:** 2026-07-05
 **Status:** Active
-**Next Task ID:** SP-064
+**Next Task ID:** SP-067
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -133,6 +133,14 @@
 | Task | Summary | Size | Deps | GitHub |
 |------|---------|------|------|--------|
 | SP-059 | Provider error UX (no raw JSON) | S | SP-062 | #22 |
+
+### Phase 19 — Backlog Orchestrator Cycle 5 (SP-064–SP-066)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-064 | Turn envelope before session pin (global reorder) | M | SP-059 | #23 |
+| SP-065 | Linux hardware probe + SystemInfoPort refactor | M | SP-064 | #1 |
+| SP-066 | Windows hardware probe | M | SP-065 | #1 |
 
 ---
 
