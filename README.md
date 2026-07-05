@@ -343,13 +343,17 @@ Every routing decision includes:
 git clone https://github.com/beettlle/pi-smart-router.git
 cd pi-smart-router
 npm install
+npm run build
 npm run typecheck && npm test
 ```
+
+Contributors must run `npm run build` before publishing or consuming the library API from `dist/`. The pi extension at `.pi/extensions/smart-router/` uses TypeScript source directly and does not require a build for local dogfooding.
 
 ### Scripts
 
 | Script | Purpose |
 |--------|---------|
+| `npm run build` | Compile library to `dist/` (`tsc --project tsconfig.build.json`) |
 | `npm run typecheck` | TypeScript strict mode check (`tsc --noEmit`) |
 | `npm test` | Run test suite (`vitest run`) |
 | `npm run lint` | ESLint + fleet catalog validation |
