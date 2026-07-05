@@ -35,8 +35,11 @@ export declare class RouterPipeline {
     /** Per-route transient state — reset on each route() call. */
     private currentHardwareResult;
     private currentTriageResult;
+    private currentHydraResult;
     constructor(fleet: readonly ModelProfile[], options?: PipelineOptions);
     route(request: RoutingRequest): Promise<RoutingDecision>;
+    /** Attach privacy-safe dataset features captured during pipeline stages (SP-057). */
+    private attachFeatures;
     private resolveFailedStage;
     private logPipelineError;
     private redactPromptFromError;

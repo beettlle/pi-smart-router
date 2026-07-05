@@ -5,13 +5,14 @@
  * process restart. Used as a safety net per FR-025: when the SQLite
  * state store is unavailable, degrade to in-memory rather than crash.
  */
-import type { ModelProfile, PriceCatalog, RoutingTelemetry, SessionPin } from '../../domain/types/entities.js';
-import type { ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingTelemetry, SessionPin } from '../../domain/types/entities.js';
+import type { ListDatasetOptions, ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
 export declare class MemoryStore implements StorePort {
     private readonly pins;
     private readonly models;
     private priceCatalog;
     private readonly telemetry;
+    private readonly dataset;
     constructor(models?: readonly ModelProfile[]);
     getSessionPin(sessionId: string): Promise<SessionPin | null>;
     putSessionPin(pin: SessionPin): Promise<void>;
@@ -21,5 +22,7 @@ export declare class MemoryStore implements StorePort {
     putPriceCatalog(catalog: PriceCatalog): Promise<void>;
     appendTelemetry(entry: RoutingTelemetry): void;
     listTelemetry(options?: ListTelemetryOptions): Promise<readonly RoutingTelemetry[]>;
+    appendDatasetRecord(entry: RoutingDatasetRecord): void;
+    listDatasetRecords(options?: ListDatasetOptions): Promise<readonly RoutingDatasetRecord[]>;
 }
 //# sourceMappingURL=memory-store.d.ts.map

@@ -7,8 +7,8 @@
  *
  * Maps to T013 in the routing pipeline spec.
  */
-import type { ModelProfile, PriceCatalog, RoutingTelemetry, SessionPin } from '../../domain/types/entities.js';
-import type { ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingTelemetry, SessionPin } from '../../domain/types/entities.js';
+import type { ListDatasetOptions, ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
 export interface TokenBucketResult {
     readonly allowed: boolean;
     readonly remaining: number;
@@ -49,6 +49,9 @@ export declare class SqliteStore implements StorePort {
     appendTelemetry(entry: RoutingTelemetry): void;
     listTelemetry(options?: ListTelemetryOptions): Promise<readonly RoutingTelemetry[]>;
     private evictTelemetryRows;
+    appendDatasetRecord(entry: RoutingDatasetRecord): void;
+    listDatasetRecords(options?: ListDatasetOptions): Promise<readonly RoutingDatasetRecord[]>;
+    private evictDatasetRows;
     /**
      * Initialize a token bucket. Idempotent — existing buckets are unchanged.
      */

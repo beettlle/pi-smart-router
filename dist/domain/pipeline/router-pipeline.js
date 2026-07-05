@@ -19,6 +19,7 @@ export class RouterPipeline {
     /** Per-route transient state — reset on each route() call. */
     currentHardwareResult = 'disabled';
     currentTriageResult = null;
+    currentHydraResult = null;
     constructor(fleet, options) {
         this.fleet = fleet;
         this.options = options ?? {};
@@ -37,6 +38,7 @@ export class RouterPipeline {
         const start = Date.now();
         this.currentHardwareResult = 'disabled';
         this.currentTriageResult = null;
+        this.currentHydraResult = null;
         let currentStage;
         try {
             for (const stage of this.stages) {
@@ -45,7 +47,7 @@ export class RouterPipeline {
                 if (result.decided && result.decision) {
                     this.persistPinIfNeeded(request, result.decision);
                     this.emitTelemetry(request, result.decision);
-                    return result.decision;
+                    return this.attachFeatures(result.decision);
                 }
             }
         }
@@ -57,12 +59,27 @@ export class RouterPipeline {
             this.logPipelineError(request, failedStage, error);
             this.emitPipelineErrorTelemetry(request, failedStage, fallback);
             this.persistPinIfNeeded(request, fallback);
-            return fallback;
+            return this.attachFeatures(fallback);
         }
         const fallback = this.buildFallbackDecision(request, Date.now() - start);
         this.persistPinIfNeeded(request, fallback);
         this.emitTelemetry(request, fallback);
-        return fallback;
+        return this.attachFeatures(fallback);
+    }
+    /** Attach privacy-safe dataset features captured during pipeline stages (SP-057). */
+    attachFeatures(decision) {
+        const features = {
+            triage: this.currentTriageResult
+                ? {
+                    verdict: this.currentTriageResult.verdict,
+                    reason_code: this.currentTriageResult.reason_code,
+                    cyclomatic_score: this.currentTriageResult.cyclomatic_score,
+                }
+                : null,
+            requirements: this.currentHydraResult?.requirements ?? null,
+            candidates: this.currentHydraResult?.candidates ?? null,
+        };
+        return { ...decision, features };
     }
     resolveFailedStage(stage) {
         return stage?.name ?? 'unknown';
@@ -333,6 +350,7 @@ export class RouterPipeline {
             return { decided: false, stage: 'hydra_match' };
         }
         const result = await matcher.match(request, this.fleet);
+        this.currentHydraResult = result;
         if (!result.selected) {
             return { decided: false, stage: 'hydra_match' };
         }

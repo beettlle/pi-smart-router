@@ -22,6 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildRoutingRequest,
   createDispatchOptions,
+  createExtensionDatasetRecorder,
   createStreamSimple,
   getRoutingFeatureSidecar,
 } from '../../.pi/extensions/smart-router/index.js';
@@ -373,6 +374,89 @@ describe('Pi extension integration (SP-043)', () => {
       expect(rows[0]?.session_id).toBe('telemetry-session');
       expect(rows[0]?.selected_model_id).toBeDefined();
       expect(fleet.map((profile) => profile.id)).toContain(rows[0]?.selected_model_id);
+    });
+  });
+
+  describe('routing dataset persistence (SP-058)', () => {
+    const originalDatasetEnv = process.env.SMART_ROUTER_DATASET;
+
+    beforeEach(() => {
+      mockDelegateStreamSimple.mockReset();
+      delete process.env.SMART_ROUTER_DATASET;
+    });
+
+    afterEach(() => {
+      if (originalDatasetEnv === undefined) {
+        delete process.env.SMART_ROUTER_DATASET;
+      } else {
+        process.env.SMART_ROUTER_DATASET = originalDatasetEnv;
+      }
+    });
+
+    it('writes nothing when SMART_ROUTER_DATASET is unset', async () => {
+      const fleet = mapFleetFromRegistry(REGISTRY_MODELS);
+      const store = new MemoryStore();
+      const datasetRecorder = createExtensionDatasetRecorder(store);
+      const router = createRouterFromFleet(fleet);
+      const modelRegistry = createMockRegistry(piRegistryModels);
+      const target = piRegistryModels.find((model) => model.id === 'gpt-5-mini')!;
+      mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
+
+      const streamSimple = createStreamSimple({
+        router,
+        modelRegistry,
+        fleet,
+        executionLedger: new ExecutionLedger(),
+        datasetRecorder,
+      });
+
+      await collectEvents(
+        streamSimple(
+          makeAutoModel(),
+          makeContext([userMessage('Do not persist this prompt text')]),
+          { sessionId: 'dataset-off' },
+        ),
+      );
+
+      const rows = await store.listDatasetRecords({ limit: 5 });
+      expect(rows).toHaveLength(0);
+    });
+
+    it('persists feature fields without prompt text when SMART_ROUTER_DATASET=1', async () => {
+      process.env.SMART_ROUTER_DATASET = '1';
+      const fleet = mapFleetFromRegistry(REGISTRY_MODELS);
+      const store = new MemoryStore();
+      const notifySpy = vi.fn();
+      const datasetRecorder = createExtensionDatasetRecorder(store, notifySpy);
+      const router = createRouterFromFleet(fleet);
+      const modelRegistry = createMockRegistry(piRegistryModels);
+      const target = piRegistryModels.find((model) => model.id === 'gpt-5-mini')!;
+      mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
+
+      const prompt = 'Persist dataset metadata only';
+      const streamSimple = createStreamSimple({
+        router,
+        modelRegistry,
+        fleet,
+        executionLedger: new ExecutionLedger(),
+        datasetRecorder,
+      });
+
+      await collectEvents(
+        streamSimple(
+          makeAutoModel(),
+          makeContext([userMessage(prompt)]),
+          { sessionId: 'dataset-on' },
+        ),
+      );
+
+      const rows = await store.listDatasetRecords({ limit: 5 });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.triage_verdict).not.toBeNull();
+      expect(rows[0]?.prompt_length_chars).toBe(prompt.length);
+      expect(JSON.stringify(rows[0])).not.toContain(prompt);
+      expect(rows[0]).not.toHaveProperty('prompt_text');
+      expect(notifySpy).toHaveBeenCalledTimes(1);
     });
   });
 
