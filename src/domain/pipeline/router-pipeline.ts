@@ -12,6 +12,7 @@ import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/lo
 import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
 import { pingLocalServices } from '../../infrastructure/local/local-zero-tier.js';
 import { triage as triageClassify } from '../triage/triage-engine.js';
+import type { TriageResult } from '../triage/triage-engine.js';
 import { classifyTurnEnvelope } from '../triage/turn-envelope.js';
 import { safeCloudDefault } from './safe-default.js';
 import type { SessionPinner } from '../pinning/session-pinner.js';
@@ -52,6 +53,7 @@ export class RouterPipeline {
 
   /** Per-route transient state — reset on each route() call. */
   private currentHardwareResult: HardwareProbeResult = 'disabled';
+  private currentTriageResult: TriageResult | null = null;
 
   constructor(fleet: readonly ModelProfile[], options?: PipelineOptions) {
     this.fleet = fleet;
@@ -63,6 +65,7 @@ export class RouterPipeline {
       this.triage.bind(this),
       this.turnEnvelope.bind(this),
       this.localZeroTierStage.bind(this),
+      this.triageCloudFallback.bind(this),
       this.hydraMatcher.bind(this),
     ];
   }
@@ -70,6 +73,7 @@ export class RouterPipeline {
   async route(request: RoutingRequest): Promise<RoutingDecision> {
     const start = Date.now();
     this.currentHardwareResult = 'disabled';
+    this.currentTriageResult = null;
 
     try {
       for (const stage of this.stages) {
@@ -129,9 +133,13 @@ export class RouterPipeline {
 
   /**
    * SC-007: classification_only MUST NOT dispatch full local.
-   * Only routes to zero-tier when hardware says full_local AND a local model is ready.
+   * PRD Step 4: only trivial tasks with full_local hardware may use zero-tier.
    */
   private async localZeroTierStage(request: RoutingRequest): Promise<StageResult> {
+    if (this.currentTriageResult?.verdict !== 'trivial') {
+      return { decided: false, stage: 'local_zero' };
+    }
+
     if (this.currentHardwareResult !== 'full_local') {
       return { decided: false, stage: 'local_zero' };
     }
@@ -172,12 +180,18 @@ export class RouterPipeline {
 
   private async triage(request: RoutingRequest): Promise<StageResult> {
     const result = triageClassify(request.prompt_text);
+    this.currentTriageResult = result;
 
     if (result.verdict === 'ambiguous') {
       return { decided: false, stage: 'triage' };
     }
 
-    const targetTier = result.verdict === 'trivial' ? 'economical-cloud' : 'frontier-cloud';
+    // Trivial prompts defer cloud routing until after local zero-tier (PRD Step 4).
+    if (result.verdict === 'trivial') {
+      return { decided: false, stage: 'triage' };
+    }
+
+    const targetTier = 'frontier-cloud';
     const model = this.fleet.find((m) => m.tier === targetTier && m.healthy !== false);
 
     if (!model) {
@@ -193,6 +207,38 @@ export class RouterPipeline {
         tier: targetTier,
         stage: 'triage',
         reason_code: result.reason_code,
+        routing_latency_ms: 0,
+        pin_reason: null,
+      },
+    };
+  }
+
+  /**
+   * Economical-cloud fallback for trivial prompts after local zero-tier is skipped
+   * or unavailable (PRD Step 4 cloud fallback).
+   */
+  private async triageCloudFallback(request: RoutingRequest): Promise<StageResult> {
+    if (this.currentTriageResult?.verdict !== 'trivial') {
+      return { decided: false, stage: 'triage' };
+    }
+
+    const model = this.fleet.find(
+      (m) => m.tier === 'economical-cloud' && m.healthy !== false,
+    );
+
+    if (!model) {
+      return { decided: false, stage: 'triage' };
+    }
+
+    return {
+      decided: true,
+      stage: 'triage',
+      decision: {
+        request_id: request.request_id,
+        selected_model_id: model.id,
+        tier: 'economical-cloud',
+        stage: 'triage',
+        reason_code: this.currentTriageResult.reason_code,
         routing_latency_ms: 0,
         pin_reason: null,
       },
