@@ -31,6 +31,14 @@ function makeLinuxSystemInfo(overrides?: Partial<SystemInfo>): SystemInfo {
   });
 }
 
+function makeWindowsSystemInfo(overrides?: Partial<SystemInfo>): SystemInfo {
+  return makeSystemInfo({
+    platform: 'win32',
+    arch: 'x64',
+    ...overrides,
+  });
+}
+
 describe('probeHardware (T044, FR-012)', () => {
   describe('three-state gate', () => {
     it('returns full_local on Apple Silicon with sufficient memory', () => {
@@ -69,9 +77,61 @@ describe('probeHardware (T044, FR-012)', () => {
       const info = makeSystemInfo({ arch: 'x64' });
       expect(probeHardware(DEFAULT_CONFIG, info)).toBe('disabled');
     });
+  });
 
-    it('returns disabled on Windows x64', () => {
-      const info = makeSystemInfo({ platform: 'win32', arch: 'x64' });
+  describe('Windows platform matrix', () => {
+    it('returns full_local on Windows x64 desktop with sufficient RAM on AC', () => {
+      const info = makeWindowsSystemInfo({
+        totalMemoryGb: 32,
+        batteryLevel: null,
+        isOnAcPower: true,
+      });
+      expect(probeHardware(DEFAULT_CONFIG, info)).toBe('full_local');
+    });
+
+    it('returns full_local on Windows arm64 with sufficient RAM on AC', () => {
+      const info = makeWindowsSystemInfo({
+        arch: 'arm64',
+        totalMemoryGb: 32,
+        batteryLevel: null,
+        isOnAcPower: true,
+      });
+      expect(probeHardware(DEFAULT_CONFIG, info)).toBe('full_local');
+    });
+
+    it('returns classification_only on Windows x64 with mid-range RAM on AC', () => {
+      const info = makeWindowsSystemInfo({
+        totalMemoryGb: 12,
+        batteryLevel: null,
+        isOnAcPower: true,
+      });
+      expect(probeHardware(DEFAULT_CONFIG, info)).toBe('classification_only');
+    });
+
+    it('returns disabled on Windows laptop on battery below threshold', () => {
+      const info = makeWindowsSystemInfo({
+        totalMemoryGb: 32,
+        batteryLevel: 10,
+        isOnAcPower: false,
+      });
+      expect(probeHardware(DEFAULT_CONFIG, info)).toBe('disabled');
+    });
+
+    it('returns full_local on Windows laptop on battery at threshold', () => {
+      const info = makeWindowsSystemInfo({
+        totalMemoryGb: 32,
+        batteryLevel: 20,
+        isOnAcPower: false,
+      });
+      expect(probeHardware(DEFAULT_CONFIG, info)).toBe('full_local');
+    });
+
+    it('returns disabled on Windows with insufficient RAM', () => {
+      const info = makeWindowsSystemInfo({
+        totalMemoryGb: 4,
+        batteryLevel: null,
+        isOnAcPower: true,
+      });
       expect(probeHardware(DEFAULT_CONFIG, info)).toBe('disabled');
     });
   });

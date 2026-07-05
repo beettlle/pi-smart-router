@@ -50,6 +50,7 @@ See [docs/PRD.md](docs/PRD.md) for full architectural justification.
 | [pi](https://pi.dev) coding agent | Yes | Extension host |
 | macOS Apple Silicon | MVP | Primary supported platform |
 | Linux (x64/arm64) | Experimental | Probe logic supported; not validated on real hardware |
+| Windows (x64/arm64) | Experimental | Probe logic supported; not validated on real hardware |
 | [LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com) | Optional | Required for zero-tier local routing |
 | Authenticated cloud providers in pi | Recommended | Anthropic, OpenAI, Google, etc. |
 

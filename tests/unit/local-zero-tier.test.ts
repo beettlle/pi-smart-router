@@ -377,7 +377,7 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
   });
 
   describe('unsupported or ineligible hardware', () => {
-    it('disables local when platform is not supported (Windows)', async () => {
+    it('routes to zero-tier on Windows x64 with sufficient RAM', async () => {
       const pipeline = new RouterPipeline(FLEET, {
         hardwareConfig: HARDWARE_CONFIG,
         localConfig: TEST_CONFIG,
@@ -390,7 +390,7 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
       });
 
       const decision = await pipeline.route(makeRequest());
-      expect(decision.tier).not.toBe('zero-tier');
+      expect(decision.tier).toBe('zero-tier');
     });
 
     it('routes to zero-tier on Linux x64 with sufficient RAM', async () => {

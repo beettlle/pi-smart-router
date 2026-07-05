@@ -1,5 +1,5 @@
-**Current Step:** Step 2
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-05
 **Review Level:** 1
 **Size:** M
@@ -15,20 +15,24 @@
 
 ## Step 2: Extend probeHardware policy
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Add win32 support
 - [x] Keep shared threshold logic
 
 ## Step 3: Tests and README
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Windows fixture matrix
-- [ ] README experimental note
-- [ ] Run typecheck and test
+- [x] Windows fixture matrix
+- [x] README experimental note
+- [x] Run typecheck and test
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] Windows probe logic covered by fixtures
+- [x] All steps complete
+- [x] Windows probe logic covered by fixtures
+
+## Discoveries
+
+- Updated `tests/unit/local-zero-tier.test.ts` (out of listed File Scope) so Windows integration expectation matches enabled probe policy; required for `npm test` to pass.
