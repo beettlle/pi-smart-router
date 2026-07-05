@@ -23,6 +23,14 @@ function makeSystemInfo(overrides?: Partial<SystemInfo>): SystemInfo {
   };
 }
 
+function makeLinuxSystemInfo(overrides?: Partial<SystemInfo>): SystemInfo {
+  return makeSystemInfo({
+    platform: 'linux',
+    arch: 'x64',
+    ...overrides,
+  });
+}
+
 describe('probeHardware (T044, FR-012)', () => {
   describe('three-state gate', () => {
     it('returns full_local on Apple Silicon with sufficient memory', () => {
@@ -52,18 +60,75 @@ describe('probeHardware (T044, FR-012)', () => {
   });
 
   describe('platform and architecture checks', () => {
-    it('returns disabled on non-darwin platform', () => {
-      const info = makeSystemInfo({ platform: 'linux' });
+    it('returns disabled on darwin x64', () => {
+      const info = makeSystemInfo({ platform: 'darwin', arch: 'x64' });
       expect(probeHardware(DEFAULT_CONFIG, info)).toBe('disabled');
     });
 
-    it('returns disabled on non-arm64 architecture', () => {
+    it('returns disabled on non-arm64 darwin architecture', () => {
       const info = makeSystemInfo({ arch: 'x64' });
       expect(probeHardware(DEFAULT_CONFIG, info)).toBe('disabled');
     });
 
     it('returns disabled on Windows x64', () => {
       const info = makeSystemInfo({ platform: 'win32', arch: 'x64' });
+      expect(probeHardware(DEFAULT_CONFIG, info)).toBe('disabled');
+    });
+  });
+
+  describe('Linux platform matrix', () => {
+    it('returns full_local on Linux x64 desktop with sufficient RAM on AC', () => {
+      const info = makeLinuxSystemInfo({
+        totalMemoryGb: 32,
+        batteryLevel: null,
+        isOnAcPower: true,
+      });
+      expect(probeHardware(DEFAULT_CONFIG, info)).toBe('full_local');
+    });
+
+    it('returns full_local on Linux arm64 with sufficient RAM on AC', () => {
+      const info = makeLinuxSystemInfo({
+        arch: 'arm64',
+        totalMemoryGb: 32,
+        batteryLevel: null,
+        isOnAcPower: true,
+      });
+      expect(probeHardware(DEFAULT_CONFIG, info)).toBe('full_local');
+    });
+
+    it('returns classification_only on Linux x64 with mid-range RAM on AC', () => {
+      const info = makeLinuxSystemInfo({
+        totalMemoryGb: 12,
+        batteryLevel: null,
+        isOnAcPower: true,
+      });
+      expect(probeHardware(DEFAULT_CONFIG, info)).toBe('classification_only');
+    });
+
+    it('returns disabled on Linux laptop on battery below threshold', () => {
+      const info = makeLinuxSystemInfo({
+        totalMemoryGb: 32,
+        batteryLevel: 10,
+        isOnAcPower: false,
+      });
+      expect(probeHardware(DEFAULT_CONFIG, info)).toBe('disabled');
+    });
+
+    it('returns full_local on Linux laptop on battery at threshold', () => {
+      const info = makeLinuxSystemInfo({
+        totalMemoryGb: 32,
+        batteryLevel: 20,
+        isOnAcPower: false,
+      });
+      expect(probeHardware(DEFAULT_CONFIG, info)).toBe('full_local');
+    });
+
+    it('returns disabled on Linux with insufficient RAM', () => {
+      const info = makeLinuxSystemInfo({
+        totalMemoryGb: 4,
+        batteryLevel: null,
+        isOnAcPower: true,
+      });
       expect(probeHardware(DEFAULT_CONFIG, info)).toBe('disabled');
     });
   });

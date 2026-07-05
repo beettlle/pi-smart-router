@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Pending
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-05
 **Review Level:** 1
 **Size:** M
@@ -8,28 +8,32 @@
 
 ## Step 1: Refactor SystemInfoPort
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Extract macOS provider
-- [ ] Add Linux provider
-- [ ] Wire default provider selection
+- [x] Extract macOS provider
+- [x] Add Linux provider
+- [x] Wire default provider selection
 
 ## Step 2: Platform-aware probeHardware
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Support linux x64/arm64 policy
-- [ ] Keep probeHardware pure
+- [x] Support linux x64/arm64 policy
+- [x] Keep probeHardware pure
 
 ## Step 3: Tests and README
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Linux fixture matrix
-- [ ] README experimental note
-- [ ] Run typecheck and test
+- [x] Linux fixture matrix
+- [x] README experimental note
+- [x] Run typecheck and test
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] Linux probe logic covered by fixtures
+- [x] All steps complete
+- [x] Linux probe logic covered by fixtures
+
+## Discoveries
+
+- Updated `tests/unit/local-zero-tier.test.ts` (out of original File Scope) because integration test asserted old darwin-only policy; replaced with Windows unsupported + Linux x64 positive case.
