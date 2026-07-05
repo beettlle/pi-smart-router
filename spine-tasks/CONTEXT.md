@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-04
 **Status:** Active
-**Next Task ID:** SP-059
+**Next Task ID:** SP-063
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -119,6 +119,14 @@
 | SP-056 | Dataset schema + StorePort (SQLite v2) | M | SP-055 | #6 |
 | SP-057 | Triage/HyDRA feature plumbing | M | SP-056 | #7 |
 | SP-058 | Opt-in dataset recorder + retention | M | SP-057 | #8 |
+
+### Phase 17 — Backlog Orchestrator Cycle 4 (SP-060–SP-062)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-060 | Export dataset JSONL command | M | SP-058 | #9 |
+| SP-061 | Prompt fingerprint (Tier 2 opt-in) | M | SP-060 | #10 |
+| SP-062 | Outcome labels for training | M | SP-061 | #11 |
 
 ---
 
