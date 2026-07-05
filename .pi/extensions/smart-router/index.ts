@@ -1205,7 +1205,7 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
   const hydraMatcher = await initHydraMatcher();
   const cwd = process.cwd();
   const store = createExtensionStore(cwd);
-  const sessionPinner = new SessionPinner();
+  const sessionPinner = new SessionPinner({ store });
   const executionLedger = new ExecutionLedger();
   const lifecycleHookState = new LifecycleHookState();
 
@@ -1259,6 +1259,8 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
     };
 
     const sessionId = ctx.sessionManager.getSessionId();
+    await sessionPinner.restoreSessionPin(sessionId);
+
     const lastExec = runtime.executionLedger.getLastExecution(sessionId);
     if (lastExec) {
       runtime.setLmuStatus(lastExec.id);

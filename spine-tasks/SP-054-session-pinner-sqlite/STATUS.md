@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-04
 **Review Level:** 2
 **Size:** M
@@ -8,31 +8,31 @@
 
 ## Step 1: Add StorePort backing to SessionPinner
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Extend SessionPinner with StorePort load/save
-- [ ] Preserve test-friendly in-memory fallback
+- [x] Extend SessionPinner with StorePort load/save
+- [x] Preserve test-friendly in-memory fallback
 
 ## Step 2: Wire extension to persisted pinner
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Pass StorePort into SessionPinner in extension bootstrap
+- [x] Pass StorePort into SessionPinner in extension bootstrap
 
 ## Step 3: Pin persistence integration test
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Test pin survives simulated session reload
+- [x] Test pin survives simulated session reload
 
 ## Step 4: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run typecheck and test
-- [ ] Run coverage check
+- [x] Run typecheck and test
+- [x] Run coverage check (script not defined in package.json — skipped; 729 tests pass)
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] Pin persistence works in extension path
+- [x] All steps complete
+- [x] Pin persistence works in extension path

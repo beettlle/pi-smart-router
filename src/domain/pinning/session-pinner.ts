@@ -20,6 +20,7 @@ import type {
   RoutingRequest,
   SessionPin,
 } from '../types/index.js';
+import type { StorePort } from '../types/store-port.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,8 @@ export interface PinLookupResult {
 export interface SessionPinnerConfig {
   /** FR-024: max payload size (bytes or token estimate) for sub-routing. Default 2048. */
   readonly toolResultSizeThreshold?: number;
+  /** Optional persistence — pins survive process restart when set. */
+  readonly store?: StorePort;
 }
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
@@ -46,10 +49,27 @@ const DEFAULT_TOOL_RESULT_SIZE_THRESHOLD = 2048;
 export class SessionPinner {
   private readonly pins = new Map<string, SessionPin>();
   private readonly toolResultSizeThreshold: number;
+  private readonly store: StorePort | undefined;
 
   constructor(config?: SessionPinnerConfig) {
     this.toolResultSizeThreshold =
       config?.toolResultSizeThreshold ?? DEFAULT_TOOL_RESULT_SIZE_THRESHOLD;
+    this.store = config?.store;
+  }
+
+  /**
+   * Hydrate in-memory pin state for a session from persistent storage.
+   * Call on session start after a pi restart so lookupPin stays synchronous.
+   */
+  async restoreSessionPin(sessionId: string): Promise<void> {
+    if (!this.store) {
+      return;
+    }
+
+    const pin = await this.store.getSessionPin(sessionId);
+    if (pin) {
+      this.pins.set(sessionId, pin);
+    }
   }
 
   /**
@@ -87,7 +107,7 @@ export class SessionPinner {
     );
 
     if (!pinnedModel) {
-      this.pins.delete(request.session_id);
+      this.breakPin(request.session_id);
       return { action: 'no_pin' };
     }
 
@@ -120,6 +140,7 @@ export class SessionPinner {
     };
 
     this.pins.set(sessionId, pin);
+    this.persistPin(pin);
     return pin;
   }
 
@@ -128,6 +149,7 @@ export class SessionPinner {
    */
   breakPin(sessionId: string): void {
     this.pins.delete(sessionId);
+    this.deletePersistedPin(sessionId);
   }
 
   /**
@@ -135,6 +157,7 @@ export class SessionPinner {
    */
   loadPin(pin: SessionPin): void {
     this.pins.set(pin.session_id, pin);
+    this.persistPin(pin);
   }
 
   /**
@@ -153,7 +176,7 @@ export class SessionPinner {
   ): PinLookupResult | null {
     // 1. History compaction → break pin, allow full re-route
     if (request.compaction_flag) {
-      this.pins.delete(request.session_id);
+      this.breakPin(request.session_id);
       return { action: 'break', breakReason: 'compaction' };
     }
 
@@ -189,8 +212,30 @@ export class SessionPinner {
     }
 
     // Forced model unavailable — break pin, allow re-route
-    this.pins.delete(request.session_id);
+    this.breakPin(request.session_id);
     return { action: 'break', breakReason: 'user_forced' };
+  }
+
+  // ─── Persistence (StorePort) ────────────────────────────────────────────────
+
+  private persistPin(pin: SessionPin): void {
+    if (!this.store) {
+      return;
+    }
+
+    void this.store.putSessionPin(pin).catch((error: unknown) => {
+      console.warn('Failed to persist session pin', { sessionId: pin.session_id, error });
+    });
+  }
+
+  private deletePersistedPin(sessionId: string): void {
+    if (!this.store) {
+      return;
+    }
+
+    void this.store.deleteSessionPin(sessionId).catch((error: unknown) => {
+      console.warn('Failed to delete persisted session pin', { sessionId, error });
+    });
   }
 
   // ─── Sub-routing (FR-024) ───────────────────────────────────────────────────

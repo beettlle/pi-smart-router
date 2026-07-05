@@ -8,6 +8,7 @@ import {
   type CacheEconomicsConfig,
 } from '../../src/domain/pinning/cache-economics.js';
 import type { ModelProfile, RoutingRequest, SessionPin } from '../../src/domain/types/index.js';
+import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
 
 // ─── Test helpers ────────────────────────────────────────────────────────────
 
@@ -628,6 +629,58 @@ describe('SessionPinner', () => {
       const retrieved = pinner.getPin('sess-meta');
 
       expect(retrieved).toEqual(externalPin);
+    });
+  });
+
+  describe('StorePort persistence (SP-054)', () => {
+    it('works without store (in-memory only)', () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-mem', 'claude-opus', 'initial');
+
+      expect(pinner.getPin('sess-mem')?.pinned_model_id).toBe('claude-opus');
+    });
+
+    it('persists recordPin to StorePort', async () => {
+      const store = new MemoryStore();
+      const pinner = new SessionPinner({ store });
+
+      pinner.recordPin('sess-persist', 'claude-opus', 'initial');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const stored = await store.getSessionPin('sess-persist');
+      expect(stored?.pinned_model_id).toBe('claude-opus');
+      expect(stored?.pin_reason).toBe('initial');
+    });
+
+    it('restoreSessionPin hydrates in-memory state after simulated restart', async () => {
+      const store = new MemoryStore();
+      const original = new SessionPinner({ store });
+      original.recordPin('sess-reload', 'gpt-4o', 'initial');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const reloaded = new SessionPinner({ store });
+      expect(reloaded.getPin('sess-reload')).toBeNull();
+
+      await reloaded.restoreSessionPin('sess-reload');
+      const result = reloaded.lookupPin(
+        makeRequest({ session_id: 'sess-reload' }),
+        fleet,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.pinnedModel?.id).toBe('gpt-4o');
+    });
+
+    it('breakPin removes pin from StorePort', async () => {
+      const store = new MemoryStore();
+      const pinner = new SessionPinner({ store });
+      pinner.recordPin('sess-break', 'claude-opus', 'initial');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      pinner.breakPin('sess-break');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(await store.getSessionPin('sess-break')).toBeNull();
     });
   });
 });
