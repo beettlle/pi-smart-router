@@ -2,6 +2,7 @@
  * Pipeline stage orchestrator — FR-001, FR-006, FR-022.
  *
  * Runs stages sequentially with early-exit on decision.
+ * Turn envelope runs before session pin so turn-type tier bias applies (SP-064).
  * Session pin lookup runs before triage so existing pins hold (FR-006).
  * Any stage failure falls back to safeCloudDefault(); never throws to host.
  */
@@ -67,9 +68,9 @@ export class RouterPipeline {
     this.stages = [
       { name: 'hardware_probe', run: this.hardwareProbeStage.bind(this) },
       { name: 'loop_escalation', run: this.loopEscalation.bind(this) },
+      { name: 'turn_envelope', run: this.turnEnvelope.bind(this) },
       { name: 'session_pin', run: this.sessionPin.bind(this) },
       { name: 'triage', run: this.triage.bind(this) },
-      { name: 'turn_envelope', run: this.turnEnvelope.bind(this) },
       { name: 'local_zero', run: this.localZeroTierStage.bind(this) },
       { name: 'triage', run: this.triageCloudFallback.bind(this) },
       { name: 'hydra_match', run: this.hydraMatcher.bind(this) },
@@ -380,6 +381,9 @@ export class RouterPipeline {
     if (decision.reason_code === 'tool_result_sub_route') return;
     if (decision.reason_code === 'session_pinned') return;
 
+    // Turn envelope is a per-turn tier bias — do not overwrite an existing pin (SP-064).
+    if (decision.stage === 'turn_envelope' && pinner.getPin(request.session_id)) return;
+
     pinner.recordPin(request.session_id, decision.selected_model_id, 'initial');
   }
 
@@ -427,9 +431,9 @@ export class RouterPipeline {
    * Observational loop escalation: detects repeated identical tool failures
    * and re-pins the session to a frontier-capable tier.
    *
-   * Runs before sessionPin so it can modify pin state. Never returns
-   * decided: true — the subsequent sessionPin stage picks up the
-   * (potentially escalated) pin and decides.
+   * Runs before turnEnvelope and sessionPin so it can modify pin state.
+   * Never returns decided: true — turnEnvelope or sessionPin picks up the
+   * (potentially escalated) pin on subsequent stages.
    */
   private async loopEscalation(request: RoutingRequest): Promise<StageResult> {
     const pinner = this.options.sessionPinner;

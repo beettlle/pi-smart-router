@@ -197,7 +197,7 @@ describe('Full pipeline E2E (T060)', () => {
       }
     });
 
-    it('same-provider sub-routing on tool_result preserves pin', async () => {
+    it('same-provider tool_result downgrade via turn_envelope preserves pin', async () => {
       const pinner = new SessionPinner();
       pinner.recordPin('session-e2e-001', 'claude-opus', 'initial');
       const pipeline = new RouterPipeline(e2eFleet, { sessionPinner: pinner });
@@ -210,11 +210,51 @@ describe('Full pipeline E2E (T060)', () => {
         }),
       );
 
-      expect(subRouted.reason_code).toBe('tool_result_sub_route');
+      expect(subRouted.stage).toBe('turn_envelope');
+      expect(subRouted.reason_code).toBe('turn_tool_result');
       expect(subRouted.selected_model_id).toBe('claude-haiku');
 
       const pin = pinner.getPin('session-e2e-001');
       expect(pin?.pinned_model_id).toBe('claude-opus');
+    });
+
+    it('planning with economical pin routes frontier via turn_envelope (SP-064)', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('session-e2e-001', 'claude-haiku', 'initial');
+      const pipeline = new RouterPipeline(e2eFleet, { sessionPinner: pinner });
+
+      const decision = await pipeline.route(
+        makeRequest({
+          request_id: 'planning-over-pin',
+          turn_type: 'planning',
+        }),
+      );
+
+      expect(decision.stage).toBe('turn_envelope');
+      expect(decision.reason_code).toBe('turn_planning');
+      expect(decision.tier).toBe('frontier-cloud');
+      expect(decision.selected_model_id).toBe('claude-opus');
+      expect(pinner.getPin('session-e2e-001')!.pinned_model_id).toBe('claude-haiku');
+    });
+
+    it('tool_result with frontier pin routes economical via turn_envelope (SP-064)', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('session-e2e-001', 'claude-opus', 'initial');
+      const pipeline = new RouterPipeline(e2eFleet, { sessionPinner: pinner });
+
+      const decision = await pipeline.route(
+        makeRequest({
+          request_id: 'tool-result-downgrade',
+          turn_type: 'tool_result',
+          estimated_input_tokens: 50,
+        }),
+      );
+
+      expect(decision.stage).toBe('turn_envelope');
+      expect(decision.reason_code).toBe('turn_tool_result');
+      expect(decision.tier).toBe('economical-cloud');
+      expect(decision.selected_model_id).toBe('claude-haiku');
+      expect(pinner.getPin('session-e2e-001')!.pinned_model_id).toBe('claude-opus');
     });
 
     it('compaction triggers pin break and full re-route', async () => {

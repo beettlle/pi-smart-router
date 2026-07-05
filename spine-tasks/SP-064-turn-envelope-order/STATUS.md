@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Pending
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-05
 **Review Level:** 2
 **Size:** M
@@ -8,28 +8,28 @@
 
 ## Step 1: Reorder stages
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Move turn_envelope before session_pin
-- [ ] Verify sessionPin respects envelope tier hints
-- [ ] Preserve SP-050 ordering
+- [x] Move turn_envelope before session_pin
+- [x] Verify sessionPin respects envelope tier hints
+- [x] Preserve SP-050 ordering
 
 ## Step 2: Update tests
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Fix session-pinning test expectations
-- [ ] Add planning-with-economical-pin test
-- [ ] Add tool_result downgrade test
+- [x] Fix session-pinning test expectations
+- [x] Add planning-with-economical-pin test
+- [x] Add tool_result downgrade test
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Run typecheck and test
-- [ ] Confirm telemetry stage/reason_code
+- [x] Run typecheck and test
+- [x] Confirm telemetry stage/reason_code
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] Issue #23 acceptance criteria met
+- [x] All steps complete
+- [x] Issue #23 acceptance criteria met
