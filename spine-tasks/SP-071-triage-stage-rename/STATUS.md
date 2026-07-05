@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-05
 **Review Level:** 1
 **Size:** S
@@ -8,10 +8,10 @@
 
 ## Step 1: Rename duplicate stage
 
-**Status:** ⏳ Pending
+**Status:** 🔄 In Progress
 
-- [ ] Rename second triage stage to unique name
-- [ ] Update schema if needed
+- [x] Rename second triage stage to unique name
+- [x] Update schema if needed (not required — `RoutingStageSchema` covers routing decisions; pipeline error telemetry uses internal stage names like `hardware_probe`)
 
 ## Step 2: Add regression test
 
