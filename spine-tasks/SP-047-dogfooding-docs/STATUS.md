@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Step 2
+**Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 0
 **Size:** S
@@ -8,11 +8,11 @@
 
 ## Step 1: README dogfooding section
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Add install/bootstrap steps from repo root
-- [ ] Document slash commands
-- [ ] Document operator env vars
+- [x] Add install/bootstrap steps from repo root
+- [x] Document slash commands
+- [x] Document operator env vars
 
 ## Step 2: Quickstart alignment (if needed)
 

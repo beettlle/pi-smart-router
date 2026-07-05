@@ -66,9 +66,23 @@ The project ships a **project-local pi extension** at `.pi/extensions/smart-rout
 
 > **Note:** A standalone `npm install pi-smart-router` publish path is not the primary install flow yet. Use the repo clone for the bundled extension.
 
+## Dogfooding (pi extension)
+
+Use the project-local extension at `.pi/extensions/smart-router/` to develop and test routing inside pi. This is the primary operator path for this repo.
+
+**Quick path** (from repo root):
+
+1. `npm install`
+2. Start pi from this directory; accept the trust prompt (or run `/trust` and restart pi)
+3. Authenticate providers (`/login`) and enable models in your scoped list if you use one (`/scoped-models`)
+4. `/model smart-router/auto` — every turn runs through the routing pipeline
+5. `/smart-router status` or `/smart-router history` — inspect routing decisions
+
+Set `SMART_ROUTER_LOG_ROUTING=1` before starting pi to print each routing decision to stderr (see [Environment variables](#environment-variables)).
+
 ## Use with pi
 
-This is the recommended path for pi users.
+Detailed steps for the dogfooding path above.
 
 ### 1. Authenticate your providers
 
@@ -115,6 +129,7 @@ This registers `smart-router` as a custom provider with a single `auto` model. E
 |---------|---------|
 | `/smart-router` | Same as `status` (default when no subcommand is given) |
 | `/smart-router status` | Show fleet mode, fleet size, pricing freshness/staleness, and the last routing decision (stage, tier, selected model, latency) |
+| `/smart-router history` | Show recent routing telemetry from SQLite (default limit; optional numeric limit, e.g. `/smart-router history 20`) |
 | `/smart-router mode scoped` | Route only among pi's **enabled model patterns** (default) |
 | `/smart-router mode all` | Route among **all authenticated models** in the registry |
 | `/smart-router pricing refresh` | Manually fetch LiteLLM pricing from `LITELLM_PRICING_URL`, persist to SQLite, and rebuild the fleet with updated rates |
@@ -211,7 +226,9 @@ Tiers: `zero-tier`, `economical-cloud`, `frontier-cloud`. See [config/models.yam
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `ROUTER_STATE_DB_PATH` | `./.pi-smart-router/state.db` | SQLite state store location |
+| `ROUTER_STATE_DB_PATH` | `./.pi-smart-router/state.db` | Override SQLite state store location (telemetry, pricing catalog, session data) |
+| `SMART_ROUTER_LOG_ROUTING` | (unset) | Set to `1` to log each routing decision to stderr as JSON (debugging dogfood sessions) |
+| `SMART_ROUTER_DATASET` | (unset) | **Future** ([#8](https://github.com/beettlle/pi-smart-router/issues/8)) — planned opt-in capture of routing datasets; not implemented yet |
 | `MODELS_YAML_PATH` | `./config/models.yaml` | Fleet catalog path (library API only) |
 | `ROUTER_SAFE_DEFAULT_TIER` | `economical-cloud` | Fallback tier on any routing failure |
 | `LITELLM_PRICING_URL` | — | LiteLLM pricing JSON source |
