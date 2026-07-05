@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Not Started
+**Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 2
 **Size:** M
@@ -8,10 +8,10 @@
 
 ## Step 1: Wire hardware and local config
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Pass hardware settings and systemInfoProvider
-- [ ] Pass localConfig for local backends
+- [x] Pass hardware settings and systemInfoProvider
+- [x] Pass localConfig for local backends
 
 ## Step 2: Wire loop escalation and rate limiter
 

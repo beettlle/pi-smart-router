@@ -53,6 +53,8 @@ import type {
 } from '../../../src/domain/types/index.js';
 import { createResilientStore } from '../../../src/infrastructure/persistence/sqlite-store.js';
 import type { StorePort } from '../../../src/domain/types/store-port.js';
+import { getDefaultSystemInfo } from '../../../src/infrastructure/hardware/hardware-probe.js';
+import { DEFAULT_LOCAL_CONFIG } from '../../../src/infrastructure/local/local-zero-tier.js';
 import { RoutingTelemetryEmitter } from '../../../src/infrastructure/telemetry/routing-telemetry.js';
 import {
   DEFAULT_HISTORY_LIMIT,
@@ -251,6 +253,9 @@ function createDispatchOptions(
 
   return {
     sessionPinner,
+    hardwareConfig: DEFAULT_OPERATOR_CONFIG.local,
+    systemInfoProvider: getDefaultSystemInfo,
+    localConfig: DEFAULT_LOCAL_CONFIG,
     ...(hydraMatcher ? { hydraMatcher } : {}),
     telemetryEmitter,
   };
