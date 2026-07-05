@@ -156,7 +156,7 @@ describe('Session pinning integration', () => {
           makeRequest({
             request_id: `turn-${i}`,
             prompt_text: `Turn ${i} prompt`,
-            turn_type: 'planning',
+            turn_type: 'main_loop',
           }),
         );
 
@@ -173,9 +173,15 @@ describe('Session pinning integration', () => {
       const first = await pipeline.route(makeRequest({ request_id: 'init' }));
       const pinnedModelId = first.selected_model_id;
 
-      const turnTypes = ['planning', 'main_loop', 'subagent', 'unknown'] as const;
+      const turnExpectations: Array<{
+        turnType: 'main_loop' | 'unknown';
+        stage: string;
+      }> = [
+        { turnType: 'main_loop', stage: 'session_pin' },
+        { turnType: 'unknown', stage: 'session_pin' },
+      ];
 
-      for (const turnType of turnTypes) {
+      for (const { turnType, stage } of turnExpectations) {
         const decision = await pipeline.route(
           makeRequest({
             request_id: `turn-${turnType}`,
@@ -184,8 +190,50 @@ describe('Session pinning integration', () => {
         );
 
         expect(decision.selected_model_id).toBe(pinnedModelId);
-        expect(decision.stage).toBe('session_pin');
+        expect(decision.stage).toBe(stage);
       }
+    });
+
+    it('turn envelope overrides pin for planning and subagent turns (SP-064)', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('session-pin-int', 'claude-haiku', 'initial');
+      const pipeline = new RouterPipeline(fleet, { sessionPinner: pinner });
+
+      const planning = await pipeline.route(
+        makeRequest({ request_id: 'planning-override', turn_type: 'planning' }),
+      );
+      expect(planning.stage).toBe('turn_envelope');
+      expect(planning.reason_code).toBe('turn_planning');
+      expect(planning.tier).toBe('frontier-cloud');
+      expect(planning.selected_model_id).toBe('claude-opus');
+      expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-haiku');
+
+      const subagent = await pipeline.route(
+        makeRequest({ request_id: 'subagent-override', turn_type: 'subagent' }),
+      );
+      expect(subagent.stage).toBe('turn_envelope');
+      expect(subagent.reason_code).toBe('turn_subagent');
+      expect(subagent.tier).toBe('economical-cloud');
+    });
+
+    it('tool_result downgrade via turn_envelope preserves frontier pin (SP-064)', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('session-pin-int', 'claude-opus', 'initial');
+      const pipeline = new RouterPipeline(fleet, { sessionPinner: pinner });
+
+      const downgraded = await pipeline.route(
+        makeRequest({
+          request_id: 'tool-result-downgrade',
+          turn_type: 'tool_result',
+          estimated_input_tokens: 100,
+        }),
+      );
+
+      expect(downgraded.stage).toBe('turn_envelope');
+      expect(downgraded.reason_code).toBe('turn_tool_result');
+      expect(downgraded.tier).toBe('economical-cloud');
+      expect(downgraded.selected_model_id).toBe('claude-haiku');
+      expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-opus');
     });
 
     it('same-provider sub-routing does not break session pin state', async () => {
@@ -201,7 +249,8 @@ describe('Session pinning integration', () => {
         }),
       );
 
-      expect(subRouted.reason_code).toBe('tool_result_sub_route');
+      expect(subRouted.stage).toBe('turn_envelope');
+      expect(subRouted.reason_code).toBe('turn_tool_result');
       expect(subRouted.selected_model_id).toBe('claude-haiku');
 
       const pin = pinner.getPin('session-pin-int');
@@ -211,7 +260,7 @@ describe('Session pinning integration', () => {
       const nextTurn = await pipeline.route(
         makeRequest({
           request_id: 'post-sub-route',
-          turn_type: 'planning',
+          turn_type: 'main_loop',
         }),
       );
 
@@ -337,13 +386,13 @@ describe('Session pinning integration', () => {
       expect(typeof marker!.cacheFriendly).toBe('boolean');
     });
 
-    it('preserves cache marker on same-provider sub-route', async () => {
+    it('preserves cache marker on turn_envelope tool_result downgrade', async () => {
       const pinner = new SessionPinner();
       pinner.recordPin('session-pin-int', 'claude-opus', 'initial');
       const gateway = new GatewayDispatch(fleet, { sessionPinner: pinner });
 
       await gateway.dispatch(
-        makeRequest({ request_id: 'pin-setup', turn_type: 'planning' }),
+        makeRequest({ request_id: 'pin-setup', turn_type: 'main_loop' }),
       );
       const markerBefore = gateway.getCacheMarker('session-pin-int');
 
@@ -357,7 +406,8 @@ describe('Session pinning integration', () => {
       const markerAfter = gateway.getCacheMarker('session-pin-int');
 
       expect(markerAfter!.provider).toBe(markerBefore!.provider);
-      expect(markerAfter!.modelId).toBe(markerBefore!.modelId);
+      // turn_envelope downgrade routes to economical model; pin model stays frontier
+      expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-opus');
     });
 
     it('updates cache marker when provider changes after compaction', async () => {
@@ -424,14 +474,14 @@ describe('Session pinning integration', () => {
         makeRequest({
           request_id: 'a-turn-2',
           session_id: 'sess-a',
-          turn_type: 'planning',
+          turn_type: 'main_loop',
         }),
       );
       const decisionB = await pipeline.route(
         makeRequest({
           request_id: 'b-turn-2',
           session_id: 'sess-b',
-          turn_type: 'planning',
+          turn_type: 'main_loop',
         }),
       );
 

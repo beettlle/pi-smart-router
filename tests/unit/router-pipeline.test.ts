@@ -164,10 +164,41 @@ describe('RouterPipeline', () => {
         }),
       );
 
-      expect(decision.reason_code).toBe('tool_result_sub_route');
+      expect(decision.stage).toBe('turn_envelope');
+      expect(decision.reason_code).toBe('turn_tool_result');
       expect(decision.selected_model_id).toBe('econ-a');
       const pin = pinner.getPin('sess-1');
       expect(pin!.pinned_model_id).toBe('frontier-a');
+    });
+
+    it('planning turn with economical pin routes frontier via turn_envelope (SP-064)', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'econ-a', 'initial');
+
+      const pipeline = new RouterPipeline(pinFleet, { sessionPinner: pinner });
+      const decision = await pipeline.route(makeRequest({ turn_type: 'planning' }));
+
+      expect(decision.stage).toBe('turn_envelope');
+      expect(decision.reason_code).toBe('turn_planning');
+      expect(decision.tier).toBe('frontier-cloud');
+      expect(decision.selected_model_id).toBe('frontier-a');
+      expect(pinner.getPin('sess-1')!.pinned_model_id).toBe('econ-a');
+    });
+
+    it('tool_result turn with frontier pin routes economical via turn_envelope (SP-064)', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'frontier-a', 'initial');
+
+      const pipeline = new RouterPipeline(pinFleet, { sessionPinner: pinner });
+      const decision = await pipeline.route(
+        makeRequest({ turn_type: 'tool_result', estimated_input_tokens: 50 }),
+      );
+
+      expect(decision.stage).toBe('turn_envelope');
+      expect(decision.reason_code).toBe('turn_tool_result');
+      expect(decision.tier).toBe('economical-cloud');
+      expect(decision.selected_model_id).toBe('econ-a');
+      expect(pinner.getPin('sess-1')!.pinned_model_id).toBe('frontier-a');
     });
 
     it('already-pinned decisions do not re-persist the pin', async () => {
@@ -175,7 +206,7 @@ describe('RouterPipeline', () => {
       pinner.recordPin('sess-1', 'frontier-a', 'user_forced');
 
       const pipeline = new RouterPipeline(pinFleet, { sessionPinner: pinner });
-      await pipeline.route(makeRequest({ turn_type: 'planning' }));
+      await pipeline.route(makeRequest({ turn_type: 'main_loop' }));
 
       const pin = pinner.getPin('sess-1');
       expect(pin!.pin_reason).toBe('user_forced');
@@ -305,9 +336,9 @@ describe('RouterPipeline', () => {
 
       const decision = await pipeline.route(failureRequest);
 
-      expect(decision.selected_model_id).toBe('frontier-a');
-      expect(decision.stage).toBe('session_pin');
-      expect(decision.reason_code).toBe('session_pinned');
+      expect(decision.selected_model_id).toBe('econ-a');
+      expect(decision.stage).toBe('turn_envelope');
+      expect(decision.reason_code).toBe('turn_tool_result');
 
       const pin3 = pinner.getPin('sess-1');
       expect(pin3!.pinned_model_id).toBe('frontier-a');
@@ -361,19 +392,21 @@ describe('RouterPipeline', () => {
       });
 
       const decision1 = await pipeline.route(failureRequest);
-      expect(decision1.selected_model_id).toBe('frontier-a');
+      expect(decision1.selected_model_id).toBe('econ-a');
+      expect(decision1.stage).toBe('turn_envelope');
 
       const pin = pinner.getPin('sess-1');
       expect(pin!.pin_reason).toBe('loop_escalation');
 
-      // Subsequent non-tool-result turns stay on frontier
+      // Subsequent planning turns use frontier via turn_envelope
       for (let i = 0; i < 3; i++) {
         const decision = await pipeline.route(makeRequest({
           request_id: `req-post-${i}`,
           turn_type: 'planning',
         }));
         expect(decision.selected_model_id).toBe('frontier-a');
-        expect(decision.stage).toBe('session_pin');
+        expect(decision.stage).toBe('turn_envelope');
+        expect(decision.reason_code).toBe('turn_planning');
       }
 
       const finalPin = pinner.getPin('sess-1');
@@ -381,7 +414,7 @@ describe('RouterPipeline', () => {
       expect(finalPin!.pinned_model_id).toBe('frontier-a');
     });
 
-    it('loop escalation stage runs before session pin stage', async () => {
+    it('loop escalation stage runs before turn envelope and session pin', async () => {
       const pinner = new SessionPinner();
       pinner.loadPin({
         session_id: 'sess-1',
@@ -405,8 +438,9 @@ describe('RouterPipeline', () => {
         messages: [{ role: 'tool', content: failureContent }],
       }));
 
-      expect(decision.selected_model_id).toBe('frontier-a');
-      expect(decision.pin_reason).toBe('loop_escalation');
+      expect(decision.selected_model_id).toBe('econ-a');
+      expect(decision.stage).toBe('turn_envelope');
+      expect(pinner.getPin('sess-1')!.pin_reason).toBe('loop_escalation');
     });
   });
 
