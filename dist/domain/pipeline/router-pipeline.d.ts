@@ -34,6 +34,7 @@ export declare class RouterPipeline {
     private readonly options;
     /** Per-route transient state — reset on each route() call. */
     private currentHardwareResult;
+    private currentTriageResult;
     constructor(fleet: readonly ModelProfile[], options?: PipelineOptions);
     route(request: RoutingRequest): Promise<RoutingDecision>;
     /** Step 7: emit routing telemetry after decision (T040). */
@@ -42,10 +43,15 @@ export declare class RouterPipeline {
     private hardwareProbeStage;
     /**
      * SC-007: classification_only MUST NOT dispatch full local.
-     * Only routes to zero-tier when hardware says full_local AND a local model is ready.
+     * PRD Step 4: only trivial tasks with full_local hardware may use zero-tier.
      */
     private localZeroTierStage;
     private triage;
+    /**
+     * Economical-cloud fallback for trivial prompts after local zero-tier is skipped
+     * or unavailable (PRD Step 4 cloud fallback).
+     */
+    private triageCloudFallback;
     private sessionPin;
     /**
      * After a routing decision, persist an initial pin when none exists.

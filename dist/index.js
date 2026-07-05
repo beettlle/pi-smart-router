@@ -14,8 +14,12 @@ export function createRouter(options) {
     return createRouterFromFleet(catalog.models);
 }
 export function createRouterFromFleet(fleet, options) {
-    const dispatch = new GatewayDispatch(fleet, options);
-    const middleware = createPiRouterMiddleware({ fleet });
+    const { lifecycleHookState, ...dispatchOptions } = options ?? {};
+    const dispatch = new GatewayDispatch(fleet, dispatchOptions);
+    const middleware = createPiRouterMiddleware({
+        fleet,
+        ...(lifecycleHookState !== undefined ? { lifecycleHookState } : {}),
+    });
     return {
         version: 'pi-smart-router',
         middleware,
@@ -24,5 +28,5 @@ export function createRouterFromFleet(fleet, options) {
         register: middleware.register,
     };
 }
-export { createPiRouterMiddleware } from './api/middleware/pi-router-middleware.js';
+export { createPiRouterMiddleware, LifecycleHookState } from './api/middleware/pi-router-middleware.js';
 //# sourceMappingURL=index.js.map
