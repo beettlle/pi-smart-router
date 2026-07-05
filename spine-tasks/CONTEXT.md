@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-04
 **Status:** Active
-**Next Task ID:** SP-056
+**Next Task ID:** SP-059
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -111,6 +111,14 @@
 | SP-053 | Pipeline error telemetry (no silent catch) | S | SP-052 | #20 |
 | SP-054 | SessionPinner SQLite wiring (P0) | M | SP-052 | #12 |
 | SP-055 | Middleware ghost layer cleanup | M | SP-054 | #19 |
+
+### Phase 16 — Backlog Orchestrator Cycle 3 (SP-056–SP-058)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-056 | Dataset schema + StorePort (SQLite v2) | M | SP-055 | #6 |
+| SP-057 | Triage/HyDRA feature plumbing | M | SP-056 | #7 |
+| SP-058 | Opt-in dataset recorder + retention | M | SP-057 | #8 |
 
 ---
 
