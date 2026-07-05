@@ -2,13 +2,18 @@
  * Persistence port for routing state.
  * Implementations live in infrastructure/ (SQLite, in-memory for tests).
  */
-import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingTelemetry, SessionPin } from './entities.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingTelemetry, SessionPin } from './entities.js';
 export interface ListTelemetryOptions {
     readonly limit?: number;
     readonly sessionId?: string;
 }
 export interface ListDatasetOptions {
     readonly limit?: number;
+}
+export interface ListOutcomeOptions {
+    readonly limit?: number;
+    readonly requestId?: string;
+    readonly sessionId?: string;
 }
 export interface StorePort {
     /** Retrieve an active session pin, or null if unpinned. */
@@ -31,5 +36,9 @@ export interface StorePort {
     appendDatasetRecord(entry: RoutingDatasetRecord): void;
     /** List recent dataset rows, newest first. */
     listDatasetRecords(options?: ListDatasetOptions): Promise<readonly RoutingDatasetRecord[]>;
+    /** Append a behavioral outcome label (sync hot path). */
+    appendOutcomeRecord(entry: RoutingOutcomeRecord): void;
+    /** List recent outcome rows, newest first. */
+    listOutcomeRecords(options?: ListOutcomeOptions): Promise<readonly RoutingOutcomeRecord[]>;
 }
 //# sourceMappingURL=store-port.d.ts.map

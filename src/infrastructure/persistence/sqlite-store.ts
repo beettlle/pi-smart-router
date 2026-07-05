@@ -13,8 +13,8 @@ import { renameSync } from 'node:fs';
 import Database from 'better-sqlite3';
 import type BetterSqlite3 from 'better-sqlite3';
 
-import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingTelemetry, SessionPin } from '../../domain/types/entities.js';
-import type { ListDatasetOptions, ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingTelemetry, SessionPin } from '../../domain/types/entities.js';
+import type { ListDatasetOptions, ListOutcomeOptions, ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
 import { MemoryStore } from './memory-store.js';
 import {
   DEFAULT_HISTORY_LIMIT,
@@ -26,10 +26,14 @@ import {
   DATASET_MAX_ENTRIES,
   DATASET_WINDOW_MS,
 } from '../telemetry/dataset-limits.js';
+import {
+  OUTCOME_MAX_ENTRIES,
+  OUTCOME_WINDOW_MS,
+} from '../telemetry/outcome-limits.js';
 
 // ─── Schema version & migrations ────────────────────────────────────────────
 
-const CURRENT_SCHEMA_VERSION = 3;
+const CURRENT_SCHEMA_VERSION = 4;
 
 const MIGRATION_V1 = `
   CREATE TABLE IF NOT EXISTS pins (
@@ -113,6 +117,22 @@ const MIGRATION_V2 = `
 
 const MIGRATION_V3 = `
   ALTER TABLE dataset ADD COLUMN prompt_fingerprint TEXT;
+`;
+
+const MIGRATION_V4 = `
+  CREATE TABLE IF NOT EXISTS outcomes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    signal_type TEXT NOT NULL CHECK (signal_type IN ('model_override','compaction_pin_break','feedback_good','feedback_bad')),
+    routed_model_id TEXT,
+    override_model_id TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_outcomes_timestamp ON outcomes(timestamp);
+  CREATE INDEX IF NOT EXISTS idx_outcomes_request ON outcomes(request_id);
+  CREATE INDEX IF NOT EXISTS idx_outcomes_session ON outcomes(session_id);
 `;
 
 // ─── Token bucket result ────────────────────────────────────────────────────
@@ -448,6 +468,92 @@ export class SqliteStore implements StorePort {
       .run(excess);
   }
 
+  // ─── Outcomes (append-only, privacy-safe) ───────────────────────────────
+
+  appendOutcomeRecord(entry: RoutingOutcomeRecord): void {
+    this.db
+      .prepare(
+        `INSERT INTO outcomes (
+          request_id, session_id, timestamp, signal_type,
+          routed_model_id, override_model_id
+        ) VALUES (
+          @request_id, @session_id, @timestamp, @signal_type,
+          @routed_model_id, @override_model_id
+        )`,
+      )
+      .run({
+        request_id: entry.request_id,
+        session_id: entry.session_id,
+        timestamp: entry.timestamp,
+        signal_type: entry.signal_type,
+        routed_model_id: entry.routed_model_id,
+        override_model_id: entry.override_model_id,
+      });
+
+    this.evictOutcomeRows();
+  }
+
+  async listOutcomeRecords(
+    options?: ListOutcomeOptions,
+  ): Promise<readonly RoutingOutcomeRecord[]> {
+    const limit = clampHistoryLimit(options?.limit);
+    const requestId = options?.requestId;
+    const sessionId = options?.sessionId;
+
+    const rows = requestId
+      ? (this.db
+          .prepare(
+            `SELECT * FROM outcomes
+             WHERE request_id = ?
+             ORDER BY id DESC
+             LIMIT ?`,
+          )
+          .all(requestId, limit) as OutcomeRow[])
+      : sessionId
+        ? (this.db
+            .prepare(
+              `SELECT * FROM outcomes
+               WHERE session_id = ?
+               ORDER BY id DESC
+               LIMIT ?`,
+            )
+            .all(sessionId, limit) as OutcomeRow[])
+        : (this.db
+            .prepare(
+              `SELECT * FROM outcomes
+               ORDER BY id DESC
+               LIMIT ?`,
+            )
+            .all(limit) as OutcomeRow[]);
+
+    return rows.map(outcomeRowToEntity);
+  }
+
+  private evictOutcomeRows(): void {
+    const cutoff = new Date(Date.now() - OUTCOME_WINDOW_MS).toISOString();
+    this.db.prepare('DELETE FROM outcomes WHERE timestamp < ?').run(cutoff);
+
+    const countRow = this.db
+      .prepare('SELECT COUNT(*) AS count FROM outcomes')
+      .get() as { count: number };
+
+    const excess = countRow.count - OUTCOME_MAX_ENTRIES;
+    if (excess <= 0) {
+      return;
+    }
+
+    this.db
+      .prepare(
+        `DELETE FROM outcomes
+         WHERE id IN (
+           SELECT id FROM outcomes
+           ORDER BY id ASC
+           LIMIT ?
+         )`,
+      )
+      .run(excess);
+  }
+
   // ─── Token bucket (BEGIN IMMEDIATE) ─────────────────────────────────────
 
   /**
@@ -513,6 +619,12 @@ export class SqliteStore implements StorePort {
 
     if (version < 3) {
       this.db.exec(MIGRATION_V3);
+      version = 3;
+      this.db.pragma('user_version = 3');
+    }
+
+    if (version < 4) {
+      this.db.exec(MIGRATION_V4);
       this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`);
     }
   }
@@ -634,6 +746,16 @@ interface DatasetRow {
   prompt_fingerprint: string | null;
 }
 
+interface OutcomeRow {
+  id: number;
+  request_id: string;
+  session_id: string;
+  timestamp: string;
+  signal_type: string;
+  routed_model_id: string | null;
+  override_model_id: string | null;
+}
+
 // ─── Row mappers ──────────────────────────────────────────────────────────
 
 function clampHistoryLimit(limit: number | undefined): number {
@@ -685,6 +807,17 @@ function datasetRowToEntity(row: DatasetRow): RoutingDatasetRecord {
     routing_latency_ms: row.routing_latency_ms,
     estimated_cost_usd: row.estimated_cost_usd,
     prompt_fingerprint: row.prompt_fingerprint,
+  };
+}
+
+function outcomeRowToEntity(row: OutcomeRow): RoutingOutcomeRecord {
+  return {
+    request_id: row.request_id,
+    session_id: row.session_id,
+    timestamp: row.timestamp,
+    signal_type: row.signal_type as RoutingOutcomeRecord['signal_type'],
+    routed_model_id: row.routed_model_id,
+    override_model_id: row.override_model_id,
   };
 }
 

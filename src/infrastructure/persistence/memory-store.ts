@@ -6,8 +6,8 @@
  * state store is unavailable, degrade to in-memory rather than crash.
  */
 
-import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingTelemetry, SessionPin } from '../../domain/types/entities.js';
-import type { ListDatasetOptions, ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingTelemetry, SessionPin } from '../../domain/types/entities.js';
+import type { ListDatasetOptions, ListOutcomeOptions, ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
 import {
   DEFAULT_HISTORY_LIMIT,
   MAX_HISTORY_LIMIT,
@@ -17,6 +17,9 @@ import {
 import {
   makeDatasetRoom,
 } from '../telemetry/dataset-limits.js';
+import {
+  makeOutcomeRoom,
+} from '../telemetry/outcome-limits.js';
 
 export class MemoryStore implements StorePort {
   private readonly pins = new Map<string, SessionPin>();
@@ -24,6 +27,7 @@ export class MemoryStore implements StorePort {
   private priceCatalog: PriceCatalog | null = null;
   private readonly telemetry: RoutingTelemetry[] = [];
   private readonly dataset: RoutingDatasetRecord[] = [];
+  private readonly outcomes: RoutingOutcomeRecord[] = [];
 
   constructor(models: readonly ModelProfile[] = []) {
     this.models = models;
@@ -82,6 +86,29 @@ export class MemoryStore implements StorePort {
     const limit = clampHistoryLimit(options?.limit);
 
     return [...this.dataset]
+      .reverse()
+      .slice(0, limit);
+  }
+
+  appendOutcomeRecord(entry: RoutingOutcomeRecord): void {
+    makeOutcomeRoom(this.outcomes);
+    this.outcomes.push(entry);
+  }
+
+  async listOutcomeRecords(
+    options?: ListOutcomeOptions,
+  ): Promise<readonly RoutingOutcomeRecord[]> {
+    const limit = clampHistoryLimit(options?.limit);
+    const requestId = options?.requestId;
+    const sessionId = options?.sessionId;
+
+    const filtered = requestId
+      ? this.outcomes.filter((entry) => entry.request_id === requestId)
+      : sessionId
+        ? this.outcomes.filter((entry) => entry.session_id === sessionId)
+        : this.outcomes;
+
+    return [...filtered]
       .reverse()
       .slice(0, limit);
   }

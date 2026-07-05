@@ -3,7 +3,7 @@
  * Implementations live in infrastructure/ (SQLite, in-memory for tests).
  */
 
-import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingTelemetry, SessionPin } from './entities.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingTelemetry, SessionPin } from './entities.js';
 
 export interface ListTelemetryOptions {
   readonly limit?: number;
@@ -12,6 +12,12 @@ export interface ListTelemetryOptions {
 
 export interface ListDatasetOptions {
   readonly limit?: number;
+}
+
+export interface ListOutcomeOptions {
+  readonly limit?: number;
+  readonly requestId?: string;
+  readonly sessionId?: string;
 }
 
 export interface StorePort {
@@ -44,4 +50,10 @@ export interface StorePort {
 
   /** List recent dataset rows, newest first. */
   listDatasetRecords(options?: ListDatasetOptions): Promise<readonly RoutingDatasetRecord[]>;
+
+  /** Append a behavioral outcome label (sync hot path). */
+  appendOutcomeRecord(entry: RoutingOutcomeRecord): void;
+
+  /** List recent outcome rows, newest first. */
+  listOutcomeRecords(options?: ListOutcomeOptions): Promise<readonly RoutingOutcomeRecord[]>;
 }

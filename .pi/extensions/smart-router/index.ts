@@ -68,6 +68,10 @@ import {
   DatasetRecorder,
   DATASET_ENABLED_NOTIFY_MESSAGE,
 } from '../../../src/infrastructure/telemetry/dataset-recorder.js';
+import {
+  OutcomeRecorder,
+  type SessionRoutingSnapshot,
+} from '../../../src/infrastructure/telemetry/outcome-recorder.js';
 import { DATASET_MAX_ENTRIES } from '../../../src/infrastructure/telemetry/dataset-limits.js';
 import {
   DEFAULT_HISTORY_LIMIT,
@@ -109,7 +113,8 @@ type SmartRouterCommand =
   | { command: 'history'; limit: number }
   | { command: 'mode'; mode: FleetMode }
   | { command: 'pricing'; subcommand: 'refresh' }
-  | { command: 'export'; subcommand: 'dataset'; limit: number };
+  | { command: 'export'; subcommand: 'dataset'; limit: number }
+  | { command: 'feedback'; rating: 'good' | 'bad' };
 
 interface StreamDelegationDeps {
   router: RouterHandle;
@@ -118,6 +123,9 @@ interface StreamDelegationDeps {
   readonly executionLedger: ExecutionLedger;
   readonly lifecycleHookState?: LifecycleHookState;
   readonly datasetRecorder?: DatasetRecorder;
+  readonly outcomeRecorder?: OutcomeRecorder;
+  readonly sessionPinner?: SessionPinner;
+  readonly sessionRouting?: Map<string, SessionRoutingSnapshot>;
   onRoutingDecision?: (decision: RoutingDecision) => void;
   /** Fired when a delegated provider stream completes successfully. */
   onDelegatedModel?: (model: { readonly provider: string; readonly id: string }) => void;
@@ -133,6 +141,8 @@ interface SmartRouterRuntime {
   readonly executionLedger: ExecutionLedger;
   readonly lifecycleHookState: LifecycleHookState;
   readonly datasetRecorder?: DatasetRecorder;
+  readonly outcomeRecorder?: OutcomeRecorder;
+  readonly sessionRouting: Map<string, SessionRoutingSnapshot>;
   streamDeps: StreamDelegationDeps;
   hydraMatcher: HydraMatcher | undefined;
   setLmuStatus?: (modelId: string) => void;
@@ -345,6 +355,55 @@ function createExtensionDatasetRecorder(
   });
 }
 
+function createExtensionOutcomeRecorder(store: StorePort): OutcomeRecorder {
+  return new OutcomeRecorder({
+    onRecord: (record) => {
+      store.appendOutcomeRecord(record);
+    },
+  });
+}
+
+function capturePreRouteOutcomes(
+  request: RoutingRequest,
+  deps: StreamDelegationDeps,
+  priorSnapshot: SessionRoutingSnapshot | undefined,
+  hadPin: boolean,
+): void {
+  if (!priorSnapshot || !deps.outcomeRecorder) {
+    return;
+  }
+
+  const sessionId = request.session_id;
+
+  if (request.compaction_flag && hadPin) {
+    deps.outcomeRecorder.recordCompactionPinBreak(priorSnapshot, sessionId);
+  }
+
+  if (request.force_model_id) {
+    deps.outcomeRecorder.recordModelOverride(
+      priorSnapshot,
+      sessionId,
+      request.force_model_id,
+    );
+  }
+}
+
+function updateSessionRoutingSnapshot(
+  deps: StreamDelegationDeps,
+  sessionId: string | undefined,
+  request: RoutingRequest,
+  decision: RoutingDecision,
+): void {
+  if (!sessionId || !deps.sessionRouting) {
+    return;
+  }
+
+  deps.sessionRouting.set(sessionId, {
+    lastRequestId: request.request_id,
+    lastSelectedModelId: decision.selected_model_id,
+  });
+}
+
 async function rebuildFleet(
   runtime: SmartRouterRuntime,
   pi: ExtensionAPI,
@@ -511,6 +570,10 @@ function parseSmartRouterArgs(args: string): SmartRouterCommand {
       subcommand: 'dataset',
       limit: parseExportLimit(tokens.slice(2)),
     };
+  }
+
+  if (tokens[0] === 'feedback' && (tokens[1] === 'good' || tokens[1] === 'bad')) {
+    return { command: 'feedback', rating: tokens[1] };
   }
 
   throw new Error(`Usage: ${SMART_ROUTER_USAGE}`);
@@ -1093,6 +1156,12 @@ async function routeAndDelegate(
   const sessionId = options?.sessionId;
   let decision: RoutingDecision;
   let request: RoutingRequest;
+  const priorSnapshot =
+    sessionId !== undefined ? deps.sessionRouting?.get(sessionId) : undefined;
+  const hadPin =
+    sessionId !== undefined && deps.sessionPinner
+      ? deps.sessionPinner.getPin(sessionId) !== null
+      : false;
 
   try {
     request = buildRoutingRequest(
@@ -1100,6 +1169,7 @@ async function routeAndDelegate(
       options,
       deps.lifecycleHookState,
     );
+    capturePreRouteOutcomes(request, deps, priorSnapshot, hadPin);
     decision = await deps.router.dispatch.dispatch(request);
   } catch (error) {
     const fallbackModel = resolveFallbackModel(deps);
@@ -1123,6 +1193,7 @@ async function routeAndDelegate(
 
   deps.onRoutingDecision?.(decision);
   deps.datasetRecorder?.record(request, decision);
+  updateSessionRoutingSnapshot(deps, sessionId, request, decision);
 
   let targetModel = resolveTargetModel(deps, decision);
   if (!targetModel) {
@@ -1338,6 +1409,31 @@ function registerSmartRouterCommand(
           return;
         }
 
+        if (parsed.command === 'feedback') {
+          const sessionId = ctx.sessionManager.getSessionId();
+          const snapshot = runtime.sessionRouting.get(sessionId);
+          if (!snapshot) {
+            ctx.ui.notify('No recent auto-routed request to label.', 'info');
+            return;
+          }
+
+          const record = runtime.outcomeRecorder?.recordFeedback(
+            snapshot,
+            sessionId,
+            parsed.rating,
+          );
+          if (!record) {
+            ctx.ui.notify('Outcome labels require SMART_ROUTER_DATASET=1.', 'info');
+            return;
+          }
+
+          ctx.ui.notify(
+            `Recorded ${parsed.rating} feedback for request ${snapshot.lastRequestId}.`,
+            'info',
+          );
+          return;
+        }
+
         if (parsed.mode === runtime.fleetMode) {
           ctx.ui.notify(`Fleet mode already set to ${parsed.mode}`, 'info');
           return;
@@ -1363,6 +1459,7 @@ export {
   buildDelegationContext,
   createDispatchOptions,
   createExtensionDatasetRecorder,
+  createExtensionOutcomeRecorder,
   createStreamSimple,
   deriveTurnType,
   discoverFleet,
@@ -1384,6 +1481,8 @@ export {
   resolveDelegationOptions,
   logRoutingDecision,
   toDatasetExportRecord,
+  capturePreRouteOutcomes,
+  updateSessionRoutingSnapshot,
 };
 export { SMART_ROUTER_FULL_INVOCATIONS, SMART_ROUTER_USAGE } from './commands.js';
 
@@ -1402,6 +1501,8 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
   const datasetRecorder = createExtensionDatasetRecorder(store, cwd, (message) => {
     datasetNotify.fn?.(message);
   });
+  const outcomeRecorder = createExtensionOutcomeRecorder(store);
+  const sessionRouting = new Map<string, SessionRoutingSnapshot>();
 
   const runtime: SmartRouterRuntime = {
     fleetMode: 'scoped',
@@ -1414,6 +1515,8 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
     lifecycleHookState,
     hydraMatcher,
     datasetRecorder,
+    outcomeRecorder,
+    sessionRouting,
     streamDeps: {
       router: createRouterFromFleet([], {
         ...createDispatchOptions(store, sessionPinner, hydraMatcher),
@@ -1424,6 +1527,9 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
       executionLedger,
       lifecycleHookState,
       datasetRecorder,
+      outcomeRecorder,
+      sessionPinner,
+      sessionRouting,
       onRoutingDecision(decision) {
         runtime.lastDecision = decision;
       },

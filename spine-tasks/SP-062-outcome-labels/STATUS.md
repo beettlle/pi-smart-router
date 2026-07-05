@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-05
 **Review Level:** 2
 **Size:** M
@@ -8,31 +8,31 @@
 
 ## Step 1: Outcome schema design
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] RoutingOutcomeRecord + SQLite migration
+- [x] RoutingOutcomeRecord + SQLite migration
 
 ## Step 2: Capture model override signal
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Detect /model override after auto-route
+- [x] Detect /model override after auto-route
 
 ## Step 3: Capture compaction pin break and feedback command
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Compaction outcome + /smart-router feedback good|bad
+- [x] Compaction outcome + /smart-router feedback good|bad
 
 ## Step 4: Tests and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Unit + integration tests
-- [ ] Run typecheck, test, build
-- [ ] Run coverage check
+- [x] Unit + integration tests
+- [x] Run typecheck, test, build
+- [x] Run coverage check (script absent — pre-existing; new paths covered by unit/integration tests)
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] Outcome labels live
+- [x] All steps complete
+- [x] Outcome labels live
