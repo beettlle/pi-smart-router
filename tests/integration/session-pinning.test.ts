@@ -9,6 +9,9 @@
  * - Cache markers are preserved on same-provider paths (FR-023)
  */
 
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -22,6 +25,7 @@ import {
   GatewayDispatch,
 } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
+import { SqliteStore } from '../../src/infrastructure/persistence/sqlite-store.js';
 import {
   createPiRouterMiddleware,
   LifecycleHookState,
@@ -635,6 +639,74 @@ describe('Session pinning integration', () => {
       );
       expect(statusAfterBreak).toContain(`Stage: ${rerouted.stage}`);
       expect(statusAfterBreak).not.toContain('Stage: session_pin');
+    });
+  });
+
+  describe('SP-054: pin persistence across simulated session reload', () => {
+    it('extension-path pin survives store-backed SessionPinner reload', async () => {
+      const sessionId = 'ext-persist-sess';
+      const lifecycleHookState = new LifecycleHookState();
+      const store = new SqliteStore({ dbPath: ':memory:', models: fleet });
+      const sessionPinner = new SessionPinner({ store });
+      const router = createRouterFromFleet(fleet, {
+        ...createDispatchOptions(store, sessionPinner),
+        lifecycleHookState,
+      });
+
+      const initial = await router.dispatch.dispatch(
+        buildRoutingRequest(
+          { messages: [{ role: 'user', content: 'initial turn' }] } as never,
+          { sessionId },
+          lifecycleHookState,
+        ),
+      );
+      expect(initial.stage).not.toBe('session_pin');
+      const pinnedModelId = sessionPinner.getPin(sessionId)?.pinned_model_id;
+      expect(pinnedModelId).toBeDefined();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const reloadedPinner = new SessionPinner({ store });
+      await reloadedPinner.restoreSessionPin(sessionId);
+      const reloadedRouter = createRouterFromFleet(fleet, {
+        ...createDispatchOptions(store, reloadedPinner),
+        lifecycleHookState,
+      });
+
+      const pinnedTurn = await reloadedRouter.dispatch.dispatch(
+        buildRoutingRequest(
+          { messages: [{ role: 'user', content: 'still pinned after reload' }] } as never,
+          { sessionId },
+          lifecycleHookState,
+        ),
+      );
+
+      expect(pinnedTurn.stage).toBe('session_pin');
+      expect(pinnedTurn.selected_model_id).toBe(pinnedModelId);
+      expect(reloadedPinner.getPin(sessionId)?.pinned_model_id).toBe(pinnedModelId);
+    });
+
+    it('SQLite file store persists pin across separate SessionPinner instances', async () => {
+      const dbPath = join(tmpdir(), `pin-persist-${Date.now()}.db`);
+      const sessionId = 'sqlite-reload-sess';
+
+      const storeA = new SqliteStore({ dbPath, models: fleet });
+      const pinnerA = new SessionPinner({ store: storeA });
+      pinnerA.recordPin(sessionId, 'claude-opus', 'initial');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      storeA.close();
+
+      const storeB = new SqliteStore({ dbPath, models: fleet });
+      const pinnerB = new SessionPinner({ store: storeB });
+      await pinnerB.restoreSessionPin(sessionId);
+
+      const result = pinnerB.lookupPin(
+        makeRequest({ session_id: sessionId }),
+        fleet,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.pinnedModel?.id).toBe('claude-opus');
+      storeB.close();
     });
   });
 });
