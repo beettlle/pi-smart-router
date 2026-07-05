@@ -126,6 +126,39 @@ export interface PriceCatalog {
   readonly source: PriceSource;
 }
 
+// ─── RoutingDatasetRecord ────────────────────────────────────────────────────
+
+/**
+ * Privacy-safe routing dataset record (Tier 1).
+ * Metadata and routing features only — no prompt text, messages, or tool arguments.
+ */
+export interface RoutingDatasetRecord {
+  readonly request_id: string;
+  readonly timestamp: string;
+  readonly turn_type: string;
+  readonly stage: string;
+  readonly reason_code: string;
+  readonly selected_model_id: string;
+  readonly tier: Tier;
+  readonly candidates_json: string | null;
+  readonly prompt_length_chars: number;
+  readonly estimated_input_tokens: number | null;
+  readonly message_count: number;
+  readonly has_tool_context: boolean;
+  readonly compaction_flag: boolean;
+  readonly triage_verdict: string | null;
+  readonly triage_reason_code: string | null;
+  readonly triage_cyclomatic_score: number | null;
+  readonly triage_trivial_hits: number | null;
+  readonly triage_complex_hits: number | null;
+  readonly triage_sanitized_length_delta: number | null;
+  readonly requirement_reasoning: number | null;
+  readonly requirement_code_gen: number | null;
+  readonly requirement_tool_use: number | null;
+  readonly routing_latency_ms: number;
+  readonly estimated_cost_usd: number | null;
+}
+
 // ─── RoutingTelemetry ────────────────────────────────────────────────────────
 
 export interface RoutingTelemetry {

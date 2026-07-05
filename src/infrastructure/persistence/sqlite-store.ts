@@ -13,8 +13,8 @@ import { renameSync } from 'node:fs';
 import Database from 'better-sqlite3';
 import type BetterSqlite3 from 'better-sqlite3';
 
-import type { ModelProfile, PriceCatalog, RoutingTelemetry, SessionPin } from '../../domain/types/entities.js';
-import type { ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingTelemetry, SessionPin } from '../../domain/types/entities.js';
+import type { ListDatasetOptions, ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
 import { MemoryStore } from './memory-store.js';
 import {
   DEFAULT_HISTORY_LIMIT,
@@ -25,7 +25,7 @@ import {
 
 // ─── Schema version & migrations ────────────────────────────────────────────
 
-const CURRENT_SCHEMA_VERSION = 1;
+const CURRENT_SCHEMA_VERSION = 2;
 
 const MIGRATION_V1 = `
   CREATE TABLE IF NOT EXISTS pins (
@@ -73,6 +73,43 @@ const MIGRATION_V1 = `
   CREATE INDEX IF NOT EXISTS idx_telemetry_session ON telemetry(session_id);
   CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry(timestamp);
 `;
+
+const MIGRATION_V2 = `
+  CREATE TABLE IF NOT EXISTS dataset (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_id TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    turn_type TEXT NOT NULL,
+    stage TEXT NOT NULL,
+    reason_code TEXT NOT NULL,
+    selected_model_id TEXT NOT NULL,
+    tier TEXT NOT NULL,
+    candidates_json TEXT,
+    prompt_length_chars INTEGER NOT NULL,
+    estimated_input_tokens INTEGER,
+    message_count INTEGER NOT NULL,
+    has_tool_context INTEGER NOT NULL,
+    compaction_flag INTEGER NOT NULL,
+    triage_verdict TEXT,
+    triage_reason_code TEXT,
+    triage_cyclomatic_score REAL,
+    triage_trivial_hits INTEGER,
+    triage_complex_hits INTEGER,
+    triage_sanitized_length_delta INTEGER,
+    requirement_reasoning REAL,
+    requirement_code_gen REAL,
+    requirement_tool_use REAL,
+    routing_latency_ms REAL NOT NULL,
+    estimated_cost_usd REAL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_dataset_timestamp ON dataset(timestamp);
+  CREATE INDEX IF NOT EXISTS idx_dataset_request ON dataset(request_id);
+`;
+
+/** Dataset retention: 30 days / 10k rows (GitHub #8). */
+const DATASET_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+const DATASET_MAX_ENTRIES = 10_000;
 
 // ─── Token bucket result ────────────────────────────────────────────────────
 
@@ -310,6 +347,102 @@ export class SqliteStore implements StorePort {
       .run(excess);
   }
 
+  // ─── Dataset (append-only, privacy-safe) ────────────────────────────────
+
+  appendDatasetRecord(entry: RoutingDatasetRecord): void {
+    this.db
+      .prepare(
+        `INSERT INTO dataset (
+          request_id, timestamp, turn_type, stage, reason_code,
+          selected_model_id, tier, candidates_json,
+          prompt_length_chars, estimated_input_tokens, message_count,
+          has_tool_context, compaction_flag,
+          triage_verdict, triage_reason_code, triage_cyclomatic_score,
+          triage_trivial_hits, triage_complex_hits, triage_sanitized_length_delta,
+          requirement_reasoning, requirement_code_gen, requirement_tool_use,
+          routing_latency_ms, estimated_cost_usd
+        ) VALUES (
+          @request_id, @timestamp, @turn_type, @stage, @reason_code,
+          @selected_model_id, @tier, @candidates_json,
+          @prompt_length_chars, @estimated_input_tokens, @message_count,
+          @has_tool_context, @compaction_flag,
+          @triage_verdict, @triage_reason_code, @triage_cyclomatic_score,
+          @triage_trivial_hits, @triage_complex_hits, @triage_sanitized_length_delta,
+          @requirement_reasoning, @requirement_code_gen, @requirement_tool_use,
+          @routing_latency_ms, @estimated_cost_usd
+        )`,
+      )
+      .run({
+        request_id: entry.request_id,
+        timestamp: entry.timestamp,
+        turn_type: entry.turn_type,
+        stage: entry.stage,
+        reason_code: entry.reason_code,
+        selected_model_id: entry.selected_model_id,
+        tier: entry.tier,
+        candidates_json: entry.candidates_json,
+        prompt_length_chars: entry.prompt_length_chars,
+        estimated_input_tokens: entry.estimated_input_tokens,
+        message_count: entry.message_count,
+        has_tool_context: entry.has_tool_context ? 1 : 0,
+        compaction_flag: entry.compaction_flag ? 1 : 0,
+        triage_verdict: entry.triage_verdict,
+        triage_reason_code: entry.triage_reason_code,
+        triage_cyclomatic_score: entry.triage_cyclomatic_score,
+        triage_trivial_hits: entry.triage_trivial_hits,
+        triage_complex_hits: entry.triage_complex_hits,
+        triage_sanitized_length_delta: entry.triage_sanitized_length_delta,
+        requirement_reasoning: entry.requirement_reasoning,
+        requirement_code_gen: entry.requirement_code_gen,
+        requirement_tool_use: entry.requirement_tool_use,
+        routing_latency_ms: entry.routing_latency_ms,
+        estimated_cost_usd: entry.estimated_cost_usd,
+      });
+
+    this.evictDatasetRows();
+  }
+
+  async listDatasetRecords(
+    options?: ListDatasetOptions,
+  ): Promise<readonly RoutingDatasetRecord[]> {
+    const limit = clampHistoryLimit(options?.limit);
+
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM dataset
+         ORDER BY id DESC
+         LIMIT ?`,
+      )
+      .all(limit) as DatasetRow[];
+
+    return rows.map(datasetRowToEntity);
+  }
+
+  private evictDatasetRows(): void {
+    const cutoff = new Date(Date.now() - DATASET_WINDOW_MS).toISOString();
+    this.db.prepare('DELETE FROM dataset WHERE timestamp < ?').run(cutoff);
+
+    const countRow = this.db
+      .prepare('SELECT COUNT(*) AS count FROM dataset')
+      .get() as { count: number };
+
+    const excess = countRow.count - DATASET_MAX_ENTRIES;
+    if (excess <= 0) {
+      return;
+    }
+
+    this.db
+      .prepare(
+        `DELETE FROM dataset
+         WHERE id IN (
+           SELECT id FROM dataset
+           ORDER BY id ASC
+           LIMIT ?
+         )`,
+      )
+      .run(excess);
+  }
+
   // ─── Token bucket (BEGIN IMMEDIATE) ─────────────────────────────────────
 
   /**
@@ -359,10 +492,16 @@ export class SqliteStore implements StorePort {
   }
 
   private runMigrations(): void {
-    const currentVersion = this.db.pragma('user_version', { simple: true }) as number;
+    let version = this.db.pragma('user_version', { simple: true }) as number;
 
-    if (currentVersion < CURRENT_SCHEMA_VERSION) {
+    if (version < 1) {
       this.db.exec(MIGRATION_V1);
+      version = 1;
+      this.db.pragma('user_version = 1');
+    }
+
+    if (version < 2) {
+      this.db.exec(MIGRATION_V2);
       this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`);
     }
   }
@@ -455,6 +594,34 @@ interface TelemetryRow {
   pin_reason: string | null;
 }
 
+interface DatasetRow {
+  id: number;
+  request_id: string;
+  timestamp: string;
+  turn_type: string;
+  stage: string;
+  reason_code: string;
+  selected_model_id: string;
+  tier: string;
+  candidates_json: string | null;
+  prompt_length_chars: number;
+  estimated_input_tokens: number | null;
+  message_count: number;
+  has_tool_context: number;
+  compaction_flag: number;
+  triage_verdict: string | null;
+  triage_reason_code: string | null;
+  triage_cyclomatic_score: number | null;
+  triage_trivial_hits: number | null;
+  triage_complex_hits: number | null;
+  triage_sanitized_length_delta: number | null;
+  requirement_reasoning: number | null;
+  requirement_code_gen: number | null;
+  requirement_tool_use: number | null;
+  routing_latency_ms: number;
+  estimated_cost_usd: number | null;
+}
+
 // ─── Row mappers ──────────────────────────────────────────────────────────
 
 function clampHistoryLimit(limit: number | undefined): number {
@@ -476,6 +643,35 @@ function telemetryRowToEntity(row: TelemetryRow): RoutingTelemetry {
     estimated_cost_usd: row.estimated_cost_usd,
     routing_latency_ms: row.routing_latency_ms,
     pin_reason: row.pin_reason,
+  };
+}
+
+function datasetRowToEntity(row: DatasetRow): RoutingDatasetRecord {
+  return {
+    request_id: row.request_id,
+    timestamp: row.timestamp,
+    turn_type: row.turn_type,
+    stage: row.stage,
+    reason_code: row.reason_code,
+    selected_model_id: row.selected_model_id,
+    tier: row.tier as RoutingDatasetRecord['tier'],
+    candidates_json: row.candidates_json,
+    prompt_length_chars: row.prompt_length_chars,
+    estimated_input_tokens: row.estimated_input_tokens,
+    message_count: row.message_count,
+    has_tool_context: row.has_tool_context === 1,
+    compaction_flag: row.compaction_flag === 1,
+    triage_verdict: row.triage_verdict,
+    triage_reason_code: row.triage_reason_code,
+    triage_cyclomatic_score: row.triage_cyclomatic_score,
+    triage_trivial_hits: row.triage_trivial_hits,
+    triage_complex_hits: row.triage_complex_hits,
+    triage_sanitized_length_delta: row.triage_sanitized_length_delta,
+    requirement_reasoning: row.requirement_reasoning,
+    requirement_code_gen: row.requirement_code_gen,
+    requirement_tool_use: row.requirement_tool_use,
+    routing_latency_ms: row.routing_latency_ms,
+    estimated_cost_usd: row.estimated_cost_usd,
   };
 }
 

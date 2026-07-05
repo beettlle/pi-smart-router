@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Step 4
+**Status:** Complete
 **Last Updated:** 2026-07-04
 **Review Level:** 2
 **Size:** M
@@ -8,30 +8,30 @@
 
 ## Step 1: Add RoutingDatasetRecord type
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Define type in entities.ts with Tier 1 fields only
+- [x] Define type in entities.ts with Tier 1 fields only
 
 ## Step 2: SQLite v2 migration and StorePort methods
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] dataset table + append/list/trim
+- [x] dataset table + append/list/trim
 
 ## Step 3: MemoryStore mirror and tests
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] MemoryStore + unit tests
+- [x] MemoryStore + unit tests
 
 ## Step 4: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run typecheck and test
-- [ ] Run coverage check
+- [x] Run typecheck and test
+- [x] Run coverage check (unavailable — no coverage:check script in package.json)
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] Schema and StorePort ready for SP-057/058
+- [x] All steps complete
+- [x] Schema and StorePort ready for SP-057/058

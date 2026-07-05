@@ -6,6 +6,7 @@ export type {
   ModelPricing,
   ModelProfile,
   PriceCatalog,
+  RoutingDatasetRecord,
   RoutingDecision,
   RoutingRequest,
   RoutingTelemetry,

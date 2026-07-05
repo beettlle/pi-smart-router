@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-import type { ModelProfile, PriceCatalog, SessionPin } from '../../src/domain/types/entities.js';
+import Database from 'better-sqlite3';
+
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, SessionPin } from '../../src/domain/types/entities.js';
 import { SqliteStore, SqliteStoreError } from '../../src/infrastructure/persistence/sqlite-store.js';
 
 const TEST_MODELS: readonly ModelProfile[] = [
@@ -45,6 +50,38 @@ function makePriceCatalog(overrides: Partial<PriceCatalog> = {}): PriceCatalog {
   };
 }
 
+function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): RoutingDatasetRecord {
+  return {
+    request_id: 'req-1',
+    timestamp: '2026-07-04T00:00:00.000Z',
+    turn_type: 'main_loop',
+    stage: 'hydra_match',
+    reason_code: 'hydra_embedding_match',
+    selected_model_id: 'claude-sonnet',
+    tier: 'frontier-cloud',
+    candidates_json: JSON.stringify([
+      { model_id: 'claude-sonnet', score: 0.9, shortfall: 0, rejected_reason: null },
+    ]),
+    prompt_length_chars: 1200,
+    estimated_input_tokens: 300,
+    message_count: 4,
+    has_tool_context: true,
+    compaction_flag: false,
+    triage_verdict: 'ambiguous',
+    triage_reason_code: 'mixed_signals',
+    triage_cyclomatic_score: 3,
+    triage_trivial_hits: 1,
+    triage_complex_hits: 1,
+    triage_sanitized_length_delta: 12,
+    requirement_reasoning: 0.7,
+    requirement_code_gen: 0.8,
+    requirement_tool_use: 0.6,
+    routing_latency_ms: 45,
+    estimated_cost_usd: 0.002,
+    ...overrides,
+  };
+}
+
 describe('SqliteStore', () => {
   let store: SqliteStore;
 
@@ -70,6 +107,33 @@ describe('SqliteStore', () => {
       const store2 = new SqliteStore({ dbPath: ':memory:', models: [] });
       // Second construction on the same schema version should not throw
       store2.close();
+    });
+
+    it('migrates to schema v2 with dataset table and no prompt columns', () => {
+      const dir = mkdtempSync(join(tmpdir(), 'sqlite-store-'));
+      const dbPath = join(dir, 'router.db');
+      let store: SqliteStore | undefined;
+      let db: Database.Database | undefined;
+
+      try {
+        store = new SqliteStore({ dbPath, models: [] });
+        db = new Database(dbPath);
+
+        const version = db.pragma('user_version', { simple: true });
+        expect(version).toBe(2);
+
+        const columns = db.prepare('PRAGMA table_info(dataset)').all() as Array<{ name: string }>;
+        const columnNames = columns.map((column) => column.name);
+
+        expect(columnNames).toContain('prompt_length_chars');
+        expect(columnNames).not.toContain('prompt_text');
+        expect(columnNames).not.toContain('messages');
+        expect(columnNames).not.toContain('prompt');
+      } finally {
+        store?.close();
+        db?.close();
+        rmSync(dir, { recursive: true, force: true });
+      }
     });
   });
 
@@ -252,6 +316,51 @@ describe('SqliteStore', () => {
       const rows = await store.listTelemetry({ limit: 2000 });
       expect(rows.length).toBeLessThanOrEqual(1111);
       expect(rows[0]?.request_id).toBe('req-1111');
+    });
+  });
+
+  // ─── Dataset ──────────────────────────────────────────────────────────
+
+  describe('dataset', () => {
+    it('appends a dataset record without throwing', () => {
+      expect(() => store.appendDatasetRecord(makeDatasetRecord())).not.toThrow();
+    });
+
+    it('lists dataset records newest first', async () => {
+      store.appendDatasetRecord(makeDatasetRecord({
+        request_id: 'req-1',
+        timestamp: '2026-07-04T00:00:00.000Z',
+      }));
+      store.appendDatasetRecord(makeDatasetRecord({
+        request_id: 'req-2',
+        timestamp: '2026-07-04T00:01:00.000Z',
+      }));
+
+      const rows = await store.listDatasetRecords({ limit: 10 });
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.request_id).toBe('req-2');
+      expect(rows[1]?.request_id).toBe('req-1');
+    });
+
+    it('round-trips feature fields', async () => {
+      const record = makeDatasetRecord();
+      store.appendDatasetRecord(record);
+
+      const rows = await store.listDatasetRecords({ limit: 1 });
+      expect(rows[0]).toEqual(record);
+    });
+
+    it('evicts oldest rows beyond max entry count', async () => {
+      for (let i = 0; i < 10_001; i++) {
+        store.appendDatasetRecord(makeDatasetRecord({
+          timestamp: new Date(Date.now() + i).toISOString(),
+          request_id: `req-${i}`,
+        }));
+      }
+
+      const rows = await store.listDatasetRecords({ limit: 20_000 });
+      expect(rows.length).toBeLessThanOrEqual(10_000);
+      expect(rows[0]?.request_id).toBe('req-10000');
     });
   });
 

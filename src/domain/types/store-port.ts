@@ -3,11 +3,15 @@
  * Implementations live in infrastructure/ (SQLite, in-memory for tests).
  */
 
-import type { ModelProfile, PriceCatalog, RoutingTelemetry, SessionPin } from './entities.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingTelemetry, SessionPin } from './entities.js';
 
 export interface ListTelemetryOptions {
   readonly limit?: number;
   readonly sessionId?: string;
+}
+
+export interface ListDatasetOptions {
+  readonly limit?: number;
 }
 
 export interface StorePort {
@@ -34,4 +38,10 @@ export interface StorePort {
 
   /** List recent telemetry rows, newest first. */
   listTelemetry(options?: ListTelemetryOptions): Promise<readonly RoutingTelemetry[]>;
+
+  /** Append a privacy-safe routing dataset record (sync hot path). */
+  appendDatasetRecord(entry: RoutingDatasetRecord): void;
+
+  /** List recent dataset rows, newest first. */
+  listDatasetRecords(options?: ListDatasetOptions): Promise<readonly RoutingDatasetRecord[]>;
 }
