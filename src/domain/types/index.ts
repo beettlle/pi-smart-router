@@ -6,11 +6,14 @@ export type {
   ModelPricing,
   ModelProfile,
   PriceCatalog,
+  RequirementVector,
   RoutingDatasetRecord,
   RoutingDecision,
+  RoutingFeatureSidecar,
   RoutingRequest,
   RoutingTelemetry,
   SessionPin,
+  TriageFeatureSummary,
 } from './entities.js';
 
 export type {

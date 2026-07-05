@@ -23,6 +23,7 @@ import {
   buildRoutingRequest,
   createDispatchOptions,
   createStreamSimple,
+  getRoutingFeatureSidecar,
 } from '../../.pi/extensions/smart-router/index.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
 import { mapFleetFromRegistry,
@@ -301,6 +302,11 @@ describe('Pi extension integration (SP-043)', () => {
 
       expect(capturedDecision).toBeDefined();
       expect(fleetIds(fleet)).toContain(capturedDecision!.selected_model_id);
+      expect(getRoutingFeatureSidecar(capturedDecision!)).toBeDefined();
+      expect(getRoutingFeatureSidecar(capturedDecision!)!.triage).not.toBeNull();
+      expect(JSON.stringify(getRoutingFeatureSidecar(capturedDecision!))).not.toContain(
+        'Route this coding task',
+      );
 
       const routedProfile = fleet.find(
         (profile) => profile.id === capturedDecision!.selected_model_id,

@@ -47,6 +47,7 @@ import type {
   ModelProfile,
   PriceCatalog,
   RoutingDecision,
+  RoutingFeatureSidecar,
   RoutingRequest,
   RoutingTelemetry,
   TurnType,
@@ -651,9 +652,17 @@ function logRoutingDecision(
       stage: decision.stage,
       reason_code: decision.reason_code,
       routing_latency_ms: decision.routing_latency_ms,
+      features: decision.features ?? null,
       delegate,
     }),
   );
+}
+
+/** Read dataset feature sidecar from a routing decision (SP-057). */
+function getRoutingFeatureSidecar(
+  decision: RoutingDecision,
+): RoutingFeatureSidecar | undefined {
+  return decision.features;
 }
 
 function createErrorMessage(
@@ -1190,6 +1199,7 @@ export {
   formatHistoryMessage,
   formatStatusMessage,
   getRouterStateDbPath,
+  getRoutingFeatureSidecar,
   getSmartRouterArgumentCompletions,
   mapContextMessages,
   parseSmartRouterArgs,

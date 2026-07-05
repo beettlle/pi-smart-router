@@ -105,6 +105,30 @@ export interface CandidateScore {
   readonly rejected_reason: string | null;
 }
 
+/** Privacy-safe triage summary for dataset capture (SP-057). No prompt text. */
+export interface TriageFeatureSummary {
+  readonly verdict: 'trivial' | 'complex' | 'ambiguous';
+  readonly reason_code: string;
+  readonly cyclomatic_score: number;
+}
+
+/** HyDRA requirement vector projected from prompt embedding (SP-057). */
+export interface RequirementVector {
+  readonly reasoning: number;
+  readonly code_gen: number;
+  readonly tool_use: number;
+}
+
+/**
+ * Privacy-safe routing feature sidecar for dataset capture (SP-057).
+ * Metadata and routing signals only — no prompt text, messages, or tool arguments.
+ */
+export interface RoutingFeatureSidecar {
+  readonly triage: TriageFeatureSummary | null;
+  readonly requirements: RequirementVector | null;
+  readonly candidates: readonly CandidateScore[] | null;
+}
+
 export interface RoutingDecision {
   readonly request_id: string;
   readonly selected_model_id: string;
@@ -115,6 +139,8 @@ export interface RoutingDecision {
   readonly estimated_cost_usd?: number;
   readonly routing_latency_ms: number;
   readonly pin_reason: string | null;
+  /** Optional dataset feature sidecar; omitted on legacy call paths. */
+  readonly features?: RoutingFeatureSidecar;
 }
 
 // ─── PriceCatalog ────────────────────────────────────────────────────────────
