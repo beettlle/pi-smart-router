@@ -1,3 +1,16 @@
+import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
+
+import {
+  formatHistoryMessage,
+  formatStatusMessage,
+  parseSmartRouterArgs,
+} from './command-formatters.js';
+import { exportDatasetToFile } from './dataset-export.js';
+import { rebuildFleet } from './fleet-bootstrap.js';
+import { refreshPricingCatalog } from './pricing-lifecycle.js';
+import { FLEET_MODE_ENTRY_TYPE } from './session-lifecycle.js';
+import type { SmartRouterRuntime } from './types.js';
+
 export const SMART_ROUTER_USAGE =
   '/smart-router [status] | history [limit] | mode scoped|all | pricing refresh | export dataset [--limit N] | feedback good|bad';
 
@@ -84,4 +97,95 @@ export function getSmartRouterArgumentCompletions(prefix: string): CompletionIte
   const firstToken = tokens[0] ?? '';
   const filtered = filterByPrefix(TOP_LEVEL, firstToken);
   return filtered.length > 0 ? filtered : null;
+}
+
+export function registerSmartRouterCommand(
+  pi: ExtensionAPI,
+  runtime: SmartRouterRuntime,
+): void {
+  pi.registerCommand('smart-router', {
+    description:
+      'Show routing status/history, switch fleet mode (scoped|all), refresh pricing, or export dataset',
+    getArgumentCompletions: getSmartRouterArgumentCompletions,
+    handler: async (args, ctx) => {
+      try {
+        const parsed = parseSmartRouterArgs(args);
+
+        if (parsed.command === 'status') {
+          ctx.ui.notify(formatStatusMessage(runtime, runtime.lastDecision), 'info');
+          return;
+        }
+
+        if (parsed.command === 'history') {
+          const rows = await runtime.store.listTelemetry({ limit: parsed.limit });
+          ctx.ui.notify(formatHistoryMessage(rows), 'info');
+          return;
+        }
+
+        if (parsed.command === 'pricing') {
+          const { modelCount, lastUpdated } = await refreshPricingCatalog(runtime);
+          await rebuildFleet(runtime, pi, ctx.cwd);
+          ctx.ui.notify(
+            `Pricing refreshed: ${modelCount} models loaded (last_updated: ${lastUpdated}). Fleet rebuilt (${runtime.streamDeps.fleet.length} models).`,
+            'info',
+          );
+          return;
+        }
+
+        if (parsed.command === 'export') {
+          const result = await exportDatasetToFile(runtime.store, ctx.cwd, parsed.limit);
+          if (!result) {
+            ctx.ui.notify('No routing dataset records to export.', 'info');
+            return;
+          }
+          ctx.ui.notify(
+            `Exported ${result.recordCount} dataset record(s) to ${result.path}`,
+            'info',
+          );
+          return;
+        }
+
+        if (parsed.command === 'feedback') {
+          const sessionId = ctx.sessionManager.getSessionId();
+          const snapshot = runtime.sessionRouting.get(sessionId);
+          if (!snapshot) {
+            ctx.ui.notify('No recent auto-routed request to label.', 'info');
+            return;
+          }
+
+          const record = runtime.outcomeRecorder?.recordFeedback(
+            snapshot,
+            sessionId,
+            parsed.rating,
+          );
+          if (!record) {
+            ctx.ui.notify('Outcome labels require SMART_ROUTER_DATASET=1.', 'info');
+            return;
+          }
+
+          ctx.ui.notify(
+            `Recorded ${parsed.rating} feedback for request ${snapshot.lastRequestId}.`,
+            'info',
+          );
+          return;
+        }
+
+        if (parsed.mode === runtime.fleetMode) {
+          ctx.ui.notify(`Fleet mode already set to ${parsed.mode}`, 'info');
+          return;
+        }
+
+        runtime.fleetMode = parsed.mode;
+        await rebuildFleet(runtime, pi, ctx.cwd);
+        pi.appendEntry(FLEET_MODE_ENTRY_TYPE, { mode: parsed.mode });
+        ctx.ui.notify(
+          `Fleet mode set to ${parsed.mode} (${runtime.streamDeps.fleet.length} models)`,
+          'info',
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        ctx.ui.notify(message, 'error');
+      }
+    },
+  });
 }

@@ -1,0 +1,299 @@
+import {
+  type Api,
+  type AssistantMessageEventStream,
+  type Context,
+  type Model,
+  type SimpleStreamOptions,
+  createAssistantMessageEventStream,
+} from '@earendil-works/pi-ai/compat';
+
+import { safeCloudDefault } from '../../../src/domain/pipeline/safe-default.js';
+import type { RoutingDecision, RoutingFeatureSidecar, RoutingRequest } from '../../../src/domain/types/index.js';
+import {
+  isInfraAssistantError,
+  parseAssistantMessageError,
+} from '../../../src/infrastructure/delegation/provider-error.js';
+import { buildRoutingRequest } from './routing-context.js';
+import { capturePreRouteOutcomes, updateSessionRoutingSnapshot } from './routing-outcomes.js';
+import type { StreamDelegationDeps } from './types.js';
+import {
+  createErrorMessage,
+  delegateWithOutcome,
+  findFleetProfile,
+  flushDelegatedEvents,
+  injectFailoverNotice,
+  resolveRegistryModel,
+} from './delegation-runtime.js';
+
+export function resolveTargetModel(
+  deps: StreamDelegationDeps,
+  decision: RoutingDecision,
+): Model<Api> | undefined {
+  const profile = findFleetProfile(deps.fleet, decision.selected_model_id);
+  if (!profile) {
+    return undefined;
+  }
+  return resolveRegistryModel(deps.modelRegistry, profile);
+}
+
+function resolveFallbackModel(deps: StreamDelegationDeps): Model<Api> | undefined {
+  const fallbackProfile = safeCloudDefault(deps.fleet);
+  if (!fallbackProfile) {
+    return undefined;
+  }
+  return resolveRegistryModel(deps.modelRegistry, fallbackProfile);
+}
+
+function isRoutingLogEnabled(): boolean {
+  return process.env.SMART_ROUTER_LOG_ROUTING === '1';
+}
+
+export function logRoutingDecision(
+  decision: RoutingDecision,
+  delegate?: { provider: string; modelId: string; api: Api },
+): void {
+  if (!isRoutingLogEnabled()) {
+    return;
+  }
+
+  console.warn(
+    '[smart-router] routing decision',
+    JSON.stringify({
+      request_id: decision.request_id,
+      selected_model_id: decision.selected_model_id,
+      tier: decision.tier,
+      stage: decision.stage,
+      reason_code: decision.reason_code,
+      routing_latency_ms: decision.routing_latency_ms,
+      features: decision.features ?? null,
+      delegate,
+    }),
+  );
+}
+
+/** Read dataset feature sidecar from a routing decision (SP-057). */
+export function getRoutingFeatureSidecar(
+  decision: RoutingDecision,
+): RoutingFeatureSidecar | undefined {
+  return decision.features;
+}
+
+async function routeAndDelegate(
+  context: Context,
+  options: SimpleStreamOptions | undefined,
+  deps: StreamDelegationDeps,
+  outer: AssistantMessageEventStream,
+): Promise<void> {
+  const sessionId = options?.sessionId;
+  let decision: RoutingDecision;
+  let request: RoutingRequest;
+  const priorSnapshot =
+    sessionId !== undefined ? deps.sessionRouting?.get(sessionId) : undefined;
+  const hadPin =
+    sessionId !== undefined && deps.sessionPinner
+      ? deps.sessionPinner.getPin(sessionId) !== null
+      : false;
+
+  try {
+    request = buildRoutingRequest(
+      context,
+      options,
+      deps.lifecycleHookState,
+    );
+    capturePreRouteOutcomes(request, deps, priorSnapshot, hadPin);
+    decision = await deps.router.dispatch.dispatch(request);
+  } catch (error) {
+    const fallbackModel = resolveFallbackModel(deps);
+    if (!fallbackModel) {
+      throw error;
+    }
+    console.warn(
+      '[smart-router] routing failed, using safe cloud default',
+      error instanceof Error ? error.message : String(error),
+    );
+    const fallbackResult = await delegateWithOutcome(
+      fallbackModel,
+      context,
+      deps,
+      options,
+      sessionId,
+    );
+    flushDelegatedEvents(outer, fallbackResult.events);
+    return;
+  }
+
+  deps.onRoutingDecision?.(decision);
+  deps.datasetRecorder?.record(request, decision);
+  updateSessionRoutingSnapshot(deps, sessionId, request, decision);
+
+  let targetModel = resolveTargetModel(deps, decision);
+  if (!targetModel) {
+    console.warn(
+      '[smart-router] routed model not found in registry',
+      decision.selected_model_id,
+    );
+    targetModel = resolveFallbackModel(deps);
+  }
+
+  if (!targetModel) {
+    throw new Error(
+      `No registry model available for routing decision ${decision.selected_model_id}`,
+    );
+  }
+
+  logRoutingDecision(decision, {
+    provider: targetModel.provider,
+    modelId: targetModel.id,
+    api: targetModel.api,
+  });
+
+  const failedModelIds: string[] = [];
+  let pendingFailoverInfo: {
+    failedModelId: string;
+    alternateModelId: string;
+    errorObj?: ReturnType<typeof parseAssistantMessageError>;
+  } | undefined;
+
+  while (true) {
+    try {
+      const result = await delegateWithOutcome(
+        targetModel,
+        context,
+        deps,
+        options,
+        sessionId,
+      );
+
+      if (pendingFailoverInfo) {
+        injectFailoverNotice(
+          result.events,
+          pendingFailoverInfo.failedModelId,
+          pendingFailoverInfo.alternateModelId,
+          pendingFailoverInfo.errorObj,
+        );
+        pendingFailoverInfo = undefined;
+      }
+
+      if (
+        result.failed &&
+        result.finalMessage &&
+        isInfraAssistantError(result.finalMessage)
+      ) {
+        failedModelIds.push(targetModel.id);
+        const failover = deps.router.dispatch.selectFailover(decision, failedModelIds);
+        if (!failover) {
+          flushDelegatedEvents(outer, result.events, { sanitizeErrors: true });
+          return;
+        }
+
+        const alternateModel = resolveTargetModel(deps, failover);
+        if (!alternateModel || alternateModel.id === targetModel.id) {
+          flushDelegatedEvents(outer, result.events, { sanitizeErrors: true });
+          return;
+        }
+
+        console.warn(
+          '[smart-router] infra error, failing over to alternate model',
+          alternateModel.id,
+        );
+        pendingFailoverInfo = {
+          failedModelId: targetModel.id,
+          alternateModelId: alternateModel.id,
+          errorObj: parseAssistantMessageError(result.finalMessage),
+        };
+        decision = failover;
+        targetModel = alternateModel;
+        continue;
+      }
+
+      flushDelegatedEvents(outer, result.events, {
+        sanitizeErrors: result.failed,
+      });
+      return;
+    } catch (error) {
+      deps.router.dispatch.recordOutcome(targetModel.id, { code: 'STREAM_DELEGATION_ERROR' });
+
+      if (!failedModelIds.includes(targetModel.id)) {
+        failedModelIds.push(targetModel.id);
+      }
+      
+      const failover = deps.router.dispatch.selectFailover(decision, failedModelIds);
+      const alternateModel = failover ? resolveTargetModel(deps, failover) : undefined;
+
+      if (alternateModel && alternateModel.id !== targetModel.id) {
+        console.warn(
+          '[smart-router] stream delegation failed, failing over',
+          error instanceof Error ? error.message : String(error),
+        );
+        pendingFailoverInfo = {
+          failedModelId: targetModel.id,
+          alternateModelId: alternateModel.id,
+          errorObj: { message: error instanceof Error ? error.message : String(error) },
+        };
+        decision = failover!;
+        targetModel = alternateModel;
+        continue;
+      }
+
+      const fallbackModel = resolveFallbackModel(deps);
+      if (!fallbackModel || fallbackModel.id === targetModel.id) {
+        throw error;
+      }
+
+      console.warn(
+        '[smart-router] stream delegation failed, using safe cloud default',
+        error instanceof Error ? error.message : String(error),
+      );
+      pendingFailoverInfo = {
+        failedModelId: targetModel.id,
+        alternateModelId: fallbackModel.id,
+        errorObj: { message: error instanceof Error ? error.message : String(error) },
+      };
+
+      const fallbackResult = await delegateWithOutcome(
+        fallbackModel,
+        context,
+        deps,
+        options,
+        sessionId,
+      );
+      if (pendingFailoverInfo) {
+        injectFailoverNotice(
+          fallbackResult.events,
+          pendingFailoverInfo.failedModelId,
+          pendingFailoverInfo.alternateModelId,
+          pendingFailoverInfo.errorObj,
+        );
+      }
+      flushDelegatedEvents(outer, fallbackResult.events);
+      return;
+    }
+  }
+}
+
+export function createStreamSimple(deps: StreamDelegationDeps) {
+  return function streamSimple(
+    model: Model<Api>,
+    context: Context,
+    options?: SimpleStreamOptions,
+  ): AssistantMessageEventStream {
+    const stream = createAssistantMessageEventStream();
+
+    void (async () => {
+      try {
+        await routeAndDelegate(context, options, deps, stream);
+      } catch (error) {
+        stream.push({
+          type: 'error',
+          reason: options?.signal?.aborted ? 'aborted' : 'error',
+          error: createErrorMessage(model, options, error),
+        });
+        stream.end();
+      }
+    })();
+
+    return stream;
+  };
+}
+
+export { resolveDelegationOptions, buildDelegationContext } from './delegation-runtime.js';

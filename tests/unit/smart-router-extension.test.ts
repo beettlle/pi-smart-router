@@ -12,16 +12,20 @@ import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  buildRoutingRequest,
-  createStreamSimple,
-  deriveTurnType,
-  extractPromptText,
   formatLmuStatus,
   initHydraMatcher,
+} from '../../.pi/extensions/smart-router/fleet-bootstrap.js';
+import {
+  buildRoutingRequest,
+  deriveTurnType,
+  extractPromptText,
   mapContextMessages,
+} from '../../.pi/extensions/smart-router/routing-context.js';
+import {
+  createStreamSimple,
   logRoutingDecision,
   resolveDelegationOptions,
-} from '../../.pi/extensions/smart-router/index.js';
+} from '../../.pi/extensions/smart-router/stream-delegation.js';
 import type { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import { createRouterFromFleet } from '../../src/index.js';
 import { LifecycleHookState } from '../../src/index.js';

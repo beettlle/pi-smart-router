@@ -23,6 +23,7 @@ module.exports = {
         'src/infrastructure/**/*.ts',
         'src/api/**/*.ts',
         'src/config/**/*.ts',
+        '.pi/extensions/**/*.ts',
       ],
       rules: {
         '@typescript-eslint/no-explicit-any': 'error',
