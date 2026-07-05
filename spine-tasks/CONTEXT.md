@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-04
 **Status:** Active
-**Next Task ID:** SP-053
+**Next Task ID:** SP-056
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -103,6 +103,14 @@
 | SP-050 | Pipeline stage order fix (P0) | M | SP-046 | #15 |
 | SP-051 | Lifecycle hook wiring (P0) | M | SP-049 | #16 |
 | SP-052 | npm run build + dist exports | M | SP-048 | #18 |
+
+### Phase 15 — Backlog Orchestrator Cycle 2 (SP-053–SP-055)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-053 | Pipeline error telemetry (no silent catch) | S | SP-052 | #20 |
+| SP-054 | SessionPinner SQLite wiring (P0) | M | SP-052 | #12 |
+| SP-055 | Middleware ghost layer cleanup | M | SP-054 | #19 |
 
 ---
 
