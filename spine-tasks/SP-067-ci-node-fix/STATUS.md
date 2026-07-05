@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Pending
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-05
 **Review Level:** 1
 **Size:** S
@@ -8,25 +8,25 @@
 
 ## Step 1: Bump CI Node version
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Change node-version in ci.yml from 20 to 22
+- [x] Change node-version in ci.yml from 20 to 22
 
 ## Step 2: Align engines field
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Update package.json engines.node to >=22
+- [x] Update package.json engines.node to >=22
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Run typecheck and test locally
-- [ ] Confirm no application code changes
+- [x] Run typecheck and test locally
+- [x] Confirm no application code changes
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] CI workflow uses Node 22
-- [ ] Local verification green
+- [x] All steps complete
+- [x] CI workflow uses Node 22
+- [x] Local verification green

@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Pending
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-05
 **Review Level:** 0
 **Size:** S
@@ -8,24 +8,24 @@
 
 ## Step 1: Add .pi/ entry
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Add .pi/ line to .gitignore
+- [x] Add .pi/ line to .gitignore
 
 ## Step 2: Verify ignore semantics
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] spine doctor gitignore check passes
-- [ ] .pi/agent ignored; extensions still tracked
+- [x] spine doctor gitignore check passes
+- [x] .pi/agent ignored; extensions still tracked
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Pending
+**Status:** ✅ Complete
 
-- [ ] Run typecheck and test
+- [x] Run typecheck and test
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] spine doctor gitignore green
+- [x] All steps complete
+- [x] spine doctor gitignore green
