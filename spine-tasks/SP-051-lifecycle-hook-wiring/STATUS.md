@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-04
 **Review Level:** 2
 **Size:** M
@@ -8,32 +8,32 @@
 
 ## Step 1: Implement compaction hook wiring
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Wire session_compact handlers
-- [ ] Set compaction_flag or break pin per FR-008
+- [x] Wire session_compact handlers
+- [x] Set compaction_flag or break pin per FR-008
 
 ## Step 2: Implement model_select override wiring
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Wire model_select handler
-- [ ] Propagate force_model_id in buildRoutingRequest
+- [x] Wire model_select handler
+- [x] Propagate force_model_id in buildRoutingRequest
 
 ## Step 3: Extension-path integration tests
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Extend session-pinning integration tests for extension path
+- [x] Extend session-pinning integration tests for extension path
 
 ## Step 4: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run typecheck and test
-- [ ] Run coverage check
+- [x] Run typecheck and test
+- [x] Run coverage check (script not defined in package.json; typecheck + test gate passed)
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] Extension-path pin break tests pass
+- [x] All steps complete
+- [x] Extension-path pin break tests pass

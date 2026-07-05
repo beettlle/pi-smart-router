@@ -24,6 +24,7 @@ import {
 } from '../../.pi/extensions/smart-router/index.js';
 import type { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import { createRouterFromFleet } from '../../src/index.js';
+import { LifecycleHookState } from '../../src/index.js';
 import { ExecutionLedger } from '../../src/domain/delegation/execution-ledger.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import {
@@ -322,6 +323,38 @@ describe('smart-router extension helpers', () => {
     expect(request.request_id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
     );
+  });
+
+  it('buildRoutingRequest consumes compaction lifecycle flags', () => {
+    const lifecycleHookState = new LifecycleHookState();
+    lifecycleHookState.markCompaction('sess-compact');
+
+    const context = makeContext([userMessage('after compaction')]);
+    const request = buildRoutingRequest(
+      context,
+      { sessionId: 'sess-compact' },
+      lifecycleHookState,
+    );
+
+    expect(request.compaction_flag).toBe(true);
+    expect(
+      buildRoutingRequest(context, { sessionId: 'sess-compact' }, lifecycleHookState)
+        .compaction_flag,
+    ).toBeUndefined();
+  });
+
+  it('buildRoutingRequest consumes model_select force override', () => {
+    const lifecycleHookState = new LifecycleHookState();
+    lifecycleHookState.setForceModel('sess-force', 'gpt-4o');
+
+    const context = makeContext([userMessage('forced model')]);
+    const request = buildRoutingRequest(
+      context,
+      { sessionId: 'sess-force' },
+      lifecycleHookState,
+    );
+
+    expect(request.force_model_id).toBe('gpt-4o');
   });
 });
 
