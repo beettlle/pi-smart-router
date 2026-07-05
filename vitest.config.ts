@@ -7,6 +7,8 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],
+      include: ['src/**/*.ts'],
+      exclude: ['spine-tasks/**'],
       thresholds: {
         lines: 50,
         functions: 50,
