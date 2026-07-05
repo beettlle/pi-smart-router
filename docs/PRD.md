@@ -139,6 +139,8 @@ If the hardware probe passes and the task is trivial, cascade through local HTTP
 - **Ollama (Secondary):** Ping `GET http://localhost:11434/api/ps`. If the model is listed, dispatch to Ollama, overriding with `"keep_alive": "5m"` to retain it in VRAM.
 - **Cloud Fallback:** If neither service has the model actively loaded, do not trigger an inference request. Instantly fall back to the Cheap Cloud tier. (Target timeout budget for both pings: < 15ms).
 
+Trivial prompts classified in Step 2 defer economical-cloud routing until after this local attempt; complex prompts still early-exit to frontier in Step 2.
+
 ### Step 5: Predictive Multi-Dimensional Matching (Latency Budget: 80–120ms)
 
 For ambiguous queries that fail deterministic triage.
