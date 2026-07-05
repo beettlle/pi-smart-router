@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-05
 **Review Level:** 1
 **Size:** S
@@ -8,10 +8,10 @@
 
 ## Step 1: Add CI coverage step
 
-**Status:** ⏳ Pending
+**Status:** 🔄 In Progress
 
-- [ ] Add coverage:check step to CI workflow
-- [ ] Ensure push and pull_request triggers covered
+- [x] Add coverage:check step to CI workflow
+- [x] Ensure push and pull_request triggers covered
 
 ## Step 2: Restrict coverage scope
 
