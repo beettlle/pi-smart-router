@@ -1,0 +1,1 @@
+SP-048 complete — integrated manually after batch recovery (contract_failed due to pre-existing typecheck; fixed by SP-049).
