@@ -8,7 +8,7 @@
  *   1. History compaction
  *   2. Explicit operator/user override
  *   3. Qualified loop escalation (threshold managed externally)
- *   4. Cache-warmup economics (stub — SP-030)
+ *   4. Cache-warmup economics when a cross-provider switch is proposed
  *
  * Sub-routing (FR-024): tool-result turns below the payload threshold
  * may use an economical model on the same provider without breaking the pin.
@@ -21,6 +21,10 @@ import type {
   SessionPin,
 } from '../types/index.js';
 import type { StorePort } from '../types/store-port.js';
+import {
+  evaluateCacheEconomics,
+  type CacheEconomicsConfig,
+} from './cache-economics.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,6 +42,8 @@ export interface SessionPinnerConfig {
   readonly toolResultSizeThreshold?: number;
   /** Optional persistence — pins survive process restart when set. */
   readonly store?: StorePort;
+  /** FR-008 rule #4: cache-warmup economics thresholds. */
+  readonly cacheEconomicsConfig?: CacheEconomicsConfig;
 }
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
@@ -50,11 +56,13 @@ export class SessionPinner {
   private readonly pins = new Map<string, SessionPin>();
   private readonly toolResultSizeThreshold: number;
   private readonly store: StorePort | undefined;
+  private readonly cacheEconomicsConfig: CacheEconomicsConfig | undefined;
 
   constructor(config?: SessionPinnerConfig) {
     this.toolResultSizeThreshold =
       config?.toolResultSizeThreshold ?? DEFAULT_TOOL_RESULT_SIZE_THRESHOLD;
     this.store = config?.store;
+    this.cacheEconomicsConfig = config?.cacheEconomicsConfig;
   }
 
   /**
@@ -190,11 +198,64 @@ export class SessionPinner {
     //    when the threshold fires. No evaluation here beyond what the
     //    pin record already reflects (consecutive_tool_failures).
 
-    // 4. Cache-warmup economics — stub until SP-030.
-    //    Would compare provider switch cache-warmup cost against projected
-    //    savings from the candidate model.
+    // 4. Cache-warmup economics (FR-008 rule #4)
+    const cacheEconomicsResult = this.evaluateCacheEconomicsBreak(
+      request,
+      pin,
+      fleet,
+    );
+    if (cacheEconomicsResult) {
+      return cacheEconomicsResult;
+    }
 
     return null;
+  }
+
+  private evaluateCacheEconomicsBreak(
+    request: RoutingRequest,
+    pin: SessionPin,
+    fleet: readonly ModelProfile[],
+  ): PinLookupResult | null {
+    if (!request.candidate_model_id) {
+      return null;
+    }
+
+    if (request.candidate_model_id === pin.pinned_model_id) {
+      return null;
+    }
+
+    const pinnedModel = fleet.find(
+      (m) => m.id === pin.pinned_model_id && m.healthy !== false,
+    );
+    const candidate = fleet.find(
+      (m) => m.id === request.candidate_model_id && m.healthy !== false,
+    );
+
+    if (!pinnedModel || !candidate) {
+      return null;
+    }
+
+    if (pinnedModel.provider === candidate.provider) {
+      return null;
+    }
+
+    const tokenEstimate =
+      request.estimated_input_tokens ?? request.prompt_text.length;
+
+    const econ = evaluateCacheEconomics(
+      pin,
+      pinnedModel,
+      candidate,
+      tokenEstimate,
+      this.cacheEconomicsConfig,
+    );
+
+    if (econ.shouldSwitch) {
+      this.breakPin(request.session_id);
+      return { action: 'break', breakReason: 'cache_economics' };
+    }
+
+    return { action: 'use_pin', pinnedModel };
   }
 
   private handleForceOverride(

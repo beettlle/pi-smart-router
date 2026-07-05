@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-05
 **Status:** Active
-**Next Task ID:** SP-074
+**Next Task ID:** SP-075
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -158,6 +158,12 @@
 | SP-071 | Rename duplicate triage pipeline stage | S | SP-070 | #31 |
 | SP-072 | Remove unsafe double-cast in createRouter() | S | SP-070 | #34 |
 | SP-073 | Wire multi-objective scoring into HyDRA matcher | M | SP-071, SP-072 | #30 |
+
+### Phase 22 — Backlog Orchestrator Cycle 7.5 (SP-074)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-074 | Wire cache-warmup economics into session pin break rules | S | SP-073 | #32 |
 
 ---
 

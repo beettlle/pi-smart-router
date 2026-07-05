@@ -74,6 +74,7 @@ export const RoutingRequestSchema = z.object({
   turn_type: TurnTypeSchema.optional(),
   compaction_flag: z.boolean().optional(),
   force_model_id: z.string().optional(),
+  candidate_model_id: z.string().optional(),
   estimated_input_tokens: z.number().int().nonnegative().optional(),
 });
 

@@ -176,6 +176,85 @@ describe('SessionPinner', () => {
       expect(result.action).toBe('break');
       expect(result.breakReason).toBe('compaction');
     });
+
+    it('keeps pin when cross-provider switch fails cache economics (FR-008 rule #4)', () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const marginalFleet = [
+        makeModel({
+          id: 'claude-opus',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 15.0 },
+        }),
+        makeModel({
+          id: 'marginal',
+          tier: 'economical-cloud',
+          provider: 'other',
+          pricing: { fallback_cost_per_1m: 14.5 },
+        }),
+      ];
+
+      const result = pinner.lookupPin(
+        makeRequest({
+          candidate_model_id: 'marginal',
+          estimated_input_tokens: 1_000,
+        }),
+        marginalFleet,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.pinnedModel?.id).toBe('claude-opus');
+      expect(pinner.getPin('sess-1')?.pinned_model_id).toBe('claude-opus');
+    });
+
+    it('breaks pin when cross-provider switch is justified by cache economics', () => {
+      const pinner = new SessionPinner({
+        cacheEconomicsConfig: { projectedRemainingTurns: 10 },
+      });
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const econFleet = [
+        makeModel({
+          id: 'claude-opus',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 15.0 },
+        }),
+        makeModel({
+          id: 'gpt-4o-mini',
+          tier: 'economical-cloud',
+          provider: 'openai',
+          pricing: { fallback_cost_per_1m: 0.15 },
+        }),
+      ];
+
+      const result = pinner.lookupPin(
+        makeRequest({
+          candidate_model_id: 'gpt-4o-mini',
+          estimated_input_tokens: 100_000,
+        }),
+        econFleet,
+      );
+
+      expect(result.action).toBe('break');
+      expect(result.breakReason).toBe('cache_economics');
+      expect(pinner.getPin('sess-1')).toBeNull();
+    });
+
+    it('ignores cache economics for same-provider candidate_model_id', () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const result = pinner.lookupPin(
+        makeRequest({ candidate_model_id: 'claude-haiku' }),
+        fleet,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.pinnedModel?.id).toBe('claude-opus');
+    });
   });
 
   describe('lookupPin — sub-routing (FR-024)', () => {

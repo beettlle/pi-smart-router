@@ -49,6 +49,7 @@ export interface RoutingRequest {
   readonly turn_type?: TurnType;
   readonly compaction_flag?: boolean;
   readonly force_model_id?: string;
+  readonly candidate_model_id?: string;
   readonly estimated_input_tokens?: number;
 }
 

@@ -55,6 +55,10 @@
       "type": "string",
       "description": "Operator override; pins session to specified model"
     },
+    "candidate_model_id": {
+      "type": "string",
+      "description": "Proposed switch target for cache-warmup economics evaluation (FR-008 rule #4)"
+    },
     "estimated_input_tokens": {
       "type": "integer",
       "minimum": 0
