@@ -2,6 +2,8 @@
 
 **Feature**: 001-build-smart-router | **Date**: 2026-07-02
 
+> **Pi extension dogfooding:** For install, trust, slash commands (`/model smart-router/auto`, `/smart-router status`, `/smart-router history`), and operator env vars, see the [Dogfooding (pi extension)](../../README.md#dogfooding-pi-extension) section in the repo README. This quickstart covers spec-era setup and library/YAML paths that complement the extension workflow.
+
 ## Prerequisites
 
 - macOS Apple Silicon
@@ -59,22 +61,24 @@ See [data-model.md](./data-model.md) ModelProfile and PRD §5 schema.
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `ROUTER_STATE_DB_PATH` | No | Default `./.pi-smart-router/state.db` |
+| `ROUTER_STATE_DB_PATH` | No | Default `./.pi-smart-router/state.db` — override SQLite location |
+| `SMART_ROUTER_LOG_ROUTING` | No | Set to `1` to log routing decisions to stderr (extension dogfooding) |
+| `SMART_ROUTER_DATASET` | No | **Future** ([#8](https://github.com/beettlle/pi-smart-router/issues/8)) — planned opt-in dataset capture; not implemented |
 | `MODELS_YAML_PATH` | No | Default `./config/models.yaml` |
 | `ROUTER_SAFE_DEFAULT_TIER` | No | Default `economical-cloud` |
 | `LITELLM_PRICING_URL` | No | LiteLLM pricing JSON source |
 
+See [README — Environment variables](../../README.md#environment-variables) for the full operator reference.
+
 ## Enable Router in pi.dev
 
-Integration hook (Lane 4.1 — implementation pending):
+Use the project-local extension (recommended). From the repo root after `npm install`:
 
-```bash
-# Planned: pi-router-install stretch goal
-pi config set router.enabled true
-pi config set router.modelsPath ./config/models.yaml
-```
+1. Trust the project (`/trust`) and authenticate providers (`/login`)
+2. Enable `smart-router/auto` in scoped models if you use a scoped list
+3. `/model smart-router/auto`
 
-Middleware intercepts LLM requests before upstream dispatch.
+The extension discovers fleet models from pi's registry — it does not read `config/models.yaml` at runtime. See [README — Dogfooding](../../README.md#dogfooding-pi-extension).
 
 ## Explain a Routing Decision (no inference)
 
