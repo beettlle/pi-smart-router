@@ -1,5 +1,5 @@
-**Current Step:** Step 3
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-04
 **Review Level:** 2
 **Size:** M
@@ -22,18 +22,19 @@
 
 ## Step 3: Extension wiring integration test
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Add extension-equivalent dispatch integration test
 
 ## Step 4: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run typecheck and test
-- [ ] Run coverage check
+- [x] Run typecheck and test
+- [x] Run coverage check (script unavailable — pre-existing project gap; manual path coverage via SP-049 integration tests)
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] Extension wiring regression test passes
+- [x] All steps complete
+- [x] Extension wiring regression test passes
+- [x] Tests pass

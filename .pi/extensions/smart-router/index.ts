@@ -125,7 +125,7 @@ interface SmartRouterRuntime {
 /** Footer label for the last model that successfully served a delegated stream. */
 function formatLmuStatus(
   modelId: string,
-  theme?: { fg: (name: string, text: string) => string },
+  theme?: { fg: (color: string, text: string) => string },
 ): string {
   const label = `LMU: ${modelId}`;
   return theme ? theme.fg('dim', label) : label;
@@ -864,26 +864,31 @@ function injectFailoverNotice(
 
   for (let i = 0; i < events.length; i++) {
     const event = events[i];
+    if (!event) {
+      continue;
+    }
 
     if (event.type === 'start') {
       const newPartial = { ...event.partial, content: [...event.partial.content] };
-      if (newPartial.content.length > 0 && newPartial.content[0].type === 'text') {
-        newPartial.content[0] = { ...newPartial.content[0], text: notice + '\n\n' + newPartial.content[0].text };
+      const firstBlock = newPartial.content[0];
+      if (firstBlock && firstBlock.type === 'text') {
+        newPartial.content[0] = { ...firstBlock, text: notice + '\n\n' + firstBlock.text };
       } else {
         newPartial.content.unshift({ type: 'text', text: notice + '\n\n' });
       }
       events[i] = { ...event, partial: newPartial };
     }
 
-    if (!noticeInjected && event.type === 'content' && event.delta.type === 'text') {
-      events[i] = { ...event, delta: { type: 'text', text: notice + '\n\n' + event.delta.text } };
+    if (!noticeInjected && event.type === 'text_delta') {
+      events[i] = { ...event, delta: notice + '\n\n' + event.delta };
       noticeInjected = true;
     }
 
     if (event.type === 'done' && event.message) {
       const newMsg = { ...event.message, content: [...event.message.content] };
-      if (newMsg.content.length > 0 && newMsg.content[0].type === 'text') {
-        newMsg.content[0] = { ...newMsg.content[0], text: notice + '\n\n' + newMsg.content[0].text };
+      const firstBlock = newMsg.content[0];
+      if (firstBlock && firstBlock.type === 'text') {
+        newMsg.content[0] = { ...firstBlock, text: notice + '\n\n' + firstBlock.text };
       } else {
         newMsg.content.unshift({ type: 'text', text: notice + '\n\n' });
       }
@@ -893,8 +898,14 @@ function injectFailoverNotice(
 
   if (!noticeInjected) {
     const startIdx = events.findIndex((e) => e.type === 'start');
-    if (startIdx !== -1) {
-      events.splice(startIdx + 1, 0, { type: 'content', delta: { type: 'text', text: notice + '\n\n' } });
+    const startEvent = startIdx === -1 ? undefined : events[startIdx];
+    if (startEvent?.type === 'start') {
+      events.splice(startIdx + 1, 0, {
+        type: 'text_delta',
+        contentIndex: 0,
+        delta: notice + '\n\n',
+        partial: startEvent.partial,
+      });
     }
   }
 }
@@ -1226,7 +1237,7 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
     });
 
     runtime.setLmuStatus = (modelId) => {
-      ctx.ui.setStatus('smart-router-lmu', formatLmuStatus(modelId, ctx.ui.theme));
+      ctx.ui.setStatus('smart-router-lmu', formatLmuStatus(modelId, ctx.ui.theme as { fg: (color: string, text: string) => string }));
     };
     runtime.clearLmuStatus = () => {
       ctx.ui.setStatus('smart-router-lmu', undefined);
@@ -1242,8 +1253,8 @@ export default async function smartRouterExtension(pi: ExtensionAPI): Promise<vo
   });
 
   pi.on('session_shutdown', async (_event, ctx) => {
-    runtime.setLmuStatus = undefined;
-    runtime.clearLmuStatus = undefined;
+    delete runtime.setLmuStatus;
+    delete runtime.clearLmuStatus;
     ctx.ui.setStatus('smart-router-lmu', undefined);
   });
 
