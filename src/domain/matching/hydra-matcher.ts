@@ -11,6 +11,11 @@
  * Budget: 80–120 ms (configurable, default 100 ms).
  */
 
+import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
+import {
+  scoreMultiObjective,
+  type FrugalityWeights,
+} from '../scoring/multi-objective.js';
 import type {
   CandidateScore,
   ModelCapabilities,
@@ -48,6 +53,7 @@ export interface MatchResult {
 export interface HydraMatcherConfig {
   readonly artifactCachePath: string;
   readonly budgetMs?: number;
+  readonly frugality?: FrugalityWeights;
 }
 
 const DEFAULT_BUDGET_MS = 100;
@@ -138,6 +144,7 @@ export function projectToRequirements(embedding: Float32Array): RequirementVecto
 export class HydraMatcher {
   private readonly provider: EmbeddingProvider;
   private readonly budgetMs: number;
+  private readonly frugality: FrugalityWeights;
 
   constructor(provider: EmbeddingProvider, config: HydraMatcherConfig) {
     const budget = config.budgetMs ?? DEFAULT_BUDGET_MS;
@@ -148,6 +155,7 @@ export class HydraMatcher {
     }
     this.provider = provider;
     this.budgetMs = budget;
+    this.frugality = config.frugality ?? DEFAULT_OPERATOR_CONFIG.frugality;
   }
 
   async match(
@@ -185,17 +193,34 @@ export class HydraMatcher {
       });
     }
 
-    const viable = candidates.filter((c) => c.rejected_reason === null);
-    const best =
-      viable.length > 0
-        ? viable.reduce((a, b) => (b.score > a.score ? b : a))
-        : null;
+    const shortfallByModel = new Map(
+      candidates.map((c) => [c.model_id, c.shortfall]),
+    );
+    const multiObjective = scoreMultiObjective(
+      candidates,
+      healthyFleet,
+      this.frugality,
+    );
+
+    const toCandidateScore = (
+      scored: (typeof multiObjective.candidates)[number],
+    ): CandidateScore => ({
+      model_id: scored.model_id,
+      score: scored.composite_score,
+      shortfall: shortfallByModel.get(scored.model_id) ?? 0,
+      rejected_reason: scored.rejected_reason,
+    });
+
+    const rankedCandidates = multiObjective.candidates.map(toCandidateScore);
+    const selected = multiObjective.selected
+      ? toCandidateScore(multiObjective.selected)
+      : null;
 
     const elapsedMs = performance.now() - start;
 
     return {
-      selected: best,
-      candidates,
+      selected,
+      candidates: rankedCandidates,
       requirements,
       elapsedMs,
       budgetExceeded: elapsedMs > this.budgetMs,
