@@ -1,9 +1,13 @@
 /**
- * Pi extension integration — T021, T021b.
+ * Pi lifecycle hook integration — T021, T021b, SP-055.
  *
- * Registers hooks on pi extension events. The pi extension routes in
- * `createStreamSimple`; lifecycle flags from compaction and model_select
- * are consumed when building the next routing request.
+ * Registers compaction and model-override hooks on pi extension events.
+ * Lifecycle flags are consumed when building the next routing request
+ * (extension `buildRoutingRequest` or embedder `dispatch.dispatch`).
+ *
+ * Routing and stream delegation live in `.pi/extensions/smart-router/` for
+ * pi users, or in embedder code that calls `GatewayDispatch.dispatch()`.
+ * This module does not register routing or no-op context hooks.
  *
  * Contract: specs/001-build-smart-router/contracts/pi-middleware.md v1.0.0
  */
@@ -53,16 +57,15 @@ function resolveHookSessionId(ctx) {
     return ctx.sessionManager.getSessionId();
 }
 /**
- * Create the pi extension middleware that wires router pipeline hooks
- * into pi extension events.
+ * Create pi lifecycle hook handlers for session compaction and model overrides.
+ *
+ * Library embedders: call `router.register(hooks)` on the returned `RouterHandle`
+ * and route via `router.dispatch.dispatch()`. For pi, use the project extension at
+ * `.pi/extensions/smart-router/` — it owns stream delegation and routing telemetry.
  */
 export function createPiRouterMiddleware(options) {
-    void options.fleet;
-    const lifecycleHookState = options.lifecycleHookState ?? new LifecycleHookState();
+    const lifecycleHookState = options?.lifecycleHookState ?? new LifecycleHookState();
     function register(hooks) {
-        hooks.on('context', (event) => {
-            void structuredClone(event.messages);
-        });
         hooks.on('session_compact', (_event, ctx) => {
             lifecycleHookState.markCompaction(resolveHookSessionId(ctx));
         });
@@ -75,9 +78,6 @@ export function createPiRouterMiddleware(options) {
             }
         });
     }
-    function getLastDecision() {
-        return undefined;
-    }
-    return { register, getLastDecision, lifecycleHookState };
+    return { register, lifecycleHookState };
 }
 //# sourceMappingURL=pi-router-middleware.js.map

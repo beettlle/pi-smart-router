@@ -24,6 +24,11 @@ export declare class RoutingTelemetryEmitter {
      * Enforces the rolling window (time + count) before appending.
      */
     emit(request: RoutingRequest, decision: RoutingDecision): RoutingTelemetry;
+    /**
+     * Emit telemetry when a pipeline stage throws and routing degrades to safe default.
+     */
+    emitPipelineError(request: RoutingRequest, failedStage: string, fallback: RoutingDecision): RoutingTelemetry;
+    private appendRecord;
     /** Current number of retained entries. */
     get size(): number;
     /** Snapshot of all retained entries (newest last). */

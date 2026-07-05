@@ -37,6 +37,10 @@ export declare class RouterPipeline {
     private currentTriageResult;
     constructor(fleet: readonly ModelProfile[], options?: PipelineOptions);
     route(request: RoutingRequest): Promise<RoutingDecision>;
+    private resolveFailedStage;
+    private logPipelineError;
+    private redactPromptFromError;
+    private emitPipelineErrorTelemetry;
     /** Step 7: emit routing telemetry after decision (T040). */
     private emitTelemetry;
     private buildFallbackDecision;

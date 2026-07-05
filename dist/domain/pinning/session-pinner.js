@@ -19,9 +19,24 @@ const DEFAULT_TOOL_RESULT_SIZE_THRESHOLD = 2048;
 export class SessionPinner {
     pins = new Map();
     toolResultSizeThreshold;
+    store;
     constructor(config) {
         this.toolResultSizeThreshold =
             config?.toolResultSizeThreshold ?? DEFAULT_TOOL_RESULT_SIZE_THRESHOLD;
+        this.store = config?.store;
+    }
+    /**
+     * Hydrate in-memory pin state for a session from persistent storage.
+     * Call on session start after a pi restart so lookupPin stays synchronous.
+     */
+    async restoreSessionPin(sessionId) {
+        if (!this.store) {
+            return;
+        }
+        const pin = await this.store.getSessionPin(sessionId);
+        if (pin) {
+            this.pins.set(sessionId, pin);
+        }
     }
     /**
      * Synchronous pin lookup — must complete in <1ms.
@@ -45,7 +60,7 @@ export class SessionPinner {
         // ── Default: use pinned model (FR-006, FR-007) ──────────────────────────
         const pinnedModel = fleet.find((m) => m.id === pin.pinned_model_id && m.healthy !== false);
         if (!pinnedModel) {
-            this.pins.delete(request.session_id);
+            this.breakPin(request.session_id);
             return { action: 'no_pin' };
         }
         return { action: 'use_pin', pinnedModel };
@@ -70,6 +85,7 @@ export class SessionPinner {
             updated_at: now,
         };
         this.pins.set(sessionId, pin);
+        this.persistPin(pin);
         return pin;
     }
     /**
@@ -77,12 +93,14 @@ export class SessionPinner {
      */
     breakPin(sessionId) {
         this.pins.delete(sessionId);
+        this.deletePersistedPin(sessionId);
     }
     /**
      * Hydrate a pin from persistent storage (e.g. SQLite restore).
      */
     loadPin(pin) {
         this.pins.set(pin.session_id, pin);
+        this.persistPin(pin);
     }
     /**
      * Read-only access to the current pin (telemetry, inspection).
@@ -94,7 +112,7 @@ export class SessionPinner {
     evaluateBreakRules(request, pin, fleet) {
         // 1. History compaction → break pin, allow full re-route
         if (request.compaction_flag) {
-            this.pins.delete(request.session_id);
+            this.breakPin(request.session_id);
             return { action: 'break', breakReason: 'compaction' };
         }
         // 2. Explicit operator / user override → pin to forced model
@@ -117,8 +135,25 @@ export class SessionPinner {
             return { action: 'use_pin', pinnedModel: forced };
         }
         // Forced model unavailable — break pin, allow re-route
-        this.pins.delete(request.session_id);
+        this.breakPin(request.session_id);
         return { action: 'break', breakReason: 'user_forced' };
+    }
+    // ─── Persistence (StorePort) ────────────────────────────────────────────────
+    persistPin(pin) {
+        if (!this.store) {
+            return;
+        }
+        void this.store.putSessionPin(pin).catch((error) => {
+            console.warn('Failed to persist session pin', { sessionId: pin.session_id, error });
+        });
+    }
+    deletePersistedPin(sessionId) {
+        if (!this.store) {
+            return;
+        }
+        void this.store.deleteSessionPin(sessionId).catch((error) => {
+            console.warn('Failed to delete persisted session pin', { sessionId, error });
+        });
     }
     // ─── Sub-routing (FR-024) ───────────────────────────────────────────────────
     evaluateSubRouting(request, pin, fleet) {

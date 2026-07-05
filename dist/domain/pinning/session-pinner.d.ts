@@ -14,6 +14,7 @@
  * may use an economical model on the same provider without breaking the pin.
  */
 import type { ModelProfile, PinReason, RoutingRequest, SessionPin } from '../types/index.js';
+import type { StorePort } from '../types/store-port.js';
 export type PinAction = 'use_pin' | 'sub_route' | 'break' | 'no_pin';
 export interface PinLookupResult {
     readonly action: PinAction;
@@ -24,11 +25,19 @@ export interface PinLookupResult {
 export interface SessionPinnerConfig {
     /** FR-024: max payload size (bytes or token estimate) for sub-routing. Default 2048. */
     readonly toolResultSizeThreshold?: number;
+    /** Optional persistence — pins survive process restart when set. */
+    readonly store?: StorePort;
 }
 export declare class SessionPinner {
     private readonly pins;
     private readonly toolResultSizeThreshold;
+    private readonly store;
     constructor(config?: SessionPinnerConfig);
+    /**
+     * Hydrate in-memory pin state for a session from persistent storage.
+     * Call on session start after a pi restart so lookupPin stays synchronous.
+     */
+    restoreSessionPin(sessionId: string): Promise<void>;
     /**
      * Synchronous pin lookup — must complete in <1ms.
      * All data is in-memory (Map); no I/O.
@@ -52,6 +61,8 @@ export declare class SessionPinner {
     getPin(sessionId: string): SessionPin | null;
     private evaluateBreakRules;
     private handleForceOverride;
+    private persistPin;
+    private deletePersistedPin;
     private evaluateSubRouting;
 }
 //# sourceMappingURL=session-pinner.d.ts.map
