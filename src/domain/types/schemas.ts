@@ -121,6 +121,9 @@ export const ModelProfileSchema = z.object({
   healthy: z.boolean().optional(),
 });
 
+/** Zod-validated model profile — aligned with {@link ModelProfile} in entities.ts. */
+export type ValidatedModelProfile = z.infer<typeof ModelProfileSchema>;
+
 // ─── CandidateScore (contract: routing-decision.schema.json) ─────────────────
 
 export const CandidateScoreSchema = z.object({

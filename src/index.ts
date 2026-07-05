@@ -7,7 +7,7 @@
  */
 
 import type { ModelProfile, RoutingDecision } from './domain/types/index.js';
-import { loadModels } from './config/models-loader.js';
+import { loadModels, type FleetCatalog } from './config/models-loader.js';
 import {
   GatewayDispatch,
   type GatewayDispatchOptions,
@@ -43,7 +43,11 @@ export function createRouter(options?: RouterFactoryOptions): RouterHandle {
     options?.modelsPath ? { filePath: options.modelsPath } : undefined,
   );
 
-  return createRouterFromFleet(catalog.models as unknown as ModelProfile[]);
+  return createRouterFromCatalog(catalog);
+}
+
+export function createRouterFromCatalog(catalog: FleetCatalog): RouterHandle {
+  return createRouterFromFleet([...catalog.models]);
 }
 
 export interface CreateRouterFromFleetOptions extends GatewayDispatchOptions {
