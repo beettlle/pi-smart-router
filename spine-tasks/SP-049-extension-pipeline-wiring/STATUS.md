@@ -1,4 +1,4 @@
-**Current Step:** Step 2
+**Current Step:** Step 3
 **Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 2
@@ -15,16 +15,16 @@
 
 ## Step 2: Wire loop escalation and rate limiter
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Pass loopEscalationConfig
 - [x] Wire rate limiter via StorePort
 
 ## Step 3: Extension wiring integration test
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Add extension-equivalent dispatch integration test
+- [x] Add extension-equivalent dispatch integration test
 
 ## Step 4: Testing and verification
 

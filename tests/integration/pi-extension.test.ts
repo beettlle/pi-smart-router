@@ -21,16 +21,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildRoutingRequest,
+  createDispatchOptions,
   createStreamSimple,
 } from '../../.pi/extensions/smart-router/index.js';
-import {
-  mapFleetFromRegistry,
+import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
+import { mapFleetFromRegistry,
   mapPiModelToProfile,
   type PiModelInput,
 } from '../../src/config/pi-model-mapper.js';
+import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import type { ModelProfile, RoutingDecision } from '../../src/domain/types/index.js';
+import type { SystemInfo } from '../../src/infrastructure/hardware/hardware-probe.js';
 import { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
+import {
+  DEFAULT_LOCAL_CONFIG,
+  type HttpFetchPort,
+} from '../../src/infrastructure/local/local-zero-tier.js';
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
+import { SqliteStore } from '../../src/infrastructure/persistence/sqlite-store.js';
 import { RoutingTelemetryEmitter } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 import { createRouterFromFleet } from '../../src/index.js';
 import { ExecutionLedger } from '../../src/domain/delegation/execution-ledger.js';
@@ -359,6 +367,80 @@ describe('Pi extension integration (SP-043)', () => {
       expect(rows[0]?.session_id).toBe('telemetry-session');
       expect(rows[0]?.selected_model_id).toBeDefined();
       expect(fleet.map((profile) => profile.id)).toContain(rows[0]?.selected_model_id);
+    });
+  });
+
+  describe('extension dispatch wiring (SP-049)', () => {
+    function makeSystemInfo(overrides?: Partial<SystemInfo>): SystemInfo {
+      return {
+        totalMemoryGb: 16,
+        arch: 'arm64',
+        platform: 'darwin',
+        batteryLevel: 80,
+        isOnAcPower: true,
+        ...overrides,
+      };
+    }
+
+    const readyFetch: HttpFetchPort = {
+      fetch: async (url) => {
+        if (url.includes('/v1/models')) {
+          return { ok: true, json: async () => ({ data: [{ id: 'llama3.2:3b' }] }) };
+        }
+        if (url.includes('/api/tags')) {
+          return { ok: true, json: async () => ({ models: [{ name: 'llama3.2' }] }) };
+        }
+        throw new Error('ECONNREFUSED');
+      },
+    };
+
+    it('createDispatchOptions passes hardware, local, loop escalation, and rate limiter settings', () => {
+      const sessionPinner = new SessionPinner();
+      const sqliteStore = new SqliteStore({ dbPath: ':memory:', models: [] });
+      const options = createDispatchOptions(sqliteStore, sessionPinner);
+
+      expect(options.hardwareConfig).toEqual(DEFAULT_OPERATOR_CONFIG.local);
+      expect(options.localConfig).toEqual(DEFAULT_LOCAL_CONFIG);
+      expect(options.loopEscalationConfig).toEqual(DEFAULT_OPERATOR_CONFIG.loop_escalation);
+      expect(options.systemInfoProvider).toBeTypeOf('function');
+      expect(options.rateLimiter).toBeDefined();
+      expect(options.rateLimiter?.consumeToken).toBeTypeOf('function');
+
+      sqliteStore.close();
+    });
+
+    it('omits rateLimiter when the extension store is not SQLite-backed', () => {
+      const sessionPinner = new SessionPinner();
+      const memoryStore = new MemoryStore([]);
+      const options = createDispatchOptions(memoryStore, sessionPinner);
+
+      expect(options.rateLimiter).toBeUndefined();
+    });
+
+    it('routes to zero-tier using extension-equivalent dispatch options', async () => {
+      const fleet = mapFleetFromRegistry(REGISTRY_MODELS);
+      const sessionPinner = new SessionPinner();
+      const sqliteStore = new SqliteStore({ dbPath: ':memory:', models: [] });
+      const baseOptions = createDispatchOptions(sqliteStore, sessionPinner);
+      const router = createRouterFromFleet(fleet, {
+        ...baseOptions,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 16 })),
+        httpFetchPort: readyFetch,
+      });
+
+      const decision = await router.dispatch.dispatch(
+        buildRoutingRequest(
+          makeContext([userMessage('hello world')]),
+          { sessionId: 'ext-wiring-001' },
+        ),
+      );
+
+      expect(decision.stage).toBe('local_zero');
+      expect(decision.tier).toBe('zero-tier');
+      expect(decision.selected_model_id).toBe('llama3.2:3b');
+      expect(decision.reason_code).toBe('local_model_ready');
+
+      sqliteStore.close();
     });
   });
 });

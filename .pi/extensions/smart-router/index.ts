@@ -1157,6 +1157,7 @@ function registerSmartRouterCommand(
 export {
   buildRoutingRequest,
   buildDelegationContext,
+  createDispatchOptions,
   createStreamSimple,
   deriveTurnType,
   discoverFleet,
