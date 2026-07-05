@@ -1,4 +1,4 @@
-**Current Step:** Step 2
+**Current Step:** Step 3
 **Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 2
@@ -14,15 +14,15 @@
 
 ## Step 2: SQLite v2 migration and StorePort methods
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] dataset table + append/list/trim
 
 ## Step 3: MemoryStore mirror and tests
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] MemoryStore + unit tests
+- [x] MemoryStore + unit tests
 
 ## Step 4: Testing and verification
 
