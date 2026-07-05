@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-04
 **Review Level:** 1
@@ -8,17 +8,17 @@
 
 ## Step 1: Create build tsconfig and script
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Add tsconfig.build.json
 - [x] Add build script to package.json
 
 ## Step 2: Verify exports and types
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Confirm exports resolve after build
-- [ ] Document build in README or prepublishOnly
+- [x] Confirm exports resolve after build
+- [x] Document build in README or prepublishOnly
 
 ## Step 3: CI integration
 
