@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-05
 **Review Level:** 1
@@ -8,17 +8,17 @@
 
 ## Step 1: Windows SystemInfoPort
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Implement Windows provider
 - [x] Wire default provider selection
 
 ## Step 2: Extend probeHardware policy
 
-**Status:** ⬜ Pending
+**Status:** 🔄 In Progress
 
-- [ ] Add win32 support
-- [ ] Keep shared threshold logic
+- [x] Add win32 support
+- [x] Keep shared threshold logic
 
 ## Step 3: Tests and README
 
