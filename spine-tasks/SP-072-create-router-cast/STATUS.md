@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Pending
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-07-05
 **Review Level:** 1
 **Size:** S
@@ -8,24 +8,24 @@
 
 ## Step 1: Align types
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-- [ ] Align FleetCatalog.models with ModelProfile
-- [ ] Remove double cast in createRouter()
+- [x] Align FleetCatalog.models with ModelProfile
+- [x] Remove double cast in createRouter()
 
 ## Step 2: Optional API cleanup
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-- [ ] Add createRouterFromCatalog if cleaner
+- [x] Add createRouterFromCatalog if cleaner
 
 ## Step 3: Testing and verification
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-- [ ] Run full testCommand
+- [x] Run full testCommand
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] No unsafe cast at public API
+- [x] All steps complete
+- [x] No unsafe cast at public API

@@ -75,13 +75,13 @@ export interface ModelCapabilities {
 }
 
 export interface ModelPerformance {
-  readonly latency_p50_ms?: number;
-  readonly verbosity_factor?: number;
-  readonly cache_friendly?: boolean;
+  readonly latency_p50_ms?: number | undefined;
+  readonly verbosity_factor?: number | undefined;
+  readonly cache_friendly?: boolean | undefined;
 }
 
 export interface ModelPricing {
-  readonly registry_key?: string;
+  readonly registry_key?: string | undefined;
   readonly fallback_cost_per_1m: number;
 }
 
@@ -89,11 +89,11 @@ export interface ModelProfile {
   readonly id: string;
   readonly tier: Tier;
   readonly provider: string;
-  readonly endpoint?: string;
+  readonly endpoint?: string | undefined;
   readonly capabilities: ModelCapabilities;
-  readonly performance?: ModelPerformance;
+  readonly performance?: ModelPerformance | undefined;
   readonly pricing: ModelPricing;
-  readonly healthy?: boolean;
+  readonly healthy?: boolean | undefined;
 }
 
 // ─── RoutingDecision ─────────────────────────────────────────────────────────

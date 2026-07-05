@@ -10,12 +10,15 @@ import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
 
 import { ModelProfileSchema } from '../domain/types/schemas.js';
+import type { ModelProfile } from '../domain/types/index.js';
 
 const FleetCatalogSchema = z.object({
   models: z.array(ModelProfileSchema).min(1, 'Fleet catalog must contain at least one model'),
 });
 
-export type FleetCatalog = z.infer<typeof FleetCatalogSchema>;
+export interface FleetCatalog {
+  readonly models: readonly ModelProfile[];
+}
 
 export interface LoadModelsOptions {
   readonly filePath?: string;
@@ -53,7 +56,7 @@ export function loadModels(options?: LoadModelsOptions): FleetCatalog {
     throw new ModelsLoaderError(`Invalid fleet catalog:\n${issues}`, { cause: result.error });
   }
 
-  return result.data;
+  return { models: result.data.models };
 }
 
 export class ModelsLoaderError extends Error {
