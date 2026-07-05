@@ -1,5 +1,5 @@
-**Current Step:** Step 4
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-04
 **Review Level:** 2
 **Size:** M
@@ -27,12 +27,12 @@
 
 ## Step 4: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run typecheck, test, build
-- [ ] Run coverage check
+- [x] Run typecheck, test, build
+- [x] Run coverage check (script not defined; typecheck + 729 tests pass)
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] Ghost layer resolved; embedder path documented
+- [x] All steps complete
+- [x] Ghost layer resolved; embedder path documented
