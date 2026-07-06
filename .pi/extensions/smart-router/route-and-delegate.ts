@@ -3,6 +3,7 @@ import type { Api, AssistantMessageEventStream, Context, Model, SimpleStreamOpti
 import { safeCloudDefault } from '../../../src/domain/pipeline/safe-default.js';
 import type { RoutingDecision, RoutingRequest } from '../../../src/domain/types/index.js';
 import {
+  isGeminiThoughtSignatureAssistantError,
   isInfraAssistantError,
   parseAssistantMessageError,
 } from '../../../src/infrastructure/delegation/provider-error.js';
@@ -161,6 +162,15 @@ export async function routeAndDelegate(
           pendingFailoverInfo.errorObj,
         );
         pendingFailoverInfo = undefined;
+      }
+
+      if (
+        result.failed &&
+        result.finalMessage &&
+        isGeminiThoughtSignatureAssistantError(result.finalMessage)
+      ) {
+        flushDelegatedEvents(outer, result.events, { sanitizeErrors: true });
+        return;
       }
 
       if (

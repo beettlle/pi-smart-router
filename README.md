@@ -316,6 +316,21 @@ The `GatewayDispatch` layer wraps the pipeline with:
 - **Failover chains** — On open circuit, routes to same-tier alternative via inverse-cost weighted selection.
 - **Rate limiting** — Per-operator-key token bucket with `429 + Retry-After` responses.
 
+### Troubleshooting
+
+#### Gemini `thought_signature` 400 errors
+
+If Gemini returns **400 INVALID_ARGUMENT** mentioning `thought_signature`, the router treats this as a **protocol validation error** (incomplete tool-call replay), not provider unavailability — it will **not** failover to another model.
+
+This typically happens when a session with prior tool calls is routed to Gemini before [pi preserves thought signatures in replay](https://github.com/earendil-works/pi/issues/6342). See [Google's thought signatures documentation](https://ai.google.dev/gemini-api/docs/generate-content/thought-signatures).
+
+**Workarounds:**
+
+1. Start a fresh session with `/new` in pi.
+2. Switch to a non-Google model (e.g. `/model openai/gpt-4o-mini`) for tool-heavy sessions until the upstream fix lands.
+
+Related: [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37).
+
 ### Explain endpoint
 
 The explain handler runs the identical pipeline but returns the `RoutingDecision` without dispatching upstream inference — guaranteeing bit-for-bit decision equivalence with the live path. Useful for debugging, operator trust, and shadow runs.

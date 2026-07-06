@@ -193,6 +193,13 @@ describe('isInfraError', () => {
     expect(isInfraError({})).toBe(false);
   });
 
+  it('returns false for Gemini thought_signature 400', () => {
+    expect(isInfraError({
+      statusCode: 400,
+      message: 'Function call is missing a thought_signature',
+    })).toBe(false);
+  });
+
   it('checks code before statusCode', () => {
     expect(isInfraError({ code: 'ECONNREFUSED', statusCode: 200 })).toBe(true);
   });

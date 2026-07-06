@@ -97,6 +97,11 @@ export {
   initHydraMatcher,
 };
 export { SMART_ROUTER_FULL_INVOCATIONS, SMART_ROUTER_USAGE } from './commands.js';
+export { routeAndDelegate } from './route-and-delegate.js';
+export {
+  formatGeminiThoughtSignatureErrorMessage,
+  isGeminiThoughtSignatureAssistantError,
+} from '../../../src/infrastructure/delegation/provider-error.js';
 
 export default async function smartRouterExtension(pi: ExtensionAPI): Promise<void> {
   const authStorage = AuthStorage.create();
