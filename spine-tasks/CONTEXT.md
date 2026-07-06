@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-05
 **Status:** Active
-**Next Task ID:** SP-084
+**Next Task ID:** SP-087
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -172,6 +172,14 @@
 | SP-075 | Stop thought_signature 400 infra failover; terminal error UX | S | SP-074 | #37 |
 | SP-076 | `/smart-router unpin` subcommand for dogfooding | S | SP-074 | #35 |
 | SP-077 | Exclude Gemini when session has tool-call history | M | SP-075 | #38 |
+
+### Phase 24 — Dogfood Unblock Batch (#38, #41, #40)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-084 | Gemini tool-history empty-fleet fail-safe | M | SP-083 | #38 |
+| SP-085 | Fix inverted routing economics and cost telemetry | M | SP-084 | #41 |
+| SP-086 | Map and route cursor/* models explicitly | M | SP-085 | #40 |
 
 ---
 
