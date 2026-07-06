@@ -6,7 +6,7 @@
  * provider/model aliases for tri-tier broker lookup.
  */
 
-import type { PriceCatalog } from '../../domain/types/index.js';
+import type { ModelLimits, PriceCatalog } from '../../domain/types/index.js';
 
 export const DEFAULT_LITELLM_PRICING_URL =
   'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json';
@@ -15,6 +15,7 @@ const CHAT_MODES = new Set(['chat', 'completion']);
 
 export interface LitellmFetchResult {
   readonly registry_snapshot: Readonly<Record<string, number>>;
+  readonly registry_limits_snapshot: Readonly<Record<string, ModelLimits>>;
   /** Number of LiteLLM chat/completion models normalized (before alias keys). */
   readonly model_count: number;
 }
@@ -63,6 +64,34 @@ function readStringField(entry: Record<string, unknown>, field: string): string 
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
+function readPositiveIntField(entry: Record<string, unknown>, field: string): number | undefined {
+  const value = entry[field];
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
+function parseModelLimits(entry: Record<string, unknown>): ModelLimits | undefined {
+  const maxInputTokens = readPositiveIntField(entry, 'max_input_tokens');
+  const maxOutputTokens =
+    readPositiveIntField(entry, 'max_output_tokens') ?? readPositiveIntField(entry, 'max_tokens');
+
+  if (maxInputTokens === undefined && maxOutputTokens === undefined) {
+    return undefined;
+  }
+
+  return {
+    ...(maxInputTokens !== undefined ? { max_input_tokens: maxInputTokens } : {}),
+    ...(maxOutputTokens !== undefined ? { max_output_tokens: maxOutputTokens } : {}),
+  };
+}
+
+function storeLimitsAlias(
+  registry_limits_snapshot: Record<string, ModelLimits>,
+  key: string,
+  limits: ModelLimits,
+): void {
+  registry_limits_snapshot[key] = limits;
+}
+
 /**
  * Normalize LiteLLM pricing JSON into registry_snapshot rates.
  * Validates shape and fails fast with actionable errors.
@@ -75,6 +104,7 @@ export function normalizeLitellmPricing(raw: unknown): LitellmFetchResult {
   }
 
   const registry_snapshot: Record<string, number> = {};
+  const registry_limits_snapshot: Record<string, ModelLimits> = {};
   let modelCount = 0;
 
   for (const [modelKey, entry] of Object.entries(raw)) {
@@ -103,9 +133,17 @@ export function normalizeLitellmPricing(raw: unknown): LitellmFetchResult {
     registry_snapshot[modelKey] = costPer1M;
     modelCount += 1;
 
+    const limits = parseModelLimits(entry);
+    if (limits !== undefined) {
+      storeLimitsAlias(registry_limits_snapshot, modelKey, limits);
+    }
+
     const provider = readStringField(entry, 'litellm_provider');
     if (provider !== undefined) {
       registry_snapshot[`${provider}/${modelKey}`] = costPer1M;
+      if (limits !== undefined) {
+        storeLimitsAlias(registry_limits_snapshot, `${provider}/${modelKey}`, limits);
+      }
     }
   }
 
@@ -117,6 +155,7 @@ export function normalizeLitellmPricing(raw: unknown): LitellmFetchResult {
 
   return {
     registry_snapshot,
+    registry_limits_snapshot,
     model_count: modelCount,
   };
 }
@@ -166,6 +205,7 @@ export async function fetchLitellmPriceCatalog(
   return {
     catalog: {
       registry_snapshot: normalized.registry_snapshot,
+      registry_limits_snapshot: normalized.registry_limits_snapshot,
       user_overrides: {},
       last_updated: new Date().toISOString(),
       source: 'registry',
