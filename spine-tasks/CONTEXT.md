@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-05
 **Status:** Active
-**Next Task ID:** SP-078
+**Next Task ID:** SP-084
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
