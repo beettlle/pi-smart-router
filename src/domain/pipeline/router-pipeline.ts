@@ -57,6 +57,9 @@ export class RouterPipeline {
   private readonly fleet: readonly ModelProfile[];
   private readonly options: PipelineOptions;
 
+  /** Per-route transient fleet — defaults to constructor fleet. */
+  private activeFleet: readonly ModelProfile[] = [];
+
   /** Per-route transient state — reset on each route() call. */
   private currentHardwareResult: HardwareProbeResult = 'disabled';
   private currentTriageResult: TriageResult | null = null;
@@ -77,8 +80,12 @@ export class RouterPipeline {
     ];
   }
 
-  async route(request: RoutingRequest): Promise<RoutingDecision> {
+  async route(
+    request: RoutingRequest,
+    fleetOverride?: readonly ModelProfile[],
+  ): Promise<RoutingDecision> {
     const start = Date.now();
+    this.activeFleet = fleetOverride ?? this.fleet;
     this.currentHardwareResult = 'disabled';
     this.currentTriageResult = null;
     this.currentHydraResult = null;
@@ -171,7 +178,7 @@ export class RouterPipeline {
     request: RoutingRequest,
     elapsedMs: number,
   ): RoutingDecision {
-    const fallbackModel = safeCloudDefault(this.fleet);
+    const fallbackModel = safeCloudDefault(this.activeFleet);
     const modelId = fallbackModel?.id ?? 'unknown';
     const tier = fallbackModel?.tier ?? 'economical-cloud';
 
@@ -221,7 +228,7 @@ export class RouterPipeline {
       return { decided: false, stage: 'local_zero' };
     }
 
-    const localModel = this.fleet.find(
+    const localModel = this.activeFleet.find(
       (m) => m.tier === 'zero-tier' && m.healthy !== false,
     );
 
@@ -260,7 +267,7 @@ export class RouterPipeline {
     }
 
     const targetTier = 'frontier-cloud';
-    const model = this.fleet.find((m) => m.tier === targetTier && m.healthy !== false);
+    const model = this.activeFleet.find((m) => m.tier === targetTier && m.healthy !== false);
 
     if (!model) {
       return { decided: false, stage: 'triage' };
@@ -290,7 +297,7 @@ export class RouterPipeline {
       return { decided: false, stage: 'triage' };
     }
 
-    const model = this.fleet.find(
+    const model = this.activeFleet.find(
       (m) => m.tier === 'economical-cloud' && m.healthy !== false,
     );
 
@@ -321,7 +328,7 @@ export class RouterPipeline {
       return { decided: false, stage: 'session_pin' };
     }
 
-    const result = pinner.lookupPin(request, this.fleet);
+    const result = pinner.lookupPin(request, this.activeFleet);
 
     switch (result.action) {
       case 'use_pin': {
@@ -405,7 +412,7 @@ export class RouterPipeline {
       return { decided: false, stage: 'turn_envelope' };
     }
 
-    const model = this.fleet.find((m) => m.tier === targetTier && m.healthy !== false);
+    const model = this.activeFleet.find((m) => m.tier === targetTier && m.healthy !== false);
     if (!model) {
       return { decided: false, stage: 'turn_envelope' };
     }
@@ -443,7 +450,7 @@ export class RouterPipeline {
     }
 
     const pin = pinner.getPin(request.session_id);
-    const result = evaluateLoopEscalation(pin, request, this.fleet, config);
+    const result = evaluateLoopEscalation(pin, request, this.activeFleet, config);
 
     if (result.updatedPin) {
       pinner.loadPin(result.updatedPin);
@@ -472,14 +479,14 @@ export class RouterPipeline {
       return { decided: false, stage: 'hydra_match' };
     }
 
-    const result = await matcher.match(request, this.fleet);
+    const result = await matcher.match(request, this.activeFleet);
     this.currentHydraResult = result;
 
     if (!result.selected) {
       return { decided: false, stage: 'hydra_match' };
     }
 
-    const selectedModel = this.fleet.find(
+    const selectedModel = this.activeFleet.find(
       (m) => m.id === result.selected!.model_id,
     );
     if (!selectedModel) {

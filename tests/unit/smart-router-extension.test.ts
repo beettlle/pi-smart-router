@@ -24,6 +24,10 @@ import {
   mapContextMessages,
 } from '../../.pi/extensions/smart-router/routing-context.js';
 import {
+  GEMINI_TOOL_HISTORY_EXCLUDED,
+  resolveEffectiveFleet,
+} from '../../src/domain/routing/tool-history-guard.js';
+import {
   createStreamSimple,
   logRoutingDecision,
   resolveDelegationOptions,
@@ -1164,5 +1168,143 @@ describe('smart-router unpin command (SP-076)', () => {
       expect.stringContaining('Cleared session pin'),
       'info',
     );
+  });
+});
+
+describe('gemini tool history guard (SP-077)', () => {
+  beforeEach(() => {
+    mockDelegateStreamSimple.mockClear();
+  });
+
+  it('routes tool-history sessions to non-google models via stream delegation', async () => {
+    const router = createRouterFromFleet(fleet);
+    const decisions: RoutingDecision[] = [];
+    const target = registryModels[0]!;
+    mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router,
+        onRoutingDecision: (decision) => decisions.push(decision),
+      }),
+    );
+
+    await collectEvents(
+      streamSimple(
+        makeAutoModel(),
+        makeContext([
+          userMessage('search scuba tanks'),
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'toolCall',
+                id: 'call-1',
+                name: 'web_search',
+                arguments: { query: 'scuba' },
+              },
+            ],
+            api: 'openai-responses',
+            provider: 'smart-router',
+            model: 'auto',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: 'toolUse',
+            timestamp: 2,
+          },
+          toolResultMessage('results'),
+        ]),
+        { sessionId: 'tool-history-sess-1' },
+      ),
+    );
+
+    expect(decisions[0]?.selected_model_id).toBe('gpt-4o-mini');
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]?.provider).toBe('openai');
+  });
+
+  it('leaves fleet unchanged for sessions without tool history', () => {
+    const request = buildRoutingRequest(
+      makeContext([userMessage('plain prompt')]),
+      { sessionId: 'no-tool-history' },
+    );
+
+    const result = resolveEffectiveFleet(fleet, request);
+    expect(result.excluded).toBe(false);
+    expect(result.effectiveFleet).toEqual(fleet);
+  });
+
+  it('emits gemini_tool_history_excluded when filtering applies', () => {
+    const request = buildRoutingRequest(
+      makeContext([
+        userMessage('search'),
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'toolCall',
+              id: 'call-1',
+              name: 'read',
+              arguments: {},
+            },
+          ],
+          api: 'openai-responses',
+          provider: 'openai',
+          model: 'gpt-4o-mini',
+          usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 0,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+          },
+          stopReason: 'toolUse',
+          timestamp: 2,
+        },
+        toolResultMessage('ok'),
+      ]),
+      { sessionId: 'guard-reason' },
+    );
+
+    const result = resolveEffectiveFleet(
+      fleet,
+      request,
+      makeContext([
+        userMessage('search'),
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'toolCall',
+              id: 'call-1',
+              name: 'read',
+              arguments: {},
+            },
+          ],
+          api: 'openai-responses',
+          provider: 'openai',
+          model: 'gpt-4o-mini',
+          usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 0,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+          },
+          stopReason: 'toolUse',
+          timestamp: 2,
+        },
+        toolResultMessage('ok'),
+      ]).messages,
+    );
+    expect(result.reasonCode).toBe(GEMINI_TOOL_HISTORY_EXCLUDED);
   });
 });

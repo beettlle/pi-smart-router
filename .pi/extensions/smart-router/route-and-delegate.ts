@@ -1,7 +1,11 @@
 import type { Api, AssistantMessageEventStream, Context, Model, SimpleStreamOptions } from '@earendil-works/pi-ai/compat';
 
 import { safeCloudDefault } from '../../../src/domain/pipeline/safe-default.js';
-import type { RoutingDecision, RoutingRequest } from '../../../src/domain/types/index.js';
+import {
+  GEMINI_TOOL_HISTORY_EXCLUDED,
+  resolveEffectiveFleet,
+} from '../../../src/domain/routing/tool-history-guard.js';
+import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../../src/domain/types/index.js';
 import {
   isGeminiThoughtSignatureAssistantError,
   isInfraAssistantError,
@@ -56,8 +60,11 @@ export function resolveTargetModel(
   return resolveRegistryModel(deps.modelRegistry, profile);
 }
 
-function resolveFallbackModel(deps: StreamDelegationDeps): Model<Api> | undefined {
-  const fallbackProfile = safeCloudDefault(deps.fleet);
+function resolveFallbackModel(
+  deps: StreamDelegationDeps,
+  effectiveFleet?: readonly ModelProfile[],
+): Model<Api> | undefined {
+  const fallbackProfile = safeCloudDefault(effectiveFleet ?? deps.fleet);
   if (!fallbackProfile) {
     return undefined;
   }
@@ -77,6 +84,7 @@ export async function routeAndDelegate(
   const sessionId = options?.sessionId;
   let decision: RoutingDecision;
   let request: RoutingRequest;
+  let effectiveFleet: readonly ModelProfile[] = deps.fleet;
   const priorSnapshot =
     sessionId !== undefined ? deps.sessionRouting?.get(sessionId) : undefined;
   const hadPin =
@@ -90,10 +98,22 @@ export async function routeAndDelegate(
       options,
       deps.lifecycleHookState,
     );
+    const guardResult = resolveEffectiveFleet(deps.fleet, request, context.messages);
+    effectiveFleet = guardResult.effectiveFleet;
+    if (guardResult.excluded) {
+      console.warn(
+        '[smart-router] gemini tool history guard applied',
+        JSON.stringify({
+          reason_code: GEMINI_TOOL_HISTORY_EXCLUDED,
+          session_id: request.session_id,
+          excluded_providers: ['google', 'gemini'],
+        }),
+      );
+    }
     capturePreRouteOutcomes(request, deps, priorSnapshot, hadPin);
-    decision = await deps.router.dispatch.dispatch(request);
+    decision = await deps.router.dispatch.dispatch(request, { effectiveFleet });
   } catch (error) {
-    const fallbackModel = resolveFallbackModel(deps);
+    const fallbackModel = resolveFallbackModel(deps, effectiveFleet);
     if (!fallbackModel) {
       throw error;
     }
@@ -122,7 +142,7 @@ export async function routeAndDelegate(
       '[smart-router] routed model not found in registry',
       decision.selected_model_id,
     );
-    targetModel = resolveFallbackModel(deps);
+    targetModel = resolveFallbackModel(deps, effectiveFleet);
   }
 
   if (!targetModel) {
@@ -179,7 +199,11 @@ export async function routeAndDelegate(
         isInfraAssistantError(result.finalMessage)
       ) {
         failedModelIds.push(targetModel.id);
-        const failover = deps.router.dispatch.selectFailover(decision, failedModelIds);
+        const failover = deps.router.dispatch.selectFailover(
+          decision,
+          failedModelIds,
+          effectiveFleet,
+        );
         if (!failover) {
           flushDelegatedEvents(outer, result.events, { sanitizeErrors: true });
           return;
@@ -216,7 +240,11 @@ export async function routeAndDelegate(
         failedModelIds.push(targetModel.id);
       }
 
-      const failover = deps.router.dispatch.selectFailover(decision, failedModelIds);
+      const failover = deps.router.dispatch.selectFailover(
+        decision,
+        failedModelIds,
+        effectiveFleet,
+      );
       const alternateModel = failover ? resolveTargetModel(deps, failover) : undefined;
 
       if (alternateModel && alternateModel.id !== targetModel.id) {
@@ -237,7 +265,7 @@ export async function routeAndDelegate(
         continue;
       }
 
-      const fallbackModel = resolveFallbackModel(deps);
+      const fallbackModel = resolveFallbackModel(deps, effectiveFleet);
       if (!fallbackModel || fallbackModel.id === targetModel.id) {
         throw error;
       }
