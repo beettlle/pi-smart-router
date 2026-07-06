@@ -545,4 +545,67 @@ describe('RouterPipeline', () => {
       expect(decision.features!.triage).toBeNull();
     });
   });
+
+  describe('gemini deprioritization (SP-080)', () => {
+    const geminiFirstFleet: ModelProfile[] = [
+      makeModel({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
+      makeModel({ id: 'gpt-4o-mini', tier: 'economical-cloud', provider: 'openai' }),
+      makeModel({ id: 'claude-opus', tier: 'frontier-cloud', provider: 'anthropic' }),
+    ];
+
+    const toolHistoryMessages = [
+      {
+        role: 'assistant' as const,
+        content: 'calling tool',
+        tool_blocks: [{ id: 'call-1', name: 'read', arguments: '{}' }],
+      },
+      { role: 'user' as const, content: 'continue' },
+    ];
+
+    it('prefers non-gemini economical model when tool history exists', async () => {
+      const pipeline = new RouterPipeline(geminiFirstFleet);
+      const decision = await pipeline.route(
+        makeRequest({ messages: toolHistoryMessages }),
+      );
+
+      expect(decision.selected_model_id).toBe('gpt-4o-mini');
+      expect(decision.stage).toBe('fallback');
+    });
+
+    it('still selects gemini when it is the only economical option', async () => {
+      const geminiOnlyEconomical = [
+        makeModel({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
+        makeModel({ id: 'claude-opus', tier: 'frontier-cloud', provider: 'anthropic' }),
+      ];
+      const pipeline = new RouterPipeline(geminiOnlyEconomical);
+      const decision = await pipeline.route(
+        makeRequest({
+          prompt_text: 'Fix the typo in the README',
+          messages: toolHistoryMessages,
+        }),
+      );
+
+      expect(decision.selected_model_id).toBe('gemini-flash');
+      expect(decision.stage).toBe('triage');
+    });
+
+    it('does not reorder fleet without tool history', async () => {
+      const pipeline = new RouterPipeline(geminiFirstFleet);
+      const decision = await pipeline.route(makeRequest());
+
+      expect(decision.selected_model_id).toBe('gemini-flash');
+    });
+
+    it('skips deprioritization when force_model_id is set', async () => {
+      const pipeline = new RouterPipeline(geminiFirstFleet);
+      const decision = await pipeline.route(
+        makeRequest({
+          force_model_id: 'gemini-flash',
+          messages: toolHistoryMessages,
+        }),
+      );
+
+      expect(decision.selected_model_id).toBe('gemini-flash');
+    });
+  });
 });
