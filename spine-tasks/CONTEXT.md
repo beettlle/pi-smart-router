@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-06
 **Status:** Active
-**Next Task ID:** SP-088
+**Next Task ID:** SP-089
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -186,6 +186,12 @@
 | Task | Summary | Size | Deps | GitHub |
 |------|---------|------|------|--------|
 | SP-087 | Use pi shared ModelRegistry for fleet discovery | M | SP-086 | #42 |
+
+### Phase 26 — Backlog Orchestrator Cycle 8 (SP-088)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-088 | Gate LMU status on active smart-router provider | S | SP-087 | #43 |
 
 ---
 
