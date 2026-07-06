@@ -16,7 +16,9 @@ import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
 import { normalizeDelegationContext } from '../../../src/domain/delegation/delegation-context.js';
 import type { ModelProfile } from '../../../src/domain/types/index.js';
 import {
+  formatGeminiThoughtSignatureErrorMessage,
   formatProviderErrorMessage,
+  isGeminiThoughtSignatureAssistantError,
   parseAssistantMessageError,
 } from '../../../src/infrastructure/delegation/provider-error.js';
 import type { StreamDelegationDeps } from './types.js';
@@ -139,7 +141,9 @@ function sanitizeAssistantErrorMessage(message: AssistantMessage): AssistantMess
   if (message.stopReason !== 'error' || !message.errorMessage) {
     return message;
   }
-  const formatted = formatProviderErrorMessage(message.errorMessage);
+  const formatted = isGeminiThoughtSignatureAssistantError(message)
+    ? formatGeminiThoughtSignatureErrorMessage(message.errorMessage)
+    : formatProviderErrorMessage(message.errorMessage);
   if (formatted === message.errorMessage) {
     return message;
   }

@@ -59,10 +59,6 @@ export function isInfraError(error: { statusCode?: number; code?: string; messag
     if (error.statusCode >= 500 || error.statusCode === 429) {
       return true;
     }
-    // Handle Gemini 2.0 thought_signature generation failures as transient infra errors
-    if (error.statusCode === 400 && error.message?.includes('thought_signature')) {
-      return true;
-    }
   }
 
   return false;

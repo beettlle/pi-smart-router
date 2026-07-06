@@ -2,6 +2,9 @@ import type { AssistantMessage } from '@earendil-works/pi-ai/compat';
 import { describe, expect, it } from 'vitest';
 
 import {
+  formatGeminiThoughtSignatureErrorMessage,
+  isGeminiThoughtSignatureAssistantError,
+  isGeminiThoughtSignatureError,
   isInfraAssistantError,
   parseAssistantMessageError,
   formatProviderErrorMessage,
@@ -27,7 +30,7 @@ describe('provider-error', () => {
     });
   });
 
-  it('parses 400 INVALID_ARGUMENT missing thought_signature as infra', () => {
+  it('parses 400 INVALID_ARGUMENT missing thought_signature as client error', () => {
     const parsed = parseProviderError(
       JSON.stringify({
         error: {
@@ -43,6 +46,7 @@ describe('provider-error', () => {
       code: 'INVALID_ARGUMENT',
       message: 'Function call is missing a thought_signature',
     });
+    expect(isGeminiThoughtSignatureError(parsed!)).toBe(true);
     expect(isInfraAssistantError(makeErrorAssistant(
       JSON.stringify({
         error: {
@@ -51,7 +55,32 @@ describe('provider-error', () => {
           message: 'Function call is missing a thought_signature',
         },
       }),
+    ))).toBe(false);
+    expect(isGeminiThoughtSignatureAssistantError(makeErrorAssistant(
+      JSON.stringify({
+        error: {
+          code: 400,
+          status: 'INVALID_ARGUMENT',
+          message: 'Function call is missing a thought_signature',
+        },
+      }),
     ))).toBe(true);
+  });
+
+  it('formats thought_signature errors with operator guidance', () => {
+    const raw = JSON.stringify({
+      error: {
+        code: 400,
+        status: 'INVALID_ARGUMENT',
+        message: 'Function call is missing a thought_signature',
+      },
+    });
+
+    const formatted = formatGeminiThoughtSignatureErrorMessage(raw);
+    expect(formatted).toContain('400 INVALID_ARGUMENT: Function call is missing a thought_signature');
+    expect(formatted).toContain('/new');
+    expect(formatted).toContain('ai.google.dev/gemini-api/docs/generate-content/thought-signatures');
+    expect(formatted).toContain('github.com/earendil-works/pi/issues/6342');
   });
 
   it('classifies 503 assistant errors as infra', () => {

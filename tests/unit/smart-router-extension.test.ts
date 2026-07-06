@@ -736,6 +736,49 @@ describe('createStreamSimple', () => {
       'gemini-flash',
     );
   });
+
+  it('does not failover on Gemini thought_signature 400 errors', async () => {
+    const primary = registryModels[1]!;
+    const errorMessage = JSON.stringify({
+      error: {
+        code: 400,
+        status: 'INVALID_ARGUMENT',
+        message: 'Function call is missing a thought_signature',
+      },
+    });
+
+    mockDelegateStreamSimple.mockImplementationOnce(() => makeErrorStream(primary, errorMessage));
+
+    const router = createMockRouter(
+      vi.fn(async () =>
+        makeDecision({
+          selected_model_id: 'gemini-flash',
+          tier: 'economical-cloud',
+        }),
+      ),
+    );
+
+    const streamSimple = createStreamSimple(makeStreamDeps({ router }));
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(1);
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      '[smart-router] infra error, failing over to alternate model',
+      expect.anything(),
+    );
+
+    const errorEvent = events.find((event) => event.type === 'error');
+    expect(errorEvent?.type).toBe('error');
+    if (errorEvent?.type === 'error') {
+      expect(errorEvent.error.errorMessage).toContain('thought_signature');
+      expect(errorEvent.error.errorMessage).toContain('/new');
+      expect(errorEvent.error.errorMessage).not.toContain('failover');
+    }
+  });
+
   it('sanitizes terminal infra errors when no failover alternate exists', async () => {
     const primary = registryModels[0]!;
     const doubleWrapped = JSON.stringify({
