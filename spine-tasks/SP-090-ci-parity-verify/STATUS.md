@@ -1,7 +1,7 @@
 # SP-090 Status
 
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-06
 **Review Level:** 1
 **Size:** M
@@ -10,9 +10,9 @@
 
 ## Step 1: Add verify:ci script
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Add `verify:ci` script to `package.json`
+- [x] Add `verify:ci` script to `package.json`
 
 ## Step 2: Update router-backlog-orchestrator skill
 
