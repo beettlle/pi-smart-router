@@ -15,6 +15,8 @@ import {
   formatLmuStatus,
   initHydraMatcher,
 } from '../../.pi/extensions/smart-router/fleet-bootstrap.js';
+import { registerSmartRouterCommand } from '../../.pi/extensions/smart-router/commands.js';
+import type { SmartRouterRuntime } from '../../.pi/extensions/smart-router/types.js';
 import {
   buildRoutingRequest,
   deriveTurnType,
@@ -38,6 +40,7 @@ import {
 } from '../../src/domain/matching/hydra-matcher.js';
 import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../src/domain/types/index.js';
 import type { RouterHandle } from '../../src/index.js';
+import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
 
 const { mockDelegateStreamSimple } = vi.hoisted(() => ({
   mockDelegateStreamSimple: vi.fn(),
@@ -1072,5 +1075,94 @@ describe('extension hydra routing (SP-044)', () => {
     expect(decision.stage).toBe('fallback');
     expect(decision.reason_code).toBe('safe_cloud_default');
     expect(decision.selected_model_id).toBe('gpt-4o-mini');
+  });
+});
+
+describe('smart-router unpin command (SP-076)', () => {
+  function createCommandHarness(sessionId = 'sess-unpin') {
+    const notify = vi.fn();
+    let handler: ((args: string, ctx: unknown) => Promise<void>) | undefined;
+
+    const pi = {
+      registerCommand: vi.fn((_name: string, spec: { handler: typeof handler }) => {
+        handler = spec.handler;
+      }),
+      appendEntry: vi.fn(),
+    };
+
+    const store = new MemoryStore([]);
+    const sessionPinner = new SessionPinner({ store });
+    const runtime = {
+      fleetMode: 'scoped' as const,
+      lastDecision: undefined,
+      priceCatalog: null,
+      modelRegistry: createMockRegistry(registryModels),
+      store,
+      sessionPinner,
+      executionLedger: new ExecutionLedger(),
+      lifecycleHookState: new LifecycleHookState(),
+      hydraMatcher: undefined,
+      sessionRouting: new Map(),
+      streamDeps: {
+        router: createMockRouter(vi.fn(async () => makeDecision())),
+        modelRegistry: createMockRegistry(registryModels),
+        fleet,
+        executionLedger: new ExecutionLedger(),
+        sessionPinner,
+        sessionRouting: new Map(),
+      },
+    } as unknown as SmartRouterRuntime;
+
+    registerSmartRouterCommand(pi as never, runtime);
+
+    const ctx = {
+      cwd: '/tmp',
+      sessionManager: { getSessionId: () => sessionId },
+      ui: { notify },
+    };
+
+    return { handler: handler!, runtime, sessionPinner, notify, ctx, store, sessionId };
+  }
+
+  it('clears the current session pin and notifies success', async () => {
+    const { handler, sessionPinner, notify, ctx, sessionId } = createCommandHarness();
+
+    sessionPinner.recordPin(sessionId, 'gpt-4o-mini', 'initial');
+    expect(sessionPinner.getPin(sessionId)).not.toBeNull();
+
+    await handler('unpin', ctx);
+
+    expect(sessionPinner.getPin(sessionId)).toBeNull();
+    expect(notify).toHaveBeenCalledWith(
+      'Cleared session pin (was gpt-4o-mini). Next request will run full routing.',
+      'info',
+    );
+  });
+
+  it('is a no-op when the session has no pin', async () => {
+    const { handler, sessionPinner, notify, ctx, sessionId } = createCommandHarness();
+
+    expect(sessionPinner.getPin(sessionId)).toBeNull();
+
+    await handler('unpin', ctx);
+
+    expect(sessionPinner.getPin(sessionId)).toBeNull();
+    expect(notify).toHaveBeenCalledWith('No session pin to clear.', 'info');
+  });
+
+  it('does not clear pins for other sessions', async () => {
+    const { handler, sessionPinner, notify, ctx, sessionId } = createCommandHarness('sess-current');
+
+    sessionPinner.recordPin('sess-current', 'gpt-4o-mini', 'initial');
+    sessionPinner.recordPin('sess-other', 'claude-opus', 'initial');
+
+    await handler('unpin', ctx);
+
+    expect(sessionPinner.getPin('sess-current')).toBeNull();
+    expect(sessionPinner.getPin('sess-other')).not.toBeNull();
+    expect(notify).toHaveBeenCalledWith(
+      expect.stringContaining('Cleared session pin'),
+      'info',
+    );
   });
 });

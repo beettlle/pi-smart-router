@@ -89,6 +89,10 @@ export function parseSmartRouterArgs(args: string): SmartRouterCommand {
     return { command: 'feedback', rating: tokens[1] };
   }
 
+  if (tokens[0] === 'unpin' && tokens.length === 1) {
+    return { command: 'unpin' };
+  }
+
   throw new Error(`Usage: ${SMART_ROUTER_USAGE}`);
 }
 

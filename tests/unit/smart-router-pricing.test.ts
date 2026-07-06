@@ -135,6 +135,7 @@ describe('parseSmartRouterArgs (SP-045)', () => {
       command: 'feedback',
       rating: 'bad',
     });
+    expect(parseSmartRouterArgs('unpin')).toEqual({ command: 'unpin' });
   });
 
   it('rejects invalid export dataset invocations', () => {
@@ -153,7 +154,7 @@ describe('getSmartRouterArgumentCompletions', () => {
   }
 
   it('offers top-level subcommands on empty prefix', () => {
-    expect(completionValues('')).toEqual(['status', 'history', 'mode', 'pricing', 'export', 'feedback']);
+    expect(completionValues('')).toEqual(['status', 'history', 'mode', 'pricing', 'export', 'feedback', 'unpin']);
   });
 
   it('filters top-level subcommands by partial prefix', () => {
@@ -161,6 +162,7 @@ describe('getSmartRouterArgumentCompletions', () => {
     expect(completionValues('hi')).toEqual(['history']);
     expect(completionValues('pr')).toEqual(['pricing']);
     expect(completionValues('ex')).toEqual(['export']);
+    expect(completionValues('un')).toEqual(['unpin']);
   });
 
   it('offers mode subcommands after mode token', () => {
