@@ -4,7 +4,18 @@
 
 import type { AssistantMessage } from '@earendil-works/pi-ai/compat';
 
+import {
+  formatGeminiThoughtSignatureErrorMessage,
+  isGeminiThoughtSignatureAssistantError,
+  isGeminiThoughtSignatureError,
+} from '../../infra/gemini-provider.js';
 import { isInfraError } from '../gateway/circuit-breaker.js';
+
+export {
+  formatGeminiThoughtSignatureErrorMessage,
+  isGeminiThoughtSignatureAssistantError,
+  isGeminiThoughtSignatureError,
+};
 
 export interface ParsedProviderError {
   readonly statusCode?: number;
@@ -108,22 +119,6 @@ export function isInfraAssistantError(message: AssistantMessage): boolean {
   return isInfraError(parsed);
 }
 
-/**
- * Gemini returns 400 INVALID_ARGUMENT when tool-call replay omits thought_signature.
- * This is a client/protocol validation error, not provider unavailability (FR-018).
- */
-export function isGeminiThoughtSignatureError(parsed: ParsedProviderError): boolean {
-  return (
-    parsed.statusCode === 400 &&
-    parsed.message?.includes('thought_signature') === true
-  );
-}
-
-export function isGeminiThoughtSignatureAssistantError(message: AssistantMessage): boolean {
-  const parsed = parseAssistantMessageError(message);
-  return parsed ? isGeminiThoughtSignatureError(parsed) : false;
-}
-
 const FORMATTED_ERROR_MAX_LENGTH = 200;
 
 /**
@@ -157,24 +152,5 @@ export function formatProviderErrorMessage(errorMessage: string): string {
     return `${trimmed.slice(0, FORMATTED_ERROR_MAX_LENGTH)}…`;
   }
   return trimmed;
-}
-
-const GEMINI_THOUGHT_SIGNATURE_DOCS =
-  'https://ai.google.dev/gemini-api/docs/generate-content/thought-signatures';
-const PI_THOUGHT_SIGNATURE_ISSUE = 'https://github.com/earendil-works/pi/issues/6342';
-
-/**
- * Format a Gemini thought_signature validation error with operator workarounds.
- */
-export function formatGeminiThoughtSignatureErrorMessage(errorMessage: string): string {
-  const summary = formatProviderErrorMessage(errorMessage);
-  return [
-    summary,
-    '',
-    'Gemini rejected this request because a prior tool call is missing its thought_signature (protocol validation, not provider outage).',
-    'Workarounds: start a fresh session with /new, or route to a non-Google model until pi preserves thought signatures in replay.',
-    `Docs: ${GEMINI_THOUGHT_SIGNATURE_DOCS}`,
-    `Upstream: ${PI_THOUGHT_SIGNATURE_ISSUE}`,
-  ].join('\n');
 }
 
