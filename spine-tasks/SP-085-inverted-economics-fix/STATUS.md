@@ -1,11 +1,11 @@
 # SP-085 Status
 
 **Current Step:** Step 1
-**Status:** pending
+**Status:** in progress
 
 ## Step 1: Mapper tier fix
-- [ ] Add Gemini 3.x Pro patterns to FRONTIER_DEFAULTS
-- [ ] Regression test for gemini-3.1-pro-preview
+- [x] Add Gemini 3.x Pro patterns to FRONTIER_DEFAULTS
+- [x] Regression test for gemini-3.1-pro-preview
 
 ## Step 2: Cost-aware turn envelope selection
 - [ ] Lowest-cost economical selection in turnEnvelope
