@@ -135,6 +135,7 @@ This registers `smart-router` as a custom provider with a single `auto` model. E
 | `/smart-router mode scoped` | Route only among pi's **enabled model patterns** (default) |
 | `/smart-router mode all` | Route among **all authenticated models** in the registry |
 | `/smart-router pricing refresh` | Manually fetch LiteLLM pricing from `LITELLM_PRICING_URL`, persist to SQLite, and rebuild the fleet with updated rates |
+| `/smart-router unpin` | Clear the current session pin (in-memory and SQLite) so the next request runs the full routing pipeline |
 
 Fleet mode persists in the session. Use `scoped` to respect your `/model` enable-list; use `all` when you want the router to consider every provider you have logged into.
 

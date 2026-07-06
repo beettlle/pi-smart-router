@@ -36,7 +36,8 @@ export type SmartRouterCommand =
   | { command: 'mode'; mode: FleetMode }
   | { command: 'pricing'; subcommand: 'refresh' }
   | { command: 'export'; subcommand: 'dataset'; limit: number }
-  | { command: 'feedback'; rating: 'good' | 'bad' };
+  | { command: 'feedback'; rating: 'good' | 'bad' }
+  | { command: 'unpin' };
 
 /** Provider stream delegate; defaults to pi-ai streamSimple when omitted. */
 export type DelegateStreamFn = (

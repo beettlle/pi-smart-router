@@ -12,7 +12,7 @@ import { FLEET_MODE_ENTRY_TYPE } from './session-lifecycle.js';
 import type { SmartRouterRuntime } from './types.js';
 
 export const SMART_ROUTER_USAGE =
-  '/smart-router [status] | history [limit] | mode scoped|all | pricing refresh | export dataset [--limit N] | feedback good|bad';
+  '/smart-router [status] | history [limit] | mode scoped|all | pricing refresh | export dataset [--limit N] | feedback good|bad | unpin';
 
 type CompletionItem = { value: string; label: string };
 
@@ -23,6 +23,7 @@ const TOP_LEVEL: CompletionItem[] = [
   { value: 'pricing', label: 'Manage pricing catalog' },
   { value: 'export', label: 'Export opt-in routing dataset' },
   { value: 'feedback', label: 'Label last routing outcome good or bad' },
+  { value: 'unpin', label: 'Clear current session pin' },
 ];
 
 const MODE_COMPLETIONS: CompletionItem[] = [
@@ -56,6 +57,7 @@ export const SMART_ROUTER_FULL_INVOCATIONS = [
   'export dataset --limit 100',
   'feedback good',
   'feedback bad',
+  'unpin',
 ] as const;
 
 function filterByPrefix(items: CompletionItem[], prefix: string): CompletionItem[] {
@@ -165,6 +167,28 @@ export function registerSmartRouterCommand(
 
           ctx.ui.notify(
             `Recorded ${parsed.rating} feedback for request ${snapshot.lastRequestId}.`,
+            'info',
+          );
+          return;
+        }
+
+        if (parsed.command === 'unpin') {
+          const sessionId = ctx.sessionManager.getSessionId();
+          const sessionPinner = runtime.streamDeps.sessionPinner;
+          if (!sessionPinner) {
+            ctx.ui.notify('Session pinner unavailable.', 'error');
+            return;
+          }
+
+          const pin = sessionPinner.getPin(sessionId);
+          if (!pin) {
+            ctx.ui.notify('No session pin to clear.', 'info');
+            return;
+          }
+
+          sessionPinner.breakPin(sessionId);
+          ctx.ui.notify(
+            `Cleared session pin (was ${pin.pinned_model_id}). Next request will run full routing.`,
             'info',
           );
           return;
