@@ -1,8 +1,8 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-07-05
+**Last Updated:** 2026-07-06
 **Status:** Active
-**Next Task ID:** SP-087
+**Next Task ID:** SP-088
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -180,6 +180,12 @@
 | SP-084 | Gemini tool-history empty-fleet fail-safe | M | SP-083 | #38 |
 | SP-085 | Fix inverted routing economics and cost telemetry | M | SP-084 | #41 |
 | SP-086 | Map and route cursor/* models explicitly | M | SP-085 | #40 |
+
+### Phase 25 — Shared ModelRegistry (#42)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-087 | Use pi shared ModelRegistry for fleet discovery | M | SP-086 | #42 |
 
 ---
 
