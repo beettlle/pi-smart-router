@@ -87,6 +87,23 @@ describe('mapPiModelToProfile', () => {
       expect(profile.tier).toBe('economical-cloud');
       expect(profile.capabilities.code_gen).toBe(0.75);
     });
+
+    it('maps gemini-3.1-pro-preview to frontier tier (SP-085)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'google', id: 'gemini-3.1-pro-preview' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.reasoning).toBeGreaterThanOrEqual(0.9);
+    });
+
+    it('maps generic gemini pro variants to frontier tier (SP-085)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'google', id: 'gemini_3_pro_experimental' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+    });
   });
 
   describe('local providers', () => {

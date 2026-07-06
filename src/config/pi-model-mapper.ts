@@ -105,6 +105,8 @@ const MODEL_PATTERN_RULES: readonly ModelPatternRule[] = [
   { pattern: /gpt[-_.]?5\.5|gpt-5-5/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /gpt[-_.]?5\.1|gpt[-_.]?5[-_.]?mini|gpt[-_.]?mini/i, defaults: ECONOMICAL_DEFAULTS },
   { pattern: /gemini[-_.]?2\.5[-_.]?pro|gemini-2-5-pro/i, defaults: FRONTIER_DEFAULTS },
+  { pattern: /gemini[-_.]?3.*pro/i, defaults: FRONTIER_DEFAULTS },
+  { pattern: /gemini.*pro/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /gemini.*flash|gemini-flash/i, defaults: ECONOMICAL_DEFAULTS },
 ];
 

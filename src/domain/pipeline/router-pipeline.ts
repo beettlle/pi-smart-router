@@ -7,7 +7,7 @@
  * Any stage failure falls back to safeCloudDefault(); never throws to host.
  */
 
-import type { ModelProfile, RoutingDecision, RoutingFeatureSidecar, RoutingRequest, Tier } from '../types/index.js';
+import type { ModelProfile, PriceCatalog, RoutingDecision, RoutingFeatureSidecar, RoutingRequest, Tier } from '../types/index.js';
 import type { HardwareProbeConfig, HardwareProbeResult, SystemInfo } from '../../infrastructure/hardware/hardware-probe.js';
 import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
 import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
@@ -23,7 +23,8 @@ import {
 import type { SessionPinner } from '../pinning/session-pinner.js';
 import { evaluateLoopEscalation } from '../pinning/loop-escalation.js';
 import type { LoopEscalationConfig } from '../pinning/loop-escalation.js';
-import { RoutingTelemetryEmitter } from '../../infrastructure/telemetry/routing-telemetry.js';
+import { selectLowestCostModel } from '../pinning/sub-route-policy.js';
+import { RoutingTelemetryEmitter, estimateRoutingCost } from '../../infrastructure/telemetry/routing-telemetry.js';
 import type { HydraMatcher as HydraMatcherType, MatchResult } from '../matching/hydra-matcher.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
@@ -52,6 +53,7 @@ export interface PipelineOptions {
   readonly loopEscalationConfig?: LoopEscalationConfig;
   readonly telemetryEmitter?: RoutingTelemetryEmitter;
   readonly hydraMatcher?: HydraMatcherType;
+  readonly priceCatalog?: PriceCatalog | null;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -217,6 +219,21 @@ export class RouterPipeline {
     this.options.telemetryEmitter?.emit(request, decision);
   }
 
+  private withEstimatedCost(
+    request: RoutingRequest,
+    model: ModelProfile,
+    decision: RoutingDecision,
+  ): RoutingDecision {
+    return {
+      ...decision,
+      estimated_cost_usd: estimateRoutingCost(
+        model,
+        request,
+        this.options.priceCatalog ?? null,
+      ),
+    };
+  }
+
   private buildFallbackDecision(
     request: RoutingRequest,
     elapsedMs: number,
@@ -380,7 +397,7 @@ export class RouterPipeline {
         return {
           decided: true,
           stage: 'session_pin',
-          decision: {
+          decision: this.withEstimatedCost(request, model, {
             request_id: request.request_id,
             selected_model_id: model.id,
             tier: model.tier,
@@ -388,7 +405,7 @@ export class RouterPipeline {
             reason_code: 'session_pinned',
             routing_latency_ms: 0,
             pin_reason: pin?.pin_reason ?? null,
-          },
+          }),
         };
       }
 
@@ -398,7 +415,7 @@ export class RouterPipeline {
         return {
           decided: true,
           stage: 'session_pin',
-          decision: {
+          decision: this.withEstimatedCost(request, model, {
             request_id: request.request_id,
             selected_model_id: model.id,
             tier: model.tier,
@@ -406,7 +423,7 @@ export class RouterPipeline {
             reason_code: 'tool_result_sub_route',
             routing_latency_ms: 0,
             pin_reason: pin?.pin_reason ?? null,
-          },
+          }),
         };
       }
 
@@ -455,7 +472,10 @@ export class RouterPipeline {
       return { decided: false, stage: 'turn_envelope' };
     }
 
-    const model = this.activeFleet.find((m) => m.tier === targetTier && m.healthy !== false);
+    const tierCandidates = this.activeFleet.filter(
+      (m) => m.tier === targetTier && m.healthy !== false,
+    );
+    const model = selectLowestCostModel(tierCandidates);
     if (!model) {
       return { decided: false, stage: 'turn_envelope' };
     }
@@ -463,7 +483,7 @@ export class RouterPipeline {
     return {
       decided: true,
       stage: 'turn_envelope',
-      decision: {
+      decision: this.withEstimatedCost(request, model, {
         request_id: request.request_id,
         selected_model_id: model.id,
         tier: targetTier,
@@ -471,7 +491,7 @@ export class RouterPipeline {
         reason_code: `turn_${turnType}`,
         routing_latency_ms: 0,
         pin_reason: null,
-      },
+      }),
     };
   }
 
@@ -539,7 +559,7 @@ export class RouterPipeline {
     return {
       decided: true,
       stage: 'hydra_match',
-      decision: {
+      decision: this.withEstimatedCost(request, selectedModel, {
         request_id: request.request_id,
         selected_model_id: selectedModel.id,
         tier: selectedModel.tier,
@@ -548,7 +568,7 @@ export class RouterPipeline {
         candidates: result.candidates,
         routing_latency_ms: result.elapsedMs,
         pin_reason: null,
-      },
+      }),
     };
   }
 }

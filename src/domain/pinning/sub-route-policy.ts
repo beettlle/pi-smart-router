@@ -43,6 +43,27 @@ export interface SubRoutePolicyConfig {
 
 const DEFAULT_SIZE_THRESHOLD = 2048;
 
+/**
+ * Select the lowest-cost healthy model from candidates (SP-085).
+ */
+export function selectLowestCostModel(
+  candidates: readonly ModelProfile[],
+): ModelProfile | undefined {
+  let best: ModelProfile | undefined;
+  let bestCost = Infinity;
+
+  for (const model of candidates) {
+    if (model.healthy === false) continue;
+    const cost = model.pricing.fallback_cost_per_1m;
+    if (cost < bestCost) {
+      bestCost = cost;
+      best = model;
+    }
+  }
+
+  return best;
+}
+
 // ─── Policy ───────────────────────────────────────────────────────────────────
 
 /**
@@ -75,13 +96,15 @@ export function evaluateSubRoutePolicy(
     return { eligible: false, reason: 'pinned_model_not_in_fleet' };
   }
 
-  const econModel = fleet.find(
+  const candidates = fleet.filter(
     (m) =>
       m.tier === 'economical-cloud' &&
       m.provider === pinnedModel.provider &&
       m.id !== pin.pinned_model_id &&
       m.healthy !== false,
   );
+
+  const econModel = selectLowestCostModel(candidates);
 
   if (!econModel) {
     return { eligible: false, reason: 'no_same_provider_economical' };
