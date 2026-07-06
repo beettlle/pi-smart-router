@@ -139,7 +139,7 @@ Hand off to [`skills/spine-autonomous-operator/SKILL.md`](../spine-autonomous-op
 - `spine preflight` (green required)
 - Wave loop: `spine batch start pending --wave N --attached`
 - Monitor: `spine status --diagnose`, `spine wait`
-- Land: `spine gate approve` → `spine integrate` → `npm install` → `spine batch complete`
+- Land: `spine gate approve` → `spine integrate` → `npm install` → `npm run verify:ci` → `spine batch complete`
 
 Do not advance waves until current wave is integrated on `main`.
 
@@ -159,8 +159,20 @@ Search existing issues before creating duplicates.
 2. Ratio achieved (bugs vs features)
 3. GitHub issues opened/closed/commented (URLs)
 4. Spine recovery actions
-5. Verification: `spine plan pending`, `spine preflight`, `npm run typecheck && npm test`
+5. Verification: `spine plan pending`, `spine preflight`, `npm run verify:ci` — **block success on any failure**
 6. Remaining backlog preview for next invocation
+
+**Final report verification template** — list each CI step pass/fail:
+
+| Step | Command | Result |
+|------|---------|--------|
+| Build | `npm run build` | pass / fail |
+| Typecheck | `npm run typecheck` | pass / fail |
+| Lint | `npm run lint` | pass / fail |
+| Test | `npm test` | pass / fail |
+| Coverage | `npm run coverage:check` | pass / fail |
+
+Do not claim orchestrator success unless `npm run verify:ci` exits 0 and the table is included in the report.
 
 ## Short prompt (resume)
 
