@@ -147,6 +147,7 @@ spine gate status
 spine gate approve
 spine integrate
 npm install
+npm run verify:ci
 spine batch complete
 git add spine-tasks/*/.DONE 2>/dev/null; git commit -m "chore: track .DONE for wave N" || true
 ```
@@ -208,7 +209,7 @@ See [references/issue-template.md](references/issue-template.md) for a full temp
 spine plan pending
 spine preflight
 git status
-npm run typecheck && npm test
+npm run verify:ci
 find spine-tasks -name '.DONE' | wc -l
 ```
 
@@ -225,7 +226,7 @@ find spine-tasks -name '.DONE' | wc -l
 
 - **Tasks root:** `spine-tasks/`
 - **Config:** `.spine/spine-config.json` — `lanes.maxParallel: 3`, `stallTimeoutMinutes: 120`
-- **Test command:** `npm run typecheck && npm test`
+- **Test command:** `npm run verify:ci` (full CI parity: build → typecheck → lint → test → coverage:check)
 - **Known upstream issues:** #114 (integrate hang, fixed), #118 (trailing-slash contracts), #130 (`coverage/` restore)
 
 ## Short prompt (resume mid-batch)
@@ -236,5 +237,5 @@ If only a subset remains pending:
 Run pending spine tasks: validate/analyze/plan → fix packets → preflight →
 for each wave: batch start --attached → diagnose → gate approve → integrate →
 npm install → batch complete. File pi-spine bugs on engine faults.
-Done when 0 pending, preflight green, tests pass. Post final report.
+Done when 0 pending, preflight green, `npm run verify:ci` passes. Post final report.
 ```
