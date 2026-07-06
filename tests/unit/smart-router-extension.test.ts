@@ -334,9 +334,62 @@ describe('smart-router extension helpers', () => {
     expect(request.prompt_text).toBe('route me');
     expect(request.turn_type).toBe('main_loop');
     expect(request.messages).toHaveLength(1);
+    expect(request.estimated_input_tokens).toBeGreaterThan(0);
     expect(request.request_id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
     );
+  });
+
+  it('buildRoutingRequest sets estimated_input_tokens from chars/4 fallback', () => {
+    const prompt = 'abcd'.repeat(10);
+    const request = buildRoutingRequest(makeContext([userMessage(prompt)]));
+
+    expect(request.estimated_input_tokens).toBe(Math.ceil(prompt.length / 4));
+  });
+
+  it('buildRoutingRequest includes system prompt in token estimate', () => {
+    const systemPrompt = 'system'.repeat(20);
+    const request = buildRoutingRequest({
+      systemPrompt,
+      messages: [userMessage('hi')],
+    });
+
+    expect(request.estimated_input_tokens).toBe(
+      Math.max(1, Math.ceil((systemPrompt.length + 2) / 4)),
+    );
+  });
+
+  it('buildRoutingRequest prefers explicit token count from stream options', () => {
+    const request = buildRoutingRequest(makeContext([userMessage('ignored for count')]), {
+      sessionId: 'sess-tokens',
+      estimatedInputTokens: 12_345,
+    } as Parameters<typeof buildRoutingRequest>[1]);
+
+    expect(request.estimated_input_tokens).toBe(12_345);
+  });
+
+  it('buildRoutingRequest grows estimated_input_tokens as history grows', () => {
+    const first = buildRoutingRequest(makeContext([userMessage('first turn')]));
+    const second = buildRoutingRequest(
+      makeContext([userMessage('first turn'), toolResultMessage('ok'), userMessage('second turn')]),
+    );
+
+    expect(first.estimated_input_tokens).toBeGreaterThan(0);
+    expect(second.estimated_input_tokens).toBeGreaterThan(first.estimated_input_tokens!);
+    expect(deriveTurnType([userMessage('first turn')])).toBe('main_loop');
+    expect(
+      deriveTurnType([
+        userMessage('first turn'),
+        toolResultMessage('ok'),
+        userMessage('second turn'),
+      ]),
+    ).toBe('main_loop');
+  });
+
+  it('buildRoutingRequest returns zero estimated_input_tokens for empty context', () => {
+    const request = buildRoutingRequest(makeContext());
+
+    expect(request.estimated_input_tokens).toBe(0);
   });
 
   it('buildRoutingRequest consumes compaction lifecycle flags', () => {

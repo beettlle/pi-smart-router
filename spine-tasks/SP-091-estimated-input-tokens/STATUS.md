@@ -1,6 +1,6 @@
 # SP-091 Status
 
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-06
 **Review Level:** 1
@@ -10,18 +10,16 @@
 
 ## Step 1: Investigate pi token APIs
 
-**Status:** In Progress
-
-- [x] Check Context / SimpleStreamOptions for exposed token counts
+**Status:** Complete
 
 **Findings:** `@earendil-works/pi-ai/compat` `Context` exposes `systemPrompt`, `messages`, `tools` only; `SimpleStreamOptions` extends `StreamOptions` with `reasoning` / `thinkingBudgets` — no token count fields. Pi-coding-agent tracks `ContextUsage.tokens` via extension `getContextUsage()`, but that is not passed into `streamSimple` options. Fallback: chars/4 over mapped messages + system prompt.
 
 ## Step 2: Implement estimate in buildRoutingRequest
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Set `estimated_input_tokens` with preferred API or chars/4 fallback
-- [ ] Ensure estimate flows through route-and-delegate
+- [x] Set `estimated_input_tokens` with preferred API or chars/4 fallback
+- [x] Ensure estimate flows through route-and-delegate
 
 ## Step 3: Testing and verification
 

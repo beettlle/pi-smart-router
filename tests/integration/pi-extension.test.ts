@@ -235,6 +235,110 @@ describe('Pi extension integration (SP-043)', () => {
     });
   });
 
+  describe('estimated_input_tokens (SP-091)', () => {
+    const originalDatasetEnv = process.env.SMART_ROUTER_DATASET;
+
+    beforeEach(() => {
+      mockDelegateStreamSimple.mockReset();
+      process.env.SMART_ROUTER_DATASET = '1';
+    });
+
+    afterEach(() => {
+      if (originalDatasetEnv === undefined) {
+        delete process.env.SMART_ROUTER_DATASET;
+      } else {
+        process.env.SMART_ROUTER_DATASET = originalDatasetEnv;
+      }
+    });
+
+    it('buildRoutingRequest populates estimated_input_tokens for routing dispatch', async () => {
+      const fleet = mapFleetFromRegistry(REGISTRY_MODELS);
+      const router = createRouterFromFleet(fleet);
+      const request = buildRoutingRequest(
+        makeContext([userMessage('Fix the failing integration test')]),
+        { sessionId: 'ext-int-001' },
+      );
+
+      expect(request.estimated_input_tokens).toBeGreaterThan(0);
+
+      const decision = await router.dispatch.dispatch(request);
+
+      expect(decision.request_id).toBe(request.request_id);
+      expect(decision.selected_model_id).toBeDefined();
+    });
+
+    it('stream delegation persists non-zero estimated_input_tokens', async () => {
+      const fleet = mapFleetFromRegistry(REGISTRY_MODELS);
+      const store = new MemoryStore();
+      const datasetRecorder = createExtensionDatasetRecorder(store);
+      const router = createRouterFromFleet(fleet);
+      const modelRegistry = createMockRegistry(piRegistryModels);
+      const target = piRegistryModels.find((model) => model.id === 'gpt-5-mini')!;
+      mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
+
+      const streamSimple = createStreamSimple(withDelegateStream({
+        router,
+        modelRegistry,
+        fleet,
+        executionLedger: new ExecutionLedger(),
+        datasetRecorder,
+      }));
+
+      const shortMessages = [userMessage('First message in session')];
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext(shortMessages), {
+          sessionId: 'token-estimate-short',
+        }),
+      );
+
+      const longMessages = [
+        ...shortMessages,
+        {
+          role: 'assistant' as const,
+          content: [{ type: 'text' as const, text: 'Working on it' }],
+          api: 'openai-responses' as Api,
+          provider: 'openai' as Model<Api>['provider'],
+          model: 'gpt-5-mini',
+          usage: {
+            input: 10,
+            output: 5,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 15,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+          },
+          stopReason: 'stop' as const,
+          timestamp: 2,
+        },
+        {
+          role: 'toolResult' as const,
+          toolCallId: 'call-1',
+          toolName: 'read',
+          content: [{ type: 'text' as const, text: 'file contents here' }],
+          isError: false,
+          timestamp: 3,
+        },
+        userMessage('Continue with the fix'),
+      ] satisfies Message[];
+
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext(longMessages), {
+          sessionId: 'token-estimate-long',
+        }),
+      );
+
+      const rows = await store.listDatasetRecords({ limit: 10 });
+      const shortRow = rows.find((row) => row.session_id === 'token-estimate-short');
+      const longRow = rows.find((row) => row.session_id === 'token-estimate-long');
+
+      expect(shortRow?.estimated_input_tokens).toBeGreaterThan(0);
+      expect(longRow?.estimated_input_tokens).toBeGreaterThan(0);
+      expect(longRow!.estimated_input_tokens!).toBeGreaterThan(
+        shortRow!.estimated_input_tokens!,
+      );
+    });
+  });
+
   describe('routing decision resolves to a fleet model', () => {
     it('dispatches a sample request and selects a fleet member', async () => {
       const fleet = mapFleetFromRegistry(REGISTRY_MODELS);
