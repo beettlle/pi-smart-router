@@ -1,7 +1,7 @@
 # SP-090 Status
 
-**Current Step:** Step 4
-**Status:** In Progress
+**Current Step:** Step 5
+**Status:** Complete
 **Last Updated:** 2026-07-06
 **Review Level:** 1
 **Size:** M
@@ -28,17 +28,17 @@
 
 ## Step 4: Update packet template default
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] `packet-from-issue.md` default testCommand updated
 
 ## Step 5: Testing and verification
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Run `npm run verify:ci`
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes
