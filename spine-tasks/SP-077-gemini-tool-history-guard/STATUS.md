@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 3
 **Status:** In Progress
 **Last Updated:** 2026-07-05
 **Review Level:** 1
@@ -8,15 +8,15 @@
 
 ## Step 1: Tool-history detector
 
-**Status:** ⏳ In Progress
+**Status:** ✅ Complete
 
 - [x] hasToolCallHistory helper + tests
 
 ## Step 2: Fleet filter
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-- [ ] Exclude Google/Gemini when tool history present
+- [x] Exclude Google/Gemini when tool history present
 
 ## Step 3: Telemetry and docs
 

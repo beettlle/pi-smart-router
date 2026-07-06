@@ -50,6 +50,10 @@ export interface GatewayDispatchOptions extends PipelineOptions {
   readonly rateLimiter?: RateLimitPort;
 }
 
+export interface GatewayDispatchRequestOptions {
+  readonly effectiveFleet?: readonly ModelProfile[];
+}
+
 // ─── Weighted model selection (T056) ─────────────────────────────────────────
 
 /**
@@ -107,9 +111,13 @@ export class GatewayDispatch {
    *
    * Never throws.
    */
-  async dispatch(request: RoutingRequest): Promise<RoutingDecision> {
-    const decision = await this.pipeline.route(request);
-    const finalDecision = this.applyCircuitBreaker(decision);
+  async dispatch(
+    request: RoutingRequest,
+    options?: GatewayDispatchRequestOptions,
+  ): Promise<RoutingDecision> {
+    const effectiveFleet = options?.effectiveFleet ?? this.fleet;
+    const decision = await this.pipeline.route(request, effectiveFleet);
+    const finalDecision = this.applyCircuitBreaker(decision, effectiveFleet);
     this.updateCacheMarker(request.session_id, finalDecision);
     return finalDecision;
   }
@@ -176,10 +184,12 @@ export class GatewayDispatch {
   selectFailover(
     decision: RoutingDecision,
     excludeModelIds: readonly string[] = [],
+    fleetOverride?: readonly ModelProfile[],
   ): RoutingDecision | undefined {
     const excluded = new Set(excludeModelIds);
+    const fleet = fleetOverride ?? this.fleet;
 
-    const sameTier = this.fleet.filter(
+    const sameTier = fleet.filter(
       (m) =>
         m.tier === decision.tier &&
         m.id !== decision.selected_model_id &&
@@ -197,7 +207,7 @@ export class GatewayDispatch {
       };
     }
 
-    const anyHealthy = this.fleet.filter(
+    const anyHealthy = fleet.filter(
       (m) =>
         m.id !== decision.selected_model_id &&
         !excluded.has(m.id) &&
@@ -223,12 +233,15 @@ export class GatewayDispatch {
    * an alternative model on the same tier (T056 weighted distribution).
    * Falls back to any healthy model on any tier if no same-tier alternative exists.
    */
-  private applyCircuitBreaker(decision: RoutingDecision): RoutingDecision {
+  private applyCircuitBreaker(
+    decision: RoutingDecision,
+    fleet: readonly ModelProfile[] = this.fleet,
+  ): RoutingDecision {
     if (this.circuitBreaker.canDispatch(decision.selected_model_id)) {
       return decision;
     }
 
-    return this.selectFailover(decision) ?? decision;
+    return this.selectFailover(decision, [], fleet) ?? decision;
   }
 
   /**

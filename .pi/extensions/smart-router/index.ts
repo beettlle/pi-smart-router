@@ -90,6 +90,13 @@ export {
   formatGeminiThoughtSignatureErrorMessage,
   isGeminiThoughtSignatureAssistantError,
 } from '../../../src/infrastructure/delegation/provider-error.js';
+export {
+  GEMINI_TOOL_HISTORY_EXCLUDED,
+  hasToolCallHistory,
+  hasToolCallHistoryFromContext,
+  isGoogleGeminiProfile,
+  resolveEffectiveFleet,
+} from '../../../src/domain/routing/tool-history-guard.js';
 
 export default async function smartRouterExtension(pi: ExtensionAPI): Promise<void> {
   const cwd = process.cwd();
