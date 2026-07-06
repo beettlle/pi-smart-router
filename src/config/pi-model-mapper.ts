@@ -98,6 +98,42 @@ const UNKNOWN_DEFAULTS: ModelFamilyDefaults = {
   },
 };
 
+/**
+ * Cursor opaque-auto models (`cursor/auto`, etc.) — SP-086 / #40.
+ * Frontier tier: Cursor picks the underlying model; HyDRA needs high capability
+ * scores so these are not dominated by mapped economical Gemini/OpenAI models.
+ * Registry cost is often zero (subscription billing).
+ */
+const CURSOR_AUTO_DEFAULTS: ModelFamilyDefaults = {
+  tier: 'frontier-cloud',
+  capabilities: { reasoning: 0.9, code_gen: 0.9, tool_use: 0.95 },
+  performance: {
+    latency_p50_ms: 350,
+    verbosity_factor: 1.0,
+    cache_friendly: false,
+  },
+  pricing: {
+    fallback_cost_per_1m: 0.0,
+  },
+};
+
+/**
+ * Cursor Composer coding models (`composer-latest`, `composer-*`) — SP-086 / #40.
+ * Frontier tier with strong code_gen; zero registry cost treated as subscription.
+ */
+const COMPOSER_DEFAULTS: ModelFamilyDefaults = {
+  tier: 'frontier-cloud',
+  capabilities: { reasoning: 0.85, code_gen: 0.95, tool_use: 0.9 },
+  performance: {
+    latency_p50_ms: 400,
+    verbosity_factor: 1.05,
+    cache_friendly: false,
+  },
+  pricing: {
+    fallback_cost_per_1m: 0.0,
+  },
+};
+
 /** Ordered rules — first match wins. */
 const MODEL_PATTERN_RULES: readonly ModelPatternRule[] = [
   { pattern: /claude[-_.]?opus|claude[-_.]?sonnet|opus|sonnet/i, defaults: FRONTIER_DEFAULTS },
@@ -108,6 +144,8 @@ const MODEL_PATTERN_RULES: readonly ModelPatternRule[] = [
   { pattern: /gemini[-_.]?3.*pro/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /gemini.*pro/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /gemini.*flash|gemini-flash/i, defaults: ECONOMICAL_DEFAULTS },
+  { pattern: /^composer[-_]/i, defaults: COMPOSER_DEFAULTS },
+  { pattern: /^cursor\//i, defaults: CURSOR_AUTO_DEFAULTS },
 ];
 
 function normalizeProvider(provider: string): string {

@@ -34,8 +34,10 @@ import {
   resolveDelegationOptions,
 } from '../../.pi/extensions/smart-router/stream-delegation.js';
 import { routeAndDelegate } from '../../.pi/extensions/smart-router/route-and-delegate.js';
+import { resolveRegistryModel } from '../../.pi/extensions/smart-router/delegation-runtime.js';
 import type { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import { createRouterFromFleet } from '../../src/index.js';
+import { mapFleetFromRegistry, mapPiModelToProfile } from '../../src/config/pi-model-mapper.js';
 import { LifecycleHookState } from '../../src/index.js';
 import { ExecutionLedger } from '../../src/domain/delegation/execution-ledger.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
@@ -1381,6 +1383,132 @@ describe('gemini empty-fleet fail-safe (SP-084)', () => {
     );
 
     expect(decisions[0]?.selected_model_id).not.toBe('unknown');
+    expect(decisions[0]?.selected_model_id).toBe('cursor/auto');
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]?.id).toBe('cursor/auto');
+  });
+});
+
+describe('cursor model delegation (SP-086)', () => {
+  beforeEach(() => {
+    mockDelegateStreamSimple.mockClear();
+  });
+
+  it('resolveRegistryModel finds cursor/auto from mapped profile', () => {
+    const profile = mapPiModelToProfile({ provider: 'cursor', id: 'cursor/auto' });
+    const cursorModel = makeRegistryModel({
+      provider: 'cursor',
+      id: 'cursor/auto',
+      api: 'openai-responses',
+    });
+
+    expect(resolveRegistryModel(createMockRegistry([cursorModel]), profile)).toEqual(cursorModel);
+  });
+
+  it('resolveRegistryModel finds composer-latest from mapped profile', () => {
+    const profile = mapPiModelToProfile({ provider: 'cursor', id: 'composer-latest' });
+    const composerModel = makeRegistryModel({
+      provider: 'cursor',
+      id: 'composer-latest',
+      api: 'openai-responses',
+    });
+
+    expect(resolveRegistryModel(createMockRegistry([composerModel]), profile)).toEqual(
+      composerModel,
+    );
+  });
+
+  it('delegates stream to composer-latest when router selects it', async () => {
+    const cursorFleet = mapFleetFromRegistry([
+      { provider: 'cursor', id: 'composer-latest' },
+      { provider: 'google', id: 'gemini-2.5-flash' },
+    ]);
+    const composerModel = makeRegistryModel({
+      provider: 'cursor',
+      id: 'composer-latest',
+      api: 'openai-responses',
+    });
+    const router = createRouterFromFleet(cursorFleet);
+    vi.spyOn(router.dispatch, 'dispatch').mockResolvedValue(
+      makeDecision({
+        selected_model_id: 'composer-latest',
+        tier: 'frontier-cloud',
+        stage: 'hydra_match',
+        reason_code: 'hydra_embedding_match',
+      }),
+    );
+    mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(composerModel));
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router,
+        fleet: cursorFleet,
+        modelRegistry: createMockRegistry([
+          composerModel,
+          makeRegistryModel({
+            provider: 'google',
+            id: 'gemini-2.5-flash',
+            api: 'google-generative-ai',
+          }),
+        ]),
+      }),
+    );
+
+    await collectEvents(
+      streamSimple(
+        makeAutoModel(),
+        makeContext([userMessage('implement feature')]),
+        { sessionId: 'composer-delegation' },
+      ),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]?.id).toBe('composer-latest');
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]?.provider).toBe('cursor');
+  });
+
+  it('delegates stream using mapped cursor/auto fleet from registry', async () => {
+    const cursorFleet = mapFleetFromRegistry([
+      { provider: 'google', id: 'gemini-2.5-flash' },
+      { provider: 'cursor', id: 'cursor/auto' },
+    ]);
+    expect(cursorFleet.find((profile) => profile.id === 'cursor/auto')?.tier).toBe(
+      'frontier-cloud',
+    );
+
+    const cursorModel = makeRegistryModel({
+      provider: 'cursor',
+      id: 'cursor/auto',
+      api: 'openai-responses',
+    });
+    const router = createRouterFromFleet(cursorFleet);
+    const decisions: RoutingDecision[] = [];
+    mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(cursorModel));
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router,
+        fleet: cursorFleet,
+        modelRegistry: createMockRegistry([
+          cursorModel,
+          makeRegistryModel({
+            provider: 'google',
+            id: 'gemini-2.5-flash',
+            api: 'google-generative-ai',
+          }),
+        ]),
+        onRoutingDecision: (decision) => decisions.push(decision),
+      }),
+    );
+
+    await collectEvents(
+      streamSimple(
+        makeAutoModel(),
+        makeContext([userMessage('search'), toolResultMessage('ok')]),
+        { sessionId: 'mapped-cursor-auto' },
+      ),
+    );
+
     expect(decisions[0]?.selected_model_id).toBe('cursor/auto');
     expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
     expect(mockDelegateStreamSimple.mock.calls[0]?.[0]?.id).toBe('cursor/auto');
