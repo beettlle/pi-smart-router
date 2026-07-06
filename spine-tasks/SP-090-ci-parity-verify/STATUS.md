@@ -1,6 +1,6 @@
 # SP-090 Status
 
-**Current Step:** Step 2
+**Current Step:** Step 3
 **Status:** In Progress
 **Last Updated:** 2026-07-06
 **Review Level:** 1
@@ -16,15 +16,15 @@
 
 ## Step 2: Update router-backlog-orchestrator skill
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Phase 6 and Phase 8 require full verify
 
 ## Step 3: Update spine-autonomous-operator skill
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Post-integrate verification aligned
+- [x] Post-integrate verification aligned
 
 ## Step 4: Update packet template default
 
