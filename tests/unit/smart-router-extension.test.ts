@@ -152,6 +152,7 @@ function makeStreamDeps(
     modelRegistry: ModelRegistry;
     fleet: ModelProfile[];
     executionLedger: ExecutionLedger;
+    ensureFleetFresh: () => Promise<void>;
     onRoutingDecision: (decision: RoutingDecision) => void;
     onDelegatedModel: (model: { provider: string; id: string }) => void;
   }> = {},
@@ -1512,5 +1513,41 @@ describe('cursor model delegation (SP-086)', () => {
     expect(decisions[0]?.selected_model_id).toBe('cursor/auto');
     expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
     expect(mockDelegateStreamSimple.mock.calls[0]?.[0]?.id).toBe('cursor/auto');
+  });
+});
+
+describe('ensureFleetFresh before routed turn (SP-087)', () => {
+  beforeEach(() => {
+    mockDelegateStreamSimple.mockClear();
+  });
+
+  it('refreshes fleet when ensureFleetFresh hook is wired', async () => {
+    const registryModels = [
+      makeRegistryModel({ provider: 'openai', id: 'gpt-4o-mini', api: 'openai-responses' }),
+    ];
+    const fleetProfiles = fleet.filter((profile) => profile.id === 'gpt-4o-mini');
+    const router = createMockRouter(vi.fn(async () => makeDecision()));
+    const targetModel = registryModels[0]!;
+    mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(targetModel));
+
+    let ensureCalls = 0;
+    const deps = makeStreamDeps({
+      router,
+      fleet: fleetProfiles,
+      modelRegistry: createMockRegistry(registryModels),
+      ensureFleetFresh: async () => {
+        ensureCalls += 1;
+      },
+    });
+
+    await routeAndDelegate(
+      makeContext([userMessage('hello')]),
+      { sessionId: 'ensure-fresh' },
+      deps,
+      createAssistantMessageEventStream(),
+    );
+
+    expect(ensureCalls).toBe(1);
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
   });
 });

@@ -48,8 +48,10 @@ export type DelegateStreamFn = (
 
 export interface StreamDelegationDeps {
   router: RouterHandle;
-  readonly modelRegistry: ModelRegistry;
+  modelRegistry: ModelRegistry;
   fleet: ModelProfile[];
+  /** Cheap scope fingerprint check before each routed turn. */
+  ensureFleetFresh?: () => Promise<void>;
   readonly executionLedger: ExecutionLedger;
   /** Injectable for tests; production uses pi-ai streamSimple. */
   delegateStream?: DelegateStreamFn;
@@ -67,7 +69,11 @@ export interface SmartRouterRuntime {
   fleetMode: FleetMode;
   lastDecision: RoutingDecision | undefined;
   priceCatalog: PriceCatalog | null;
-  readonly modelRegistry: ModelRegistry;
+  /** Cached scope fingerprint; rebuild when this changes. */
+  fleetScopeFingerprint?: string;
+  /** Session cwd for ensureFleetFresh before routed turns. */
+  sessionCwd?: string;
+  modelRegistry: ModelRegistry;
   readonly store: StorePort;
   readonly sessionPinner: SessionPinner;
   readonly executionLedger: ExecutionLedger;

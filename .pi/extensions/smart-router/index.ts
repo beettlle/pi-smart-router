@@ -27,6 +27,11 @@ import {
   discoverFleet,
   formatLmuStatus,
   initHydraMatcher,
+  bindSharedModelRegistry,
+  computeCurrentFleetScopeFingerprint,
+  computeFleetScopeFingerprint,
+  ensureFleetFresh,
+  rebuildFleet,
 } from './fleet-bootstrap.js';
 import {
   formatHistoryMessage,
@@ -61,6 +66,11 @@ export {
   createStreamSimple,
   deriveTurnType,
   discoverFleet,
+  bindSharedModelRegistry,
+  computeCurrentFleetScopeFingerprint,
+  computeFleetScopeFingerprint,
+  ensureFleetFresh,
+  rebuildFleet,
   exportDatasetToFile,
   extractPromptText,
   formatDatasetExportJsonl,

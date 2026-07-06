@@ -1,7 +1,12 @@
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 
 import { SessionPinner } from '../../../src/domain/pinning/session-pinner.js';
-import { formatLmuStatus, rebuildFleet } from './fleet-bootstrap.js';
+import {
+  bindSharedModelRegistry,
+  ensureFleetFresh,
+  formatLmuStatus,
+  rebuildFleet,
+} from './fleet-bootstrap.js';
 import { notifyPricingStalenessIfNeeded } from './pricing-lifecycle.js';
 import type { FleetMode, SmartRouterRuntime } from './types.js';
 
@@ -37,11 +42,21 @@ export function setupSessionHooks(
   datasetNotify: { fn: ((message: string) => void) | undefined },
 ): void {
   pi.on('session_start', async (_event, ctx) => {
+    bindSharedModelRegistry(runtime, ctx.modelRegistry);
+    runtime.sessionCwd = ctx.cwd;
+    runtime.streamDeps.ensureFleetFresh = async () => {
+      if (runtime.sessionCwd === undefined) {
+        return;
+      }
+      await ensureFleetFresh(runtime, pi, runtime.sessionCwd);
+    };
+
     const restoredMode = restoreFleetModeFromSession(ctx);
-    if (restoredMode && restoredMode !== runtime.fleetMode) {
+    if (restoredMode) {
       runtime.fleetMode = restoredMode;
-      await rebuildFleet(runtime, pi, ctx.cwd);
     }
+    await rebuildFleet(runtime, pi, ctx.cwd);
+
     notifyPricingStalenessIfNeeded(runtime, (message, level) => {
       ctx.ui.notify(message, level);
     });
@@ -72,6 +87,8 @@ export function setupSessionHooks(
     delete runtime.setLmuStatus;
     delete runtime.clearLmuStatus;
     delete runtime.notifyDatasetEnabled;
+    delete runtime.sessionCwd;
+    delete runtime.streamDeps.ensureFleetFresh;
     datasetNotify.fn = undefined;
     ctx.ui.setStatus('smart-router-lmu', undefined);
   });

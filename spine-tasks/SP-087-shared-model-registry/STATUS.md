@@ -1,26 +1,26 @@
 # SP-087 Status
 
-**Current Step:** Step 1
-**Status:** Ready
+**Current Step:** Complete
+**Status:** Complete
 
 ## Step 1: Shared registry + resolveModelScope
-- [ ] Bind ctx.modelRegistry at session_start
-- [ ] Replace filterScopedModels with resolveModelScope
-- [ ] Defer initial rebuild until session_start
-**Status:** not_started
+- [x] Bind ctx.modelRegistry at session_start
+- [x] Replace filterScopedModels with resolveModelScope
+- [x] Defer initial rebuild until session_start
+**Status:** complete
 
 ## Step 2: Fleet cache + invalidation
-- [ ] Cache fleet snapshot with scope fingerprint
-- [ ] Invalidation triggers (session_start, mode, pricing, fingerprint)
-- [ ] Cheap fingerprint check before route
-**Status:** not_started
+- [x] Cache fleet snapshot with scope fingerprint
+- [x] Invalidation triggers (session_start, mode, pricing, fingerprint)
+- [x] Cheap fingerprint check before route
+**Status:** complete
 
 ## Step 3: Observability + tests
-- [ ] Status lists fleet members
-- [ ] Unit tests for shared registry and cache
-- [ ] Run npm run typecheck && npm test
-**Status:** not_started
+- [x] Status lists fleet members
+- [x] Unit tests for shared registry and cache
+- [x] Run npm run typecheck && npm test
+**Status:** complete
 
 ## Completion Criteria
-- [ ] All acceptance criteria from PROMPT met
-- [ ] Tests pass
+- [x] All acceptance criteria from PROMPT met
+- [x] Tests pass
