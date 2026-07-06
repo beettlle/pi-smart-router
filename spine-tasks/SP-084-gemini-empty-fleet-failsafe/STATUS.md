@@ -1,7 +1,7 @@
 # SP-084 Status
 
-**Current Step:** Step 3
-**Status:** in progress
+**Current Step:** Complete
+**Status:** complete
 
 ## Step 1: Empty-fleet detection and fail-safe
 - [x] Add helper or metadata when effectiveFleet is empty after filter
