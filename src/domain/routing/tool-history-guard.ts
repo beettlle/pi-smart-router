@@ -11,6 +11,7 @@ import type { Message as PiMessage } from '@earendil-works/pi-ai/compat';
 import type { Message as RoutingMessage, ModelProfile, RoutingRequest } from '../types/index.js';
 
 export const GEMINI_TOOL_HISTORY_EXCLUDED = 'gemini_tool_history_excluded' as const;
+export const GEMINI_TOOL_HISTORY_EMPTY_FLEET = 'gemini_tool_history_empty_fleet' as const;
 
 const GOOGLE_GEMINI_PROVIDER_ALIASES = new Set([
   'google',
@@ -23,6 +24,29 @@ export interface GeminiToolHistoryGuardResult {
   readonly effectiveFleet: readonly ModelProfile[];
   readonly excluded: boolean;
   readonly reasonCode?: typeof GEMINI_TOOL_HISTORY_EXCLUDED;
+  /** True when Gemini exclusion removed every fleet entry (SP-084). */
+  readonly fleetEmptyAfterFilter?: boolean;
+}
+
+export class GeminiToolHistoryEmptyFleetError extends Error {
+  readonly reasonCode = GEMINI_TOOL_HISTORY_EMPTY_FLEET;
+
+  constructor() {
+    super(
+      'Gemini tool-history guard removed all models from the scoped fleet. ' +
+        'Add a non-Google model (e.g. openai/gpt-4o-mini or cursor/auto), start a fresh session with /new, ' +
+        'or pin a model with /model until pi preserves thought signatures upstream (earendil-works/pi#6342).',
+    );
+    this.name = 'GeminiToolHistoryEmptyFleetError';
+  }
+}
+
+export function assertRoutableFleetAfterGeminiToolHistoryGuard(
+  result: GeminiToolHistoryGuardResult,
+): void {
+  if (result.fleetEmptyAfterFilter) {
+    throw new GeminiToolHistoryEmptyFleetError();
+  }
 }
 
 export function isGoogleGeminiProfile(profile: ModelProfile): boolean {
@@ -116,6 +140,15 @@ export function resolveEffectiveFleet(
   const filtered = fleet.filter((profile) => !isGoogleGeminiProfile(profile));
   if (filtered.length === fleet.length) {
     return { effectiveFleet: fleet, excluded: false };
+  }
+
+  if (filtered.length === 0) {
+    return {
+      effectiveFleet: filtered,
+      excluded: true,
+      reasonCode: GEMINI_TOOL_HISTORY_EXCLUDED,
+      fleetEmptyAfterFilter: true,
+    };
   }
 
   return {

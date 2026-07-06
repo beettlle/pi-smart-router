@@ -327,12 +327,14 @@ This typically happens when a session with prior tool calls is routed to Gemini 
 
 **Automatic guard (SP-077):** sessions with prior tool-call history exclude Google/Gemini models from routing (telemetry `reason_code: gemini_tool_history_excluded`) unless the operator sets `force_model_id` via `/model`. Non-tool sessions are unchanged.
 
+**Empty fleet fail-safe (SP-084):** when the guard filters every model in the scoped fleet (e.g. Google/Gemini-only dogfood configs), the router throws an actionable error instead of delegating with `selected_model_id: unknown`. Add a non-Google model such as `openai/gpt-4o-mini` or `cursor/auto` to the fleet, start `/new`, or pin `/model` to force a specific model.
+
 **Workarounds:**
 
 1. Start a fresh session with `/new` in pi.
 2. Switch to a non-Google model (e.g. `/model openai/gpt-4o-mini`) for tool-heavy sessions until the upstream fix lands.
 
-Related: [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37), [pi-smart-router#38](https://github.com/beettlle/pi-smart-router/issues/38), [pi#6342](https://github.com/earendil-works/pi/issues/6342).
+Related: [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37), [pi-smart-router#38](https://github.com/beettlle/pi-smart-router/issues/38), [pi-smart-router#40](https://github.com/beettlle/pi-smart-router/issues/40), [pi-smart-router#41](https://github.com/beettlle/pi-smart-router/issues/41), [pi#6342](https://github.com/earendil-works/pi/issues/6342).
 
 ### Explain endpoint
 
