@@ -1,7 +1,7 @@
 # SP-085 Status
 
-**Current Step:** Step 3
-**Status:** in progress
+**Current Step:** Complete
+**Status:** complete
 
 ## Step 1: Mapper tier fix
 - [x] Add Gemini 3.x Pro patterns to FRONTIER_DEFAULTS
@@ -17,6 +17,7 @@
 ## Step 3: Cost telemetry and verification
 - [x] Populate estimated_cost_usd on stage decisions
 - [x] Run npm run typecheck && npm test
+**Status:** complete
 
 ## Completion Criteria
 - [x] All acceptance criteria from PROMPT met
