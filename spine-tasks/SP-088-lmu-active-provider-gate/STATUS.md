@@ -1,7 +1,7 @@
 # SP-088 Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Complete
+**Status:** Done
 **Last Updated:** 2026-07-06
 **Review Level:** 1
 **Size:** S
@@ -10,26 +10,26 @@
 
 ## Step 1: Active-provider gate helper
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Add `isSmartRouterActive(model)`
-- [ ] Wrap `setLmuStatus` to no-op when not smart-router/auto
+- [x] Add `isSmartRouterActive(model)`
+- [x] Wrap `setLmuStatus` to no-op when not smart-router/auto
 
 ## Step 2: model_select + session_start hooks
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Register `model_select` clear/restore behavior
-- [ ] Gate `session_start` LMU restore on active provider
+- [x] Register `model_select` clear/restore behavior
+- [x] Gate `session_start` LMU restore on active provider
 
 ## Step 3: Tests
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Unit tests for LMU gating
-- [ ] Run `npm run typecheck && npm test`
+- [x] Unit tests for LMU gating
+- [x] Run `npm run typecheck && npm test`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] Tests pass
+- [x] All acceptance criteria from PROMPT met
+- [x] Tests pass
