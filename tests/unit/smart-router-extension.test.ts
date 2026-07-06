@@ -1167,12 +1167,12 @@ describe('smart-router unpin command (SP-076)', () => {
   it('does not clear pins for other sessions', async () => {
     const { handler, sessionPinner, notify, ctx, sessionId } = createCommandHarness('sess-current');
 
-    sessionPinner.recordPin('sess-current', 'gpt-4o-mini', 'initial');
+    sessionPinner.recordPin(sessionId, 'gpt-4o-mini', 'initial');
     sessionPinner.recordPin('sess-other', 'claude-opus', 'initial');
 
     await handler('unpin', ctx);
 
-    expect(sessionPinner.getPin('sess-current')).toBeNull();
+    expect(sessionPinner.getPin(sessionId)).toBeNull();
     expect(sessionPinner.getPin('sess-other')).not.toBeNull();
     expect(notify).toHaveBeenCalledWith(
       expect.stringContaining('Cleared session pin'),

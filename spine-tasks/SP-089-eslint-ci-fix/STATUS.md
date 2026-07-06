@@ -1,7 +1,7 @@
 # SP-089 Status
 
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-06
 **Review Level:** 1
 **Size:** S
@@ -10,9 +10,9 @@
 
 ## Step 1: Fix unused variable
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Use `sessionId` consistently in unpin cross-session test
+- [x] Use `sessionId` consistently in unpin cross-session test
 
 ## Step 2: Testing and verification
 
