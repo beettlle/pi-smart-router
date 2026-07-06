@@ -1,0 +1,1 @@
+SP-080 complete — Gemini models deprioritized in router-pipeline when tool-call history exists; unit tests added; typecheck and 850 tests pass.
