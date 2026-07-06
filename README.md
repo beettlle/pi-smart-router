@@ -125,6 +125,31 @@ If you use **scoped models** (`/scoped-models` or `enabledModels` in settings), 
 
 This registers `smart-router` as a custom provider with a single `auto` model. Every inference request runs through the routing pipeline and delegates to the selected underlying provider's streaming API.
 
+#### `cursor/auto` vs `smart-router/auto`
+
+pi exposes two different **auto** models. They are easy to confuse but play different roles:
+
+| Model | Provider | Role |
+|-------|----------|------|
+| `smart-router/auto` | `smart-router` (this extension) | Runs the routing pipeline on every turn and **delegates** to whichever underlying model HyDRA selects |
+| `cursor/auto` | `cursor` (pi registry) | Cursor's opaque auto model — **direct** inference target when selected; Cursor picks the backend model |
+
+**Recommended dogfood setup:** use `/model smart-router/auto` so routing, pinning, and telemetry stay active. Enable `cursor/auto` (and other Cursor models such as `composer-latest`) in your scoped fleet so the router can select them when appropriate — for example on planning turns or when the [Gemini tool-history guard](#gemini-thought_signature-400-errors) excludes Google models.
+
+**When to pin `/model cursor/auto` directly (bypass the router):**
+
+- You want Cursor's opaque auto selection on every turn with no routing overhead
+- You are debugging Cursor SDK auth or delegation outside the router
+- You need a stable, non-routed session for comparison with routed behavior
+
+**When to use `smart-router/auto`:**
+
+- You want cost/capability-aware model selection across your full authenticated fleet
+- You rely on session pinning, failover, or `/smart-router status` / `history` telemetry
+- Tool-heavy sessions should fall back to `cursor/auto` or other non-Gemini models automatically (see [pi-smart-router#38](https://github.com/beettlle/pi-smart-router/issues/38))
+
+Cursor models (`cursor/*`, `composer-*`) map to **frontier-cloud** tier in `pi-model-mapper.ts` so HyDRA can score them against Gemini and Claude instead of treating them as unknown economical models ([pi-smart-router#40](https://github.com/beettlle/pi-smart-router/issues/40)). Related: [pi-smart-router#23](https://github.com/beettlle/pi-smart-router/issues/23) (turn envelope / pin order), [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37) (Gemini `thought_signature` errors).
+
 ### 4. Operator commands (optional)
 
 | Command | Purpose |
@@ -157,7 +182,7 @@ When you use `smart-router/auto`, the extension does **not** read `config/models
 4. **Route** — `createRouterFromFleet()` runs the 7-stage pipeline on each request.
 5. **Delegate** — The extension resolves the chosen model in the registry and forwards the stream via pi-ai's built-in provider APIs.
 
-Unknown models receive conservative economical-cloud defaults. Local providers (`lmstudio`, `ollama`) map to `zero-tier`.
+Unknown models receive conservative economical-cloud defaults. Local providers (`lmstudio`, `ollama`) map to `zero-tier`. Cursor provider models (`cursor/*`, `composer-*`) map to `frontier-cloud` with explicit capability defaults (SP-086).
 
 To refresh after auth or settings changes, restart pi or `/reload` extensions.
 

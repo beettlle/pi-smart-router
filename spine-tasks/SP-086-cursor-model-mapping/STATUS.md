@@ -1,7 +1,7 @@
 # SP-086 Status
 
 **Current Step:** Step 3
-**Status:** in progress
+**Status:** complete
 
 ## Step 1: Cursor mapper rules
 - [x] Add cursor/* and composer-* pattern rules
@@ -15,9 +15,9 @@
 **Status:** complete
 
 ## Step 3: Operator docs
-- [ ] README cursor/auto vs smart-router/auto section
-- [ ] Run npm run typecheck && npm test
+- [x] README cursor/auto vs smart-router/auto section
+- [x] Run npm run typecheck && npm test
 
 ## Completion Criteria
-- [ ] All acceptance criteria from PROMPT met
-- [ ] Tests pass
+- [x] All acceptance criteria from PROMPT met
+- [x] Tests pass

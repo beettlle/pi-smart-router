@@ -1433,7 +1433,7 @@ describe('cursor model delegation (SP-086)', () => {
       makeDecision({
         selected_model_id: 'composer-latest',
         tier: 'frontier-cloud',
-        stage: 'hydra',
+        stage: 'hydra_match',
         reason_code: 'hydra_embedding_match',
       }),
     );
