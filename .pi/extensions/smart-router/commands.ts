@@ -6,7 +6,7 @@ import {
   parseSmartRouterArgs,
 } from './command-formatters.js';
 import { exportDatasetToFile } from './dataset-export.js';
-import { rebuildFleet } from './fleet-bootstrap.js';
+import { bindSharedModelRegistry, rebuildFleet } from './fleet-bootstrap.js';
 import { refreshPricingCatalog } from './pricing-lifecycle.js';
 import { FLEET_MODE_ENTRY_TYPE } from './session-lifecycle.js';
 import type { SmartRouterRuntime } from './types.js';
@@ -111,6 +111,7 @@ export function registerSmartRouterCommand(
     getArgumentCompletions: getSmartRouterArgumentCompletions,
     handler: async (args, ctx) => {
       try {
+        bindSharedModelRegistry(runtime, ctx.modelRegistry);
         const parsed = parseSmartRouterArgs(args);
 
         if (parsed.command === 'status') {

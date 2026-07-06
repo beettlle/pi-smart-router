@@ -84,6 +84,9 @@ export async function routeAndDelegate(
   outer: AssistantMessageEventStream,
 ): Promise<void> {
   const sessionId = options?.sessionId;
+  if (deps.ensureFleetFresh) {
+    await deps.ensureFleetFresh();
+  }
   let decision: RoutingDecision;
   let request: RoutingRequest;
   let effectiveFleet: readonly ModelProfile[] = deps.fleet;

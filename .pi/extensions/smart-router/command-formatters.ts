@@ -105,6 +105,18 @@ export function formatStatusMessage(
     `Fleet size: ${runtime.streamDeps.fleet.length}`,
   ];
 
+  const fleetMembers = runtime.streamDeps.fleet
+    .map((profile) => `${profile.provider}/${profile.id}`)
+    .sort();
+  if (fleetMembers.length > 0) {
+    lines.push('Fleet members:');
+    for (const member of fleetMembers) {
+      lines.push(`  - ${member}`);
+    }
+  } else {
+    lines.push('Fleet members: (none)');
+  }
+
   const stalenessLine = formatPricingStalenessLine(runtime.priceCatalog);
   if (stalenessLine) {
     lines.push(`Pricing: ${stalenessLine}`);

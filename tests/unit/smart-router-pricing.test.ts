@@ -4,7 +4,10 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import {
+  bindSharedModelRegistry,
+  computeCurrentFleetScopeFingerprint,
   discoverFleet,
+  ensureFleetFresh,
   exportDatasetToFile,
   formatDatasetExportJsonl,
   formatHistoryMessage,
@@ -13,6 +16,7 @@ import {
   getRouterStateDbPath,
   getSmartRouterArgumentCompletions,
   parseSmartRouterArgs,
+  rebuildFleet,
   refreshPricingCatalog,
   toDatasetExportRecord,
 } from '../../.pi/extensions/smart-router/index.js';
@@ -21,6 +25,11 @@ import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.j
 import type { ModelProfile, PriceCatalog, RoutingDatasetRecord } from '../../src/domain/types/index.js';
 import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
 import type { Api, Model } from '@earendil-works/pi-ai/compat';
+import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
+import { ExecutionLedger } from '../../src/domain/delegation/execution-ledger.js';
+import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
+import { LifecycleHookState, createRouterFromFleet } from '../../src/index.js';
+import type { SmartRouterRuntime } from '../../.pi/extensions/smart-router/types.js';
 
 function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): RoutingDatasetRecord {
   return {
@@ -63,7 +72,11 @@ function makeProfile(id: string): ModelProfile {
   };
 }
 
-function makeRegistryModel(id: string, cost?: Model<Api>['cost']): Model<Api> {
+function makeRegistryModel(
+  id: string,
+  cost?: Model<Api>['cost'],
+  provider = 'openai',
+): Model<Api> {
   return {
     name: id,
     api: 'openai-responses',
@@ -73,7 +86,7 @@ function makeRegistryModel(id: string, cost?: Model<Api>['cost']): Model<Api> {
     cost: cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: 128_000,
     maxTokens: 4096,
-    provider: 'openai',
+    provider,
     id,
   };
 }
@@ -435,5 +448,171 @@ describe('getRouterStateDbPath (SP-045)', () => {
     expect(getRouterStateDbPath('/workspace/project')).toBe(
       '/workspace/project/.pi-smart-router/state.db',
     );
+  });
+});
+
+function makePackageRegistryModel(
+  provider: string,
+  id: string,
+): Model<Api> {
+  return makeRegistryModel(id, undefined, provider);
+}
+
+function createMutableMockRegistry(models: Model<Api>[]): ModelRegistry & {
+  setModels: (next: Model<Api>[]) => void;
+} {
+  let current = models;
+  return {
+    find(provider: string, modelId: string) {
+      return current.find((model) => model.provider === provider && model.id === modelId);
+    },
+    getAvailable() {
+      return current;
+    },
+    setModels(next: Model<Api>[]) {
+      current = next;
+    },
+  } as ModelRegistry & { setModels: (next: Model<Api>[]) => void };
+}
+
+function createTestRuntime(
+  registry: ModelRegistry,
+  overrides: Partial<SmartRouterRuntime> = {},
+): SmartRouterRuntime {
+  const store = new MemoryStore([]);
+  const sessionPinner = new SessionPinner({ store });
+  const lifecycleHookState = new LifecycleHookState();
+  const executionLedger = new ExecutionLedger();
+  const router = createRouterFromFleet([], { sessionPinner });
+
+  return {
+    fleetMode: 'scoped',
+    lastDecision: undefined,
+    priceCatalog: null,
+    modelRegistry: registry,
+    store,
+    sessionPinner,
+    executionLedger,
+    lifecycleHookState,
+    hydraMatcher: undefined,
+    sessionRouting: new Map(),
+    streamDeps: {
+      router,
+      modelRegistry: registry,
+      fleet: [],
+      executionLedger,
+      lifecycleHookState,
+    },
+    ...overrides,
+  };
+}
+
+function createMockPi(): ExtensionAPI {
+  return { on: vi.fn() } as unknown as ExtensionAPI;
+}
+
+describe('discoverFleet shared registry parity (SP-087)', () => {
+  it('includes package-registered cursor and lmstudio models when scoped', async () => {
+    const store = new MemoryStore([]);
+    const registry = createMockRegistry([
+      makePackageRegistryModel('openai', 'gpt-4o-mini'),
+      makePackageRegistryModel('cursor', 'auto'),
+      makePackageRegistryModel('lmstudio', 'local-model'),
+    ]);
+
+    const { fleet } = await discoverFleet(registry, 'scoped', '/tmp', store, {
+      settingsFactory: () => ({
+        getEnabledModels: () => ['openai/*', 'cursor/*', 'lmstudio/*'],
+      }),
+    });
+
+    const members = fleet.map((profile) => `${profile.provider}/${profile.id}`).sort();
+    expect(members).toEqual(['cursor/auto', 'lmstudio/local-model', 'openai/gpt-4o-mini']);
+  });
+});
+
+describe('fleet cache fingerprint (SP-087)', () => {
+  it('skips rebuild when fingerprint is unchanged', async () => {
+    const registry = createMockRegistry([makePackageRegistryModel('openai', 'gpt-4o-mini')]);
+    const runtime = createTestRuntime(registry);
+    const pi = createMockPi();
+    const settingsFactory = () => ({
+      getEnabledModels: () => ['openai/*'],
+    });
+
+    await rebuildFleet(runtime, pi, '/tmp', { settingsFactory });
+    const fleetAfterFirst = runtime.streamDeps.fleet;
+    const fingerprintAfterFirst = runtime.fleetScopeFingerprint;
+
+    await ensureFleetFresh(runtime, pi, '/tmp', { settingsFactory });
+
+    expect(runtime.streamDeps.fleet).toBe(fleetAfterFirst);
+    expect(runtime.fleetScopeFingerprint).toBe(fingerprintAfterFirst);
+  });
+
+  it('rebuilds when enabledModels fingerprint changes mid-session', async () => {
+    const registry = createMutableMockRegistry([
+      makePackageRegistryModel('openai', 'gpt-4o-mini'),
+      makePackageRegistryModel('cursor', 'auto'),
+    ]);
+    const runtime = createTestRuntime(registry);
+    const pi = createMockPi();
+    let patterns = ['openai/*'];
+    const settingsFactory = () => ({
+      getEnabledModels: () => patterns,
+    });
+
+    await rebuildFleet(runtime, pi, '/tmp', { settingsFactory });
+    expect(runtime.streamDeps.fleet.map((p) => p.id)).toEqual(['gpt-4o-mini']);
+
+    patterns = ['openai/*', 'cursor/*'];
+    await ensureFleetFresh(runtime, pi, '/tmp', { settingsFactory });
+
+    expect(runtime.streamDeps.fleet.map((p) => `${p.provider}/${p.id}`).sort()).toEqual([
+      'cursor/auto',
+      'openai/gpt-4o-mini',
+    ]);
+  });
+
+  it('updates fingerprint when shared registry gains models', async () => {
+    const registry = createMutableMockRegistry([makePackageRegistryModel('openai', 'gpt-4o-mini')]);
+    const runtime = createTestRuntime(registry);
+    bindSharedModelRegistry(runtime, registry);
+
+    const before = await computeCurrentFleetScopeFingerprint(runtime, '/tmp', {
+      settingsFactory: () => ({ getEnabledModels: () => ['*'] }),
+    });
+
+    registry.setModels([
+      makePackageRegistryModel('openai', 'gpt-4o-mini'),
+      makePackageRegistryModel('cursor', 'auto'),
+    ]);
+
+    const after = await computeCurrentFleetScopeFingerprint(runtime, '/tmp', {
+      settingsFactory: () => ({ getEnabledModels: () => ['*'] }),
+    });
+
+    expect(after).not.toBe(before);
+  });
+});
+
+describe('formatStatusMessage fleet list (SP-087)', () => {
+  it('lists fleet members as provider/id', () => {
+    const runtime = {
+      fleetMode: 'scoped' as const,
+      priceCatalog: null,
+      streamDeps: {
+        fleet: [
+          makeProfile('gpt-4o-mini'),
+          { ...makeProfile('auto'), provider: 'cursor', id: 'auto' },
+        ],
+      },
+    };
+
+    const message = formatStatusMessage(runtime as never, undefined);
+
+    expect(message).toContain('Fleet members:');
+    expect(message).toContain('  - cursor/auto');
+    expect(message).toContain('  - openai/gpt-4o-mini');
   });
 });

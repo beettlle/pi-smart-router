@@ -14,7 +14,7 @@ import {
   createExtensionDatasetRecorder,
   createExtensionOutcomeRecorder,
 } from './dataset-export.js';
-import { createDispatchOptions, initHydraMatcher, rebuildFleet } from './fleet-bootstrap.js';
+import { createDispatchOptions, initHydraMatcher } from './fleet-bootstrap.js';
 import { setupSessionHooks } from './session-lifecycle.js';
 import { createStreamSimple } from './stream-delegation.js';
 import type { SmartRouterRuntime } from './types.js';
@@ -32,7 +32,7 @@ export async function createSmartRouterRuntime(cwd: string): Promise<{
   datasetNotify: DatasetNotify;
 }> {
   const authStorage = AuthStorage.create();
-  const modelRegistry = ModelRegistry.create(authStorage);
+  const modelRegistry = ModelRegistry.inMemory(authStorage);
   const hydraMatcher = await initHydraMatcher();
   const store = createExtensionStore(cwd);
   const sessionPinner = new SessionPinner({ store });
@@ -90,10 +90,6 @@ export async function wireSmartRouterExtension(
   runtime: SmartRouterRuntime,
   datasetNotify: DatasetNotify,
 ): Promise<void> {
-  const cwd = process.cwd();
-
-  await rebuildFleet(runtime, pi, cwd);
-
   registerSmartRouterCommand(pi, runtime);
 
   setupSessionHooks(pi, runtime, runtime.sessionPinner, datasetNotify);
