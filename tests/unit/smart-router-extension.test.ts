@@ -342,17 +342,20 @@ describe('smart-router extension helpers', () => {
 
   it('buildRoutingRequest sets estimated_input_tokens from chars/4 fallback', () => {
     const prompt = 'abcd'.repeat(10);
-    const request = buildRoutingRequest(makeContext([userMessage(prompt)]));
+    const request = buildRoutingRequest(makeContext([userMessage(prompt)]), undefined);
 
     expect(request.estimated_input_tokens).toBe(Math.ceil(prompt.length / 4));
   });
 
   it('buildRoutingRequest includes system prompt in token estimate', () => {
     const systemPrompt = 'system'.repeat(20);
-    const request = buildRoutingRequest({
-      systemPrompt,
-      messages: [userMessage('hi')],
-    });
+    const request = buildRoutingRequest(
+      {
+        systemPrompt,
+        messages: [userMessage('hi')],
+      },
+      undefined,
+    );
 
     expect(request.estimated_input_tokens).toBe(
       Math.max(1, Math.ceil((systemPrompt.length + 2) / 4)),
@@ -369,9 +372,10 @@ describe('smart-router extension helpers', () => {
   });
 
   it('buildRoutingRequest grows estimated_input_tokens as history grows', () => {
-    const first = buildRoutingRequest(makeContext([userMessage('first turn')]));
+    const first = buildRoutingRequest(makeContext([userMessage('first turn')]), undefined);
     const second = buildRoutingRequest(
       makeContext([userMessage('first turn'), toolResultMessage('ok'), userMessage('second turn')]),
+      undefined,
     );
 
     expect(first.estimated_input_tokens).toBeGreaterThan(0);
@@ -387,7 +391,7 @@ describe('smart-router extension helpers', () => {
   });
 
   it('buildRoutingRequest returns zero estimated_input_tokens for empty context', () => {
-    const request = buildRoutingRequest(makeContext());
+    const request = buildRoutingRequest(makeContext(), undefined);
 
     expect(request.estimated_input_tokens).toBe(0);
   });

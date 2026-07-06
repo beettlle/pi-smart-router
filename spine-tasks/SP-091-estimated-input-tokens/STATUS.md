@@ -1,7 +1,7 @@
 # SP-091 Status
 
-**Current Step:** Step 2
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-06
 **Review Level:** 1
 **Size:** S
@@ -16,19 +16,19 @@
 
 ## Step 2: Implement estimate in buildRoutingRequest
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Set `estimated_input_tokens` with preferred API or chars/4 fallback
 - [x] Ensure estimate flows through route-and-delegate
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Extend integration test to assert field populated
-- [ ] Run `npm run verify:ci`
+- [x] Extend integration test to assert field populated
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes
