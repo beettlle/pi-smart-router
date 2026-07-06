@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-05
 **Review Level:** 1
 **Size:** M
@@ -8,9 +8,9 @@
 
 ## Step 1: Tool-history detector
 
-**Status:** ⏳ Pending
+**Status:** ⏳ In Progress
 
-- [ ] hasToolCallHistory helper + tests
+- [x] hasToolCallHistory helper + tests
 
 ## Step 2: Fleet filter
 
