@@ -16,6 +16,10 @@ import { triage as triageClassify } from '../triage/triage-engine.js';
 import type { TriageResult } from '../triage/triage-engine.js';
 import { classifyTurnEnvelope } from '../triage/turn-envelope.js';
 import { safeCloudDefault } from './safe-default.js';
+import {
+  hasToolCallHistory,
+  isGoogleGeminiProfile,
+} from '../routing/tool-history-guard.js';
 import type { SessionPinner } from '../pinning/session-pinner.js';
 import { evaluateLoopEscalation } from '../pinning/loop-escalation.js';
 import type { LoopEscalationConfig } from '../pinning/loop-escalation.js';
@@ -85,7 +89,10 @@ export class RouterPipeline {
     fleetOverride?: readonly ModelProfile[],
   ): Promise<RoutingDecision> {
     const start = Date.now();
-    this.activeFleet = fleetOverride ?? this.fleet;
+    this.activeFleet = this.prioritizeFleetForToolHistory(
+      fleetOverride ?? this.fleet,
+      request,
+    );
     this.currentHardwareResult = 'disabled';
     this.currentTriageResult = null;
     this.currentHydraResult = null;
@@ -117,6 +124,42 @@ export class RouterPipeline {
     this.persistPinIfNeeded(request, fallback);
     this.emitTelemetry(request, fallback);
     return this.attachFeatures(fallback);
+  }
+
+  /**
+   * SP-080: move Google/Gemini profiles to the end of the fleet when prior tool
+   * calls exist so tier `.find()` passes prefer non-Gemini models first.
+   * Honors `force_model_id` by leaving fleet order unchanged.
+   */
+  private prioritizeFleetForToolHistory(
+    fleet: readonly ModelProfile[],
+    request: RoutingRequest,
+  ): readonly ModelProfile[] {
+    if (request.force_model_id) {
+      return fleet;
+    }
+
+    const messages = request.messages;
+    if (!messages || messages.length === 0 || !hasToolCallHistory(messages)) {
+      return fleet;
+    }
+
+    const preferred: ModelProfile[] = [];
+    const deprioritized: ModelProfile[] = [];
+
+    for (const profile of fleet) {
+      if (isGoogleGeminiProfile(profile)) {
+        deprioritized.push(profile);
+      } else {
+        preferred.push(profile);
+      }
+    }
+
+    if (deprioritized.length === 0) {
+      return fleet;
+    }
+
+    return [...preferred, ...deprioritized];
   }
 
   /** Attach privacy-safe dataset features captured during pipeline stages (SP-057). */
