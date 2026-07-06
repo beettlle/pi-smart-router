@@ -25,6 +25,7 @@ import {
 } from '../../.pi/extensions/smart-router/routing-context.js';
 import {
   GEMINI_TOOL_HISTORY_EXCLUDED,
+  GeminiToolHistoryEmptyFleetError,
   resolveEffectiveFleet,
 } from '../../src/domain/routing/tool-history-guard.js';
 import {
@@ -32,6 +33,7 @@ import {
   logRoutingDecision,
   resolveDelegationOptions,
 } from '../../.pi/extensions/smart-router/stream-delegation.js';
+import { routeAndDelegate } from '../../.pi/extensions/smart-router/route-and-delegate.js';
 import type { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import { createRouterFromFleet } from '../../src/index.js';
 import { LifecycleHookState } from '../../src/index.js';
@@ -1306,5 +1308,81 @@ describe('gemini tool history guard (SP-077)', () => {
       ]).messages,
     );
     expect(result.reasonCode).toBe(GEMINI_TOOL_HISTORY_EXCLUDED);
+  });
+});
+
+describe('gemini empty-fleet fail-safe (SP-084)', () => {
+  beforeEach(() => {
+    mockDelegateStreamSimple.mockClear();
+  });
+
+  it('throws actionable error for google-only fleet with tool history', async () => {
+    const googleOnlyFleet = [
+      makeProfile({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
+    ];
+    const router = createRouterFromFleet(googleOnlyFleet);
+    const outer = createAssistantMessageEventStream();
+    const deps = makeStreamDeps({
+      router,
+      fleet: googleOnlyFleet,
+      modelRegistry: createMockRegistry([
+        makeRegistryModel({ provider: 'google', id: 'gemini-flash', api: 'google-generative-ai' }),
+      ]),
+    });
+
+    await expect(
+      routeAndDelegate(
+        makeContext([userMessage('search'), toolResultMessage('ok')]),
+        { sessionId: 'empty-fleet-sess' },
+        deps,
+        outer,
+      ),
+    ).rejects.toThrow(GeminiToolHistoryEmptyFleetError);
+
+    expect(mockDelegateStreamSimple).not.toHaveBeenCalled();
+  });
+
+  it('routes tool-history sessions to cursor/auto without unknown delegation', async () => {
+    const cursorFleet = [
+      makeProfile({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
+      makeProfile({ id: 'cursor/auto', tier: 'economical-cloud', provider: 'cursor' }),
+    ];
+    const cursorModel = makeRegistryModel({
+      provider: 'cursor',
+      id: 'cursor/auto',
+      api: 'openai-responses',
+    });
+    const router = createRouterFromFleet(cursorFleet);
+    const decisions: RoutingDecision[] = [];
+    mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(cursorModel));
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router,
+        fleet: cursorFleet,
+        modelRegistry: createMockRegistry([
+          cursorModel,
+          makeRegistryModel({
+            provider: 'google',
+            id: 'gemini-flash',
+            api: 'google-generative-ai',
+          }),
+        ]),
+        onRoutingDecision: (decision) => decisions.push(decision),
+      }),
+    );
+
+    await collectEvents(
+      streamSimple(
+        makeAutoModel(),
+        makeContext([userMessage('search'), toolResultMessage('ok')]),
+        { sessionId: 'cursor-auto-sess' },
+      ),
+    );
+
+    expect(decisions[0]?.selected_model_id).not.toBe('unknown');
+    expect(decisions[0]?.selected_model_id).toBe('cursor/auto');
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]?.id).toBe('cursor/auto');
   });
 });

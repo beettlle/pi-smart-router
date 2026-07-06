@@ -2,10 +2,12 @@ import type { Api, AssistantMessageEventStream, Context, Model, SimpleStreamOpti
 
 import { safeCloudDefault } from '../../../src/domain/pipeline/safe-default.js';
 import {
+  assertRoutableFleetAfterGeminiToolHistoryGuard,
   GEMINI_TOOL_HISTORY_EXCLUDED,
   resolveEffectiveFleet,
 } from '../../../src/domain/routing/tool-history-guard.js';
 import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../../src/domain/types/index.js';
+import type { GeminiToolHistoryGuardResult } from '../../../src/domain/routing/tool-history-guard.js';
 import {
   isGeminiThoughtSignatureAssistantError,
   isInfraAssistantError,
@@ -85,6 +87,7 @@ export async function routeAndDelegate(
   let decision: RoutingDecision;
   let request: RoutingRequest;
   let effectiveFleet: readonly ModelProfile[] = deps.fleet;
+  let guardResult: GeminiToolHistoryGuardResult | undefined;
   const priorSnapshot =
     sessionId !== undefined ? deps.sessionRouting?.get(sessionId) : undefined;
   const hadPin =
@@ -98,8 +101,9 @@ export async function routeAndDelegate(
       options,
       deps.lifecycleHookState,
     );
-    const guardResult = resolveEffectiveFleet(deps.fleet, request, context.messages);
+    guardResult = resolveEffectiveFleet(deps.fleet, request, context.messages);
     effectiveFleet = guardResult.effectiveFleet;
+    assertRoutableFleetAfterGeminiToolHistoryGuard(guardResult);
     if (guardResult.excluded) {
       console.warn(
         '[smart-router] gemini tool history guard applied',
@@ -146,6 +150,9 @@ export async function routeAndDelegate(
   }
 
   if (!targetModel) {
+    if (decision.selected_model_id === 'unknown' && guardResult) {
+      assertRoutableFleetAfterGeminiToolHistoryGuard(guardResult);
+    }
     throw new Error(
       `No registry model available for routing decision ${decision.selected_model_id}`,
     );

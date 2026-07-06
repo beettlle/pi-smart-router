@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  assertRoutableFleetAfterGeminiToolHistoryGuard,
   GEMINI_TOOL_HISTORY_EXCLUDED,
+  GEMINI_TOOL_HISTORY_EMPTY_FLEET,
+  GeminiToolHistoryEmptyFleetError,
   hasToolCallHistory,
   hasToolCallHistoryFromContext,
   isGoogleGeminiProfile,
@@ -200,5 +203,77 @@ describe('resolveEffectiveFleet', () => {
       'gpt-4o-mini',
       'claude-opus',
     ]);
+  });
+});
+
+const googleOnlyFleet: ModelProfile[] = [
+  makeProfile({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
+  makeProfile({
+    id: 'gemini-2.5-flash',
+    tier: 'economical-cloud',
+    provider: 'cursor',
+  }),
+];
+
+describe('empty fleet after gemini exclusion (SP-084)', () => {
+  it('flags fleetEmptyAfterFilter for google-only fleet with tool history', () => {
+    const request = makeRequest({
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(googleOnlyFleet, request);
+    expect(result.fleetEmptyAfterFilter).toBe(true);
+    expect(result.excluded).toBe(true);
+    expect(result.reasonCode).toBe(GEMINI_TOOL_HISTORY_EXCLUDED);
+    expect(result.effectiveFleet).toEqual([]);
+  });
+
+  it('throws actionable error when no routable model remains', () => {
+    const request = makeRequest({
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+    const result = resolveEffectiveFleet(googleOnlyFleet, request);
+
+    expect(() => assertRoutableFleetAfterGeminiToolHistoryGuard(result)).toThrow(
+      GeminiToolHistoryEmptyFleetError,
+    );
+    expect(() => assertRoutableFleetAfterGeminiToolHistoryGuard(result)).toThrow(
+      'non-Google model',
+    );
+
+    try {
+      assertRoutableFleetAfterGeminiToolHistoryGuard(result);
+    } catch (error) {
+      expect(error).toBeInstanceOf(GeminiToolHistoryEmptyFleetError);
+      expect((error as GeminiToolHistoryEmptyFleetError).reasonCode).toBe(
+        GEMINI_TOOL_HISTORY_EMPTY_FLEET,
+      );
+    }
+  });
+
+  it('honors force_model_id for google-only fleet with tool history', () => {
+    const request = makeRequest({
+      force_model_id: 'gemini-flash',
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(googleOnlyFleet, request);
+    expect(result.fleetEmptyAfterFilter).toBeUndefined();
+    expect(result.excluded).toBe(false);
+    expect(result.effectiveFleet).toEqual(googleOnlyFleet);
+  });
+
+  it('keeps cursor/auto when present alongside google models', () => {
+    const fleetWithCursor = [
+      ...googleOnlyFleet,
+      makeProfile({ id: 'cursor/auto', tier: 'economical-cloud', provider: 'cursor' }),
+    ];
+    const request = makeRequest({
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(fleetWithCursor, request);
+    expect(result.fleetEmptyAfterFilter).toBeUndefined();
+    expect(result.effectiveFleet.map((profile) => profile.id)).toEqual(['cursor/auto']);
   });
 });
