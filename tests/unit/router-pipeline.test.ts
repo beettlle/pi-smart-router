@@ -9,7 +9,7 @@ import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { extractToolFailureSignature } from '../../src/domain/pinning/loop-escalation.js';
 import { RoutingTelemetryEmitter } from '../../src/infrastructure/telemetry/routing-telemetry.js';
-import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
+import type { ModelProfile, PriceCatalog, RoutingRequest } from '../../src/domain/types/index.js';
 
 function makeModel(
   overrides: Partial<ModelProfile> & { id: string; tier: ModelProfile['tier'] },
@@ -606,6 +606,168 @@ describe('RouterPipeline', () => {
       );
 
       expect(decision.selected_model_id).toBe('gemini-flash');
+    });
+  });
+
+  describe('cost-aware turn envelope selection (SP-085)', () => {
+    it('selects cheapest economical model for tool_result', async () => {
+      const costFleet: ModelProfile[] = [
+        makeModel({
+          id: 'gemini-pro',
+          tier: 'economical-cloud',
+          provider: 'google',
+          pricing: { fallback_cost_per_1m: 3.0 },
+        }),
+        makeModel({
+          id: 'gemini-flash-lite',
+          tier: 'economical-cloud',
+          provider: 'google',
+          pricing: { fallback_cost_per_1m: 0.1 },
+        }),
+        makeModel({ id: 'claude-opus', tier: 'frontier-cloud', provider: 'anthropic' }),
+      ];
+
+      const pipeline = new RouterPipeline(costFleet);
+      const decision = await pipeline.route(
+        makeRequest({ turn_type: 'tool_result', estimated_input_tokens: 50 }),
+      );
+
+      expect(decision.stage).toBe('turn_envelope');
+      expect(decision.selected_model_id).toBe('gemini-flash-lite');
+    });
+
+    it('selects cheapest frontier model for planning', async () => {
+      const frontierCostFleet: ModelProfile[] = [
+        makeModel({
+          id: 'opus',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 15.0 },
+        }),
+        makeModel({
+          id: 'sonnet',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 5.0 },
+        }),
+        makeModel({
+          id: 'flash',
+          tier: 'economical-cloud',
+          provider: 'google',
+          pricing: { fallback_cost_per_1m: 0.1 },
+        }),
+      ];
+
+      const pipeline = new RouterPipeline(frontierCostFleet);
+      const decision = await pipeline.route(makeRequest({ turn_type: 'planning' }));
+
+      expect(decision.stage).toBe('turn_envelope');
+      expect(decision.selected_model_id).toBe('sonnet');
+    });
+  });
+
+  describe('estimated_cost_usd telemetry (SP-085)', () => {
+    const pricingFleet: ModelProfile[] = [
+      makeModel({
+        id: 'flash',
+        tier: 'economical-cloud',
+        pricing: { fallback_cost_per_1m: 0.6 },
+      }),
+    ];
+
+    const emptyCatalog: PriceCatalog = {
+      registry_snapshot: {},
+      user_overrides: {},
+      last_updated: '2026-07-05T00:00:00.000Z',
+      source: 'yaml_fallback',
+    };
+
+    it('populates estimated_cost_usd on turn_envelope decisions', async () => {
+      const pipeline = new RouterPipeline(pricingFleet, { priceCatalog: emptyCatalog });
+      const decision = await pipeline.route(
+        makeRequest({ turn_type: 'tool_result', estimated_input_tokens: 1_000_000 }),
+      );
+
+      expect(decision.stage).toBe('turn_envelope');
+      expect(decision.estimated_cost_usd).toBeCloseTo(0.6, 5);
+    });
+
+    it('populates estimated_cost_usd on session_pin decisions', async () => {
+      const pinFleet: ModelProfile[] = [
+        makeModel({
+          id: 'frontier-a',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 15.0 },
+        }),
+      ];
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'frontier-a', 'initial');
+
+      const pipeline = new RouterPipeline(pinFleet, {
+        sessionPinner: pinner,
+        priceCatalog: emptyCatalog,
+      });
+      const decision = await pipeline.route(
+        makeRequest({ turn_type: 'main_loop', estimated_input_tokens: 2_000_000 }),
+      );
+
+      expect(decision.stage).toBe('session_pin');
+      expect(decision.estimated_cost_usd).toBeCloseTo(30.0, 5);
+    });
+
+    it('populates estimated_cost_usd on hydra_match decisions', async () => {
+      const hydraFleet: ModelProfile[] = [
+        makeModel({
+          id: 'gpt-4o-mini',
+          tier: 'economical-cloud',
+          pricing: { fallback_cost_per_1m: 0.6 },
+        }),
+        makeModel({
+          id: 'claude-opus',
+          tier: 'frontier-cloud',
+          pricing: { fallback_cost_per_1m: 15.0 },
+        }),
+      ];
+
+      const requirements = { reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 };
+      const hydraMatcher = new HydraMatcher(
+        {
+          extractRequirements: vi.fn(async () => requirements),
+          dispose: vi.fn(async () => {}),
+        },
+        { artifactCachePath: '.pi-smart-router/models/' },
+      );
+
+      const pipeline = new RouterPipeline(hydraFleet, {
+        hydraMatcher,
+        priceCatalog: emptyCatalog,
+      });
+      const decision = await pipeline.route(
+        makeRequest({
+          prompt_text: 'Hello, how are you today?',
+          estimated_input_tokens: 500_000,
+        }),
+      );
+
+      expect(decision.stage).toBe('hydra_match');
+      expect(decision.estimated_cost_usd).toBeGreaterThan(0);
+    });
+
+    it('emits non-zero estimated_cost_usd in telemetry when pricing is available', async () => {
+      const onRecord = vi.fn();
+      const telemetryEmitter = new RoutingTelemetryEmitter({ onRecord });
+      const pipeline = new RouterPipeline(pricingFleet, {
+        telemetryEmitter,
+        priceCatalog: emptyCatalog,
+      });
+
+      await pipeline.route(
+        makeRequest({ turn_type: 'tool_result', estimated_input_tokens: 1_000_000 }),
+      );
+
+      expect(onRecord).toHaveBeenCalledOnce();
+      expect(onRecord.mock.calls[0]?.[0]?.estimated_cost_usd).toBeCloseTo(0.6, 5);
     });
   });
 });

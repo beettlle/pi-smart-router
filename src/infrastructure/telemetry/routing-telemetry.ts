@@ -5,13 +5,34 @@
  * observability and audit. Window bounds: 168 hours (7 days), max 1111 entries.
  */
 
-import type { RoutingDecision, RoutingRequest, RoutingTelemetry } from '../../domain/types/index.js';
+import type {
+  ModelProfile,
+  PriceCatalog,
+  RoutingDecision,
+  RoutingRequest,
+  RoutingTelemetry,
+} from '../../domain/types/index.js';
+import { resolvePrice } from '../pricing/price-broker.js';
 import {
   TELEMETRY_MAX_ENTRIES,
   TELEMETRY_WINDOW_MS,
   evictExpiredTelemetryEntries,
   makeTelemetryRoom,
 } from './telemetry-limits.js';
+
+/**
+ * Estimate per-request routing cost in USD from resolved model pricing (SP-085).
+ * Uses estimated_input_tokens when present, otherwise prompt_text length as a token proxy.
+ */
+export function estimateRoutingCost(
+  model: ModelProfile,
+  request: RoutingRequest,
+  catalog: PriceCatalog | null,
+): number {
+  const tokens = request.estimated_input_tokens ?? request.prompt_text.length;
+  const resolved = resolvePrice(model, catalog);
+  return (tokens / 1_000_000) * resolved.cost_per_1m_tokens;
+}
 
 export {
   DEFAULT_HISTORY_LIMIT,

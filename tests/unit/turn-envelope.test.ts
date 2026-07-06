@@ -326,6 +326,31 @@ describe('evaluateSubRoutePolicy (FR-024)', () => {
       expect(result.pinnedModel?.id).toBe('claude-opus');
     });
 
+    it('selects cheapest same-provider economical model (SP-085)', () => {
+      const cheapHaiku = makeModel({
+        id: 'claude-haiku',
+        tier: 'economical-cloud',
+        provider: 'anthropic',
+        pricing: { fallback_cost_per_1m: 0.15 },
+      });
+      const expensiveMini = makeModel({
+        id: 'claude-mini',
+        tier: 'economical-cloud',
+        provider: 'anthropic',
+        pricing: { fallback_cost_per_1m: 1.0 },
+      });
+      const fleet = [frontierAnthro, expensiveMini, cheapHaiku, econOpenai, frontierOpenai];
+
+      const result = evaluateSubRoutePolicy(
+        makeRequest({ turn_type: 'tool_result', estimated_input_tokens: 100 }),
+        makePin(),
+        fleet,
+      );
+
+      expect(result.eligible).toBe(true);
+      expect(result.subRouteModel?.id).toBe('claude-haiku');
+    });
+
     it('uses prompt_text length when estimated_input_tokens is absent', () => {
       const result = evaluateSubRoutePolicy(
         makeRequest({ turn_type: 'tool_result', prompt_text: 'short' }),

@@ -212,7 +212,7 @@ describe('Full pipeline E2E (T060)', () => {
 
       expect(subRouted.stage).toBe('turn_envelope');
       expect(subRouted.reason_code).toBe('turn_tool_result');
-      expect(subRouted.selected_model_id).toBe('claude-haiku');
+      expect(subRouted.selected_model_id).toBe('gpt-4o-mini');
 
       const pin = pinner.getPin('session-e2e-001');
       expect(pin?.pinned_model_id).toBe('claude-opus');
@@ -233,7 +233,7 @@ describe('Full pipeline E2E (T060)', () => {
       expect(decision.stage).toBe('turn_envelope');
       expect(decision.reason_code).toBe('turn_planning');
       expect(decision.tier).toBe('frontier-cloud');
-      expect(decision.selected_model_id).toBe('claude-opus');
+      expect(decision.selected_model_id).toBe('gpt-4o');
       expect(pinner.getPin('session-e2e-001')!.pinned_model_id).toBe('claude-haiku');
     });
 
@@ -253,7 +253,7 @@ describe('Full pipeline E2E (T060)', () => {
       expect(decision.stage).toBe('turn_envelope');
       expect(decision.reason_code).toBe('turn_tool_result');
       expect(decision.tier).toBe('economical-cloud');
-      expect(decision.selected_model_id).toBe('claude-haiku');
+      expect(decision.selected_model_id).toBe('gpt-4o-mini');
       expect(pinner.getPin('session-e2e-001')!.pinned_model_id).toBe('claude-opus');
     });
 
