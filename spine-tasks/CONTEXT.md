@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-06
 **Status:** Active
-**Next Task ID:** SP-089
+**Next Task ID:** SP-091
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -192,6 +192,13 @@
 | Task | Summary | Size | Deps | GitHub |
 |------|---------|------|------|--------|
 | SP-088 | Gate LMU status on active smart-router provider | S | SP-087 | #43 |
+
+### Phase 27 — Backlog Orchestrator Cycle 9 (SP-089–SP-090)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-089 | Fix ESLint CI blocker (no-unused-vars) | S | SP-088 | #45 |
+| SP-090 | CI parity verify command + orchestrator alignment | M | SP-089 | #44 |
 
 ---
 
