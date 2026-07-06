@@ -4,7 +4,10 @@ import {
   resolvePrice,
   resolveFleetPrices,
   applyCatalogPricesToFleet,
+  applyCatalogLimitsToFleet,
+  resolveLimits,
 } from '../../src/infrastructure/pricing/price-broker.js';
+import { getDefaultLimitsForTier } from '../../src/config/pi-model-mapper.js';
 import type { ModelProfile, PriceCatalog } from '../../src/domain/types/index.js';
 
 function makeModel(
@@ -213,11 +216,11 @@ describe('applyCatalogPricesToFleet', () => {
     expect(priced[0]?.pricing.fallback_cost_per_1m).toBe(99.0);
   });
 
-  it('returns fleet unchanged when catalog is null', () => {
+  it('returns fleet with tier defaults when catalog is null', () => {
     const fleet = [makeModel({ id: 'a', tier: 'economical-cloud' })];
     const priced = applyCatalogPricesToFleet(fleet, null);
 
-    expect(priced).toEqual(fleet);
+    expect(priced[0]?.limits).toEqual(getDefaultLimitsForTier('economical-cloud'));
     expect(priced).not.toBe(fleet);
   });
 
@@ -234,5 +237,93 @@ describe('applyCatalogPricesToFleet', () => {
     const priced = applyCatalogPricesToFleet(fleet, catalog);
 
     expect(priced[0]?.pricing.fallback_cost_per_1m).toBe(2.5);
+  });
+});
+
+describe('resolveLimits (SP-092)', () => {
+  it('uses YAML profile limits over registry and tier defaults', () => {
+    const model = makeModel({
+      id: 'claude-3.5-haiku',
+      tier: 'economical-cloud',
+      limits: { max_input_tokens: 300_000, max_output_tokens: 12_000 },
+      pricing: { registry_key: 'anthropic/claude-3-5-haiku', fallback_cost_per_1m: 0.8 },
+    });
+    const catalog = makeCatalog({
+      registry_limits_snapshot: {
+        'anthropic/claude-3-5-haiku': { max_input_tokens: 200_000, max_output_tokens: 8_192 },
+      },
+    });
+
+    const resolved = resolveLimits(model, catalog);
+
+    expect(resolved.limits.max_input_tokens).toBe(300_000);
+    expect(resolved.limits.max_output_tokens).toBe(12_000);
+  });
+
+  it('uses registry limits when YAML override is absent', () => {
+    const model = makeModel({
+      id: 'gpt-4o-mini',
+      tier: 'economical-cloud',
+      pricing: { registry_key: 'openai/gpt-4o-mini', fallback_cost_per_1m: 0.375 },
+    });
+    const catalog = makeCatalog({
+      registry_limits_snapshot: {
+        'openai/gpt-4o-mini': { max_input_tokens: 128_000, max_output_tokens: 16_384 },
+      },
+    });
+
+    const resolved = resolveLimits(model, catalog);
+
+    expect(resolved.limits.max_input_tokens).toBe(128_000);
+    expect(resolved.limits.max_output_tokens).toBe(16_384);
+  });
+
+  it('falls back to tier defaults when registry has no entry', () => {
+    const model = makeModel({ id: 'unknown-model', tier: 'frontier-cloud' });
+
+    const resolved = resolveLimits(model, makeCatalog());
+
+    expect(resolved.limits).toEqual(getDefaultLimitsForTier('frontier-cloud'));
+  });
+
+  it('merges field-level precedence for partial YAML overrides', () => {
+    const model = makeModel({
+      id: 'gpt-4o-mini',
+      tier: 'economical-cloud',
+      limits: { max_input_tokens: 256_000 },
+      pricing: { registry_key: 'openai/gpt-4o-mini', fallback_cost_per_1m: 0.375 },
+    });
+    const catalog = makeCatalog({
+      registry_limits_snapshot: {
+        'openai/gpt-4o-mini': { max_input_tokens: 128_000, max_output_tokens: 16_384 },
+      },
+    });
+
+    const resolved = resolveLimits(model, catalog);
+
+    expect(resolved.limits.max_input_tokens).toBe(256_000);
+    expect(resolved.limits.max_output_tokens).toBe(16_384);
+  });
+});
+
+describe('applyCatalogLimitsToFleet (SP-092)', () => {
+  it('writes resolved limits onto fleet profiles', () => {
+    const fleet = [
+      makeModel({
+        id: 'gpt-4o-mini',
+        tier: 'economical-cloud',
+        pricing: { registry_key: 'openai/gpt-4o-mini', fallback_cost_per_1m: 0.375 },
+      }),
+    ];
+    const catalog = makeCatalog({
+      registry_limits_snapshot: {
+        'openai/gpt-4o-mini': { max_input_tokens: 128_000, max_output_tokens: 16_384 },
+      },
+    });
+
+    const limited = applyCatalogLimitsToFleet(fleet, catalog);
+
+    expect(limited[0]?.limits?.max_input_tokens).toBe(128_000);
+    expect(limited[0]?.limits?.max_output_tokens).toBe(16_384);
   });
 });
