@@ -12,6 +12,13 @@ import type { FleetMode, SmartRouterRuntime } from './types.js';
 
 export const FLEET_MODE_ENTRY_TYPE = 'smart-router-fleet-mode' as const;
 
+const SMART_ROUTER_PROVIDER = 'smart-router' as const;
+const SMART_ROUTER_AUTO_ID = 'auto' as const;
+
+export function isSmartRouterActive(model: { provider: string; id: string }): boolean {
+  return model.provider === SMART_ROUTER_PROVIDER && model.id === SMART_ROUTER_AUTO_ID;
+}
+
 function parseFleetModeEntry(data: unknown): FleetMode | undefined {
   if (
     typeof data === 'object' &&
@@ -35,13 +42,44 @@ export function restoreFleetModeFromSession(ctx: ExtensionContext): FleetMode | 
   return undefined;
 }
 
+function restoreLmuFromLedger(runtime: SmartRouterRuntime, sessionId: string): void {
+  const lastExec = runtime.executionLedger.getLastExecution(sessionId);
+  if (lastExec) {
+    runtime.setLmuStatus?.(lastExec.id);
+  } else if (runtime.lastDecision) {
+    runtime.setLmuStatus?.(runtime.lastDecision.selected_model_id);
+  }
+}
+
+function wireLmuStatusHandlers(
+  runtime: SmartRouterRuntime,
+  ctx: ExtensionContext,
+  getActiveModel: () => { provider: string; id: string },
+): void {
+  runtime.setLmuStatus = (modelId) => {
+    if (!isSmartRouterActive(getActiveModel())) {
+      return;
+    }
+    ctx.ui.setStatus(
+      'smart-router-lmu',
+      formatLmuStatus(modelId, ctx.ui.theme as { fg: (color: string, text: string) => string }),
+    );
+  };
+  runtime.clearLmuStatus = () => {
+    ctx.ui.setStatus('smart-router-lmu', undefined);
+  };
+}
+
 export function setupSessionHooks(
   pi: ExtensionAPI,
   runtime: SmartRouterRuntime,
   sessionPinner: SessionPinner,
   datasetNotify: { fn: ((message: string) => void) | undefined },
 ): void {
+  let activeModel: { provider: string; id: string } | undefined;
+
   pi.on('session_start', async (_event, ctx) => {
+    activeModel = ctx.model;
     bindSharedModelRegistry(runtime, ctx.modelRegistry);
     runtime.sessionCwd = ctx.cwd;
     runtime.streamDeps.ensureFleetFresh = async () => {
@@ -61,12 +99,10 @@ export function setupSessionHooks(
       ctx.ui.notify(message, level);
     });
 
-    runtime.setLmuStatus = (modelId) => {
-      ctx.ui.setStatus('smart-router-lmu', formatLmuStatus(modelId, ctx.ui.theme as { fg: (color: string, text: string) => string }));
-    };
-    runtime.clearLmuStatus = () => {
-      ctx.ui.setStatus('smart-router-lmu', undefined);
-    };
+    wireLmuStatusHandlers(runtime, ctx, () => {
+      const model = activeModel ?? ctx.model;
+      return model ?? { provider: '', id: '' };
+    });
     runtime.notifyDatasetEnabled = (message) => {
       ctx.ui.notify(message, 'info');
     };
@@ -75,15 +111,24 @@ export function setupSessionHooks(
     const sessionId = ctx.sessionManager.getSessionId();
     await sessionPinner.restoreSessionPin(sessionId);
 
-    const lastExec = runtime.executionLedger.getLastExecution(sessionId);
-    if (lastExec) {
-      runtime.setLmuStatus(lastExec.id);
-    } else if (runtime.lastDecision) {
-      runtime.setLmuStatus(runtime.lastDecision.selected_model_id);
+    if (ctx.model !== undefined && isSmartRouterActive(ctx.model)) {
+      restoreLmuFromLedger(runtime, sessionId);
+    } else {
+      runtime.clearLmuStatus?.();
+    }
+  });
+
+  pi.on('model_select', (event, ctx) => {
+    activeModel = event.model;
+    if (isSmartRouterActive(event.model)) {
+      restoreLmuFromLedger(runtime, ctx.sessionManager.getSessionId());
+    } else {
+      runtime.clearLmuStatus?.();
     }
   });
 
   pi.on('session_shutdown', async (_event, ctx) => {
+    activeModel = undefined;
     delete runtime.setLmuStatus;
     delete runtime.clearLmuStatus;
     delete runtime.notifyDatasetEnabled;
