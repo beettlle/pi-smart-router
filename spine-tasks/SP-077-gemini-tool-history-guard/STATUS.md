@@ -1,5 +1,5 @@
-**Current Step:** Step 3
-**Status:** In Progress
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-07-05
 **Review Level:** 1
 **Size:** M
@@ -20,11 +20,11 @@
 
 ## Step 3: Telemetry and docs
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-- [ ] Telemetry reason_code and README
+- [x] Telemetry reason_code and README
 
 ## Completion Criteria
 
-- [ ] All steps complete
-- [ ] #38 acceptance criteria met
+- [x] All steps complete
+- [x] #38 acceptance criteria met

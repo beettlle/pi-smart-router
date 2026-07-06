@@ -325,12 +325,14 @@ If Gemini returns **400 INVALID_ARGUMENT** mentioning `thought_signature`, the r
 
 This typically happens when a session with prior tool calls is routed to Gemini before [pi preserves thought signatures in replay](https://github.com/earendil-works/pi/issues/6342). See [Google's thought signatures documentation](https://ai.google.dev/gemini-api/docs/generate-content/thought-signatures).
 
+**Automatic guard (SP-077):** sessions with prior tool-call history exclude Google/Gemini models from routing (telemetry `reason_code: gemini_tool_history_excluded`) unless the operator sets `force_model_id` via `/model`. Non-tool sessions are unchanged.
+
 **Workarounds:**
 
 1. Start a fresh session with `/new` in pi.
 2. Switch to a non-Google model (e.g. `/model openai/gpt-4o-mini`) for tool-heavy sessions until the upstream fix lands.
 
-Related: [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37).
+Related: [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37), [pi-smart-router#38](https://github.com/beettlle/pi-smart-router/issues/38), [pi#6342](https://github.com/earendil-works/pi/issues/6342).
 
 ### Explain endpoint
 
