@@ -15,7 +15,12 @@ import {
   formatLmuStatus,
   initHydraMatcher,
 } from '../../.pi/extensions/smart-router/fleet-bootstrap.js';
+import * as fleetBootstrap from '../../.pi/extensions/smart-router/fleet-bootstrap.js';
 import { registerSmartRouterCommand } from '../../.pi/extensions/smart-router/commands.js';
+import {
+  isSmartRouterActive,
+  setupSessionHooks,
+} from '../../.pi/extensions/smart-router/session-lifecycle.js';
 import type { SmartRouterRuntime } from '../../.pi/extensions/smart-router/types.js';
 import {
   buildRoutingRequest,
@@ -1549,5 +1554,198 @@ describe('ensureFleetFresh before routed turn (SP-087)', () => {
 
     expect(ensureCalls).toBe(1);
     expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+  });
+});
+
+describe('LMU active-provider gate (SP-088)', () => {
+  type SessionHookName = 'session_start' | 'model_select' | 'session_shutdown';
+
+  function createSessionHookHarness(initialModel: Model<Api> = makeAutoModel()) {
+    const handlers: Record<SessionHookName, Array<(event: unknown, ctx: unknown) => unknown>> = {
+      session_start: [],
+      model_select: [],
+      session_shutdown: [],
+    };
+
+    const pi = {
+      on(event: string, handler: unknown) {
+        if (event in handlers) {
+          handlers[event as SessionHookName].push(handler as (event: unknown, ctx: unknown) => unknown);
+        }
+      },
+    };
+
+    const setStatus = vi.fn();
+    const store = new MemoryStore([]);
+    const sessionPinner = new SessionPinner({ store });
+    const executionLedger = new ExecutionLedger();
+    const runtime = {
+      fleetMode: 'scoped' as const,
+      lastDecision: makeDecision({ selected_model_id: 'gpt-4o-mini' }),
+      priceCatalog: null,
+      modelRegistry: createMockRegistry(registryModels),
+      store,
+      sessionPinner,
+      executionLedger,
+      lifecycleHookState: new LifecycleHookState(),
+      hydraMatcher: undefined,
+      sessionRouting: new Map(),
+      streamDeps: {
+        router: createMockRouter(vi.fn(async () => makeDecision())),
+        modelRegistry: createMockRegistry(registryModels),
+        fleet,
+        executionLedger,
+      },
+    } as unknown as SmartRouterRuntime;
+
+    setupSessionHooks(pi as never, runtime, sessionPinner, { fn: undefined });
+
+    const ctx = {
+      cwd: '/tmp',
+      model: initialModel,
+      modelRegistry: createMockRegistry(registryModels),
+      sessionManager: {
+        getSessionId: () => 'sess-lmu',
+        getEntries: () => [],
+      },
+      ui: {
+        setStatus,
+        notify: vi.fn(),
+        theme: undefined,
+      },
+    };
+
+    return {
+      handlers,
+      setStatus,
+      runtime,
+      executionLedger,
+      ctx,
+      async fireSessionStart() {
+        await handlers.session_start[0]!({}, ctx);
+      },
+      fireModelSelect(model: Model<Api>) {
+        handlers.model_select[0]!({ source: 'set', model }, ctx);
+      },
+    };
+  }
+
+  beforeEach(() => {
+    vi.spyOn(fleetBootstrap, 'bindSharedModelRegistry').mockImplementation(() => {});
+    vi.spyOn(fleetBootstrap, 'rebuildFleet').mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('isSmartRouterActive is true only for smart-router/auto', () => {
+    expect(isSmartRouterActive({ provider: 'smart-router', id: 'auto' })).toBe(true);
+    expect(isSmartRouterActive({ provider: 'cursor', id: 'auto' })).toBe(false);
+    expect(isSmartRouterActive({ provider: 'smart-router', id: 'manual' })).toBe(false);
+  });
+
+  it('restores LMU on session_start when active model is smart-router/auto', async () => {
+    const harness = createSessionHookHarness(makeAutoModel());
+    harness.executionLedger.recordSuccess('sess-lmu', {
+      provider: 'openai',
+      api: 'openai-responses',
+      id: 'gpt-4o-mini',
+    });
+
+    await harness.fireSessionStart();
+
+    expect(harness.setStatus).toHaveBeenCalledWith(
+      'smart-router-lmu',
+      formatLmuStatus('gpt-4o-mini'),
+    );
+  });
+
+  it('clears LMU on session_start when active model is not smart-router/auto', async () => {
+    const cursorModel = makeRegistryModel({
+      provider: 'cursor',
+      id: 'auto',
+      api: 'openai-responses',
+    });
+    const harness = createSessionHookHarness(cursorModel);
+    harness.executionLedger.recordSuccess('sess-lmu', {
+      provider: 'openai',
+      api: 'openai-responses',
+      id: 'gpt-4o-mini',
+    });
+
+    await harness.fireSessionStart();
+
+    expect(harness.setStatus).toHaveBeenCalledWith('smart-router-lmu', undefined);
+    expect(harness.setStatus).not.toHaveBeenCalledWith(
+      'smart-router-lmu',
+      formatLmuStatus('gpt-4o-mini'),
+    );
+  });
+
+  it('clears LMU immediately on model_select away from smart-router/auto', async () => {
+    const harness = createSessionHookHarness(makeAutoModel());
+    await harness.fireSessionStart();
+    harness.setStatus.mockClear();
+
+    const cursorModel = makeRegistryModel({
+      provider: 'cursor',
+      id: 'auto',
+      api: 'openai-responses',
+    });
+    harness.fireModelSelect(cursorModel);
+
+    expect(harness.setStatus).toHaveBeenCalledWith('smart-router-lmu', undefined);
+  });
+
+  it('restores LMU on model_select when switching to smart-router/auto', async () => {
+    const cursorModel = makeRegistryModel({
+      provider: 'cursor',
+      id: 'auto',
+      api: 'openai-responses',
+    });
+    const harness = createSessionHookHarness(cursorModel);
+    await harness.fireSessionStart();
+    harness.setStatus.mockClear();
+
+    harness.executionLedger.recordSuccess('sess-lmu', {
+      provider: 'openai',
+      api: 'openai-responses',
+      id: 'gemini-flash',
+    });
+    harness.fireModelSelect(makeAutoModel());
+
+    expect(harness.setStatus).toHaveBeenCalledWith(
+      'smart-router-lmu',
+      formatLmuStatus('gemini-flash'),
+    );
+  });
+
+  it('setLmuStatus no-ops when active model is not smart-router/auto', async () => {
+    const cursorModel = makeRegistryModel({
+      provider: 'cursor',
+      id: 'auto',
+      api: 'openai-responses',
+    });
+    const harness = createSessionHookHarness(cursorModel);
+    await harness.fireSessionStart();
+    harness.setStatus.mockClear();
+
+    harness.runtime.setLmuStatus?.('gpt-4o-mini');
+
+    expect(harness.setStatus).not.toHaveBeenCalled();
+  });
+
+  it('setLmuStatus updates footer when active model is smart-router/auto', async () => {
+    const harness = createSessionHookHarness(makeAutoModel());
+    await harness.fireSessionStart();
+    harness.setStatus.mockClear();
+
+    harness.runtime.setLmuStatus?.('claude-opus');
+
+    expect(harness.setStatus).toHaveBeenCalledWith(
+      'smart-router-lmu',
+      formatLmuStatus('claude-opus'),
+    );
   });
 });
