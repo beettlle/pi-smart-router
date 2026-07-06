@@ -111,6 +111,11 @@ export const ModelPricingSchema = z.object({
   fallback_cost_per_1m: z.number(),
 });
 
+export const ModelLimitsSchema = z.object({
+  max_input_tokens: z.number().int().positive().optional(),
+  max_output_tokens: z.number().int().positive().optional(),
+});
+
 export const ModelProfileSchema = z.object({
   id: z.string(),
   tier: TierSchema,
@@ -119,6 +124,7 @@ export const ModelProfileSchema = z.object({
   capabilities: ModelCapabilitiesSchema,
   performance: ModelPerformanceSchema.optional(),
   pricing: ModelPricingSchema,
+  limits: ModelLimitsSchema.optional(),
   healthy: z.boolean().optional(),
 });
 
@@ -152,6 +158,7 @@ export const RoutingDecisionSchema = z.object({
 
 export const PriceCatalogSchema = z.object({
   registry_snapshot: z.record(z.string(), z.number()),
+  registry_limits_snapshot: z.record(z.string(), ModelLimitsSchema).optional(),
   user_overrides: z.record(z.string(), z.number()),
   last_updated: z.string().datetime(),
   source: PriceSourceSchema,

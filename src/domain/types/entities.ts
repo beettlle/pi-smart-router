@@ -86,6 +86,11 @@ export interface ModelPricing {
   readonly fallback_cost_per_1m: number;
 }
 
+export interface ModelLimits {
+  readonly max_input_tokens?: number | undefined;
+  readonly max_output_tokens?: number | undefined;
+}
+
 export interface ModelProfile {
   readonly id: string;
   readonly tier: Tier;
@@ -94,6 +99,7 @@ export interface ModelProfile {
   readonly capabilities: ModelCapabilities;
   readonly performance?: ModelPerformance | undefined;
   readonly pricing: ModelPricing;
+  readonly limits?: ModelLimits | undefined;
   readonly healthy?: boolean | undefined;
 }
 
@@ -148,6 +154,8 @@ export interface RoutingDecision {
 
 export interface PriceCatalog {
   readonly registry_snapshot: Readonly<Record<string, number>>;
+  /** LiteLLM context limits keyed by model id and provider/model aliases. */
+  readonly registry_limits_snapshot?: Readonly<Record<string, ModelLimits>> | undefined;
   readonly user_overrides: Readonly<Record<string, number>>;
   readonly last_updated: string;
   readonly source: PriceSource;
