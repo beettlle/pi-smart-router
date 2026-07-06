@@ -1,7 +1,7 @@
 # SP-089 Status
 
-**Current Step:** Step 1
-**Status:** Pending
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-06
 **Review Level:** 1
 **Size:** S
@@ -10,18 +10,18 @@
 
 ## Step 1: Fix unused variable
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Use `sessionId` consistently in unpin cross-session test
+- [x] Use `sessionId` consistently in unpin cross-session test
 
 ## Step 2: Testing and verification
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Run `npm run lint && npm run typecheck && npm test`
-- [ ] Confirm zero unused-var regressions
+- [x] Run `npm run lint && npm run typecheck && npm test`
+- [x] Confirm zero unused-var regressions
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] Tests pass
+- [x] All acceptance criteria from PROMPT met
+- [x] Tests pass
