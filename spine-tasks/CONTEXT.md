@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-06
 **Status:** Active
-**Next Task ID:** SP-091
+**Next Task ID:** SP-096
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -199,6 +199,18 @@
 |------|---------|------|------|--------|
 | SP-089 | Fix ESLint CI blocker (no-unused-vars) | S | SP-088 | #45 |
 | SP-090 | CI parity verify command + orchestrator alignment | M | SP-089 | #44 |
+
+### Phase 28 — Backlog Orchestrator Cycle 10 (SP-091–SP-095) — Context-fit epic #46
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-091 | Populate estimated_input_tokens in pi extension | S | SP-090 | #47 |
+| SP-092 | ModelProfile context limits + LiteLLM ingest | M | SP-090 | #48 |
+| SP-093 | Context-fit gate pipeline stage | M | SP-091, SP-092 | #49 |
+| SP-094 | Session pin break on context overflow | M | SP-091, SP-092 | #50 |
+| SP-095 | Context-overflow fallback routing | M | SP-093, SP-094 | #51 |
+
+**Excluded this cycle:** #1, #25, #26 (hardware probe dogfooding — operator request).
 
 ---
 
