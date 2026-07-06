@@ -43,7 +43,7 @@ Map GitHub issue fields → `spine-tasks/SP-0xx-slug/PROMPT.md`.
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run typecheck && npm test` |
+| testCommand | `npm run verify:ci` |
 | fileScopeMustChange | `path/to/primary/file.ts` |
 | fileScopeMustNotChange | `src/domain/**` |
 | completionCriteria | (from issue acceptance criteria) |
@@ -56,7 +56,7 @@ Map GitHub issue fields → `spine-tasks/SP-0xx-slug/PROMPT.md`.
 
 ### Step 2: Testing and verification
 
-- [ ] Run `npm run typecheck && npm test`
+- [ ] Run `npm run verify:ci`
 - [ ] (issue-specific checks)
 
 ## Completion Criteria

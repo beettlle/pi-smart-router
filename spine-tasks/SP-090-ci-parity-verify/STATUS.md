@@ -1,6 +1,6 @@
 # SP-090 Status
 
-**Current Step:** Step 3
+**Current Step:** Step 4
 **Status:** In Progress
 **Last Updated:** 2026-07-06
 **Review Level:** 1
@@ -22,15 +22,15 @@
 
 ## Step 3: Update spine-autonomous-operator skill
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Post-integrate verification aligned
 
 ## Step 4: Update packet template default
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] `packet-from-issue.md` default testCommand updated
+- [x] `packet-from-issue.md` default testCommand updated
 
 ## Step 5: Testing and verification
 
