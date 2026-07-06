@@ -1,12 +1,12 @@
 # SP-086 Status
 
 **Current Step:** Step 1
-**Status:** pending
+**Status:** in progress
 
 ## Step 1: Cursor mapper rules
-- [ ] Add cursor/* and composer-* pattern rules
-- [ ] Define tier/capability defaults
-- [ ] Unit tests
+- [x] Add cursor/* and composer-* pattern rules
+- [x] Define tier/capability defaults
+- [x] Unit tests
 
 ## Step 2: Delegation verification
 - [ ] Verify resolveRegistryModel for cursor models

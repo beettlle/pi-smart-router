@@ -129,6 +129,61 @@ describe('mapPiModelToProfile', () => {
     });
   });
 
+  describe('Cursor family (SP-086)', () => {
+    it('maps cursor/auto to frontier tier with high capabilities', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'cursor', id: 'cursor/auto' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.reasoning).toBeGreaterThanOrEqual(0.9);
+      expect(profile.capabilities.tool_use).toBeGreaterThanOrEqual(0.9);
+      expect(profile.pricing.fallback_cost_per_1m).toBe(0.0);
+      expect(profile.provider).toBe('cursor');
+    });
+
+    it('maps composer-latest to frontier tier with strong code_gen', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'cursor', id: 'composer-latest' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.code_gen).toBeGreaterThanOrEqual(0.95);
+      expect(profile.pricing.fallback_cost_per_1m).toBe(0.0);
+    });
+
+    it('maps cursor/composer-latest via cursor/* rule', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'cursor', id: 'cursor/composer-latest' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.code_gen).toBeGreaterThanOrEqual(0.9);
+    });
+
+    it('keeps zero registry cost for cursor models (subscription billing)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({
+          provider: 'cursor',
+          id: 'cursor/auto',
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.pricing.fallback_cost_per_1m).toBe(0.0);
+    });
+
+    it('does not use UNKNOWN_DEFAULTS for cursor/auto', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'cursor', id: 'cursor/auto' }),
+      );
+
+      expect(profile.capabilities.reasoning).not.toBe(0.6);
+      expect(profile.capabilities.code_gen).not.toBe(0.65);
+    });
+  });
+
   describe('unknown models', () => {
     it('assigns conservative economical-cloud defaults', () => {
       const profile = mapPiModelToProfile(
