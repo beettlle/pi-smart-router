@@ -811,6 +811,94 @@ describe('createStreamSimple', () => {
     );
   });
 
+  it('fails over on Cursor usage-limit assistant errors', async () => {
+    const cursorFleet = [
+      makeProfile({
+        id: 'composer-latest',
+        tier: 'frontier-cloud',
+        provider: 'cursor',
+        pricing: { fallback_cost_per_1m: 0 },
+      }),
+      makeProfile({
+        id: 'cursor/auto',
+        tier: 'frontier-cloud',
+        provider: 'cursor',
+        pricing: { fallback_cost_per_1m: 0 },
+      }),
+      makeProfile({ id: 'gpt-4o-mini', tier: 'economical-cloud', provider: 'openai' }),
+    ];
+    const composerModel = makeRegistryModel({
+      provider: 'cursor',
+      id: 'composer-latest',
+      api: 'openai-responses',
+    });
+    const cursorAutoModel = makeRegistryModel({
+      provider: 'cursor',
+      id: 'cursor/auto',
+      api: 'openai-responses',
+    });
+    const usageLimitMessage =
+      "You've hit your usage limit. Switch to Auto for more usage.";
+
+    mockDelegateStreamSimple
+      .mockImplementationOnce(() => makeErrorStream(composerModel, usageLimitMessage))
+      .mockImplementationOnce(() => makeSuccessStream(cursorAutoModel));
+
+    const router = createMockRouter(
+      vi.fn(async () =>
+        makeDecision({
+          selected_model_id: 'composer-latest',
+          tier: 'frontier-cloud',
+        }),
+      ),
+      cursorFleet,
+    );
+    const recordOutcome = vi.spyOn(router.dispatch, 'recordOutcome');
+    const selectFailover = vi.spyOn(router.dispatch, 'selectFailover');
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router,
+        fleet: cursorFleet,
+        modelRegistry: createMockRegistry([composerModel, cursorAutoModel]),
+      }),
+    );
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(2);
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]).toEqual(composerModel);
+    expect(mockDelegateStreamSimple.mock.calls[1]?.[0]).toEqual(cursorAutoModel);
+    expect(recordOutcome).toHaveBeenCalledWith(
+      'composer-latest',
+      expect.objectContaining({ message: usageLimitMessage }),
+    );
+    expect(selectFailover).toHaveBeenCalled();
+    const failoverResult = selectFailover.mock.results[0]?.value as RoutingDecision | undefined;
+    expect(failoverResult?.reason_code).toBe('cursor_quota_exhausted');
+    expect(events.some((event) => event.type === 'done')).toBe(true);
+
+    const doneEvent = events.find((event) => event.type === 'done');
+    expect(doneEvent?.type).toBe('done');
+    if (doneEvent?.type === 'done') {
+      const textBlock = doneEvent.message?.content[0];
+      expect(textBlock?.type).toBe('text');
+      if (textBlock?.type === 'text') {
+        expect(textBlock.text).toContain(
+          '⚠️ **pi-smart-router failover:** `composer-latest` failed',
+        );
+        expect(textBlock.text).toContain('Retrying with `cursor/auto`...');
+      }
+    }
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[smart-router] infra error, failing over to alternate model',
+      'cursor/auto',
+    );
+  });
+
   it('does not failover on Gemini thought_signature 400 errors', async () => {
     const primary = registryModels[1]!;
     const errorMessage = JSON.stringify({
