@@ -1,5 +1,7 @@
 export type {
   CandidateScore,
+  ContextFitObservability,
+  ContextFitRejectedEntry,
   LoadedRoutingCluster,
   Message,
   ModelCapabilities,

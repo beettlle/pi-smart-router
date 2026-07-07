@@ -18,6 +18,10 @@ import type {
   RoutingRequest,
 } from '../../domain/types/index.js';
 import type { TierFeatureDatasetScalars } from '../../domain/routing/tier-features.js';
+import {
+  buildContextFitObservability,
+  type ContextFitObservabilityInput,
+} from './routing-telemetry.js';
 
 export const DATASET_ENABLED_NOTIFY_MESSAGE =
   'Smart Router dataset mode is enabled. Recording routing metadata and feature fields only — prompt text, messages, and tool arguments are never stored.';
@@ -74,6 +78,7 @@ export interface DatasetRecorderOptions {
   readonly onFirstEnable?: () => void;
   readonly cwd?: string;
   readonly loadPepper?: (cwd: string) => Buffer;
+  readonly contextFitInput?: Omit<ContextFitObservabilityInput, 'request' | 'decision'>;
 }
 
 function hasToolContext(request: RoutingRequest): boolean {
@@ -100,9 +105,15 @@ export function buildDatasetRecord(
   timestamp: string,
   promptFingerprint: string | null = null,
   tierScalars?: TierFeatureDatasetScalars,
+  contextFitInput?: Omit<ContextFitObservabilityInput, 'request' | 'decision'>,
 ): RoutingDatasetRecord {
   const triage = decision.features?.triage ?? null;
   const requirements = decision.features?.requirements ?? null;
+  const contextFit = buildContextFitObservability({
+    request,
+    decision,
+    ...contextFitInput,
+  });
 
   return {
     request_id: decision.request_id,
@@ -130,6 +141,12 @@ export function buildDatasetRecord(
     routing_latency_ms: decision.routing_latency_ms,
     estimated_cost_usd: decision.estimated_cost_usd ?? null,
     prompt_fingerprint: promptFingerprint,
+    estimated_input_tokens_gate: contextFit?.estimated_input_tokens ?? null,
+    context_fit_viable_count: contextFit?.context_fit_viable_count ?? null,
+    context_fit_rejected_json: contextFit?.context_fit_rejected_json ?? null,
+    context_overflow_pin_break: contextFit?.context_overflow_pin_break ?? false,
+    selected_model_max_input_tokens: contextFit?.selected_model_max_input_tokens ?? null,
+    context_fit_reason_code: contextFit?.context_fit_reason_code ?? null,
   };
 }
 
@@ -139,6 +156,7 @@ export class DatasetRecorder {
   private readonly onFirstEnable: (() => void) | undefined;
   private readonly cwd: string;
   private readonly loadPepper: (cwd: string) => Buffer;
+  private readonly contextFitInput: Omit<ContextFitObservabilityInput, 'request' | 'decision'> | undefined;
   private enabledNotified = false;
   private pepper: Buffer | null = null;
 
@@ -148,6 +166,7 @@ export class DatasetRecorder {
     this.onFirstEnable = options?.onFirstEnable;
     this.cwd = options?.cwd ?? process.cwd();
     this.loadPepper = options?.loadPepper ?? loadOrCreateDatasetPepper;
+    this.contextFitInput = options?.contextFitInput;
   }
 
   private getPepper(): Buffer {
@@ -177,6 +196,8 @@ export class DatasetRecorder {
       decision,
       this.clock(),
       promptFingerprint,
+      undefined,
+      this.contextFitInput,
     );
     this.onRecord?.(record);
     return record;

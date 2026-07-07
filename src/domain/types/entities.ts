@@ -119,7 +119,23 @@ export interface CandidateScore {
   readonly rejected_reason: string | null;
 }
 
-/** Privacy-safe triage summary for dataset capture (SP-057). No prompt text. */
+/** Privacy-safe context-fit rejection entry for telemetry and explain (SP-110). */
+export interface ContextFitRejectedEntry {
+  readonly model_id: string;
+  readonly max_input_tokens: number | null;
+  readonly reason: string;
+}
+
+/** Context-fit observability metadata (SP-110, #53). */
+export interface ContextFitObservability {
+  readonly estimated_input_tokens: number | null;
+  readonly context_fit_viable_count: number | null;
+  readonly context_fit_rejected_json: string | null;
+  readonly context_overflow_pin_break: boolean;
+  readonly selected_model_max_input_tokens: number | null;
+  readonly context_fit_reason_code: string | null;
+}
+
 export interface TriageFeatureSummary {
   readonly verdict: 'trivial' | 'complex' | 'ambiguous';
   readonly reason_code: string;
@@ -149,6 +165,8 @@ export interface RoutingFeatureSidecar {
   readonly p_success_cheap: number | null;
   /** Operator alpha threshold used for P(success) routing (SP-105). */
   readonly p_success_alpha: number | null;
+  /** Context-fit gate observability (SP-110). */
+  readonly context_fit?: ContextFitObservability;
 }
 
 export interface RoutingDecision {
@@ -209,6 +227,12 @@ export interface RoutingDatasetRecord {
   readonly estimated_cost_usd: number | null;
   /** HMAC-SHA256 fingerprint for dedup when SMART_ROUTER_DATASET_FINGERPRINT=1. */
   readonly prompt_fingerprint: string | null;
+  readonly estimated_input_tokens_gate: number | null;
+  readonly context_fit_viable_count: number | null;
+  readonly context_fit_rejected_json: string | null;
+  readonly context_overflow_pin_break: boolean;
+  readonly selected_model_max_input_tokens: number | null;
+  readonly context_fit_reason_code: string | null;
 }
 
 // ─── RoutingOutcomeRecord ────────────────────────────────────────────────────
@@ -276,4 +300,10 @@ export interface RoutingTelemetry {
   readonly estimated_cost_usd: number;
   readonly routing_latency_ms: number;
   readonly pin_reason: string | null;
+  readonly estimated_input_tokens: number | null;
+  readonly context_fit_viable_count: number | null;
+  readonly context_fit_rejected_json: string | null;
+  readonly context_overflow_pin_break: boolean;
+  readonly selected_model_max_input_tokens: number | null;
+  readonly context_fit_reason_code: string | null;
 }

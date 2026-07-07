@@ -813,6 +813,12 @@ function telemetryRowToEntity(row: TelemetryRow): RoutingTelemetry {
     estimated_cost_usd: row.estimated_cost_usd,
     routing_latency_ms: row.routing_latency_ms,
     pin_reason: row.pin_reason,
+    estimated_input_tokens: null,
+    context_fit_viable_count: null,
+    context_fit_rejected_json: null,
+    context_overflow_pin_break: false,
+    selected_model_max_input_tokens: null,
+    context_fit_reason_code: null,
   };
 }
 
@@ -843,6 +849,12 @@ function datasetRowToEntity(row: DatasetRow): RoutingDatasetRecord {
     routing_latency_ms: row.routing_latency_ms,
     estimated_cost_usd: row.estimated_cost_usd,
     prompt_fingerprint: row.prompt_fingerprint,
+    estimated_input_tokens_gate: null,
+    context_fit_viable_count: null,
+    context_fit_rejected_json: null,
+    context_overflow_pin_break: false,
+    selected_model_max_input_tokens: null,
+    context_fit_reason_code: null,
   };
 }
 
