@@ -8,6 +8,7 @@
  */
 
 import type { ModelProfile, PriceCatalog, RoutingDecision, RoutingFeatureSidecar, RoutingRequest, Tier, CandidateScore } from '../types/index.js';
+import type { LowIntensityConfig } from '../types/schemas.js';
 import type { HardwareProbeConfig, HardwareProbeResult, SystemInfo } from '../../infrastructure/hardware/hardware-probe.js';
 import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
 import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
@@ -33,6 +34,13 @@ import type { LoopEscalationConfig } from '../pinning/loop-escalation.js';
 import { selectLowestCostModel } from '../pinning/sub-route-policy.js';
 import { RoutingTelemetryEmitter, estimateRoutingCost } from '../../infrastructure/telemetry/routing-telemetry.js';
 import type { HydraMatcher as HydraMatcherType, MatchResult } from '../matching/hydra-matcher.js';
+import type { ClusterMatcher, ClusterMatchResult } from '../matching/cluster-matcher.js';
+import { clusterReasonCode } from '../../config/routing-clusters-loader.js';
+import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
+import {
+  buildTierFeatures,
+  scoreLowIntensity,
+} from '../routing/tier-features.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
 
@@ -60,6 +68,8 @@ export interface PipelineOptions {
   readonly loopEscalationConfig?: LoopEscalationConfig;
   readonly telemetryEmitter?: RoutingTelemetryEmitter;
   readonly hydraMatcher?: HydraMatcherType;
+  readonly clusterMatcher?: ClusterMatcher;
+  readonly lowIntensityConfig?: LowIntensityConfig;
   readonly priceCatalog?: PriceCatalog | null;
   readonly contextFitConfig?: ContextFitConfig;
 }
@@ -81,6 +91,10 @@ export class RouterPipeline {
   private currentHardwareResult: HardwareProbeResult = 'disabled';
   private currentTriageResult: TriageResult | null = null;
   private currentHydraResult: MatchResult | null = null;
+  private currentClusterMatch: ClusterMatchResult | null = null;
+  private currentTierHint: Tier | null = null;
+  private currentTierHintReasonCode: string | null = null;
+  private currentLowIntensityScore: number | null = null;
   private currentContextFitRejected: readonly CandidateScore[] = [];
   private contextOverflowPreferredProvider: string | null = null;
   private contextOverflowTriggered = false;
@@ -93,6 +107,7 @@ export class RouterPipeline {
       { name: 'context_fit', run: this.contextFitStage.bind(this) },
       { name: 'loop_escalation', run: this.loopEscalation.bind(this) },
       { name: 'turn_envelope', run: this.turnEnvelope.bind(this) },
+      { name: 'low_intensity', run: this.lowIntensityGate.bind(this) },
       { name: 'session_pin', run: this.sessionPin.bind(this) },
       { name: 'context_overflow_fallback', run: this.contextOverflowFallback.bind(this) },
       { name: 'triage', run: this.triage.bind(this) },
@@ -115,6 +130,10 @@ export class RouterPipeline {
     this.currentHardwareResult = 'disabled';
     this.currentTriageResult = null;
     this.currentHydraResult = null;
+    this.currentClusterMatch = null;
+    this.currentTierHint = null;
+    this.currentTierHintReasonCode = null;
+    this.currentLowIntensityScore = null;
     this.currentContextFitRejected = [];
     this.contextOverflowPreferredProvider = null;
     this.contextOverflowTriggered = false;
@@ -196,6 +215,9 @@ export class RouterPipeline {
         : null,
       requirements: this.currentHydraResult?.requirements ?? null,
       candidates: this.mergeFeatureCandidates(),
+      tier_hint: this.currentTierHint,
+      tier_hint_reason_code: this.currentTierHintReasonCode,
+      low_intensity_score: this.currentLowIntensityScore,
     };
 
     return { ...decision, features };
@@ -643,6 +665,115 @@ export class RouterPipeline {
     };
   }
 
+  // ─── Low-intensity tier gate (SP-103, #58) ───────────────────────────────
+
+  /**
+   * Runs after turn_envelope and before session_pin. Computes low-intensity score
+   * from structural signals and optional cluster match; sets tier_hint and constrains
+   * the active fleet for subsequent HyDRA matching when confidence is high.
+   */
+  private async lowIntensityGate(request: RoutingRequest): Promise<StageResult> {
+    const config =
+      this.options.lowIntensityConfig ?? DEFAULT_OPERATOR_CONFIG.low_intensity;
+
+    const triageResult = triageClassify(request.prompt_text);
+    let clusterMatch: ClusterMatchResult | undefined;
+
+    const matcher = this.options.clusterMatcher;
+    if (matcher) {
+      try {
+        const result = await matcher.match(request);
+        this.currentClusterMatch = result;
+        clusterMatch = result;
+      } catch {
+        this.currentClusterMatch = null;
+      }
+    }
+
+    const features = buildTierFeatures(request, triageResult, undefined, clusterMatch);
+    const score = scoreLowIntensity(features, config.weights);
+    this.currentLowIntensityScore = score;
+
+    const { tierHint, reasonCode } = this.resolveTierHint(
+      score,
+      config.high_threshold,
+      config.low_threshold,
+      clusterMatch,
+    );
+    this.currentTierHint = tierHint;
+    this.currentTierHintReasonCode = reasonCode;
+
+    return { decided: false, stage: 'low_intensity' };
+  }
+
+  private resolveTierHint(
+    score: number,
+    highThreshold: number,
+    lowThreshold: number,
+    clusterMatch?: ClusterMatchResult,
+  ): { tierHint: Tier | null; reasonCode: string | null } {
+    if (score >= highThreshold) {
+      return {
+        tierHint: this.resolveLowIntensityTierHint(),
+        reasonCode: this.resolveLowIntensityReasonCode(clusterMatch),
+      };
+    }
+
+    if (score <= lowThreshold) {
+      return {
+        tierHint: 'frontier-cloud',
+        reasonCode: this.resolveHighIntensityReasonCode(clusterMatch),
+      };
+    }
+
+    return { tierHint: null, reasonCode: null };
+  }
+
+  private resolveLowIntensityTierHint(): Tier {
+    if (this.isLocalZeroTierReady()) {
+      return 'zero-tier';
+    }
+    return 'economical-cloud';
+  }
+
+  private isLocalZeroTierReady(): boolean {
+    const hasZeroTierModel = this.activeFleet.some(
+      (model) => model.tier === 'zero-tier' && model.healthy !== false,
+    );
+    if (!hasZeroTierModel) {
+      return false;
+    }
+    return this.currentHardwareResult === 'full_local';
+  }
+
+  private resolveLowIntensityReasonCode(clusterMatch?: ClusterMatchResult): string {
+    if (
+      clusterMatch?.confidence === 'high' &&
+      (clusterMatch.tierBias === 'zero-tier' ||
+        clusterMatch.tierBias === 'economical-cloud')
+    ) {
+      return clusterReasonCode(clusterMatch.clusterId);
+    }
+    return 'low_intensity_structural';
+  }
+
+  private resolveHighIntensityReasonCode(clusterMatch?: ClusterMatchResult): string {
+    if (clusterMatch?.confidence === 'high' && clusterMatch.tierBias === 'frontier-cloud') {
+      return clusterReasonCode(clusterMatch.clusterId);
+    }
+    return 'high_intensity_structural';
+  }
+
+  private constrainFleetToTierHint(
+    fleet: readonly ModelProfile[],
+    tierHint: Tier,
+  ): readonly ModelProfile[] {
+    const filtered = fleet.filter(
+      (model) => model.tier === tierHint && model.healthy !== false,
+    );
+    return filtered.length > 0 ? filtered : fleet;
+  }
+
   // ─── Loop escalation (Step 3b — FR-014) ─────────────────────────────────
 
   /**
@@ -690,7 +821,11 @@ export class RouterPipeline {
       return { decided: false, stage: 'hydra_match' };
     }
 
-    const result = await matcher.match(request, this.activeFleet);
+    const fleetForMatch = this.currentTierHint
+      ? this.constrainFleetToTierHint(this.activeFleet, this.currentTierHint)
+      : this.activeFleet;
+
+    const result = await matcher.match(request, fleetForMatch);
     this.currentHydraResult = result;
 
     if (!result.selected) {

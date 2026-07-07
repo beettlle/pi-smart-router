@@ -223,6 +223,16 @@ export const LowIntensityWeightsSchema = z.object({
 
 export const LowIntensityConfigSchema = z.object({
   weights: LowIntensityWeightsSchema,
+  high_threshold: z.number().min(0).max(1),
+  low_threshold: z.number().min(0).max(1),
+}).superRefine((value, ctx) => {
+  if (value.high_threshold <= value.low_threshold) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'high_threshold must be greater than low_threshold',
+      path: ['high_threshold'],
+    });
+  }
 });
 
 export const RoutingClustersConfigSchema = z.object({
@@ -274,3 +284,4 @@ export const OperatorConfigSchema = z.object({
 // ─── Inferred types ──────────────────────────────────────────────────────────
 
 export type OperatorConfig = z.infer<typeof OperatorConfigSchema>;
+export type LowIntensityConfig = z.infer<typeof LowIntensityConfigSchema>;
