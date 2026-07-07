@@ -44,7 +44,7 @@ describe('tier-features', () => {
         prompt_text: '```ts\nif (a) { b(); }\n```\nfix lint',
         messages: [
           { role: 'user', content: 'fix lint' },
-          { role: 'tool', content: 'done', tool_call_id: 't1' },
+          { role: 'tool', content: 'done' },
         ],
         turn_type: 'tool_result',
         estimated_input_tokens: 120,
@@ -82,10 +82,8 @@ describe('tier-features', () => {
     });
 
     it('falls back to char/4 token estimate when estimated_input_tokens is absent', () => {
-      const request = makeRequest({
-        prompt_text: 'abcd',
-        estimated_input_tokens: undefined,
-      });
+      const request = makeRequest({ prompt_text: 'abcd' });
+      delete (request as { estimated_input_tokens?: number }).estimated_input_tokens;
       const features = buildTierFeatures(request, triage(request.prompt_text));
 
       expect(features.estimated_input_tokens).toBe(1);
