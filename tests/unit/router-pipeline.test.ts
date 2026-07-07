@@ -9,6 +9,7 @@ import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { extractToolFailureSignature } from '../../src/domain/pinning/loop-escalation.js';
 import { RoutingTelemetryEmitter } from '../../src/infrastructure/telemetry/routing-telemetry.js';
+import { CONTEXT_FIT_EXCEEDED } from '../../src/domain/routing/context-fit.js';
 import type { ModelProfile, PriceCatalog, RoutingRequest } from '../../src/domain/types/index.js';
 
 function makeModel(
@@ -768,6 +769,86 @@ describe('RouterPipeline', () => {
 
       expect(onRecord).toHaveBeenCalledOnce();
       expect(onRecord.mock.calls[0]?.[0]?.estimated_cost_usd).toBeCloseTo(0.6, 5);
+    });
+  });
+
+  describe('context-fit gate (SP-093)', () => {
+    const contextFleet: ModelProfile[] = [
+      makeModel({
+        id: 'small-window',
+        tier: 'economical-cloud',
+        limits: { max_input_tokens: 32_768 },
+      }),
+      makeModel({
+        id: 'large-window',
+        tier: 'frontier-cloud',
+        limits: { max_input_tokens: 200_000 },
+      }),
+    ];
+
+    it('excludes undersized models when estimated tokens exceed a 32K window', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'small-window', 'initial');
+
+      const pipeline = new RouterPipeline(contextFleet, { sessionPinner: pinner });
+      const decision = await pipeline.route(
+        makeRequest({ estimated_input_tokens: 34_000 }),
+      );
+
+      expect(decision.selected_model_id).not.toBe('small-window');
+      expect(decision.features?.candidates?.some(
+        (c) => c.model_id === 'small-window' && c.rejected_reason === CONTEXT_FIT_EXCEEDED,
+      )).toBe(true);
+    });
+
+    it('leaves short-prompt routing unchanged when all models fit', async () => {
+      const pipeline = new RouterPipeline(fleet);
+      const decision = await pipeline.route(
+        makeRequest({ estimated_input_tokens: 50 }),
+      );
+
+      expect(decision.stage).toBe('fallback');
+      expect(decision.selected_model_id).toBe('gpt-4o-mini');
+      expect(decision.features?.candidates ?? []).toEqual([]);
+    });
+
+    it('records rejected candidates in decision features', async () => {
+      const pipeline = new RouterPipeline(contextFleet);
+      const decision = await pipeline.route(
+        makeRequest({ estimated_input_tokens: 34_000 }),
+      );
+
+      const rejected = decision.features?.candidates?.filter(
+        (c) => c.rejected_reason === CONTEXT_FIT_EXCEEDED,
+      );
+      expect(rejected).toHaveLength(1);
+      expect(rejected?.[0]?.model_id).toBe('small-window');
+      expect(decision.selected_model_id).toBe('large-window');
+    });
+
+    it('honors contextFitConfig safety margin from pipeline options', async () => {
+      const narrowFleet = [
+        makeModel({
+          id: 'mid-window',
+          tier: 'economical-cloud',
+          limits: { max_input_tokens: 20_000 },
+        }),
+        makeModel({
+          id: 'wide-window',
+          tier: 'frontier-cloud',
+          limits: { max_input_tokens: 200_000 },
+        }),
+      ];
+
+      const pipeline = new RouterPipeline(narrowFleet, {
+        contextFitConfig: { safetyMargin: 0.95 },
+      });
+      const decision = await pipeline.route(
+        makeRequest({ estimated_input_tokens: 18_000 }),
+      );
+
+      expect(decision.features?.candidates ?? []).toEqual([]);
+      expect(decision.selected_model_id).toBe('mid-window');
     });
   });
 });
