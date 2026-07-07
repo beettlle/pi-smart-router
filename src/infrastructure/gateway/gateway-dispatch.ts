@@ -8,6 +8,9 @@
  *
  * FR-023: preserves provider context-caching semantics on same-provider
  * request paths by tracking the last-used provider per session.
+ *
+ * SP-097: Cursor subscription quota exhaustion detection and failover to
+ * `cursor/auto` or economical API models with `cursor_quota_exhausted` telemetry.
  */
 
 import type {
@@ -41,6 +44,87 @@ export interface RateLimitResult {
 export interface RateLimitPort {
   /** Attempt to consume a token for the given key. */
   consumeToken(key: string, cost?: number): { allowed: boolean; remaining: number; retryAfterSeconds: number | null };
+}
+
+// ─── Cursor quota exhaustion (SP-097 / #70) ──────────────────────────────────
+
+export interface ProviderErrorShape {
+  readonly statusCode?: number;
+  readonly code?: string;
+  readonly message?: string;
+}
+
+const CURSOR_QUOTA_MESSAGE_PATTERNS: readonly RegExp[] = [
+  /usage\s+limit/i,
+  /hit your usage/i,
+  /quota\s+exhaust/i,
+  /subscription.*limit/i,
+  /switch to auto/i,
+];
+
+const CURSOR_QUOTA_ERROR_CODES = new Set([
+  'usage_limit_exceeded',
+  'resource_exhausted',
+  'quota_exceeded',
+  'insufficient_quota',
+]);
+
+/**
+ * Classify Cursor subscription quota / usage-limit errors from dogfood evidence
+ * (#70: "You've hit your usage limit… Switch to Auto for more usage…").
+ */
+export function isCursorQuotaExhaustedError(error: ProviderErrorShape): boolean {
+  const code = error.code?.trim().toLowerCase();
+  if (code && CURSOR_QUOTA_ERROR_CODES.has(code)) {
+    return true;
+  }
+
+  const message = error.message ?? '';
+  if (message.length > 0 && CURSOR_QUOTA_MESSAGE_PATTERNS.some((pattern) => pattern.test(message))) {
+    return true;
+  }
+
+  if (error.statusCode === 429 && /usage|quota|limit/i.test(message)) {
+    return true;
+  }
+
+  return false;
+}
+
+/** Cursor frontier models billed against subscription quota (composer-*, cursor/*). */
+export function isCursorSubscriptionModel(model: ModelProfile): boolean {
+  const provider = model.provider.trim().toLowerCase();
+  if (provider === 'cursor') {
+    return true;
+  }
+
+  const id = model.id.trim().toLowerCase();
+  return id.startsWith('composer-') || id.startsWith('cursor/');
+}
+
+/** Cursor opaque-auto models (`cursor/auto`, `cursor/*`). */
+export function isCursorAutoModel(model: ModelProfile): boolean {
+  const id = model.id.trim().toLowerCase();
+  return id === 'cursor/auto' || id === 'auto' || id.startsWith('cursor/');
+}
+
+/**
+ * Whether a provider error should trigger model failover (infra or Cursor quota).
+ * Quota exhaustion on Cursor subscription models must not trip the circuit breaker.
+ */
+export function shouldFailoverOnProviderError(
+  error: ProviderErrorShape,
+  failedModel?: ModelProfile,
+): boolean {
+  if (isCursorQuotaExhaustedError(error)) {
+    return true;
+  }
+
+  if (failedModel && isCursorSubscriptionModel(failedModel) && error.statusCode === 429) {
+    return true;
+  }
+
+  return isInfraError(error);
 }
 
 // ─── Dispatch options ────────────────────────────────────────────────────────
@@ -92,6 +176,7 @@ export class GatewayDispatch {
   private readonly cacheMarkers = new Map<string, CacheMarker>();
   private readonly circuitBreaker: CircuitBreaker;
   private readonly rateLimiter: RateLimitPort | undefined;
+  private readonly quotaExhaustedModels = new Set<string>();
 
   constructor(fleet: readonly ModelProfile[], options?: GatewayDispatchOptions) {
     this.fleet = fleet;
@@ -150,13 +235,25 @@ export class GatewayDispatch {
   /**
    * Record an upstream response outcome for circuit breaker tracking.
    * Only infra errors trip the breaker; policy/safety rejections are ignored (FR-018).
+   * Cursor quota exhaustion is tracked for SP-097 failover without opening circuits.
    */
   recordOutcome(
     modelId: string,
-    error?: { statusCode?: number; code?: string },
+    error?: ProviderErrorShape,
   ): void {
     if (!error) {
       this.circuitBreaker.recordSuccess(modelId);
+      return;
+    }
+
+    if (isCursorQuotaExhaustedError(error)) {
+      this.quotaExhaustedModels.add(modelId);
+      return;
+    }
+
+    const failedModel = this.fleet.find((m) => m.id === modelId);
+    if (failedModel && isCursorSubscriptionModel(failedModel) && error.statusCode === 429) {
+      this.quotaExhaustedModels.add(modelId);
       return;
     }
 
@@ -170,6 +267,11 @@ export class GatewayDispatch {
     return this.circuitBreaker;
   }
 
+  /** Whether a model recently returned a Cursor quota exhaustion error (SP-097). */
+  hasQuotaExhaustion(modelId: string): boolean {
+    return this.quotaExhaustedModels.has(modelId);
+  }
+
   /**
    * Retrieve the current cache marker for a session (FR-023 inspection).
    */
@@ -180,6 +282,8 @@ export class GatewayDispatch {
   /**
    * Select an alternate model when the current target is unavailable or failed.
    * Prefers same-tier healthy models with closed circuits, then any tier.
+   * When the failed model hit Cursor quota limits, prefers `cursor/auto` then
+   * economical API models with `cursor_quota_exhausted`.
    */
   selectFailover(
     decision: RoutingDecision,
@@ -188,6 +292,11 @@ export class GatewayDispatch {
   ): RoutingDecision | undefined {
     const excluded = new Set(excludeModelIds);
     const fleet = fleetOverride ?? this.fleet;
+
+    const quotaFailover = this.selectCursorQuotaFailover(decision, excluded, fleet);
+    if (quotaFailover) {
+      return quotaFailover;
+    }
 
     const sameTier = fleet.filter(
       (m) =>
@@ -242,6 +351,65 @@ export class GatewayDispatch {
     }
 
     return this.selectFailover(decision, [], fleet) ?? decision;
+  }
+
+  /**
+   * SP-097: fail over from quota-exhausted Cursor models to `cursor/auto` or
+   * the cheapest viable economical API model in the scoped fleet.
+   */
+  private selectCursorQuotaFailover(
+    decision: RoutingDecision,
+    excluded: ReadonlySet<string>,
+    fleet: readonly ModelProfile[],
+  ): RoutingDecision | undefined {
+    const failedIds = [decision.selected_model_id, ...excluded];
+    const quotaFailed = failedIds.some((id) => this.quotaExhaustedModels.has(id));
+    if (!quotaFailed) {
+      return undefined;
+    }
+
+    const failedModel = fleet.find((m) => m.id === decision.selected_model_id);
+    if (failedModel && !isCursorSubscriptionModel(failedModel)) {
+      return undefined;
+    }
+
+    const cursorAuto = fleet.find(
+      (m) =>
+        isCursorAutoModel(m) &&
+        !excluded.has(m.id) &&
+        m.id !== decision.selected_model_id &&
+        m.healthy !== false &&
+        this.circuitBreaker.canDispatch(m.id),
+    );
+    if (cursorAuto) {
+      return {
+        ...decision,
+        selected_model_id: cursorAuto.id,
+        tier: cursorAuto.tier,
+        reason_code: 'cursor_quota_exhausted',
+      };
+    }
+
+    const economical = fleet.filter(
+      (m) =>
+        m.tier === 'economical-cloud' &&
+        !excluded.has(m.id) &&
+        m.id !== decision.selected_model_id &&
+        m.healthy !== false &&
+        !isCursorSubscriptionModel(m) &&
+        this.circuitBreaker.canDispatch(m.id),
+    );
+    const economicalFallback = weightedSelect(economical);
+    if (economicalFallback) {
+      return {
+        ...decision,
+        selected_model_id: economicalFallback.id,
+        tier: economicalFallback.tier,
+        reason_code: 'cursor_quota_exhausted',
+      };
+    }
+
+    return undefined;
   }
 
   /**
