@@ -1,7 +1,7 @@
 # SP-116 Status
 
 **Current Step:** Step 1
-**Status:** Not Started
+**Status:** In Progress
 **Last Updated:** 2026-07-07
 **Review Level:** 2
 **Size:** M
@@ -10,11 +10,11 @@
 
 ## Step 1: Schema and bundle format
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Define routing-calibration schema
-- [ ] Create example bundle file
-- [ ] Document minimum sample size
+- [x] Define routing-calibration schema
+- [x] Create example bundle file
+- [x] Document minimum sample size
 
 ## Step 2: Aggregate and validate scripts
 
