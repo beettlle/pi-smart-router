@@ -14,7 +14,7 @@ import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/lo
 import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
 import { pingLocalServices } from '../../infrastructure/local/local-zero-tier.js';
 import { triage as triageClassify } from '../triage/triage-engine.js';
-import type { TriageResult } from '../triage/triage-engine.js';
+import type { TriageResult, TriageVerdict } from '../triage/triage-engine.js';
 import { classifyTurnEnvelope } from '../triage/turn-envelope.js';
 import { safeCloudDefault } from './safe-default.js';
 import {
@@ -67,6 +67,54 @@ interface NamedPipelineStage {
   readonly run: PipelineStage;
 }
 
+/** Inputs for local_zero eligibility beyond trivial-only triage (SP-111, #59). */
+export interface LocalEligibleInput {
+  readonly triageVerdict: TriageVerdict | null;
+  readonly tierHint: Tier | null;
+  readonly lowIntensityScore: number | null;
+  readonly highThreshold: number;
+  readonly clusterMatch: ClusterMatchResult | null;
+}
+
+export interface LocalEligibleResult {
+  readonly eligible: boolean;
+  readonly reason: string | null;
+}
+
+/**
+ * Disjunction: triage trivial OR low-intensity zero-tier hint (high confidence)
+ * OR high-confidence zero-tier cluster match.
+ */
+export function resolveLocalEligible(input: LocalEligibleInput): LocalEligibleResult {
+  const clusterZeroTier =
+    input.clusterMatch?.confidence === 'high' &&
+    input.clusterMatch.tierBias === 'zero-tier';
+
+  const lowIntensityZeroTier =
+    input.tierHint === 'zero-tier' &&
+    input.lowIntensityScore !== null &&
+    input.lowIntensityScore >= input.highThreshold;
+
+  const triageTrivial = input.triageVerdict === 'trivial';
+
+  if (!triageTrivial && !lowIntensityZeroTier && !clusterZeroTier) {
+    return { eligible: false, reason: null };
+  }
+
+  if (triageTrivial) {
+    return { eligible: true, reason: 'triage_trivial' };
+  }
+
+  if (clusterZeroTier) {
+    return {
+      eligible: true,
+      reason: clusterReasonCode(input.clusterMatch!.clusterId),
+    };
+  }
+
+  return { eligible: true, reason: 'low_intensity_structural' };
+}
+
 // ─── Pipeline configuration ──────────────────────────────────────────────────
 
 export interface PipelineOptions {
@@ -111,6 +159,7 @@ export class RouterPipeline {
   private currentPSuccessCheap: number | null = null;
   private currentPSuccessAlpha: number | null = null;
   private currentExpectedCostByTier: ExpectedCostBreakdown[] | null = null;
+  private currentLocalEligibleReason: string | null = null;
   private pSuccessWeightsLoaded = false;
   private cachedPSuccessWeights: PSuccessWeights | null = null;
   private currentContextFitRejected: readonly CandidateScore[] = [];
@@ -155,6 +204,7 @@ export class RouterPipeline {
     this.currentPSuccessCheap = null;
     this.currentPSuccessAlpha = null;
     this.currentExpectedCostByTier = null;
+    this.currentLocalEligibleReason = null;
     this.currentContextFitRejected = [];
     this.contextOverflowPreferredProvider = null;
     this.contextOverflowTriggered = false;
@@ -241,6 +291,7 @@ export class RouterPipeline {
       low_intensity_score: this.currentLowIntensityScore,
       p_success_cheap: this.currentPSuccessCheap,
       p_success_alpha: this.currentPSuccessAlpha,
+      local_eligible_reason: this.currentLocalEligibleReason,
     };
 
     return { ...decision, features };
@@ -461,10 +512,20 @@ export class RouterPipeline {
 
   /**
    * SC-007: classification_only MUST NOT dispatch full local.
-   * PRD Step 4: only trivial tasks with full_local hardware may use zero-tier.
+   * Eligibility: triage trivial OR low-intensity zero-tier hint OR zero-tier cluster (SP-111).
    */
   private async localZeroTierStage(request: RoutingRequest): Promise<StageResult> {
-    if (this.currentTriageResult?.verdict !== 'trivial') {
+    const lowIntensityConfig =
+      this.options.lowIntensityConfig ?? DEFAULT_OPERATOR_CONFIG.low_intensity;
+    const eligibility = resolveLocalEligible({
+      triageVerdict: this.currentTriageResult?.verdict ?? null,
+      tierHint: this.currentTierHint,
+      lowIntensityScore: this.currentLowIntensityScore,
+      highThreshold: lowIntensityConfig.high_threshold,
+      clusterMatch: this.currentClusterMatch,
+    });
+
+    if (!eligibility.eligible) {
       return { decided: false, stage: 'local_zero' };
     }
 
@@ -488,6 +549,8 @@ export class RouterPipeline {
     if (!localModel) {
       return { decided: false, stage: 'local_zero' };
     }
+
+    this.currentLocalEligibleReason = eligibility.reason;
 
     return {
       decided: true,

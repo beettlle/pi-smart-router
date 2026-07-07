@@ -149,6 +149,8 @@ export interface RoutingFeatureSidecar {
   readonly p_success_cheap: number | null;
   /** Operator alpha threshold used for P(success) routing (SP-105). */
   readonly p_success_alpha: number | null;
+  /** Why local_zero eligibility passed (SP-111, #59). */
+  readonly local_eligible_reason: string | null;
 }
 
 export interface RoutingDecision {
