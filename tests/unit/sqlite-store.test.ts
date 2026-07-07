@@ -10,6 +10,8 @@ import { SqliteStore, SqliteStoreError } from '../../src/infrastructure/persiste
 import {
   DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
   DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
+  DEFAULT_TIER_SELECTION_DATASET_FIELDS,
+  DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
 } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 
 const TEST_MODELS: readonly ModelProfile[] = [
@@ -84,6 +86,7 @@ function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): Routi
     estimated_cost_usd: 0.002,
     prompt_fingerprint: null,
     ...DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
+    ...DEFAULT_TIER_SELECTION_DATASET_FIELDS,
     ...overrides,
   };
 }
@@ -297,6 +300,8 @@ describe('SqliteStore', () => {
           routing_latency_ms: 12,
           pin_reason: null,
           ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
+        ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
+          ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
         }),
       ).not.toThrow();
     });
@@ -314,6 +319,7 @@ describe('SqliteStore', () => {
         routing_latency_ms: 1,
         pin_reason: null,
         ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
+        ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
       });
       store.appendTelemetry({
         timestamp: '2026-07-02T00:01:00.000Z',
@@ -327,6 +333,7 @@ describe('SqliteStore', () => {
         routing_latency_ms: 4,
         pin_reason: null,
         ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
+        ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
       });
 
       const rows = await store.listTelemetry({ limit: 10 });
@@ -349,6 +356,8 @@ describe('SqliteStore', () => {
           routing_latency_ms: 1,
           pin_reason: null,
           ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
+        ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
+          ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
         });
       }
 

@@ -20,6 +20,7 @@ import type {
 import type { TierFeatureDatasetScalars } from '../../domain/routing/tier-features.js';
 import {
   buildContextFitObservability,
+  buildTierSelectionObservability,
   type ContextFitObservabilityInput,
 } from './routing-telemetry.js';
 
@@ -114,6 +115,7 @@ export function buildDatasetRecord(
     decision,
     ...contextFitInput,
   });
+  const tierSelection = buildTierSelectionObservability({ decision });
 
   return {
     request_id: decision.request_id,
@@ -147,6 +149,14 @@ export function buildDatasetRecord(
     context_overflow_pin_break: contextFit?.context_overflow_pin_break ?? false,
     selected_model_max_input_tokens: contextFit?.selected_model_max_input_tokens ?? null,
     context_fit_reason_code: contextFit?.context_fit_reason_code ?? null,
+    cluster_id: tierSelection?.cluster_id ?? null,
+    cluster_similarity: tierSelection?.cluster_similarity ?? null,
+    cluster_margin: tierSelection?.cluster_margin ?? null,
+    low_intensity_score: tierSelection?.low_intensity_score ?? null,
+    tier_hint: tierSelection?.tier_hint ?? null,
+    p_success_cheap: tierSelection?.p_success_cheap ?? null,
+    local_eligible_reason: tierSelection?.local_eligible_reason ?? null,
+    tier_selection_reason_code: tierSelection?.tier_selection_reason_code ?? null,
   };
 }
 

@@ -10,10 +10,17 @@ import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import {
   CONTEXT_FIT_PASS,
   CONTEXT_OVERFLOW_PIN_BREAK,
+  LOW_INTENSITY_STRUCTURAL,
+  P_SUCCESS_CHEAP,
+  P_SUCCESS_UNCERTAIN,
   RoutingTelemetryEmitter,
   buildContextFitObservability,
+  buildLocalZeroSkipReasons,
   buildRoutingDecisionLogPayload,
+  buildTierSelectionObservability,
   enrichRoutingDecisionWithContextFit,
+  enrichRoutingDecisionWithTierSelection,
+  resolveTierSelectionReasonCode,
 } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 import { TELEMETRY_MAX_ENTRIES } from '../../src/infrastructure/telemetry/telemetry-limits.js';
 
@@ -88,6 +95,14 @@ describe('RoutingTelemetryEmitter', () => {
       context_overflow_pin_break: false,
       selected_model_max_input_tokens: null,
       context_fit_reason_code: null,
+      cluster_id: null,
+      cluster_similarity: null,
+      cluster_margin: null,
+      low_intensity_score: null,
+      tier_hint: null,
+      p_success_cheap: null,
+      local_eligible_reason: null,
+      tier_selection_reason_code: null,
     });
   });
 
@@ -307,5 +322,157 @@ describe('enrichRoutingDecisionWithContextFit', () => {
 
     expect(enriched.selected_model_id).toBe('large-window');
     expect(enriched.features?.context_fit?.context_fit_reason_code).toBe(CONTEXT_FIT_PASS);
+  });
+});
+
+describe('tier-selection observability (SP-113)', () => {
+  function makeTierFeatures(overrides?: Partial<NonNullable<RoutingDecision['features']>>) {
+    return {
+      triage: {
+        verdict: 'ambiguous' as const,
+        reason_code: 'mixed_signals',
+        cyclomatic_score: 2,
+      },
+      requirements: { reasoning: 0.4, code_gen: 0.3, tool_use: 0.1 },
+      candidates: [
+        {
+          model_id: '__expected_cost_economical-cloud__',
+          score: 0.0002,
+          shortfall: 0.00025,
+          rejected_reason: 'p_success=0.8200',
+        },
+        {
+          model_id: '__expected_cost_frontier-cloud__',
+          score: 0.0012,
+          shortfall: 0.0012,
+          rejected_reason: 'p_success=0.8200',
+        },
+      ],
+      tier_hint: 'economical-cloud' as const,
+      tier_hint_reason_code: 'expected_cost_economical_cloud',
+      low_intensity_score: 0.72,
+      p_success_cheap: 0.82,
+      p_success_alpha: 0.5,
+      local_eligible_reason: 'cluster_low_stakes_general',
+      ...overrides,
+    };
+  }
+
+  it('normalizes expected-cost economical hints to p_success_cheap', () => {
+    const reason = resolveTierSelectionReasonCode(makeTierFeatures());
+    expect(reason).toBe(P_SUCCESS_CHEAP);
+  });
+
+  it('maps deferred expected-cost selection to p_success_uncertain', () => {
+    const reason = resolveTierSelectionReasonCode(
+      makeTierFeatures({
+        tier_hint: null,
+        tier_hint_reason_code: 'expected_cost_price_delta_insufficient',
+      }),
+    );
+    expect(reason).toBe(P_SUCCESS_UNCERTAIN);
+  });
+
+  it('preserves cluster and structural reason codes', () => {
+    expect(
+      resolveTierSelectionReasonCode(
+        makeTierFeatures({ tier_hint_reason_code: 'cluster_architecture' }),
+      ),
+    ).toBe('cluster_architecture');
+    expect(
+      resolveTierSelectionReasonCode(
+        makeTierFeatures({
+          tier_hint: 'economical-cloud',
+          tier_hint_reason_code: LOW_INTENSITY_STRUCTURAL,
+        }),
+      ),
+    ).toBe(LOW_INTENSITY_STRUCTURAL);
+  });
+
+  it('builds tier_selection observability with cluster table and skip reasons', () => {
+    const decision = makeDecision({
+      stage: 'hydra_match',
+      features: makeTierFeatures(),
+    });
+    const table = [
+      {
+        cluster_id: 'low_stakes_general',
+        tier_bias: 'economical-cloud' as const,
+        similarity: 0.91,
+        margin: 0.08,
+        confidence: 'high' as const,
+        selected: true,
+      },
+      {
+        cluster_id: 'architecture',
+        tier_bias: 'frontier-cloud' as const,
+        similarity: 0.42,
+        margin: null,
+        confidence: 'none' as const,
+        selected: false,
+      },
+    ];
+
+    const observability = buildTierSelectionObservability({
+      decision,
+      clusterMatchTable: table,
+    });
+
+    expect(observability).toMatchObject({
+      cluster_id: 'low_stakes_general',
+      cluster_similarity: 0.91,
+      cluster_margin: 0.08,
+      low_intensity_score: 0.72,
+      tier_hint: 'economical-cloud',
+      p_success_cheap: 0.82,
+      local_eligible_reason: 'cluster_low_stakes_general',
+      tier_selection_reason_code: P_SUCCESS_CHEAP,
+    });
+    expect(observability?.cluster_match_table).toHaveLength(2);
+    expect(observability?.low_intensity_breakdown?.rejected_tiers).toHaveLength(2);
+    expect(buildLocalZeroSkipReasons(decision, decision.features)).toContain(
+      'hardware_or_local_unavailable',
+    );
+  });
+
+  it('emits tier-selection telemetry fields when decision includes features', async () => {
+    const onRecord = vi.fn();
+    const emitter = new RoutingTelemetryEmitter({ onRecord });
+    const pipeline = new RouterPipeline(contextFleet, { telemetryEmitter: emitter });
+    const decision = await pipeline.route(
+      makeRequest({ prompt_text: 'Hello, how are you today?' }),
+    );
+
+    emitter.emit(makeRequest({ prompt_text: 'Hello, how are you today?' }), decision);
+
+    const record = onRecord.mock.calls.at(-1)?.[0];
+    expect(record?.low_intensity_score).not.toBeNull();
+    expect(record?.tier_selection_reason_code).not.toBeNull();
+  });
+
+  it('includes cluster_summary in routing log payload', () => {
+    const decision = makeDecision({
+      features: makeTierFeatures(),
+    });
+    const payload = buildRoutingDecisionLogPayload(makeRequest(), decision, undefined, contextFleet);
+
+    expect(payload.cluster_summary).toMatchObject({
+      cluster_id: 'low_stakes_general',
+      tier_hint: 'economical-cloud',
+      tier_selection_reason_code: P_SUCCESS_CHEAP,
+      low_intensity_score: 0.72,
+    });
+  });
+
+  it('attaches tier_selection to decision features for explain', () => {
+    const decision = makeDecision({ features: makeTierFeatures() });
+    const enriched = enrichRoutingDecisionWithTierSelection(decision);
+
+    expect(enriched.features?.tier_selection?.tier_feature_summary?.triage_verdict).toBe(
+      'ambiguous',
+    );
+    expect(enriched.features?.tier_selection?.local_zero_skip_reasons).toContain(
+      'hardware_or_local_unavailable',
+    );
   });
 });

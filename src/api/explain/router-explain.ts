@@ -17,7 +17,8 @@ import type { ModelProfile, RoutingDecision, RoutingRequest, Message } from '../
 import { RoutingRequestSchema } from '../../domain/types/schemas.js';
 import { RouterPipeline } from '../../domain/pipeline/router-pipeline.js';
 import { safeCloudDefault } from '../../domain/pipeline/safe-default.js';
-import { enrichRoutingDecisionWithContextFit } from '../../infrastructure/telemetry/routing-telemetry.js';
+import type { ClusterMatcher } from '../../domain/matching/cluster-matcher.js';
+import { enrichRoutingDecisionForExplain } from '../../infrastructure/telemetry/routing-telemetry.js';
 
 // ─── Result types ─────────────────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ export type ExplainResult = ExplainSuccess | ExplainBadRequest | ExplainUnavaila
 export interface ExplainHandlerDeps {
   readonly fleet: readonly ModelProfile[];
   readonly pipeline: RouterPipeline;
+  readonly clusterMatcher?: ClusterMatcher;
 }
 
 // ─── Handler factory ──────────────────────────────────────────────────────────
@@ -59,7 +61,7 @@ export interface ExplainHandlerDeps {
  * session pin state and stage ordering are identical.
  */
 export function createExplainHandler(deps: ExplainHandlerDeps) {
-  const { fleet, pipeline } = deps;
+  const { fleet, pipeline, clusterMatcher } = deps;
 
   return async function explain(rawBody: unknown): Promise<ExplainResult> {
     const parsed = RoutingRequestSchema.safeParse(rawBody);
@@ -83,7 +85,10 @@ export function createExplainHandler(deps: ExplainHandlerDeps) {
       const decision = await pipeline.route(request);
       return {
         status: 200,
-        body: enrichRoutingDecisionWithContextFit(request, decision, fleet),
+        body: await enrichRoutingDecisionForExplain(request, decision, {
+          fleet,
+          ...(clusterMatcher !== undefined ? { clusterMatcher } : {}),
+        }),
       };
     } catch {
       const fallbackModel = safeCloudDefault(fleet);
@@ -98,7 +103,10 @@ export function createExplainHandler(deps: ExplainHandlerDeps) {
       };
       return {
         status: 503,
-        body: enrichRoutingDecisionWithContextFit(request, decision, fleet),
+        body: await enrichRoutingDecisionForExplain(request, decision, {
+          fleet,
+          ...(clusterMatcher !== undefined ? { clusterMatcher } : {}),
+        }),
       };
     }
   };

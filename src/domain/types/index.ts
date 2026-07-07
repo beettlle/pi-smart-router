@@ -1,8 +1,10 @@
 export type {
   CandidateScore,
+  ClusterMatchTableEntry,
   ContextFitObservability,
   ContextFitRejectedEntry,
   LoadedRoutingCluster,
+  LowIntensityBreakdown,
   Message,
   ModelCapabilities,
   ModelLimits,
@@ -10,6 +12,7 @@ export type {
   ModelPricing,
   ModelProfile,
   PriceCatalog,
+  RejectedTierEntry,
   RequirementVector,
   RoutingCluster,
   RoutingClusterCatalog,
@@ -21,6 +24,8 @@ export type {
   RoutingRequest,
   RoutingTelemetry,
   SessionPin,
+  TierFeatureSummary,
+  TierSelectionObservability,
   TriageFeatureSummary,
 } from './entities.js';
 

@@ -30,7 +30,7 @@ import { ExecutionLedger } from '../../src/domain/delegation/execution-ledger.js
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { LifecycleHookState, createRouterFromFleet } from '../../src/index.js';
 import type { SmartRouterRuntime } from '../../.pi/extensions/smart-router/types.js';
-import { DEFAULT_CONTEXT_FIT_DATASET_FIELDS, DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
+import { DEFAULT_CONTEXT_FIT_DATASET_FIELDS, DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS, DEFAULT_TIER_SELECTION_DATASET_FIELDS, DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 
 function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): RoutingDatasetRecord {
   return {
@@ -60,6 +60,7 @@ function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): Routi
     estimated_cost_usd: 0.001,
     prompt_fingerprint: null,
     ...DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
+    ...DEFAULT_TIER_SELECTION_DATASET_FIELDS,
     ...overrides,
   };
 }
@@ -465,6 +466,7 @@ describe('formatHistoryMessage', () => {
         routing_latency_ms: 4,
         pin_reason: null,
         ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
+        ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
       },
     ]);
 
