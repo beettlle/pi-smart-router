@@ -6,6 +6,8 @@ import {
   type RequirementVector,
   type HydraMatcherConfig,
 } from '../../src/domain/matching/hydra-matcher.js';
+import { EMBEDDING_DIM } from '../../src/domain/matching/embedding-provider.js';
+import { buildHydraInput } from '../../src/domain/matching/hydra-input.js';
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 
 // ─── Test helpers ────────────────────────────────────────────────────────────
@@ -27,6 +29,20 @@ function makeModel(overrides: Partial<ModelProfile> = {}): ModelProfile {
     capabilities: { reasoning: 0.8, code_gen: 0.9, tool_use: 0.7 },
     pricing: { fallback_cost_per_1m: 1.0 },
     ...overrides,
+  };
+}
+
+function makeInputSensitiveProvider(): EmbeddingProvider {
+  return {
+    extractRequirements: vi.fn(async (text: string) => {
+      const embedding = new Float32Array(EMBEDDING_DIM);
+      for (let i = 0; i < EMBEDDING_DIM; i++) {
+        const code = text.charCodeAt(i % text.length) ?? 0;
+        embedding[i] = Math.sin(code + i * 0.01);
+      }
+      return projectToRequirements(embedding);
+    }),
+    dispose: vi.fn(async () => {}),
   };
 }
 
@@ -291,7 +307,7 @@ describe('HydraMatcher', () => {
   });
 
   describe('requirement extraction', () => {
-    it('calls provider with prompt_text from request', async () => {
+    it('calls provider with metadata-prefixed hydra input', async () => {
       const requirements: RequirementVector = { reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 };
       const provider = makeMockProvider(requirements);
       const matcher = new HydraMatcher(provider, DEFAULT_CONFIG);
@@ -299,7 +315,38 @@ describe('HydraMatcher', () => {
       const request = makeRequest({ prompt_text: 'Explain quantum entanglement' });
       await matcher.match(request, [makeModel()]);
 
-      expect(provider.extractRequirements).toHaveBeenCalledWith('Explain quantum entanglement');
+      expect(provider.extractRequirements).toHaveBeenCalledWith(
+        buildHydraInput(request),
+      );
+    });
+
+    it('preserves coding-prompt shortfall behavior with prefixed input', async () => {
+      const requirements: RequirementVector = { reasoning: 0.3, code_gen: 0.9, tool_use: 0.3 };
+      const provider = makeMockProvider(requirements);
+      const matcher = new HydraMatcher(provider, DEFAULT_CONFIG);
+
+      const request = makeRequest({
+        prompt_text: 'Implement a binary search tree with deletion',
+        turn_type: 'main_loop',
+        estimated_input_tokens: 1200,
+        messages: [
+          { role: 'user', content: 'start' },
+          { role: 'assistant', content: 'ok' },
+        ],
+      });
+
+      const fleet: ModelProfile[] = [
+        makeModel({ id: 'weak-coder', capabilities: { reasoning: 0.9, code_gen: 0.2, tool_use: 0.9 } }),
+        makeModel({ id: 'strong-coder', capabilities: { reasoning: 0.8, code_gen: 0.95, tool_use: 0.8 } }),
+      ];
+
+      const result = await matcher.match(request, fleet);
+
+      expect(provider.extractRequirements).toHaveBeenCalledWith(buildHydraInput(request));
+      expect(result.selected!.model_id).toBe('strong-coder');
+      expect(result.candidates.find((c) => c.model_id === 'weak-coder')!.rejected_reason).toBe(
+        'shortfall_gate',
+      );
     });
 
     it('rejects non-finite requirement values', async () => {
@@ -332,6 +379,23 @@ describe('HydraMatcher', () => {
       await expect(matcher.match(makeRequest(), [makeModel()])).rejects.toThrow(
         /Invalid requirement dimension/,
       );
+    });
+
+    it('produces different requirement vectors when token metadata differs', async () => {
+      const provider = makeInputSensitiveProvider();
+      const matcher = new HydraMatcher(provider, DEFAULT_CONFIG);
+      const prompt = 'what is 2+2 ?';
+
+      const lowTokens = await matcher.match(
+        makeRequest({ prompt_text: prompt, estimated_input_tokens: 50 }),
+        [makeModel()],
+      );
+      const highTokens = await matcher.match(
+        makeRequest({ prompt_text: prompt, estimated_input_tokens: 34_000 }),
+        [makeModel()],
+      );
+
+      expect(lowTokens.requirements).not.toEqual(highTokens.requirements);
     });
   });
 

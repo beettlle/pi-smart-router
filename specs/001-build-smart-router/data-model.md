@@ -145,6 +145,23 @@ Audit record (append-only log or OTLP span).
 | `local.battery_threshold_pct` | number | 20 | Disable on battery |
 | `hydra.artifact_cache_path` | string | `.pi-smart-router/models/` | ONNX cache; not committed to git |
 
+### HyDRA encoder input (SP-112)
+
+HyDRA embeds a **metadata-prefixed** string, not raw `prompt_text` alone:
+
+```
+[turns:N|tools:0|tokens:N|type:...] {prompt_text}
+```
+
+| Prefix field | Source | Notes |
+|--------------|--------|-------|
+| `turns` | `messages.length` | 0 when messages absent |
+| `tools` | `1` when `turn_type === tool_result` or any message has `role: tool`; else `0` |
+| `tokens` | `estimated_input_tokens` | 0 when absent |
+| `type` | `turn_type` | `unknown` when absent |
+
+**Capability vs tier:** the metadata prefix affects HyDRA **capability** requirement vectors only. **Tier** selection uses the cluster/feature gate (low-intensity scoring, SP-103) independently — do not conflate the two decisions.
+
 ## Validation Rules Summary
 
 - Shortfall gate: candidate excluded if any capability dimension shortfall > 0 (quality parity).

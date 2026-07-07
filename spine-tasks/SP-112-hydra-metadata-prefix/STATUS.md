@@ -1,7 +1,7 @@
 # SP-112 Status
 
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-07
 **Review Level:** 1
 **Size:** M
@@ -10,27 +10,27 @@
 
 ## Step 1: Metadata prefix builder
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Create `hydra-input.ts` with `buildHydraInput`
-- [ ] Unit tests for prefix format
+- [x] Create `hydra-input.ts` with `buildHydraInput`
+- [x] Unit tests for prefix format
 
 ## Step 2: Wire into HyDRA matcher
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Replace raw prompt in `HydraMatcher.match()`
-- [ ] Regression tests for coding prompts
-- [ ] Document in data-model.md
+- [x] Replace raw prompt in `HydraMatcher.match()`
+- [x] Regression tests for coding prompts
+- [x] Document in data-model.md
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Token-count sensitivity test
-- [ ] Run `npm run verify:ci`
+- [x] Token-count sensitivity test
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes
