@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { RoutingTelemetry } from '../../src/domain/types/index.js';
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
+import { DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 
 function makeTelemetry(overrides: Partial<RoutingTelemetry> = {}): RoutingTelemetry {
   return {
@@ -15,6 +16,7 @@ function makeTelemetry(overrides: Partial<RoutingTelemetry> = {}): RoutingTeleme
     estimated_cost_usd: 0,
     routing_latency_ms: 2,
     pin_reason: null,
+    ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
     ...overrides,
   };
 }
