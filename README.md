@@ -268,12 +268,17 @@ Tiers: `zero-tier`, `economical-cloud`, `frontier-cloud`. See [config/models.yam
 
 ### Routing cluster catalog (library API)
 
-Reference prompts grouped by tier bias for semantic cluster matching (SP-099). Operators tune clusters in YAML without code changes; centroids are computed at load time as the mean embedding of each cluster's reference prompts.
+Reference prompts grouped by tier bias for semantic cluster matching (SP-099). Operators tune clusters in YAML without code changes. Precomputed centroids live in `config/routing-centroids.json` (SP-114); when that file is absent, centroids are computed at load time as the mean embedding of each cluster's reference prompts.
 
 ```bash
 cp config/routing-clusters.yaml.example ./config/routing-clusters.yaml
+cp config/routing-centroids.json.example ./config/routing-centroids.json
 # Edit reference_prompts, min_similarity, and min_margin per cluster
+# Regenerate centroids after catalog changes:
+npm run routing:bootstrap-centroids
 ```
+
+The bootstrap script embeds each reference prompt via the HyDRA MiniLM ONNX pipeline (384-dim), mean-pools to centroid vectors, and writes `config/routing-centroids.json` with `{ cluster_id, tier_bias, centroid, reference_count }` per cluster. ONNX artifacts cache under `.pi-smart-router/models/` on first run.
 
 ```typescript
 import { loadRoutingClusters } from 'pi-smart-router';
@@ -283,6 +288,8 @@ const catalog = await loadRoutingClusters({
   embedder: myTextEmbedder, // shared ONNX embedder (SP-100)
 });
 // Reason codes: cluster_${id} — e.g. cluster_low_stakes_general
+
+// createClusterMatcher (cluster-matcher module) prefers routing-centroids.json when present.
 ```
 
 Cluster IDs are stable reason-code prefixes (`cluster_low_stakes_general`, `cluster_architecture`, etc.). See [config/routing-clusters.yaml.example](config/routing-clusters.yaml.example).
