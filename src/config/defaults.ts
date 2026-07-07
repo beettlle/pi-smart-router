@@ -4,6 +4,7 @@
  */
 
 import type { OperatorConfig } from '../domain/types/schemas.js';
+import { DEFAULT_LOW_INTENSITY_WEIGHTS } from '../domain/routing/tier-features.js';
 
 export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
   frugality: {
@@ -24,5 +25,8 @@ export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
   },
   hydra: {
     artifact_cache_path: '.pi-smart-router/models/',
+  },
+  low_intensity: {
+    weights: DEFAULT_LOW_INTENSITY_WEIGHTS,
   },
 } as const;

@@ -17,6 +17,7 @@ import type {
   RoutingDecision,
   RoutingRequest,
 } from '../../domain/types/index.js';
+import type { TierFeatureDatasetScalars } from '../../domain/routing/tier-features.js';
 
 export const DATASET_ENABLED_NOTIFY_MESSAGE =
   'Smart Router dataset mode is enabled. Recording routing metadata and feature fields only — prompt text, messages, and tool arguments are never stored.';
@@ -98,6 +99,7 @@ export function buildDatasetRecord(
   decision: RoutingDecision,
   timestamp: string,
   promptFingerprint: string | null = null,
+  tierScalars?: TierFeatureDatasetScalars,
 ): RoutingDatasetRecord {
   const triage = decision.features?.triage ?? null;
   const requirements = decision.features?.requirements ?? null;
@@ -119,9 +121,9 @@ export function buildDatasetRecord(
     triage_verdict: triage?.verdict ?? null,
     triage_reason_code: triage?.reason_code ?? null,
     triage_cyclomatic_score: triage?.cyclomatic_score ?? null,
-    triage_trivial_hits: null,
-    triage_complex_hits: null,
-    triage_sanitized_length_delta: null,
+    triage_trivial_hits: tierScalars?.triage_trivial_hits ?? null,
+    triage_complex_hits: tierScalars?.triage_complex_hits ?? null,
+    triage_sanitized_length_delta: tierScalars?.triage_sanitized_length_delta ?? null,
     requirement_reasoning: requirements?.reasoning ?? null,
     requirement_code_gen: requirements?.code_gen ?? null,
     requirement_tool_use: requirements?.tool_use ?? null,
