@@ -1,0 +1,41 @@
+# Example routing cluster catalog — copy to config/routing-clusters.yaml and customize.
+# Reference prompts are embedded at load time; centroids are the mean embedding per cluster.
+# Reason codes use stable prefixes: cluster_${id} (e.g. cluster_low_stakes_general).
+# See specs/001-build-smart-router/data-model.md and GitHub issue #55.
+
+clusters:
+  - id: low_stakes_general
+    tier_bias: zero-tier
+    reference_prompts:
+      - "what is 2+2"
+      - "define polymorphism in one sentence"
+      - "explain what a closure is"
+    min_similarity: 0.82
+    min_margin: 0.05
+
+  - id: mechanical_edit
+    tier_bias: zero-tier
+    reference_prompts:
+      - "format this file with prettier"
+      - "fix lint errors"
+      - "add semicolons to this file"
+    min_similarity: 0.80
+    min_margin: 0.05
+
+  - id: deep_debug
+    tier_bias: frontier-cloud
+    reference_prompts:
+      - "race condition in async handler"
+      - "memory leak in production service"
+      - "debug intermittent test failure"
+    min_similarity: 0.78
+    min_margin: 0.04
+
+  - id: architecture
+    tier_bias: frontier-cloud
+    reference_prompts:
+      - "design a microservices migration"
+      - "system design for a distributed cache"
+      - "architect an event sourcing layer"
+    min_similarity: 0.78
+    min_margin: 0.04

@@ -1,7 +1,7 @@
 # SP-099 Status
 
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Step 3
+**Status:** In Progress
 **Last Updated:** 2026-07-06
 **Review Level:** 1
 **Size:** M
@@ -10,18 +10,18 @@
 
 ## Step 1: Schema and example config
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Cluster types and Zod schema
-- [ ] routing-clusters.yaml.example
+- [x] Cluster types and Zod schema
+- [x] routing-clusters.yaml.example
 
 ## Step 2: Loader
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] routing-clusters-loader.ts
-- [ ] README documentation
-- [ ] Unit tests
+- [x] routing-clusters-loader.ts
+- [x] README documentation
+- [x] Unit tests
 
 ## Step 3: Testing and verification
 

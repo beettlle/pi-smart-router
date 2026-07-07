@@ -221,6 +221,34 @@ export interface RoutingOutcomeRecord {
   readonly override_model_id: string | null;
 }
 
+// ─── Routing cluster catalog (SP-099) ────────────────────────────────────────
+
+/** Stable cluster identifier used as reason-code suffix (`cluster_${id}`). */
+export type RoutingClusterId =
+  | 'low_stakes_general'
+  | 'mechanical_edit'
+  | 'deep_debug'
+  | 'architecture'
+  | (string & {});
+
+/** Reference-prompt cluster definition from routing-clusters.yaml. */
+export interface RoutingCluster {
+  readonly id: RoutingClusterId;
+  readonly tier_bias: Tier;
+  readonly reference_prompts: readonly string[];
+  readonly min_similarity: number;
+  readonly min_margin: number;
+}
+
+/** Cluster with precomputed centroid embedding (mean of reference prompts). */
+export interface LoadedRoutingCluster extends RoutingCluster {
+  readonly centroid: Float32Array;
+}
+
+export interface RoutingClusterCatalog {
+  readonly clusters: readonly LoadedRoutingCluster[];
+}
+
 // ─── RoutingTelemetry ────────────────────────────────────────────────────────
 
 export interface RoutingTelemetry {
