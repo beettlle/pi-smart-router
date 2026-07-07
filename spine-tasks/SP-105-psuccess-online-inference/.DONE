@@ -1,0 +1,2 @@
+SP-105 complete — online P(success) inference wired into low_intensity gate.
+verify:ci passed (1003 tests, coverage check green).
