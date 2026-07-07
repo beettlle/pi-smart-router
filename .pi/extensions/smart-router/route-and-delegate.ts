@@ -8,6 +8,11 @@ import type {
 } from '@earendil-works/pi-ai/compat';
 
 import { safeCloudDefault } from '../../../src/domain/pipeline/safe-default.js';
+import { computeOutputHeadroom } from '../../../src/domain/delegation/output-headroom.js';
+import {
+  CONTEXT_OVERFLOW_NO_FIT,
+  resolveContextOverflowFallback,
+} from '../../../src/domain/routing/context-fit.js';
 import {
   assertRoutableFleetAfterGeminiToolHistoryGuard,
   GEMINI_TOOL_HISTORY_EXCLUDED,
@@ -91,6 +96,123 @@ function resolveFallbackModel(
     return undefined;
   }
   return resolveRegistryModel(deps.modelRegistry, fallbackProfile);
+}
+
+function createContextOverflowErrorMessage(
+  model: Model<Api>,
+  reasonCode: string,
+): AssistantMessage {
+  return {
+    role: 'assistant',
+    content: [],
+    api: model.api,
+    provider: model.provider,
+    model: model.id,
+    usage: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
+    stopReason: 'error',
+    errorMessage: `Context overflow: no model can fit input with required output headroom (${reasonCode})`,
+    timestamp: Date.now(),
+  };
+}
+
+function emitContextOverflowNoFit(
+  outer: AssistantMessageEventStream,
+  model: Model<Api>,
+  reasonCode: string,
+): void {
+  const errorMessage = createContextOverflowErrorMessage(model, reasonCode);
+  outer.push({ type: 'error', reason: 'error', error: errorMessage });
+  outer.end(errorMessage);
+}
+
+function isZeroOutputLengthStop(message: AssistantMessage): boolean {
+  return message.stopReason === 'length' && message.usage.output === 0;
+}
+
+function buildOverflowRoutingDecision(
+  base: RoutingDecision,
+  fallback: ReturnType<typeof resolveContextOverflowFallback>,
+): RoutingDecision {
+  if (fallback.kind === 'no_fit' || !fallback.model) {
+    return {
+      ...base,
+      selected_model_id: 'unknown',
+      reason_code: fallback.reasonCode,
+    };
+  }
+
+  return {
+    ...base,
+    selected_model_id: fallback.model.id,
+    tier: fallback.model.tier,
+    reason_code: fallback.reasonCode,
+  };
+}
+
+function resolveHeadroomFallbackTarget(
+  deps: StreamDelegationDeps,
+  request: RoutingRequest,
+  effectiveFleet: readonly ModelProfile[],
+  targetModel: Model<Api>,
+  targetProfile: ModelProfile,
+  estimatedInputTokens: number,
+  excludeModelIds: readonly string[],
+):
+  | { kind: 'fit'; model: Model<Api>; profile: ModelProfile; decision: RoutingDecision }
+  | { kind: 'no_fit'; reasonCode: typeof CONTEXT_OVERFLOW_NO_FIT } {
+  const overflow = resolveContextOverflowFallback(
+    effectiveFleet,
+    request,
+    targetProfile.provider,
+  );
+
+  if (overflow.kind === 'no_fit' || !overflow.model) {
+    return { kind: 'no_fit', reasonCode: CONTEXT_OVERFLOW_NO_FIT };
+  }
+
+  if (excludeModelIds.includes(overflow.model.id)) {
+    return { kind: 'no_fit', reasonCode: CONTEXT_OVERFLOW_NO_FIT };
+  }
+
+  const alternateModel = resolveRegistryModel(deps.modelRegistry, overflow.model);
+  if (!alternateModel) {
+    return { kind: 'no_fit', reasonCode: CONTEXT_OVERFLOW_NO_FIT };
+  }
+
+  const headroom = computeOutputHeadroom(
+    overflow.model,
+    estimatedInputTokens,
+    undefined,
+    alternateModel,
+  );
+  if (headroom.kind === 'no_fit') {
+    return { kind: 'no_fit', reasonCode: CONTEXT_OVERFLOW_NO_FIT };
+  }
+
+  return {
+    kind: 'fit',
+    model: alternateModel,
+    profile: overflow.model,
+    decision: buildOverflowRoutingDecision(
+      {
+        request_id: request.request_id,
+        selected_model_id: overflow.model.id,
+        tier: overflow.model.tier,
+        stage: 'fallback',
+        reason_code: overflow.reasonCode,
+        routing_latency_ms: 0,
+        pin_reason: 'context_overflow',
+      },
+      overflow,
+    ),
+  };
 }
 
 /**
@@ -188,6 +310,9 @@ export async function routeAndDelegate(
   });
 
   const failedModelIds: string[] = [];
+  const headroomExcludedModelIds: string[] = [];
+  const estimatedInputTokens =
+    request.estimated_input_tokens ?? request.prompt_text.length;
   let pendingFailoverInfo: {
     failedModelId: string;
     alternateModelId: string;
@@ -196,12 +321,62 @@ export async function routeAndDelegate(
 
   while (true) {
     try {
+      const targetProfile =
+        findFleetProfile(effectiveFleet, targetModel.id) ??
+        findFleetProfile(deps.fleet, targetModel.id);
+
+      if (targetProfile) {
+        const headroom = computeOutputHeadroom(
+          targetProfile,
+          estimatedInputTokens,
+          undefined,
+          targetModel,
+        );
+        if (headroom.kind === 'no_fit') {
+          if (!headroomExcludedModelIds.includes(targetModel.id)) {
+            headroomExcludedModelIds.push(targetModel.id);
+          }
+          const fallbackTarget = resolveHeadroomFallbackTarget(
+            deps,
+            request,
+            effectiveFleet,
+            targetModel,
+            targetProfile,
+            estimatedInputTokens,
+            headroomExcludedModelIds,
+          );
+          if (fallbackTarget.kind === 'no_fit') {
+            emitContextOverflowNoFit(outer, targetModel, fallbackTarget.reasonCode);
+            return;
+          }
+
+          console.warn(
+            '[smart-router] output headroom exceeded, escalating to larger model',
+            fallbackTarget.model.id,
+          );
+          pendingFailoverInfo = {
+            failedModelId: targetModel.id,
+            alternateModelId: fallbackTarget.model.id,
+            errorObj: { message: 'insufficient output headroom' },
+          };
+          decision = fallbackTarget.decision;
+          deps.onRoutingDecision?.(decision);
+          targetModel = fallbackTarget.model;
+          continue;
+        }
+      }
+
+      const headroomContext = targetProfile
+        ? { profile: targetProfile, estimatedInputTokens }
+        : undefined;
+
       const result = await delegateWithOutcome(
         targetModel,
         context,
         deps,
         options,
         sessionId,
+        headroomContext,
       );
 
       if (pendingFailoverInfo) {
@@ -212,6 +387,43 @@ export async function routeAndDelegate(
           pendingFailoverInfo.errorObj,
         );
         pendingFailoverInfo = undefined;
+      }
+
+      if (result.finalMessage && isZeroOutputLengthStop(result.finalMessage)) {
+        const lengthStopProfile =
+          findFleetProfile(effectiveFleet, targetModel.id) ??
+          findFleetProfile(deps.fleet, targetModel.id);
+        if (lengthStopProfile) {
+          if (!headroomExcludedModelIds.includes(targetModel.id)) {
+            headroomExcludedModelIds.push(targetModel.id);
+          }
+          const fallbackTarget = resolveHeadroomFallbackTarget(
+            deps,
+            request,
+            effectiveFleet,
+            targetModel,
+            lengthStopProfile,
+            estimatedInputTokens,
+            headroomExcludedModelIds,
+          );
+          if (fallbackTarget.kind === 'fit') {
+            console.warn(
+              '[smart-router] zero-output length stop, escalating to larger model',
+              fallbackTarget.model.id,
+            );
+            pendingFailoverInfo = {
+              failedModelId: targetModel.id,
+              alternateModelId: fallbackTarget.model.id,
+              errorObj: { message: 'zero-output length stop' },
+            };
+            decision = fallbackTarget.decision;
+            deps.onRoutingDecision?.(decision);
+            targetModel = fallbackTarget.model;
+            continue;
+          }
+          emitContextOverflowNoFit(outer, targetModel, fallbackTarget.reasonCode);
+          return;
+        }
       }
 
       if (

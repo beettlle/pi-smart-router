@@ -14,6 +14,10 @@ import {
 import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
 
 import { normalizeDelegationContext } from '../../../src/domain/delegation/delegation-context.js';
+import {
+  computeOutputHeadroom,
+  type OutputHeadroomConfig,
+} from '../../../src/domain/delegation/output-headroom.js';
 import type { ModelProfile } from '../../../src/domain/types/index.js';
 import {
   formatGeminiThoughtSignatureErrorMessage,
@@ -57,10 +61,26 @@ function pickDelegationCallerOptions(
   return picked;
 }
 
+export class DelegationHeadroomError extends Error {
+  readonly reason = 'delegation_output_headroom_exceeded' as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'DelegationHeadroomError';
+  }
+}
+
+export interface DelegationHeadroomContext {
+  readonly profile: ModelProfile;
+  readonly estimatedInputTokens: number;
+  readonly headroomConfig?: OutputHeadroomConfig;
+}
+
 export async function resolveDelegationOptions(
   modelRegistry: ModelRegistry,
   targetModel: Model<Api>,
   callerOptions?: SimpleStreamOptions,
+  headroomContext?: DelegationHeadroomContext,
 ): Promise<SimpleStreamOptions> {
   const auth = await modelRegistry.getApiKeyAndHeaders(targetModel);
   if (!auth.ok) {
@@ -73,11 +93,31 @@ export async function resolveDelegationOptions(
       ? { ...(auth.env ?? {}), ...(callerEnv ?? {}) }
       : undefined;
 
+  let maxTokens: number | undefined;
+  if (headroomContext) {
+    const headroom = computeOutputHeadroom(
+      headroomContext.profile,
+      headroomContext.estimatedInputTokens,
+      headroomContext.headroomConfig,
+      targetModel,
+    );
+    if (headroom.kind === 'no_fit') {
+      throw new DelegationHeadroomError(
+        `Output headroom below floor for ${targetModel.id}: ` +
+          `${headroomContext.estimatedInputTokens} input tokens on ` +
+          `${headroom.contextWindow} context window ` +
+          `(${headroom.availableOutputTokens} output tokens available)`,
+      );
+    }
+    maxTokens = headroom.maxTokens;
+  }
+
   return {
     ...pickDelegationCallerOptions(callerOptions),
     ...(auth.apiKey !== undefined ? { apiKey: auth.apiKey } : {}),
     ...(auth.headers !== undefined ? { headers: auth.headers } : {}),
     ...(mergedEnv !== undefined ? { env: mergedEnv } : {}),
+    ...(maxTokens !== undefined ? { maxTokens } : {}),
   };
 }
 

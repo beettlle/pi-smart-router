@@ -6,6 +6,7 @@ import {
   type Context,
   type Message,
   type Model,
+  type SimpleStreamOptions,
   createAssistantMessageEventStream,
 } from '@earendil-works/pi-ai/compat';
 import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
@@ -1090,6 +1091,53 @@ describe('resolveDelegationOptions', () => {
     expect(options).not.toHaveProperty('getSteeringMessages');
     expect(options).not.toHaveProperty('getFollowUpMessages');
   });
+
+  it('sets maxTokens from output headroom helper when profile context is provided', async () => {
+    const target = makeRegistryModel({
+      provider: 'google',
+      id: 'gemini-flash-lite',
+      api: 'google-generative-ai',
+      contextWindow: 32_768,
+      maxTokens: 8_192,
+    });
+    const registry = createMockRegistry([target]);
+    const profile = makeProfile({
+      id: 'gemini-flash-lite',
+      tier: 'economical-cloud',
+      provider: 'google',
+      limits: { max_input_tokens: 32_768, max_output_tokens: 8_192 },
+    });
+
+    const options = await resolveDelegationOptions(registry, target, { sessionId: 'sess-1' }, {
+      profile,
+      estimatedInputTokens: 10_000,
+    });
+
+    expect(options.maxTokens).toBe(8_192);
+  });
+
+  it('throws when computed maxTokens is below the output floor', async () => {
+    const target = makeRegistryModel({
+      provider: 'google',
+      id: 'gemini-flash-lite',
+      api: 'google-generative-ai',
+      contextWindow: 32_768,
+    });
+    const registry = createMockRegistry([target]);
+    const profile = makeProfile({
+      id: 'gemini-flash-lite',
+      tier: 'economical-cloud',
+      provider: 'google',
+      limits: { max_input_tokens: 32_768, max_output_tokens: 8_192 },
+    });
+
+    await expect(
+      resolveDelegationOptions(registry, target, undefined, {
+        profile,
+        estimatedInputTokens: 34_000,
+      }),
+    ).rejects.toThrow(/Output headroom below floor/);
+  });
 });
 
 describe('delegation onPayload regression', () => {
@@ -1699,6 +1747,171 @@ describe('ensureFleetFresh before routed turn (SP-087)', () => {
 
     expect(ensureCalls).toBe(1);
     expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+  });
+});
+
+describe('delegation output headroom guard (SP-108)', () => {
+  beforeEach(() => {
+    mockDelegateStreamSimple.mockReset();
+  });
+
+  it('escalates to larger-fit model without calling undersized provider', async () => {
+    const headroomFleet: ModelProfile[] = [
+      makeProfile({
+        id: 'gemini-flash-lite',
+        tier: 'economical-cloud',
+        provider: 'google',
+        limits: { max_input_tokens: 32_768, max_output_tokens: 8_192 },
+      }),
+      makeProfile({
+        id: 'gemini-pro',
+        tier: 'frontier-cloud',
+        provider: 'google',
+        limits: { max_input_tokens: 1_000_000, max_output_tokens: 8_192 },
+      }),
+    ];
+    const flashLite = makeRegistryModel({
+      provider: 'google',
+      id: 'gemini-flash-lite',
+      api: 'google-generative-ai',
+      contextWindow: 32_768,
+      maxTokens: 8_192,
+    });
+    const geminiPro = makeRegistryModel({
+      provider: 'google',
+      id: 'gemini-pro',
+      api: 'google-generative-ai',
+      contextWindow: 1_000_000,
+      maxTokens: 8_192,
+    });
+    const router = createMockRouter(
+      vi.fn(async () =>
+        makeDecision({
+          selected_model_id: 'gemini-flash-lite',
+          tier: 'economical-cloud',
+          reason_code: 'safe_cloud_default',
+        }),
+      ),
+      headroomFleet,
+    );
+    mockDelegateStreamSimple.mockImplementation((model) => makeSuccessStream(model));
+
+    const outer = createAssistantMessageEventStream();
+    const deps = makeStreamDeps({
+      router,
+      fleet: headroomFleet,
+      modelRegistry: createMockRegistry([flashLite, geminiPro]),
+    });
+
+    await routeAndDelegate(
+      makeContext([userMessage('x'.repeat(136_000))]),
+      {
+        sessionId: 'headroom-guard',
+        estimatedInputTokens: 34_000,
+      } as SimpleStreamOptions,
+      deps,
+      outer,
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]?.id).toBe('gemini-pro');
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[2]?.maxTokens).toBe(8_192);
+  });
+
+  it('retries larger model after zero-output length stop from provider', async () => {
+    const headroomFleet: ModelProfile[] = [
+      makeProfile({
+        id: 'gemini-flash-lite',
+        tier: 'economical-cloud',
+        provider: 'google',
+        limits: { max_input_tokens: 32_768, max_output_tokens: 8_192 },
+      }),
+      makeProfile({
+        id: 'gemini-pro',
+        tier: 'frontier-cloud',
+        provider: 'google',
+        limits: { max_input_tokens: 1_000_000, max_output_tokens: 8_192 },
+      }),
+    ];
+    const flashLite = makeRegistryModel({
+      provider: 'google',
+      id: 'gemini-flash-lite',
+      api: 'google-generative-ai',
+      contextWindow: 32_768,
+      maxTokens: 8_192,
+    });
+    const geminiPro = makeRegistryModel({
+      provider: 'google',
+      id: 'gemini-pro',
+      api: 'google-generative-ai',
+      contextWindow: 1_000_000,
+      maxTokens: 8_192,
+    });
+    const router = createMockRouter(
+      vi.fn(async () =>
+        makeDecision({
+          selected_model_id: 'gemini-flash-lite',
+          tier: 'economical-cloud',
+          reason_code: 'safe_cloud_default',
+        }),
+      ),
+      headroomFleet,
+    );
+
+    mockDelegateStreamSimple.mockImplementation((model) => {
+      if (model.id === 'gemini-flash-lite') {
+        const stream = createAssistantMessageEventStream();
+        const partial: AssistantMessage = {
+          ...makeAssistantPartial(model),
+          content: [],
+          usage: {
+            input: 34_000,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 34_000,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+          },
+          stopReason: 'length',
+        };
+        void (async () => {
+          stream.push({ type: 'start', partial });
+          stream.push({ type: 'done', reason: 'length', message: partial });
+          stream.end(partial);
+        })();
+        return stream;
+      }
+      return makeSuccessStream(model);
+    });
+
+    const outer = createAssistantMessageEventStream();
+    const deps = makeStreamDeps({
+      router,
+      fleet: headroomFleet,
+      modelRegistry: createMockRegistry([flashLite, geminiPro]),
+    });
+
+    const events = await collectEvents(
+      (() => {
+        void routeAndDelegate(
+          makeContext([userMessage('continue')]),
+          {
+            sessionId: 'length-stop-retry',
+            estimatedInputTokens: 10_000,
+          } as SimpleStreamOptions,
+          deps,
+          outer,
+        );
+        return outer;
+      })(),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(2);
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]?.id).toBe('gemini-flash-lite');
+    expect(mockDelegateStreamSimple.mock.calls[1]?.[0]?.id).toBe('gemini-pro');
+    expect(events.some((event) => event.type === 'done' && event.message.stopReason === 'stop')).toBe(
+      true,
+    );
   });
 });
 
