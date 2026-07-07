@@ -6,9 +6,10 @@
  *
  * Break rules (FR-008, exhaustive):
  *   1. History compaction
- *   2. Explicit operator/user override
- *   3. Qualified loop escalation (threshold managed externally)
- *   4. Cache-warmup economics when a cross-provider switch is proposed
+ *   2. Context overflow (estimated tokens exceed pinned model window)
+ *   3. Explicit operator/user override
+ *   4. Qualified loop escalation (threshold managed externally)
+ *   5. Cache-warmup economics when a cross-provider switch is proposed
  *
  * Sub-routing (FR-024): tool-result turns below the payload threshold
  * may use an economical model on the same provider without breaking the pin.
@@ -44,11 +45,17 @@ export interface SessionPinnerConfig {
   readonly store?: StorePort;
   /** FR-008 rule #4: cache-warmup economics thresholds. */
   readonly cacheEconomicsConfig?: CacheEconomicsConfig;
+  /**
+   * Break pin when estimated input tokens exceed the pinned model's
+   * max_input_tokens multiplied by this margin. Default 0.90.
+   */
+  readonly contextOverflowSafetyMargin?: number;
 }
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_TOOL_RESULT_SIZE_THRESHOLD = 2048;
+const DEFAULT_CONTEXT_OVERFLOW_SAFETY_MARGIN = 0.9;
 
 // ─── SessionPinner ────────────────────────────────────────────────────────────
 
@@ -57,12 +64,15 @@ export class SessionPinner {
   private readonly toolResultSizeThreshold: number;
   private readonly store: StorePort | undefined;
   private readonly cacheEconomicsConfig: CacheEconomicsConfig | undefined;
+  private readonly contextOverflowSafetyMargin: number;
 
   constructor(config?: SessionPinnerConfig) {
     this.toolResultSizeThreshold =
       config?.toolResultSizeThreshold ?? DEFAULT_TOOL_RESULT_SIZE_THRESHOLD;
     this.store = config?.store;
     this.cacheEconomicsConfig = config?.cacheEconomicsConfig;
+    this.contextOverflowSafetyMargin =
+      config?.contextOverflowSafetyMargin ?? DEFAULT_CONTEXT_OVERFLOW_SAFETY_MARGIN;
   }
 
   /**
@@ -188,17 +198,27 @@ export class SessionPinner {
       return { action: 'break', breakReason: 'compaction' };
     }
 
-    // 2. Explicit operator / user override → pin to forced model
+    // 2. Context overflow → break pin when input exceeds pinned model window
+    const overflowResult = this.evaluateContextOverflowBreak(
+      request,
+      pin,
+      fleet,
+    );
+    if (overflowResult) {
+      return overflowResult;
+    }
+
+    // 3. Explicit operator / user override → pin to forced model
     if (request.force_model_id) {
       return this.handleForceOverride(request, pin, fleet);
     }
 
-    // 3. Loop escalation — threshold tracking is on the pin record;
+    // 4. Loop escalation — threshold tracking is on the pin record;
     //    the loop_escalation pipeline stage calls breakPin() externally
     //    when the threshold fires. No evaluation here beyond what the
     //    pin record already reflects (consecutive_tool_failures).
 
-    // 4. Cache-warmup economics (FR-008 rule #4)
+    // 5. Cache-warmup economics (FR-008 rule #4)
     const cacheEconomicsResult = this.evaluateCacheEconomicsBreak(
       request,
       pin,
@@ -206,6 +226,31 @@ export class SessionPinner {
     );
     if (cacheEconomicsResult) {
       return cacheEconomicsResult;
+    }
+
+    return null;
+  }
+
+  private evaluateContextOverflowBreak(
+    request: RoutingRequest,
+    pin: SessionPin,
+    fleet: readonly ModelProfile[],
+  ): PinLookupResult | null {
+    const pinnedModel = fleet.find(
+      (m) => m.id === pin.pinned_model_id && m.healthy !== false,
+    );
+    const maxInputTokens = pinnedModel?.limits?.max_input_tokens;
+    if (!maxInputTokens) {
+      return null;
+    }
+
+    const tokenEstimate =
+      request.estimated_input_tokens ?? request.prompt_text.length;
+    const effectiveLimit = maxInputTokens * this.contextOverflowSafetyMargin;
+
+    if (tokenEstimate > effectiveLimit) {
+      this.breakPin(request.session_id);
+      return { action: 'break', breakReason: 'context_overflow' };
     }
 
     return null;

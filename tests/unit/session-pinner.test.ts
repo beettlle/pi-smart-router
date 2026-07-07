@@ -9,6 +9,7 @@ import {
 } from '../../src/domain/pinning/cache-economics.js';
 import type { ModelProfile, RoutingRequest, SessionPin } from '../../src/domain/types/index.js';
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
+import { SqliteStore } from '../../src/infrastructure/persistence/sqlite-store.js';
 
 // ─── Test helpers ────────────────────────────────────────────────────────────
 
@@ -175,6 +176,96 @@ describe('SessionPinner', () => {
 
       expect(result.action).toBe('break');
       expect(result.breakReason).toBe('compaction');
+    });
+
+    it('breaks pin when estimated tokens exceed pinned model context window', () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const limitedFleet = [
+        makeModel({
+          id: 'claude-opus',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          limits: { max_input_tokens: 100_000 },
+        }),
+      ];
+
+      const withinLimit = pinner.lookupPin(
+        makeRequest({ estimated_input_tokens: 90_000 }),
+        limitedFleet,
+      );
+      expect(withinLimit.action).toBe('use_pin');
+
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+      const overLimit = pinner.lookupPin(
+        makeRequest({ estimated_input_tokens: 90_001 }),
+        limitedFleet,
+      );
+
+      expect(overLimit.action).toBe('break');
+      expect(overLimit.breakReason).toBe('context_overflow');
+      expect(pinner.getPin('sess-1')).toBeNull();
+    });
+
+    it('compaction break takes priority over context overflow', () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const limitedFleet = [
+        makeModel({
+          id: 'claude-opus',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          limits: { max_input_tokens: 100_000 },
+        }),
+      ];
+
+      const result = pinner.lookupPin(
+        makeRequest({
+          compaction_flag: true,
+          estimated_input_tokens: 200_000,
+        }),
+        limitedFleet,
+      );
+
+      expect(result.action).toBe('break');
+      expect(result.breakReason).toBe('compaction');
+    });
+
+    it('does not break on overflow when pinned model has no max_input_tokens', () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const result = pinner.lookupPin(
+        makeRequest({ estimated_input_tokens: 1_000_000 }),
+        fleet,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.pinnedModel?.id).toBe('claude-opus');
+    });
+
+    it('respects custom contextOverflowSafetyMargin', () => {
+      const pinner = new SessionPinner({ contextOverflowSafetyMargin: 0.5 });
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const limitedFleet = [
+        makeModel({
+          id: 'claude-opus',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          limits: { max_input_tokens: 100_000 },
+        }),
+      ];
+
+      const result = pinner.lookupPin(
+        makeRequest({ estimated_input_tokens: 50_001 }),
+        limitedFleet,
+      );
+
+      expect(result.action).toBe('break');
+      expect(result.breakReason).toBe('context_overflow');
     });
 
     it('keeps pin when cross-provider switch fails cache economics (FR-008 rule #4)', () => {
@@ -760,6 +851,18 @@ describe('SessionPinner', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(await store.getSessionPin('sess-break')).toBeNull();
+    });
+
+    it('persists context_overflow pin_reason to SQLite', async () => {
+      const sqliteStore = new SqliteStore({ dbPath: ':memory:', models: fleet });
+      const pinner = new SessionPinner({ store: sqliteStore });
+
+      pinner.recordPin('sess-overflow', 'claude-opus', 'context_overflow');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const stored = await sqliteStore.getSessionPin('sess-overflow');
+      expect(stored?.pin_reason).toBe('context_overflow');
+      sqliteStore.close();
     });
   });
 });

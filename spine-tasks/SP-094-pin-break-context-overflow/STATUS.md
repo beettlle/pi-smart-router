@@ -1,7 +1,7 @@
 # SP-094 Status
 
-**Current Step:** Step 1
-**Status:** Ready
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-06
 **Review Level:** 1
 **Size:** M
@@ -10,24 +10,24 @@
 
 ## Step 1: Pin break rule and types
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Add context_overflow to PinReason and evaluateBreakRules
-- [ ] Extend SQLite schema
+- [x] Add context_overflow to PinReason and evaluateBreakRules
+- [x] Extend SQLite schema
 
 ## Step 2: Tests
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Unit tests for overflow break and precedence
+- [x] Unit tests for overflow break and precedence
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run verify:ci`
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes

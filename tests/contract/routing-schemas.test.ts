@@ -271,7 +271,7 @@ describe('routing-decision.schema.json', () => {
     });
 
     it('accepts each valid pin_reason enum value', () => {
-      const reasons = ['initial', 'user_forced', 'loop_escalation', 'compaction', 'cache_economics'];
+      const reasons = ['initial', 'user_forced', 'loop_escalation', 'compaction', 'cache_economics', 'context_overflow'];
       for (const r of reasons) {
         const payload = { ...validRoutingDecision(), pin_reason: r };
         expect(validate(payload)).toBe(true);

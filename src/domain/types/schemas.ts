@@ -25,6 +25,7 @@ export const PinReasonSchema = z.enum([
   'loop_escalation',
   'compaction',
   'cache_economics',
+  'context_overflow',
 ]);
 
 export const TierSchema = z.enum([

@@ -110,7 +110,7 @@ describe('SqliteStore', () => {
       store2.close();
     });
 
-    it('migrates to schema v4 with outcomes table and dataset privacy columns', () => {
+    it('migrates to schema v5 with outcomes table, dataset privacy columns, and context_overflow pin_reason', () => {
       const dir = mkdtempSync(join(tmpdir(), 'sqlite-store-'));
       const dbPath = join(dir, 'router.db');
       let store: SqliteStore | undefined;
@@ -121,7 +121,7 @@ describe('SqliteStore', () => {
         db = new Database(dbPath);
 
         const version = db.pragma('user_version', { simple: true });
-        expect(version).toBe(4);
+        expect(version).toBe(5);
 
         const datasetColumns = db.prepare('PRAGMA table_info(dataset)').all() as Array<{ name: string }>;
         const datasetColumnNames = datasetColumns.map((column) => column.name);
@@ -217,6 +217,14 @@ describe('SqliteStore', () => {
 
     it('delete is idempotent for non-existent pin', async () => {
       await expect(store.deleteSessionPin('nonexistent')).resolves.toBeUndefined();
+    });
+
+    it('accepts context_overflow pin_reason', async () => {
+      const pin = makePin({ pin_reason: 'context_overflow' });
+      await store.putSessionPin(pin);
+
+      const retrieved = await store.getSessionPin('sess-1');
+      expect(retrieved?.pin_reason).toBe('context_overflow');
     });
   });
 
