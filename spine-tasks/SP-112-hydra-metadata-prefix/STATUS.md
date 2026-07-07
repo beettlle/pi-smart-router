@@ -1,7 +1,7 @@
 # SP-112 Status
 
 **Current Step:** Step 1
-**Status:** Not Started
+**Status:** In Progress
 **Last Updated:** 2026-07-07
 **Review Level:** 1
 **Size:** M
@@ -10,10 +10,10 @@
 
 ## Step 1: Metadata prefix builder
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Create `hydra-input.ts` with `buildHydraInput`
-- [ ] Unit tests for prefix format
+- [x] Create `hydra-input.ts` with `buildHydraInput`
+- [x] Unit tests for prefix format
 
 ## Step 2: Wire into HyDRA matcher
 
