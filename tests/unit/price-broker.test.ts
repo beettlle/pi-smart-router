@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   resolvePrice,
   resolveFleetPrices,
+  resolveFrugalityCostPer1M,
   applyCatalogPricesToFleet,
   applyCatalogLimitsToFleet,
   resolveLimits,
@@ -139,6 +140,37 @@ describe('resolvePrice (FR-019 tri-tier)', () => {
     const result = resolvePrice(model, catalog);
     expect(result.cost_per_1m_tokens).toBe(20.0);
     expect(result.source).toBe('override');
+  });
+});
+
+// ─── resolveFrugalityCostPer1M (SP-096) ──────────────────────────────────────
+
+describe('resolveFrugalityCostPer1M', () => {
+  it('prefers quota_cost_per_1m over zero API fallback for Cursor models', () => {
+    const model = makeModel({
+      id: 'composer-latest',
+      tier: 'frontier-cloud',
+      pricing: { fallback_cost_per_1m: 0.0, quota_cost_per_1m: 3.0 },
+    });
+
+    const result = resolveFrugalityCostPer1M(model, null);
+
+    expect(result).toBe(3.0);
+  });
+
+  it('falls back to tri-tier resolvePrice when quota cost is absent', () => {
+    const model = makeModel({
+      id: 'gemini-flash',
+      tier: 'economical-cloud',
+      pricing: { fallback_cost_per_1m: 0.8 },
+    });
+    const catalog = makeCatalog({
+      registry_snapshot: { 'gemini-flash': 0.5 },
+    });
+
+    const result = resolveFrugalityCostPer1M(model, catalog);
+
+    expect(result).toBe(0.5);
   });
 });
 
