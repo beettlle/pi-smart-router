@@ -1,4 +1,11 @@
-import type { Api, AssistantMessageEventStream, Context, Model, SimpleStreamOptions } from '@earendil-works/pi-ai/compat';
+import type {
+  Api,
+  AssistantMessage,
+  AssistantMessageEventStream,
+  Context,
+  Model,
+  SimpleStreamOptions,
+} from '@earendil-works/pi-ai/compat';
 
 import { safeCloudDefault } from '../../../src/domain/pipeline/safe-default.js';
 import {
@@ -10,9 +17,9 @@ import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../../src
 import type { GeminiToolHistoryGuardResult } from '../../../src/domain/routing/tool-history-guard.js';
 import {
   isGeminiThoughtSignatureAssistantError,
-  isInfraAssistantError,
   parseAssistantMessageError,
 } from '../../../src/infrastructure/delegation/provider-error.js';
+import { shouldFailoverOnProviderError } from '../../../src/infrastructure/gateway/gateway-dispatch.js';
 import { delegateWithOutcome } from './delegate-stream.js';
 import {
   findFleetProfile,
@@ -26,6 +33,19 @@ import type { StreamDelegationDeps } from './types.js';
 
 function isRoutingLogEnabled(): boolean {
   return process.env.SMART_ROUTER_LOG_ROUTING === '1';
+}
+
+function resolveFailoverProviderError(
+  message: AssistantMessage,
+): ReturnType<typeof parseAssistantMessageError> {
+  const parsed = parseAssistantMessageError(message);
+  if (parsed) {
+    return parsed;
+  }
+  if (message.stopReason === 'error' && message.errorMessage) {
+    return { message: message.errorMessage };
+  }
+  return undefined;
 }
 
 function logRoutingDecision(
@@ -203,40 +223,44 @@ export async function routeAndDelegate(
         return;
       }
 
-      if (
-        result.failed &&
-        result.finalMessage &&
-        isInfraAssistantError(result.finalMessage)
-      ) {
-        failedModelIds.push(targetModel.id);
-        const failover = deps.router.dispatch.selectFailover(
-          decision,
-          failedModelIds,
-          effectiveFleet,
-        );
-        if (!failover) {
-          flushDelegatedEvents(outer, result.events, { sanitizeErrors: true });
-          return;
-        }
+      if (result.failed && result.finalMessage) {
+        const providerError = resolveFailoverProviderError(result.finalMessage);
+        const failedProfile = findFleetProfile(effectiveFleet, targetModel.id);
+        if (
+          providerError &&
+          shouldFailoverOnProviderError(providerError, failedProfile)
+        ) {
+          deps.router.dispatch.recordOutcome(targetModel.id, providerError);
+          failedModelIds.push(targetModel.id);
+          const failover = deps.router.dispatch.selectFailover(
+            decision,
+            failedModelIds,
+            effectiveFleet,
+          );
+          if (!failover) {
+            flushDelegatedEvents(outer, result.events, { sanitizeErrors: true });
+            return;
+          }
 
-        const alternateModel = resolveTargetModel(deps, failover);
-        if (!alternateModel || alternateModel.id === targetModel.id) {
-          flushDelegatedEvents(outer, result.events, { sanitizeErrors: true });
-          return;
-        }
+          const alternateModel = resolveTargetModel(deps, failover);
+          if (!alternateModel || alternateModel.id === targetModel.id) {
+            flushDelegatedEvents(outer, result.events, { sanitizeErrors: true });
+            return;
+          }
 
-        console.warn(
-          '[smart-router] infra error, failing over to alternate model',
-          alternateModel.id,
-        );
-        pendingFailoverInfo = {
-          failedModelId: targetModel.id,
-          alternateModelId: alternateModel.id,
-          errorObj: parseAssistantMessageError(result.finalMessage),
-        };
-        decision = failover;
-        targetModel = alternateModel;
-        continue;
+          console.warn(
+            '[smart-router] infra error, failing over to alternate model',
+            alternateModel.id,
+          );
+          pendingFailoverInfo = {
+            failedModelId: targetModel.id,
+            alternateModelId: alternateModel.id,
+            errorObj: providerError,
+          };
+          decision = failover;
+          targetModel = alternateModel;
+          continue;
+        }
       }
 
       flushDelegatedEvents(outer, result.events, {
