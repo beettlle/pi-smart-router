@@ -84,7 +84,13 @@ export interface ModelPerformance {
 
 export interface ModelPricing {
   readonly registry_key?: string | undefined;
+  /** Per-token API/catalog fallback USD per 1M tokens. */
   readonly fallback_cost_per_1m: number;
+  /**
+   * Virtual subscription-quota cost USD per 1M tokens (SP-096).
+   * Used for frugality scoring and telemetry when set; does not replace API billing rates.
+   */
+  readonly quota_cost_per_1m?: number | undefined;
 }
 
 export interface ModelLimits {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DEFAULT_CURSOR_QUOTA_COST_PER_1M,
   mapFleetFromRegistry,
   mapPiModelToProfile,
   type PiModelInput,
@@ -139,6 +140,7 @@ describe('mapPiModelToProfile', () => {
       expect(profile.capabilities.reasoning).toBeGreaterThanOrEqual(0.9);
       expect(profile.capabilities.tool_use).toBeGreaterThanOrEqual(0.9);
       expect(profile.pricing.fallback_cost_per_1m).toBe(0.0);
+      expect(profile.pricing.quota_cost_per_1m).toBe(DEFAULT_CURSOR_QUOTA_COST_PER_1M);
       expect(profile.provider).toBe('cursor');
     });
 
@@ -150,6 +152,7 @@ describe('mapPiModelToProfile', () => {
       expect(profile.tier).toBe('frontier-cloud');
       expect(profile.capabilities.code_gen).toBeGreaterThanOrEqual(0.95);
       expect(profile.pricing.fallback_cost_per_1m).toBe(0.0);
+      expect(profile.pricing.quota_cost_per_1m).toBe(DEFAULT_CURSOR_QUOTA_COST_PER_1M);
     });
 
     it('maps cursor/composer-latest via cursor/* rule', () => {
@@ -161,7 +164,7 @@ describe('mapPiModelToProfile', () => {
       expect(profile.capabilities.code_gen).toBeGreaterThanOrEqual(0.9);
     });
 
-    it('keeps zero registry cost for cursor models (subscription billing)', () => {
+    it('keeps zero API fallback but virtual quota cost for cursor models (SP-096)', () => {
       const profile = mapPiModelToProfile(
         makeInput({
           provider: 'cursor',
@@ -172,6 +175,7 @@ describe('mapPiModelToProfile', () => {
 
       expect(profile.tier).toBe('frontier-cloud');
       expect(profile.pricing.fallback_cost_per_1m).toBe(0.0);
+      expect(profile.pricing.quota_cost_per_1m).toBe(DEFAULT_CURSOR_QUOTA_COST_PER_1M);
     });
 
     it('does not use UNKNOWN_DEFAULTS for cursor/auto', () => {

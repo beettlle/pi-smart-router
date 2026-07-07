@@ -111,10 +111,19 @@ const UNKNOWN_DEFAULTS: ModelFamilyDefaults = {
 };
 
 /**
+ * Default virtual subscription-quota cost for Cursor frontier models (SP-096 / #70).
+ * `fallback_cost_per_1m` stays 0 (no per-token API billing); `quota_cost_per_1m`
+ * is used only for frugality scoring and telemetry so economical API models are
+ * not dominated solely because subscription registry cost is zero.
+ */
+export const DEFAULT_CURSOR_QUOTA_COST_PER_1M = 3.0;
+
+/**
  * Cursor opaque-auto models (`cursor/auto`, etc.) — SP-086 / #40.
  * Frontier tier: Cursor picks the underlying model; HyDRA needs high capability
  * scores so these are not dominated by mapped economical Gemini/OpenAI models.
- * Registry cost is often zero (subscription billing).
+ * Registry `fallback_cost_per_1m` is zero (subscription billing); virtual quota
+ * cost (SP-096) drives frugality scoring and telemetry.
  */
 const CURSOR_AUTO_DEFAULTS: ModelFamilyDefaults = {
   tier: 'frontier-cloud',
@@ -126,12 +135,13 @@ const CURSOR_AUTO_DEFAULTS: ModelFamilyDefaults = {
   },
   pricing: {
     fallback_cost_per_1m: 0.0,
+    quota_cost_per_1m: DEFAULT_CURSOR_QUOTA_COST_PER_1M,
   },
 };
 
 /**
  * Cursor Composer coding models (`composer-latest`, `composer-*`) — SP-086 / #40.
- * Frontier tier with strong code_gen; zero registry cost treated as subscription.
+ * Frontier tier with strong code_gen; zero API fallback with virtual quota cost (SP-096).
  */
 const COMPOSER_DEFAULTS: ModelFamilyDefaults = {
   tier: 'frontier-cloud',
@@ -143,6 +153,7 @@ const COMPOSER_DEFAULTS: ModelFamilyDefaults = {
   },
   pricing: {
     fallback_cost_per_1m: 0.0,
+    quota_cost_per_1m: DEFAULT_CURSOR_QUOTA_COST_PER_1M,
   },
 };
 
@@ -213,6 +224,9 @@ function buildProfile(input: PiModelInput, defaults: ModelFamilyDefaults): Model
     pricing: {
       registry_key: defaults.pricing.registry_key ?? registryKey,
       fallback_cost_per_1m: resolveFallbackCost(input, defaults),
+      ...(defaults.pricing.quota_cost_per_1m !== undefined
+        ? { quota_cost_per_1m: defaults.pricing.quota_cost_per_1m }
+        : {}),
     },
   };
 
