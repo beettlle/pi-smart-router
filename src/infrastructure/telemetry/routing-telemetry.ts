@@ -14,14 +14,21 @@ import {
   resolveSafetyMargin,
   type ContextFitConfig,
 } from '../../domain/routing/context-fit.js';
+import { CLUSTER_REASON_CODE_PREFIX } from '../../config/routing-clusters-loader.js';
+import type { ClusterMatcher } from '../../domain/matching/cluster-matcher.js';
 import type {
+  ClusterMatchTableEntry,
   ContextFitObservability,
   ContextFitRejectedEntry,
+  LowIntensityBreakdown,
   ModelProfile,
   PriceCatalog,
+  RejectedTierEntry,
   RoutingDecision,
   RoutingRequest,
   RoutingTelemetry,
+  TierFeatureSummary,
+  TierSelectionObservability,
 } from '../../domain/types/index.js';
 import { resolveFrugalityCostPer1M } from '../pricing/price-broker.js';
 import {
@@ -34,6 +41,17 @@ import {
 export const CONTEXT_FIT_PASS = 'context_fit_pass' as const;
 export const CONTEXT_FIT_REJECTED_ALL = 'context_fit_rejected_all' as const;
 export const CONTEXT_OVERFLOW_PIN_BREAK = 'context_overflow_pin_break' as const;
+
+export const LOW_INTENSITY_STRUCTURAL = 'low_intensity_structural' as const;
+export const HIGH_INTENSITY_STRUCTURAL = 'high_intensity_structural' as const;
+export const P_SUCCESS_CHEAP = 'p_success_cheap' as const;
+export const P_SUCCESS_UNCERTAIN = 'p_success_uncertain' as const;
+
+const EXPECTED_COST_PREFIX = 'expected_cost_';
+const EXPECTED_COST_DEFER_CODES = new Set<string>([
+  'expected_cost_price_delta_insufficient',
+  'expected_cost_no_viable_tier',
+]);
 
 const OVERFLOW_REASON_CODES = new Set<string>([
   CONTEXT_OVERFLOW_SAME_PROVIDER_FALLBACK,
@@ -246,6 +264,209 @@ export function buildContextFitObservability(
   };
 }
 
+function parseClusterIdFromReasonCode(reasonCode: string | null | undefined): string | null {
+  if (reasonCode === null || reasonCode === undefined || !reasonCode.startsWith(CLUSTER_REASON_CODE_PREFIX)) {
+    return null;
+  }
+
+  return reasonCode.slice(CLUSTER_REASON_CODE_PREFIX.length);
+}
+
+/** Normalize tier-selection reason codes for telemetry and explain (SP-113). */
+export function resolveTierSelectionReasonCode(
+  features: RoutingDecision['features'],
+): string | null {
+  if (!features) {
+    return null;
+  }
+
+  const reasonCode = features.tier_hint_reason_code;
+  if (reasonCode === null || reasonCode === undefined) {
+    if (features.p_success_cheap !== null && features.tier_hint === null) {
+      return P_SUCCESS_UNCERTAIN;
+    }
+    return null;
+  }
+
+  if (
+    reasonCode.startsWith(CLUSTER_REASON_CODE_PREFIX) ||
+    reasonCode === LOW_INTENSITY_STRUCTURAL ||
+    reasonCode === HIGH_INTENSITY_STRUCTURAL
+  ) {
+    return reasonCode;
+  }
+
+  if (reasonCode.startsWith(EXPECTED_COST_PREFIX)) {
+    if (EXPECTED_COST_DEFER_CODES.has(reasonCode) || features.tier_hint === null) {
+      return P_SUCCESS_UNCERTAIN;
+    }
+
+    if (features.tier_hint === 'economical-cloud' || features.tier_hint === 'zero-tier') {
+      return P_SUCCESS_CHEAP;
+    }
+  }
+
+  return reasonCode;
+}
+
+function extractRejectedTiers(
+  candidates: NonNullable<RoutingDecision['features']>['candidates'],
+): readonly RejectedTierEntry[] {
+  if (!candidates || candidates.length === 0) {
+    return [];
+  }
+
+  const rejected: RejectedTierEntry[] = [];
+  for (const candidate of candidates) {
+    if (!candidate.model_id.startsWith('__expected_cost_')) {
+      continue;
+    }
+
+    const tier = candidate.model_id
+      .replace('__expected_cost_', '')
+      .replace(/__$/, '');
+
+    rejected.push({
+      tier,
+      expected_cost_usd: candidate.score,
+      adjusted_expected_cost_usd: candidate.shortfall,
+      reason: candidate.rejected_reason ?? '',
+    });
+  }
+
+  return rejected;
+}
+
+function buildTierFeatureSummary(
+  features: NonNullable<RoutingDecision['features']>,
+): TierFeatureSummary {
+  return {
+    triage_verdict: features.triage?.verdict ?? null,
+    triage_reason_code: features.triage?.reason_code ?? null,
+    cyclomatic_score: features.triage?.cyclomatic_score ?? null,
+    requirement_reasoning: features.requirements?.reasoning ?? null,
+    requirement_code_gen: features.requirements?.code_gen ?? null,
+    requirement_tool_use: features.requirements?.tool_use ?? null,
+  };
+}
+
+function buildLowIntensityBreakdown(
+  features: NonNullable<RoutingDecision['features']>,
+): LowIntensityBreakdown {
+  return {
+    score: features.low_intensity_score,
+    tier_hint: features.tier_hint,
+    tier_hint_reason_code: features.tier_hint_reason_code,
+    tier_selection_reason_code: resolveTierSelectionReasonCode(features),
+    p_success_cheap: features.p_success_cheap,
+    p_success_alpha: features.p_success_alpha,
+    rejected_tiers: extractRejectedTiers(features.candidates),
+  };
+}
+
+/** Infer why local_zero did not dispatch when another stage won (SP-113). */
+export function buildLocalZeroSkipReasons(
+  decision: RoutingDecision,
+  features: RoutingDecision['features'],
+): readonly string[] {
+  if (decision.stage === 'local_zero') {
+    return [];
+  }
+
+  const reasons: string[] = [];
+  if (!features?.local_eligible_reason) {
+    reasons.push('not_locally_eligible');
+  }
+
+  const rejectedJson = features?.context_fit?.context_fit_rejected_json;
+  if (rejectedJson !== null && rejectedJson !== undefined && rejectedJson.includes('zero-tier')) {
+    reasons.push('context_fit_excluded_local');
+  }
+
+  if (features?.local_eligible_reason) {
+    if (decision.pin_reason !== null) {
+      reasons.push('session_pin_active');
+    } else {
+      reasons.push('hardware_or_local_unavailable');
+    }
+  }
+
+  return reasons;
+}
+
+function resolveClusterScalars(
+  features: RoutingDecision['features'],
+  clusterMatchTable: readonly ClusterMatchTableEntry[] | null,
+): Pick<
+  TierSelectionObservability,
+  'cluster_id' | 'cluster_similarity' | 'cluster_margin'
+> {
+  const selected =
+    clusterMatchTable?.find((entry) => entry.selected) ??
+    clusterMatchTable?.[0] ??
+    null;
+
+  if (selected) {
+    return {
+      cluster_id: selected.cluster_id,
+      cluster_similarity: selected.similarity,
+      cluster_margin: selected.margin,
+    };
+  }
+
+  const clusterId =
+    parseClusterIdFromReasonCode(features?.tier_hint_reason_code) ??
+    parseClusterIdFromReasonCode(features?.local_eligible_reason);
+
+  return {
+    cluster_id: clusterId,
+    cluster_similarity: null,
+    cluster_margin: null,
+  };
+}
+
+export interface TierSelectionObservabilityInput {
+  readonly decision: RoutingDecision;
+  readonly clusterMatchTable?: readonly ClusterMatchTableEntry[] | null;
+}
+
+/** Build privacy-safe tier/cluster observability from routing decision features (SP-113). */
+export function buildTierSelectionObservability(
+  input: TierSelectionObservabilityInput,
+): TierSelectionObservability | null {
+  const { decision, clusterMatchTable = null } = input;
+  const features = decision.features;
+
+  if (!features) {
+    return null;
+  }
+
+  const tierGateRan =
+    features.low_intensity_score !== null ||
+    features.tier_hint !== null ||
+    features.tier_hint_reason_code !== null ||
+    features.p_success_cheap !== null;
+
+  if (!tierGateRan) {
+    return null;
+  }
+
+  const clusterScalars = resolveClusterScalars(features, clusterMatchTable);
+
+  return {
+    ...clusterScalars,
+    low_intensity_score: features.low_intensity_score,
+    tier_hint: features.tier_hint,
+    p_success_cheap: features.p_success_cheap,
+    local_eligible_reason: features.local_eligible_reason,
+    tier_selection_reason_code: resolveTierSelectionReasonCode(features),
+    cluster_match_table: clusterMatchTable,
+    tier_feature_summary: buildTierFeatureSummary(features),
+    low_intensity_breakdown: buildLowIntensityBreakdown(features),
+    local_zero_skip_reasons: buildLocalZeroSkipReasons(decision, features),
+  };
+}
+
 function emptyFeatureSidecar() {
   return {
     triage: null,
@@ -258,6 +479,60 @@ function emptyFeatureSidecar() {
     p_success_alpha: null,
     local_eligible_reason: null,
   };
+}
+
+/** Attach tier-selection observability to a routing decision features sidecar (SP-113). */
+export function enrichRoutingDecisionWithTierSelection(
+  decision: RoutingDecision,
+  clusterMatchTable?: readonly ClusterMatchTableEntry[] | null,
+): RoutingDecision {
+  const tierSelection = buildTierSelectionObservability({
+    decision,
+    clusterMatchTable: clusterMatchTable ?? null,
+  });
+
+  if (!tierSelection) {
+    return decision;
+  }
+
+  return {
+    ...decision,
+    features: {
+      ...(decision.features ?? emptyFeatureSidecar()),
+      tier_selection: tierSelection,
+    },
+  };
+}
+
+export interface ExplainEnrichmentOptions {
+  readonly fleet?: readonly ModelProfile[];
+  readonly contextFitConfig?: ContextFitConfig;
+  readonly clusterMatcher?: ClusterMatcher;
+}
+
+/** Attach context-fit and tier-selection observability for explain responses (SP-110, SP-113). */
+export async function enrichRoutingDecisionForExplain(
+  request: RoutingRequest,
+  decision: RoutingDecision,
+  options?: ExplainEnrichmentOptions,
+): Promise<RoutingDecision> {
+  const withContextFit = enrichRoutingDecisionWithContextFit(
+    request,
+    decision,
+    options?.fleet,
+    options?.contextFitConfig,
+  );
+
+  let clusterMatchTable: readonly ClusterMatchTableEntry[] | null = null;
+  if (options?.clusterMatcher) {
+    try {
+      clusterMatchTable = await options.clusterMatcher.matchTable(request);
+    } catch {
+      clusterMatchTable = null;
+    }
+  }
+
+  return enrichRoutingDecisionWithTierSelection(withContextFit, clusterMatchTable);
 }
 
 /** Attach context-fit observability to a routing decision features sidecar (SP-110). */
@@ -301,12 +576,16 @@ export function buildRoutingDecisionLogPayload(
   fleet?: readonly ModelProfile[],
   contextFitConfig?: ContextFitConfig,
 ): Record<string, unknown> {
-  const enriched = enrichRoutingDecisionWithContextFit(
-    request,
-    decision,
-    fleet,
-    contextFitConfig,
+  const enriched = enrichRoutingDecisionWithTierSelection(
+    enrichRoutingDecisionWithContextFit(
+      request,
+      decision,
+      fleet,
+      contextFitConfig,
+    ),
   );
+
+  const tierSelection = enriched.features?.tier_selection;
 
   return {
     request_id: enriched.request_id,
@@ -316,6 +595,17 @@ export function buildRoutingDecisionLogPayload(
     reason_code: enriched.reason_code,
     routing_latency_ms: enriched.routing_latency_ms,
     features: enriched.features ?? null,
+    cluster_summary: tierSelection
+      ? {
+          cluster_id: tierSelection.cluster_id,
+          cluster_similarity: tierSelection.cluster_similarity,
+          cluster_margin: tierSelection.cluster_margin,
+          tier_hint: tierSelection.tier_hint,
+          tier_selection_reason_code: tierSelection.tier_selection_reason_code,
+          low_intensity_score: tierSelection.low_intensity_score,
+          p_success_cheap: tierSelection.p_success_cheap,
+        }
+      : null,
     delegate,
   };
 }
@@ -342,6 +632,52 @@ function defaultContextFitTelemetry(): Pick<
 /** Default context-fit telemetry scalars for tests and legacy store reads. */
 export const DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS = defaultContextFitTelemetry();
 
+function defaultTierSelectionTelemetry(): Pick<
+  RoutingTelemetry,
+  | 'cluster_id'
+  | 'cluster_similarity'
+  | 'cluster_margin'
+  | 'low_intensity_score'
+  | 'tier_hint'
+  | 'p_success_cheap'
+  | 'local_eligible_reason'
+  | 'tier_selection_reason_code'
+> {
+  return {
+    cluster_id: null,
+    cluster_similarity: null,
+    cluster_margin: null,
+    low_intensity_score: null,
+    tier_hint: null,
+    p_success_cheap: null,
+    local_eligible_reason: null,
+    tier_selection_reason_code: null,
+  };
+}
+
+/** Default tier-selection telemetry scalars for tests and legacy store reads. */
+export const DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS = defaultTierSelectionTelemetry();
+
+function tierSelectionTelemetryFromDecision(
+  decision: RoutingDecision,
+): ReturnType<typeof defaultTierSelectionTelemetry> {
+  const observability = buildTierSelectionObservability({ decision });
+  if (!observability) {
+    return defaultTierSelectionTelemetry();
+  }
+
+  return {
+    cluster_id: observability.cluster_id,
+    cluster_similarity: observability.cluster_similarity,
+    cluster_margin: observability.cluster_margin,
+    low_intensity_score: observability.low_intensity_score,
+    tier_hint: observability.tier_hint,
+    p_success_cheap: observability.p_success_cheap,
+    local_eligible_reason: observability.local_eligible_reason,
+    tier_selection_reason_code: observability.tier_selection_reason_code,
+  };
+}
+
 /** Default context-fit dataset scalars for tests and legacy store reads. */
 export const DEFAULT_CONTEXT_FIT_DATASET_FIELDS = {
   estimated_input_tokens_gate: null,
@@ -358,6 +694,28 @@ export const DEFAULT_CONTEXT_FIT_DATASET_FIELDS = {
   | 'context_overflow_pin_break'
   | 'selected_model_max_input_tokens'
   | 'context_fit_reason_code'
+>;
+
+/** Default tier-selection dataset scalars for tests and legacy store reads. */
+export const DEFAULT_TIER_SELECTION_DATASET_FIELDS = {
+  cluster_id: null,
+  cluster_similarity: null,
+  cluster_margin: null,
+  low_intensity_score: null,
+  tier_hint: null,
+  p_success_cheap: null,
+  local_eligible_reason: null,
+  tier_selection_reason_code: null,
+} as const satisfies Pick<
+  import('../../domain/types/index.js').RoutingDatasetRecord,
+  | 'cluster_id'
+  | 'cluster_similarity'
+  | 'cluster_margin'
+  | 'low_intensity_score'
+  | 'tier_hint'
+  | 'p_success_cheap'
+  | 'local_eligible_reason'
+  | 'tier_selection_reason_code'
 >;
 
 // ─── Emitter ─────────────────────────────────────────────────────────────────
@@ -419,6 +777,7 @@ export class RoutingTelemetryEmitter {
         : {}),
     });
     const contextFitFields = contextFit ?? defaultContextFitTelemetry();
+    const tierSelectionFields = tierSelectionTelemetryFromDecision(decision);
 
     const record: RoutingTelemetry = {
       timestamp: this.clock(),
@@ -437,6 +796,14 @@ export class RoutingTelemetryEmitter {
       context_overflow_pin_break: contextFitFields.context_overflow_pin_break,
       selected_model_max_input_tokens: contextFitFields.selected_model_max_input_tokens,
       context_fit_reason_code: contextFitFields.context_fit_reason_code,
+      cluster_id: tierSelectionFields.cluster_id,
+      cluster_similarity: tierSelectionFields.cluster_similarity,
+      cluster_margin: tierSelectionFields.cluster_margin,
+      low_intensity_score: tierSelectionFields.low_intensity_score,
+      tier_hint: tierSelectionFields.tier_hint,
+      p_success_cheap: tierSelectionFields.p_success_cheap,
+      local_eligible_reason: tierSelectionFields.local_eligible_reason,
+      tier_selection_reason_code: tierSelectionFields.tier_selection_reason_code,
     };
 
     this.entries.push(record);

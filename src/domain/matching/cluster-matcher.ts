@@ -18,6 +18,7 @@ import {
 } from '../../config/routing-clusters-loader.js';
 import { EMBEDDING_DIM, type TextEmbedder } from './embedding-provider.js';
 import type {
+  ClusterMatchTableEntry,
   LoadedRoutingCluster,
   RoutingCluster,
   RoutingClusterCatalog,
@@ -442,5 +443,32 @@ export class ClusterMatcher {
       confidence,
       elapsedMs: performance.now() - start,
     };
+  }
+
+  /** Score all cluster centroids for explain / telemetry tables (SP-113). */
+  async matchTable(request: RoutingRequest): Promise<readonly ClusterMatchTableEntry[]> {
+    const embedding = await this.embedder.embed(request.prompt_text);
+    const ranked = rankClusters(embedding, this.clusters);
+    const best = ranked[0];
+
+    return ranked.map((entry, index) => {
+      const runnerUp = ranked[index + 1];
+      const margin = runnerUp ? entry.similarity - runnerUp.similarity : null;
+      const confidence = computeConfidence(
+        entry.similarity,
+        index === 0 ? (margin ?? 0) : 0,
+        entry.cluster.min_similarity,
+        entry.cluster.min_margin,
+      );
+
+      return {
+        cluster_id: entry.cluster.id,
+        tier_bias: entry.cluster.tier_bias,
+        similarity: entry.similarity,
+        margin: index === 0 ? margin : null,
+        confidence: confidence === 'high' ? 'high' : 'none',
+        selected: entry === best,
+      };
+    });
   }
 }

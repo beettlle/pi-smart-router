@@ -819,6 +819,14 @@ function telemetryRowToEntity(row: TelemetryRow): RoutingTelemetry {
     context_overflow_pin_break: false,
     selected_model_max_input_tokens: null,
     context_fit_reason_code: null,
+    cluster_id: null,
+    cluster_similarity: null,
+    cluster_margin: null,
+    low_intensity_score: null,
+    tier_hint: null,
+    p_success_cheap: null,
+    local_eligible_reason: null,
+    tier_selection_reason_code: null,
   };
 }
 
@@ -855,6 +863,14 @@ function datasetRowToEntity(row: DatasetRow): RoutingDatasetRecord {
     context_overflow_pin_break: false,
     selected_model_max_input_tokens: null,
     context_fit_reason_code: null,
+    cluster_id: null,
+    cluster_similarity: null,
+    cluster_margin: null,
+    low_intensity_score: null,
+    tier_hint: null,
+    p_success_cheap: null,
+    local_eligible_reason: null,
+    tier_selection_reason_code: null,
   };
 }
 

@@ -239,6 +239,37 @@ describe('dataset-recorder', () => {
       expect(record.selected_model_max_input_tokens).toBe(200_000);
       expect(record.context_fit_reason_code).toBe('context_fit_pass');
     });
+
+    it('maps tier-selection scalars into dataset rows (SP-113)', () => {
+      const record = buildDatasetRecord(
+        makeRequest(),
+        makeDecision({
+          features: {
+            triage: {
+              verdict: 'ambiguous',
+              reason_code: 'mixed_signals',
+              cyclomatic_score: 1,
+            },
+            requirements: { reasoning: 0.2, code_gen: 0.3, tool_use: 0.1 },
+            candidates: null,
+            tier_hint: 'economical-cloud',
+            tier_hint_reason_code: 'cluster_low_stakes_general',
+            low_intensity_score: 0.8,
+            p_success_cheap: 0.7,
+            p_success_alpha: 0.5,
+            local_eligible_reason: 'cluster_low_stakes_general',
+          },
+        }),
+        '2026-07-07T12:00:00.000Z',
+      );
+
+      expect(record.cluster_id).toBe('low_stakes_general');
+      expect(record.low_intensity_score).toBe(0.8);
+      expect(record.tier_hint).toBe('economical-cloud');
+      expect(record.p_success_cheap).toBe(0.7);
+      expect(record.local_eligible_reason).toBe('cluster_low_stakes_general');
+      expect(record.tier_selection_reason_code).toBe('cluster_low_stakes_general');
+    });
   });
 
   describe('DatasetRecorder', () => {

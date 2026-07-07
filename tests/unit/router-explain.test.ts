@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { createExplainHandler } from '../../src/api/explain/router-explain.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
+import type { ClusterMatchResult } from '../../src/domain/matching/cluster-matcher.js';
+import type { ClusterMatcher } from '../../src/domain/matching/cluster-matcher.js';
 import type { ModelProfile } from '../../src/domain/types/index.js';
 import { CONTEXT_FIT_PASS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 import {
@@ -50,9 +52,16 @@ function validRequestBody(overrides?: Record<string, unknown>): Record<string, u
   };
 }
 
-function createHandler(fleetOverride: ModelProfile[] = fleet) {
+function createHandler(
+  fleetOverride: ModelProfile[] = fleet,
+  clusterMatcher?: ClusterMatcher,
+) {
   const pipeline = new RouterPipeline(fleetOverride);
-  return createExplainHandler({ fleet: fleetOverride, pipeline });
+  return createExplainHandler({
+    fleet: fleetOverride,
+    pipeline,
+    ...(clusterMatcher !== undefined ? { clusterMatcher } : {}),
+  });
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -308,6 +317,67 @@ describe('routerExplain (T041)', () => {
         return;
       }
       expect(result.body.features?.context_fit?.context_fit_reason_code).toBe(CONTEXT_FIT_PASS);
+    });
+
+    it('includes tier_selection observability with cluster table when matcher wired (SP-113)', async () => {
+      const clusterMatch: ClusterMatchResult = {
+        clusterId: 'low_stakes_general',
+        tierBias: 'economical-cloud',
+        similarity: 0.9,
+        margin: 0.1,
+        confidence: 'high',
+        elapsedMs: 1,
+      };
+      const clusterMatcher = {
+        match: async () => clusterMatch,
+        matchTable: async () => [
+          {
+            cluster_id: 'low_stakes_general',
+            tier_bias: 'economical-cloud' as const,
+            similarity: 0.9,
+            margin: 0.1,
+            confidence: 'high' as const,
+            selected: true,
+          },
+          {
+            cluster_id: 'architecture',
+            tier_bias: 'frontier-cloud' as const,
+            similarity: 0.4,
+            margin: null,
+            confidence: 'none' as const,
+            selected: false,
+          },
+        ],
+      } as unknown as ClusterMatcher;
+
+      const explain = createHandler(fleet, clusterMatcher);
+      const result = await explain(validRequestBody({ prompt_text: 'Fix the typo in README' }));
+
+      expect(result.status).toBe(200);
+      if (result.status !== 200) {
+        return;
+      }
+
+      const tierSelection = result.body.features?.tier_selection;
+      expect(tierSelection?.cluster_match_table).toHaveLength(2);
+      expect(tierSelection?.cluster_id).toBe('low_stakes_general');
+      expect(tierSelection?.cluster_similarity).toBe(0.9);
+      expect(tierSelection?.low_intensity_breakdown?.score).not.toBeNull();
+      expect(tierSelection?.tier_feature_summary?.triage_verdict).toBeDefined();
+      expect(tierSelection?.local_zero_skip_reasons.length).toBeGreaterThan(0);
+    });
+
+    it('includes tier_selection without cluster table when matcher is omitted', async () => {
+      const explain = createHandler();
+      const result = await explain(validRequestBody());
+
+      expect(result.status).toBe(200);
+      if (result.status !== 200) {
+        return;
+      }
+
+      expect(result.body.features?.tier_selection?.low_intensity_breakdown?.score).not.toBeNull();
+      expect(result.body.features?.tier_selection?.cluster_match_table).toBeNull();
     });
   });
 });

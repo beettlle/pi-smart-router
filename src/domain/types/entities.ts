@@ -136,6 +136,61 @@ export interface ContextFitObservability {
   readonly context_fit_reason_code: string | null;
 }
 
+/** Per-cluster cosine score row for explain output (SP-113, #62). */
+export interface ClusterMatchTableEntry {
+  readonly cluster_id: string;
+  readonly tier_bias: Tier;
+  readonly similarity: number;
+  readonly margin: number | null;
+  readonly confidence: 'high' | 'none';
+  readonly selected: boolean;
+}
+
+/** Privacy-safe tier feature summary for explain (SP-113). */
+export interface TierFeatureSummary {
+  readonly triage_verdict: string | null;
+  readonly triage_reason_code: string | null;
+  readonly cyclomatic_score: number | null;
+  readonly requirement_reasoning: number | null;
+  readonly requirement_code_gen: number | null;
+  readonly requirement_tool_use: number | null;
+}
+
+/** Expected-cost tier candidate rejected in favor of the winner (SP-113). */
+export interface RejectedTierEntry {
+  readonly tier: string;
+  readonly expected_cost_usd: number;
+  readonly adjusted_expected_cost_usd: number;
+  readonly reason: string;
+}
+
+/** Low-intensity gate breakdown for explain (SP-113). */
+export interface LowIntensityBreakdown {
+  readonly score: number | null;
+  readonly tier_hint: Tier | null;
+  readonly tier_hint_reason_code: string | null;
+  readonly tier_selection_reason_code: string | null;
+  readonly p_success_cheap: number | null;
+  readonly p_success_alpha: number | null;
+  readonly rejected_tiers: readonly RejectedTierEntry[];
+}
+
+/** Tier/cluster selection observability (SP-113, #62). */
+export interface TierSelectionObservability {
+  readonly cluster_id: string | null;
+  readonly cluster_similarity: number | null;
+  readonly cluster_margin: number | null;
+  readonly low_intensity_score: number | null;
+  readonly tier_hint: Tier | null;
+  readonly p_success_cheap: number | null;
+  readonly local_eligible_reason: string | null;
+  readonly tier_selection_reason_code: string | null;
+  readonly cluster_match_table: readonly ClusterMatchTableEntry[] | null;
+  readonly tier_feature_summary: TierFeatureSummary | null;
+  readonly low_intensity_breakdown: LowIntensityBreakdown | null;
+  readonly local_zero_skip_reasons: readonly string[];
+}
+
 export interface TriageFeatureSummary {
   readonly verdict: 'trivial' | 'complex' | 'ambiguous';
   readonly reason_code: string;
@@ -167,6 +222,8 @@ export interface RoutingFeatureSidecar {
   readonly p_success_alpha: number | null;
   /** Context-fit gate observability (SP-110). */
   readonly context_fit?: ContextFitObservability;
+  /** Tier/cluster selection observability (SP-113, #62). */
+  readonly tier_selection?: TierSelectionObservability;
   /** Why local_zero eligibility passed (SP-111, #59). */
   readonly local_eligible_reason: string | null;
 }
@@ -235,6 +292,14 @@ export interface RoutingDatasetRecord {
   readonly context_overflow_pin_break: boolean;
   readonly selected_model_max_input_tokens: number | null;
   readonly context_fit_reason_code: string | null;
+  readonly cluster_id: string | null;
+  readonly cluster_similarity: number | null;
+  readonly cluster_margin: number | null;
+  readonly low_intensity_score: number | null;
+  readonly tier_hint: Tier | null;
+  readonly p_success_cheap: number | null;
+  readonly local_eligible_reason: string | null;
+  readonly tier_selection_reason_code: string | null;
 }
 
 // ─── RoutingOutcomeRecord ────────────────────────────────────────────────────
@@ -308,4 +373,12 @@ export interface RoutingTelemetry {
   readonly context_overflow_pin_break: boolean;
   readonly selected_model_max_input_tokens: number | null;
   readonly context_fit_reason_code: string | null;
+  readonly cluster_id: string | null;
+  readonly cluster_similarity: number | null;
+  readonly cluster_margin: number | null;
+  readonly low_intensity_score: number | null;
+  readonly tier_hint: Tier | null;
+  readonly p_success_cheap: number | null;
+  readonly local_eligible_reason: string | null;
+  readonly tier_selection_reason_code: string | null;
 }

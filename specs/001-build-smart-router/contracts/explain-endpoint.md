@@ -84,3 +84,24 @@ When the context-fit gate runs, `features.context_fit` MAY be present on the rou
 | `context_fit_reason_code` | string \| null | `context_fit_pass`, `context_fit_rejected_all`, `context_overflow_pin_break`, or overflow fallback variant |
 
 Rejected models also appear in `features.candidates` with `rejected_reason: "context_fit_exceeded"`.
+
+## Tier/cluster selection observability (SP-113)
+
+When the low-intensity tier gate runs, `features.tier_selection` MAY be present on the routing decision:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `cluster_id` | string \| null | Nearest routing cluster id |
+| `cluster_similarity` | number \| null | Cosine similarity to best cluster |
+| `cluster_margin` | number \| null | sim(best) − sim(second) |
+| `low_intensity_score` | number \| null | Combined structural low-intensity score |
+| `tier_hint` | string \| null | Suggested tier before HyDRA / pin |
+| `p_success_cheap` | number \| null | P(success) on economical tier |
+| `local_eligible_reason` | string \| null | Why local_zero eligibility passed |
+| `tier_selection_reason_code` | string \| null | Normalized reason: `cluster_{id}`, `low_intensity_structural`, `high_intensity_structural`, `p_success_cheap`, `p_success_uncertain` |
+| `cluster_match_table` | array \| null | All cluster centroids with scores (when cluster matcher wired) |
+| `tier_feature_summary` | object \| null | Triage and requirement vector summary |
+| `low_intensity_breakdown` | object \| null | Score, hint, P(success), and rejected expected-cost tiers |
+| `local_zero_skip_reasons` | string[] | Why local_zero did not dispatch when another stage won |
+
+`SMART_ROUTER_LOG_ROUTING=1` JSON lines include `cluster_summary` with cluster id, similarity, margin, tier hint, and tier-selection reason code.
