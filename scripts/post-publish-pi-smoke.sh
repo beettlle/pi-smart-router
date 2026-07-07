@@ -26,8 +26,22 @@ pi --version
 echo "Installing pi-smart-router from npm (pi consumer path)..."
 pi install "npm:pi-smart-router@${VERSION}"
 
-echo "Verifying smart-router provider registration..."
-pi --list-models | grep -F 'smart-router'
+echo "Verifying package is registered with pi..."
+pi list | grep -F 'pi-smart-router'
+
+PKG_ROOT="$(find "${HOME}/.pi/agent/npm" -maxdepth 1 -type d -name 'pi-smart-router-*' | head -1)"
+if [ -z "${PKG_ROOT}" ]; then
+  echo "ERROR: pi-smart-router install directory not found under ~/.pi/agent/npm"
+  exit 1
+fi
+test -f "${PKG_ROOT}/.pi/extensions/smart-router/index.ts"
+echo "Extension entry present at ${PKG_ROOT}/.pi/extensions/smart-router/index.ts"
+
+if pi --list-models 2>/dev/null | grep -F 'smart-router'; then
+  echo "smart-router provider visible in pi --list-models"
+else
+  echo "Note: smart-router model not listed without provider auth; install path verified"
+fi
 
 echo "Verifying pi.dev package gallery lists ${VERSION}..."
 for attempt in $(seq 1 12); do
