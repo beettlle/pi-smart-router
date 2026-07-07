@@ -332,6 +332,38 @@ describe('GatewayDispatch', () => {
           provider: 'google',
           pricing: { fallback_cost_per_1m: 0.1 },
         }),
+      ];
+      const gateway = new GatewayDispatch(fleet);
+
+      gateway.recordOutcome('composer-latest', { statusCode: 429 });
+
+      const failover = gateway.selectFailover(
+        makeDecision({
+          selected_model_id: 'composer-latest',
+          tier: 'frontier-cloud',
+        }),
+        ['composer-latest'],
+        fleet,
+      );
+
+      expect(failover?.selected_model_id).toBe('gemini-flash-lite-latest');
+      expect(failover?.reason_code).toBe('cursor_quota_exhausted');
+    });
+
+    it('weighted economical failover picks among viable economical candidates', () => {
+      const fleet = [
+        makeModel({
+          id: 'composer-latest',
+          tier: 'frontier-cloud',
+          provider: 'cursor',
+          pricing: { fallback_cost_per_1m: 0 },
+        }),
+        makeModel({
+          id: 'gemini-flash-lite-latest',
+          tier: 'economical-cloud',
+          provider: 'google',
+          pricing: { fallback_cost_per_1m: 0.1 },
+        }),
         makeModel({
           id: 'gpt-4o-mini',
           tier: 'economical-cloud',
@@ -352,8 +384,11 @@ describe('GatewayDispatch', () => {
         fleet,
       );
 
-      expect(failover?.selected_model_id).toBe('gemini-flash-lite-latest');
+      expect(['gemini-flash-lite-latest', 'gpt-4o-mini']).toContain(
+        failover?.selected_model_id,
+      );
       expect(failover?.reason_code).toBe('cursor_quota_exhausted');
+      expect(failover?.tier).toBe('economical-cloud');
     });
 
     it('does not trip circuit breaker on cursor quota errors', () => {

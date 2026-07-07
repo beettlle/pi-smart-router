@@ -1,7 +1,7 @@
 # SP-097 Status
 
-**Current Step:** Done
-**Status:** Complete
+**Current Step:** 3
+**Status:** In progress (addressing review REVISE)
 **Last Updated:** 2026-07-06
 **Review Level:** 2
 **Size:** M
@@ -24,10 +24,10 @@
 
 ## Step 3: Tests and verification
 
-**Status:** Complete
+**Status:** In progress
 
 - [x] Failover path test
-- [x] Run `npm run verify:ci`
+- [ ] Run `npm run verify:ci` (re-run after flaky-test fix)
 
 ## Completion Criteria
 
