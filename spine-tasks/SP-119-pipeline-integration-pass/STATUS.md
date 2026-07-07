@@ -1,7 +1,7 @@
 # SP-119 Status
 
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-07
 **Review Level:** 2
 **Size:** M
@@ -10,29 +10,29 @@
 
 ## Step 1: Stage registration and sidecar
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Register all stages in target order
-- [ ] Pass shared sidecar fields
-- [ ] Enforce stage ordering invariants
+- [x] Register all stages in target order
+- [x] Pass shared sidecar fields
+- [x] Enforce stage ordering invariants
 
 ## Step 2: Extension and integration tests
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Extension supplies all routing request fields
-- [ ] 34K-token overflow integration test
-- [ ] Fresh-session local_zero integration test
+- [x] Extension supplies all routing request fields
+- [x] 34K-token overflow integration test
+- [x] Fresh-session local_zero integration test
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Explain shows combined rationale
-- [ ] Update stage order docs
-- [ ] Run `npm run verify:ci`
+- [x] Explain shows combined rationale
+- [x] Update stage order docs
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes

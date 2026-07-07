@@ -6,7 +6,7 @@ import {
   type EmbeddingProvider,
   type RequirementVector,
 } from '../../src/domain/matching/hydra-matcher.js';
-import { RouterPipeline, resolveLocalEligible } from '../../src/domain/pipeline/router-pipeline.js';
+import { RouterPipeline, PIPELINE_STAGE_ORDER, resolveLocalEligible } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { extractToolFailureSignature } from '../../src/domain/pinning/loop-escalation.js';
 import { RoutingTelemetryEmitter } from '../../src/infrastructure/telemetry/routing-telemetry.js';
@@ -53,6 +53,17 @@ const HARDWARE_CONFIG = {
 } as const;
 
 describe('RouterPipeline', () => {
+  describe('pipeline stage order (SP-119)', () => {
+    it('registers stages in documented integration order', () => {
+      const pipeline = new RouterPipeline(fleet);
+      const registered = (pipeline as unknown as { stages: { name: string }[] }).stages.map(
+        (stage) => stage.name,
+      );
+
+      expect(registered).toEqual([...PIPELINE_STAGE_ORDER]);
+    });
+  });
+
   describe('stage chain with placeholders', () => {
     it('runs through all placeholder stages and returns safe default', async () => {
       const pipeline = new RouterPipeline(fleet);

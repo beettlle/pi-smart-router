@@ -14,22 +14,27 @@ pi-smart-router intercepts every LLM inference request and dynamically routes it
 ## How it works
 
 ```text
-request → hardware probe → loop escalation → session pin
-        → deterministic triage → turn envelope → local zero-tier
-        → HyDRA embedding matcher → safe cloud default (fallback)
+request → hardware probe → loop escalation → turn envelope → context-fit gate
+        → low-intensity tier gate → session pin → deterministic triage
+        → local zero-tier → HyDRA embedding matcher → safe cloud default
+        → context overflow fallback
 ```
 
-The pipeline runs **7 stages sequentially with early exit** — the moment any stage reaches a routing decision, subsequent stages are skipped. Every decision includes the stage name, reason code, candidates considered, estimated cost, and routing latency for full observability.
+The pipeline runs **12 stages sequentially with early exit** — the moment any stage reaches a routing decision, subsequent stages are skipped. Every decision includes the stage name, reason code, candidates considered, estimated cost, and routing latency for full observability.
 
 | Stage | Budget | What it does |
 |-------|--------|--------------|
 | Hardware Probe | — | Checks platform/RAM/battery to gate local inference |
 | Loop Escalation | — | Detects repeated identical tool failures; escalates session to frontier |
-| Session Pin | <1ms | Returns pinned model if session has one; breaks pin on compaction or user override |
-| Deterministic Triage | <5ms | Aho-Corasick keyword scan + cyclomatic complexity analysis |
 | Turn Envelope | <2ms | Classifies turn type: tool_result, planning, subagent, main_loop |
-| Local Zero-Tier | <15ms | Pings LM Studio + Ollama in parallel; routes locally if a model is loaded |
+| Context-Fit Gate | — | Filters fleet to models whose context window fits estimated input tokens |
+| Low-Intensity Gate | — | Structural tier hint, cluster match, and P(success) expected-cost scoring |
+| Session Pin | <1ms | Returns pinned model if session has one; breaks pin on compaction or overflow |
+| Deterministic Triage | <5ms | Aho-Corasick keyword scan + cyclomatic complexity analysis |
+| Local Zero-Tier | <15ms | Pings LM Studio + Ollama in parallel; routes locally when eligible |
 | HyDRA Matcher | 80-120ms | ONNX embeddings, 3D requirement projection, shortfall gate, multi-objective scoring |
+| Safe Cloud Default | — | First healthy economical-cloud model (context-fit aware) |
+| Context Overflow Fallback | — | Escalates to largest-fit model when economical tiers cannot fit |
 
 If no stage decides, `safeCloudDefault` selects the first healthy economical-cloud model.
 
