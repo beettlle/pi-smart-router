@@ -1,0 +1,2 @@
+SP-111 complete — local_zero decoupled from trivial-only triage.
+verify:ci passed (1041 tests, coverage gate OK).
