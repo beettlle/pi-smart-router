@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-07
 **Status:** Active
-**Next Task ID:** SP-110
+**Next Task ID:** SP-120
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -253,6 +253,36 @@
 **Excluded:** #1, #25, #26 (hardware — no hardware available).
 
 **Recommended wave order:** SP-107 → SP-108 → SP-109 (serial; shared `route-and-delegate.ts`).
+
+### Phase 33 — Backlog Orchestrator Cycle 13 (#53, #59–#60, #62, #64–#67, #69)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-110 | Context-fit telemetry and explain endpoint | S | SP-093, SP-095 | #53 |
+| SP-111 | Decouple local_zero from trivial-only triage | M | SP-103, SP-101 | #59 |
+| SP-112 | HyDRA routing metadata prefix encoder | M | SP-091 | #60 |
+| SP-113 | Tier and cluster telemetry and explain endpoint | M | SP-103, SP-106, SP-110 | #62 |
+| SP-114 | Offline routing centroid bootstrap script | M | SP-099, SP-101 | #64 |
+| SP-115 | HyDRA learned 384×3 projection head | M | SP-112 | #65 |
+| SP-116 | Calibration data aggregate and validate pipeline | M | SP-104, SP-114, SP-115 | #66 (part 1) |
+| SP-117 | Calibration train serialize and verify pipeline | M | SP-116 | #66 (part 2) |
+| SP-118 | Community telemetry contribution export | S | SP-116, SP-060 | #67 |
+| SP-119 | Pipeline integration pass for routing stages | M | SP-111, SP-112, SP-115, SP-110, SP-113 | #69 |
+
+**Excluded:** #1, #25, #26 (hardware — no hardware available).
+
+**Epic #63:** tracking issue only — do not author XL packet; children above cover roadmap.
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-110, SP-112, SP-114 | Parallel — disjoint scopes |
+| B | SP-111, SP-113, SP-115 | SP-113 after SP-110; SP-115 after SP-112 |
+| C | SP-116 | After artifact load paths |
+| D | SP-117 | Serial after SP-116 |
+| E | SP-118 | After SP-116 |
+| F | SP-119 | Integration — must be last |
 
 ---
 
