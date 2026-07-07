@@ -1,7 +1,7 @@
 # SP-095 Status
 
-**Current Step:** Step 1
-**Status:** Ready
+**Current Step:** Step 3
+**Status:** In Progress
 **Last Updated:** 2026-07-06
 **Review Level:** 1
 **Size:** M
@@ -10,24 +10,24 @@
 
 ## Step 1: Fallback policy implementation
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Same-provider then frontier escalation
-- [ ] Update safe-default; add reason codes
+- [x] Same-provider then frontier escalation
+- [x] Update safe-default; add reason codes
 
 ## Step 2: Tests
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Large context, same-provider, and no_fit tests
+- [x] Large context, same-provider, and no_fit tests
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Run `npm run verify:ci`
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes
