@@ -30,5 +30,6 @@ export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
     weights: DEFAULT_LOW_INTENSITY_WEIGHTS,
     high_threshold: 0.65,
     low_threshold: 0.35,
+    p_success_alpha: 0.5,
   },
 } as const;

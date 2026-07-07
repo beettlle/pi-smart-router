@@ -5,6 +5,12 @@
  * joined with behavioral outcome labels. No heavy ML dependencies.
  */
 
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { z } from 'zod';
+
+import type { TierFeatureVector } from './tier-features.js';
 import type {
   OutcomeSignalType,
   RoutingDatasetRecord,
@@ -58,6 +64,18 @@ export interface PSuccessFeatures {
   readonly economical_tier: number;
 }
 
+/** Online inference latency budget (SP-105). */
+export const P_SUCCESS_INFERENCE_BUDGET_MS = 5;
+
+export const PSuccessWeightsSchema = z.object({
+  version: z.literal(1),
+  min_training_samples: z.number().int().min(0),
+  feature_names: z.array(z.enum(P_SUCCESS_FEATURE_NAMES)).length(P_SUCCESS_FEATURE_NAMES.length),
+  intercept: z.number(),
+  coefficients: z.array(z.number()).length(P_SUCCESS_FEATURE_NAMES.length),
+  trained_sample_count: z.number().int().min(0),
+});
+
 export interface PSuccessWeights {
   readonly version: 1;
   readonly min_training_samples: number;
@@ -65,6 +83,25 @@ export interface PSuccessWeights {
   readonly intercept: number;
   readonly coefficients: readonly number[];
   readonly trained_sample_count: number;
+}
+
+export interface PSuccessPredictionResult {
+  readonly probability: number;
+  readonly elapsed_ms: number;
+  readonly within_budget: boolean;
+  readonly feature_importances: Readonly<Record<PSuccessFeatureName, number>>;
+}
+
+export interface LoadPSuccessWeightsOptions {
+  readonly filePath?: string;
+}
+
+export class PSuccessWeightsLoaderError extends Error {
+  override readonly name = 'PSuccessWeightsLoaderError';
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+  }
 }
 
 export interface LabeledTrainingSample {
@@ -346,5 +383,129 @@ export function createDefaultPSuccessWeights(): PSuccessWeights {
     intercept: 0,
     coefficients: P_SUCCESS_FEATURE_NAMES.map(() => 0),
     trained_sample_count: 0,
+  };
+}
+
+function formatZodIssues(error: { issues: readonly { path: readonly PropertyKey[]; message: string }[] }): string {
+  return error.issues
+    .map((issue) => `  - ${issue.path.join('.')}: ${issue.message}`)
+    .join('\n');
+}
+
+/** Parse and validate a P(success) weights artifact from JSON text. */
+export function parsePSuccessWeightsJson(raw: string): PSuccessWeights {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new PSuccessWeightsLoaderError(`Failed to parse JSON: ${message}`, { cause: err });
+  }
+
+  const result = PSuccessWeightsSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new PSuccessWeightsLoaderError(
+      `Invalid P(success) weights artifact:\n${formatZodIssues(result.error)}`,
+      { cause: result.error },
+    );
+  }
+
+  return result.data;
+}
+
+/**
+ * Load P(success) weights from disk. Returns null when the artifact is missing;
+ * throws only when the file exists but is invalid.
+ */
+export function loadPSuccessWeights(options?: LoadPSuccessWeightsOptions): PSuccessWeights | null {
+  const filePath = options?.filePath ?? resolve('config', 'p-success-weights.json');
+
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  let raw: string;
+  try {
+    raw = readFileSync(filePath, 'utf8');
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new PSuccessWeightsLoaderError(`Failed to read weights file: ${message}`, { cause: err });
+  }
+
+  return parsePSuccessWeightsJson(raw);
+}
+
+/** Resolve weights for online inference — missing or invalid artifacts fall back safely. */
+export function resolvePSuccessWeights(options?: LoadPSuccessWeightsOptions): PSuccessWeights {
+  try {
+    return loadPSuccessWeights(options) ?? createDefaultPSuccessWeights();
+  } catch (err: unknown) {
+    console.warn('P(success) weights artifact invalid; using neutral fallback', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return createDefaultPSuccessWeights();
+  }
+}
+
+/** Map live tier features to the P(success) feature vector (no prompt text). */
+export function tierFeaturesToPSuccessFeatures(
+  tierFeatures: TierFeatureVector,
+  options?: { readonly routingLatencyMs?: number; readonly economicalTier?: boolean },
+): PSuccessFeatures {
+  const routingLatencyMs = options?.routingLatencyMs ?? 0;
+  const economicalTier = options?.economicalTier ?? true;
+
+  return extractPSuccessFeatures({
+    prompt_length_chars: tierFeatures.prompt_length_chars,
+    estimated_input_tokens: tierFeatures.estimated_input_tokens,
+    triage_cyclomatic_score: tierFeatures.cyclomatic_score,
+    requirement_reasoning: tierFeatures.requirement_reasoning,
+    requirement_code_gen: tierFeatures.requirement_code_gen,
+    requirement_tool_use: tierFeatures.requirement_tool_use,
+    has_tool_context: tierFeatures.has_tool_context,
+    compaction_flag: false,
+    routing_latency_ms: routingLatencyMs,
+    tier: economicalTier ? 'economical-cloud' : 'frontier-cloud',
+  });
+}
+
+/** Signed coefficient × feature contributions for operator explainability. */
+export function computePSuccessFeatureImportances(
+  features: PSuccessFeatures,
+  weights: PSuccessWeights,
+): Readonly<Record<PSuccessFeatureName, number>> {
+  const importances = {} as Record<PSuccessFeatureName, number>;
+
+  for (let i = 0; i < P_SUCCESS_FEATURE_NAMES.length; i++) {
+    const name = P_SUCCESS_FEATURE_NAMES[i]!;
+    importances[name] = weights.coefficients[i]! * features[name];
+  }
+
+  return importances;
+}
+
+/** Predict P_success_cheap with elapsed timing guard for the online routing budget. */
+export function predictPSuccessCheapTimed(
+  features: PSuccessFeatures,
+  weights: PSuccessWeights,
+  budgetMs: number = P_SUCCESS_INFERENCE_BUDGET_MS,
+): PSuccessPredictionResult {
+  const start = performance.now();
+  const probability = predictPSuccessCheap(features, weights);
+  const elapsed_ms = performance.now() - start;
+  const feature_importances = computePSuccessFeatureImportances(features, weights);
+
+  if (elapsed_ms > budgetMs) {
+    console.warn('P(success) inference exceeded latency budget', {
+      elapsed_ms,
+      budget_ms: budgetMs,
+    });
+  }
+
+  return {
+    probability,
+    elapsed_ms,
+    within_budget: elapsed_ms <= budgetMs,
+    feature_importances,
   };
 }

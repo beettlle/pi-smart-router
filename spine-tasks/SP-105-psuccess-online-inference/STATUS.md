@@ -1,7 +1,7 @@
 # SP-105 Status
 
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-06
 **Review Level:** 2
 **Size:** M
@@ -10,26 +10,27 @@
 
 ## Step 1: Online inference loader
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Load weights artifact
-- [ ] predict with timing guard
+- [x] Load weights artifact
+- [x] predict with timing guard
 
 ## Step 2: Wire into low_intensity gate
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] P_success >= alpha → economical bias
-- [ ] Telemetry for P_success and alpha
+- [x] P_success >= alpha → economical bias
+- [x] Telemetry for P_success and alpha
 
 ## Step 3: Tests and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] High/low P tests and missing-artifact fallback
-- [ ] Run `npm run verify:ci`
+- [x] High/low P tests and missing-artifact fallback
+- [x] Add defer-path test (p_success_below_alpha)
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes

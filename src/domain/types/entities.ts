@@ -145,6 +145,10 @@ export interface RoutingFeatureSidecar {
   readonly tier_hint: Tier | null;
   readonly tier_hint_reason_code: string | null;
   readonly low_intensity_score: number | null;
+  /** P(success) cheap-tier probability from low_intensity gate (SP-105). */
+  readonly p_success_cheap: number | null;
+  /** Operator alpha threshold used for P(success) routing (SP-105). */
+  readonly p_success_alpha: number | null;
 }
 
 export interface RoutingDecision {

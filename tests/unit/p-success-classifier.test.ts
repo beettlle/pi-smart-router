@@ -9,8 +9,11 @@ import {
   deriveSuccessLabel,
   extractPSuccessFeatures,
   joinDatasetWithOutcomes,
+  loadPSuccessWeights,
   parseTrainingExportLine,
   predictPSuccessCheap,
+  predictPSuccessCheapTimed,
+  resolvePSuccessWeights,
   trainFromExportJsonl,
   trainFromLabeledSamples,
 } from '../../src/domain/routing/p-success-classifier.js';
@@ -225,5 +228,36 @@ describe('trainFromExportJsonl', () => {
 
     expect(parsed?.request_id).toBe('export-2');
     expect(parsed?.success).toBe(false);
+  });
+});
+
+describe('loadPSuccessWeights (SP-105)', () => {
+  it('returns null when artifact file is missing', () => {
+    expect(loadPSuccessWeights({ filePath: '/nonexistent/p-success-weights.json' })).toBeNull();
+  });
+
+  it('resolvePSuccessWeights falls back to default when missing', () => {
+    const weights = resolvePSuccessWeights({ filePath: '/nonexistent/p-success-weights.json' });
+    expect(weights.trained_sample_count).toBe(0);
+    expect(predictPSuccessCheap(extractPSuccessFeatures(makeDatasetRecord()), weights)).toBe(
+      NEUTRAL_P_SUCCESS,
+    );
+  });
+});
+
+describe('predictPSuccessCheapTimed (SP-105)', () => {
+  it('returns probability within latency budget for trained weights', () => {
+    const weights = {
+      ...createDefaultPSuccessWeights(),
+      intercept: 2,
+      trained_sample_count: 50,
+    };
+    const features = extractPSuccessFeatures(makeDatasetRecord());
+    const result = predictPSuccessCheapTimed(features, weights);
+
+    expect(result.probability).toBeGreaterThan(0.5);
+    expect(result.within_budget).toBe(true);
+    expect(result.elapsed_ms).toBeLessThan(5);
+    expect(Object.keys(result.feature_importances)).toHaveLength(10);
   });
 });
