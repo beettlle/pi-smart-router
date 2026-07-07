@@ -14,6 +14,57 @@ import type {
 } from '../../../src/domain/types/index.js';
 import { LifecycleHookState } from '../../../src/index.js';
 
+const TOKEN_ESTIMATE_KEYS = [
+  'estimatedInputTokens',
+  'estimated_input_tokens',
+  'contextTokens',
+  'tokenCount',
+  'tokens',
+] as const;
+
+function readOptionalTokenEstimate(source: unknown): number | undefined {
+  if (source === null || typeof source !== 'object') {
+    return undefined;
+  }
+
+  const record = source as Record<string, unknown>;
+  for (const key of TOKEN_ESTIMATE_KEYS) {
+    const value = record[key];
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+      return Math.floor(value);
+    }
+  }
+
+  return undefined;
+}
+
+function estimateInputTokens(
+  context: Context,
+  options?: SimpleStreamOptions,
+): number {
+  const fromOptions = readOptionalTokenEstimate(options);
+  if (fromOptions !== undefined) {
+    return fromOptions;
+  }
+
+  const fromContext = readOptionalTokenEstimate(context);
+  if (fromContext !== undefined) {
+    return fromContext;
+  }
+
+  const mapped = mapContextMessages(context.messages);
+  let charCount = mapped.reduce((sum, message) => sum + message.content.length, 0);
+  if (context.systemPrompt) {
+    charCount += context.systemPrompt.length;
+  }
+
+  if (context.messages.length === 0 && !context.systemPrompt) {
+    return 0;
+  }
+
+  return Math.max(1, Math.ceil(charCount / 4));
+}
+
 function messageContentToString(content: string | readonly (TextContent | { type: string })[]): string {
   if (typeof content === 'string') {
     return content;
@@ -114,6 +165,7 @@ export function buildRoutingRequest(
     prompt_text: extractPromptText(context.messages),
     messages: mapContextMessages(context.messages),
     turn_type: deriveTurnType(context.messages),
+    estimated_input_tokens: estimateInputTokens(context, options),
     ...lifecycleFlags,
   };
 }
