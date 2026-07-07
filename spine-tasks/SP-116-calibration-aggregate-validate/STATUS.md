@@ -1,6 +1,6 @@
 # SP-116 Status
 
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-07
 **Review Level:** 2
@@ -10,7 +10,7 @@
 
 ## Step 1: Schema and bundle format
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Define routing-calibration schema
 - [x] Create example bundle file
@@ -18,11 +18,11 @@
 
 ## Step 2: Aggregate and validate scripts
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Implement calibration-aggregate script
-- [ ] Validation rejects tainted payloads
-- [ ] Add npm script entry
+- [x] Implement calibration-aggregate script
+- [x] Validation rejects tainted payloads
+- [x] Add npm script entry
 
 ## Step 3: Testing and verification
 
