@@ -1206,7 +1206,7 @@ describe('RouterPipeline', () => {
       expect(decision.features?.tier_hint_reason_code).toBe('p_success_cheap');
     });
 
-    it('defers or routes frontier when P_success is below alpha', async () => {
+    it('routes frontier when P_success is below alpha and structural score is low', async () => {
       const clusterMatcher = makeClusterMatcher({
         clusterId: 'architecture',
         tierBias: 'frontier-cloud',
@@ -1237,6 +1237,26 @@ describe('RouterPipeline', () => {
       expect(decision.features?.p_success_cheap).toBeLessThan(0.5);
       expect(decision.features?.tier_hint).toBe('frontier-cloud');
       expect(decision.stage).toBe('triage');
+    });
+
+    it('defers tier hint when P_success is below alpha and structural score is high', async () => {
+      const pipeline = new RouterPipeline(fleet, {
+        pSuccessWeights: makeLowPWeights(),
+        lowIntensityConfig: {
+          ...DEFAULT_OPERATOR_CONFIG.low_intensity,
+          high_threshold: 0.1,
+          low_threshold: 0.05,
+          p_success_alpha: 0.5,
+        },
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Hello, how are you today?' }),
+      );
+
+      expect(decision.features?.p_success_cheap).toBeLessThan(0.5);
+      expect(decision.features?.tier_hint).toBeNull();
+      expect(decision.features?.tier_hint_reason_code).toBe('p_success_below_alpha');
     });
 
     it('falls back to structural scoring when weights artifact is untrained', async () => {
