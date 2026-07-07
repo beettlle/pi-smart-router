@@ -47,6 +47,10 @@ import {
   tierFeaturesToPSuccessFeatures,
   type PSuccessWeights,
 } from '../routing/p-success-classifier.js';
+import {
+  selectTierByExpectedCost,
+  type ExpectedCostBreakdown,
+} from '../routing/expected-cost.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
 
@@ -106,6 +110,7 @@ export class RouterPipeline {
   private currentLowIntensityScore: number | null = null;
   private currentPSuccessCheap: number | null = null;
   private currentPSuccessAlpha: number | null = null;
+  private currentExpectedCostByTier: ExpectedCostBreakdown[] | null = null;
   private pSuccessWeightsLoaded = false;
   private cachedPSuccessWeights: PSuccessWeights | null = null;
   private currentContextFitRejected: readonly CandidateScore[] = [];
@@ -149,6 +154,7 @@ export class RouterPipeline {
     this.currentLowIntensityScore = null;
     this.currentPSuccessCheap = null;
     this.currentPSuccessAlpha = null;
+    this.currentExpectedCostByTier = null;
     this.currentContextFitRejected = [];
     this.contextOverflowPreferredProvider = null;
     this.contextOverflowTriggered = false;
@@ -242,10 +248,26 @@ export class RouterPipeline {
 
   private mergeFeatureCandidates(): readonly CandidateScore[] | null {
     const hydraCandidates = this.currentHydraResult?.candidates ?? [];
-    if (this.currentContextFitRejected.length === 0 && hydraCandidates.length === 0) {
+    const expectedCostCandidates =
+      this.currentExpectedCostByTier?.map((entry) => ({
+        model_id: `__expected_cost_${entry.tier}__`,
+        score: entry.expectedCostUsd,
+        shortfall: entry.adjustedExpectedCostUsd,
+        rejected_reason: `p_success=${entry.pSuccess.toFixed(4)}`,
+      })) ?? [];
+
+    if (
+      this.currentContextFitRejected.length === 0 &&
+      hydraCandidates.length === 0 &&
+      expectedCostCandidates.length === 0
+    ) {
       return null;
     }
-    return [...this.currentContextFitRejected, ...hydraCandidates];
+    return [
+      ...this.currentContextFitRejected,
+      ...expectedCostCandidates,
+      ...hydraCandidates,
+    ];
   }
 
   private resolveFailedStage(stage: NamedPipelineStage | undefined): string {
@@ -727,19 +749,89 @@ export class RouterPipeline {
     const weightsTrained =
       weights.trained_sample_count >= weights.min_training_samples;
     const adjustedHint = weightsTrained
-      ? this.applyPSuccessTierHint(
-          structuralHint,
-          score,
-          pResult,
-          alpha,
-          config,
-          clusterMatch,
-        )
+      ? (() => {
+          const selection = this.selectExpectedCostTierHint(
+            request,
+            pResult.probability,
+            alpha,
+          );
+          this.logExpectedCostExplain(pResult.probability, alpha, selection);
+          return {
+            tierHint: selection.tierHint,
+            reasonCode: selection.reasonCode,
+          };
+        })()
       : structuralHint;
     this.currentTierHint = adjustedHint.tierHint;
     this.currentTierHintReasonCode = adjustedHint.reasonCode;
 
     return { decided: false, stage: 'low_intensity' };
+  }
+
+  private selectExpectedCostTierHint(
+    request: RoutingRequest,
+    pSuccessCheap: number,
+    alpha: number,
+  ): {
+    tierHint: Tier | null;
+    reasonCode: string | null;
+    tierCosts: readonly ExpectedCostBreakdown[];
+    rationale: string;
+  } {
+    const estTokens =
+      request.estimated_input_tokens ?? request.prompt_text.length;
+    const pinner = this.options.sessionPinner;
+    const sessionPin = pinner?.getPin(request.session_id) ?? undefined;
+    const pinnedModel =
+      sessionPin !== undefined
+        ? this.activeFleet.find((model) => model.id === sessionPin.pinned_model_id)
+        : undefined;
+
+    const selection = selectTierByExpectedCost({
+      fleet: this.activeFleet,
+      priceCatalog: this.options.priceCatalog ?? null,
+      estTokens,
+      pSuccessCheap,
+      alpha,
+      localZeroReady: this.isLocalZeroTierReady(),
+      ...(pinnedModel !== undefined ? { pinnedModel } : {}),
+      ...(sessionPin !== undefined ? { sessionPin } : {}),
+    });
+
+    this.currentExpectedCostByTier = [...selection.tierCosts];
+
+    return {
+      tierHint: selection.tierHint,
+      reasonCode: selection.reasonCode,
+      tierCosts: selection.tierCosts,
+      rationale: selection.rationale,
+    };
+  }
+
+  private logExpectedCostExplain(
+    pSuccessCheap: number,
+    alpha: number,
+    selection: {
+      tierHint: Tier | null;
+      reasonCode: string | null;
+      tierCosts: readonly ExpectedCostBreakdown[];
+      rationale: string;
+    },
+  ): void {
+    console.info('Expected-cost tier gate', {
+      reason: selection.reasonCode,
+      p_success_cheap: pSuccessCheap,
+      alpha,
+      chosen_tier: selection.tierHint,
+      rationale: selection.rationale,
+      expected_cost_by_tier: selection.tierCosts.map((entry) => ({
+        tier: entry.tier,
+        p_success: entry.pSuccess,
+        cost_per_1m: entry.costPer1M,
+        expected_cost_usd: entry.expectedCostUsd,
+        adjusted_expected_cost_usd: entry.adjustedExpectedCostUsd,
+      })),
+    });
   }
 
   private resolvePSuccessWeights(): PSuccessWeights {
@@ -757,61 +849,6 @@ export class RouterPipeline {
     }
 
     return this.cachedPSuccessWeights!;
-  }
-
-  private applyPSuccessTierHint(
-    structuralHint: { tierHint: Tier | null; reasonCode: string | null },
-    structuralScore: number,
-    pResult: ReturnType<typeof predictPSuccessCheapTimed>,
-    alpha: number,
-    config: LowIntensityConfig,
-    clusterMatch?: ClusterMatchResult,
-  ): { tierHint: Tier | null; reasonCode: string | null } {
-    if (pResult.probability >= alpha) {
-      this.logPSuccessExplain(pResult.probability, alpha, pResult, 'p_success_cheap');
-      return {
-        tierHint: this.resolveLowIntensityTierHint(),
-        reasonCode: 'p_success_cheap',
-      };
-    }
-
-    if (structuralScore <= config.low_threshold) {
-      return {
-        tierHint: 'frontier-cloud',
-        reasonCode: this.resolveHighIntensityReasonCode(clusterMatch),
-      };
-    }
-
-    if (structuralScore >= config.high_threshold) {
-      this.logPSuccessExplain(
-        pResult.probability,
-        alpha,
-        pResult,
-        'p_success_below_alpha',
-      );
-      return {
-        tierHint: null,
-        reasonCode: 'p_success_below_alpha',
-      };
-    }
-
-    return structuralHint;
-  }
-
-  private logPSuccessExplain(
-    probability: number,
-    alpha: number,
-    pResult: ReturnType<typeof predictPSuccessCheapTimed>,
-    reason: string,
-  ): void {
-    console.info('P(success) tier gate', {
-      reason,
-      p_success_cheap: probability,
-      p_success_alpha: alpha,
-      elapsed_ms: pResult.elapsed_ms,
-      within_budget: pResult.within_budget,
-      feature_importances: pResult.feature_importances,
-    });
   }
 
   private resolveTierHint(

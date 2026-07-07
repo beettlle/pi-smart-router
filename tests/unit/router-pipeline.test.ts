@@ -1185,7 +1185,7 @@ describe('RouterPipeline', () => {
       };
     }
 
-    it('routes economical when P_success >= alpha with trained weights', async () => {
+    it('records P_success when trained weights are available', async () => {
       const pipeline = new RouterPipeline(fleet, {
         pSuccessWeights: makeHighPWeights(),
         lowIntensityConfig: {
@@ -1202,8 +1202,7 @@ describe('RouterPipeline', () => {
 
       expect(decision.features?.p_success_cheap).toBeGreaterThanOrEqual(0.5);
       expect(decision.features?.p_success_alpha).toBe(0.5);
-      expect(decision.features?.tier_hint).toBe('economical-cloud');
-      expect(decision.features?.tier_hint_reason_code).toBe('p_success_cheap');
+      expect(decision.features?.tier_hint_reason_code).toMatch(/^expected_cost_/);
     });
 
     it('routes frontier when P_success is below alpha and structural score is low', async () => {
@@ -1239,7 +1238,7 @@ describe('RouterPipeline', () => {
       expect(decision.stage).toBe('triage');
     });
 
-    it('defers tier hint when P_success is below alpha and structural score is high', async () => {
+    it('biases frontier when P_success is low and expected cost favors frontier', async () => {
       const pipeline = new RouterPipeline(fleet, {
         pSuccessWeights: makeLowPWeights(),
         lowIntensityConfig: {
@@ -1255,8 +1254,8 @@ describe('RouterPipeline', () => {
       );
 
       expect(decision.features?.p_success_cheap).toBeLessThan(0.5);
-      expect(decision.features?.tier_hint).toBeNull();
-      expect(decision.features?.tier_hint_reason_code).toBe('p_success_below_alpha');
+      expect(decision.features?.tier_hint).toBe('frontier-cloud');
+      expect(decision.features?.tier_hint_reason_code).toBe('expected_cost_frontier_cloud');
     });
 
     it('falls back to structural scoring when weights artifact is untrained', async () => {
@@ -1276,6 +1275,76 @@ describe('RouterPipeline', () => {
       expect(decision.features?.p_success_cheap).toBe(0.5);
       expect(decision.features?.tier_hint).toBeNull();
       expect(decision.features?.tier_hint_reason_code).toBeNull();
+    });
+  });
+
+  describe('expected-cost tier selection (SP-106)', () => {
+    const pricedFleet: ModelProfile[] = [
+      makeModel({
+        id: 'econ-priced',
+        tier: 'economical-cloud',
+        pricing: { fallback_cost_per_1m: 0.5 },
+      }),
+      makeModel({
+        id: 'frontier-priced',
+        tier: 'frontier-cloud',
+        pricing: { fallback_cost_per_1m: 3.0 },
+      }),
+    ];
+
+    function makeHighPWeights(): PSuccessWeights {
+      return {
+        version: 1,
+        min_training_samples: 30,
+        feature_names: P_SUCCESS_FEATURE_NAMES,
+        intercept: 6,
+        coefficients: P_SUCCESS_FEATURE_NAMES.map(() => 0),
+        trained_sample_count: 50,
+      };
+    }
+
+    function makeLowPWeights(): PSuccessWeights {
+      return {
+        version: 1,
+        min_training_samples: 30,
+        feature_names: P_SUCCESS_FEATURE_NAMES,
+        intercept: -6,
+        coefficients: P_SUCCESS_FEATURE_NAMES.map(() => 0),
+        trained_sample_count: 50,
+      };
+    }
+
+    it('selects economical tier when P is high and price delta is significant', async () => {
+      const pipeline = new RouterPipeline(pricedFleet, {
+        pSuccessWeights: makeHighPWeights(),
+        lowIntensityConfig: DEFAULT_OPERATOR_CONFIG.low_intensity,
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Hello, how are you today?' }),
+      );
+
+      expect(decision.features?.tier_hint).toBe('economical-cloud');
+      expect(decision.features?.tier_hint_reason_code).toBe('expected_cost_economical_cloud');
+      expect(
+        decision.features?.candidates?.some(
+          (candidate) => candidate.model_id === '__expected_cost_economical-cloud__',
+        ),
+      ).toBe(true);
+    });
+
+    it('selects frontier when P is low even if economical per-token cost is lower', async () => {
+      const pipeline = new RouterPipeline(pricedFleet, {
+        pSuccessWeights: makeLowPWeights(),
+        lowIntensityConfig: DEFAULT_OPERATOR_CONFIG.low_intensity,
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Hello, how are you today?' }),
+      );
+
+      expect(decision.features?.tier_hint).toBe('frontier-cloud');
+      expect(decision.features?.tier_hint_reason_code).toBe('expected_cost_frontier_cloud');
     });
   });
 });
