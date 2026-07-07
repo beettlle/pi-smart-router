@@ -312,6 +312,9 @@ describe('discoverFleet pricing integration (SP-045)', () => {
     const store = new MemoryStore([]);
     await store.putPriceCatalog({
       registry_snapshot: { 'openai/gpt-4o-mini': 0.375 },
+      registry_limits_snapshot: {
+        'openai/gpt-4o-mini': { max_input_tokens: 128_000, max_output_tokens: 16_384 },
+      },
       user_overrides: {},
       last_updated: new Date().toISOString(),
       source: 'registry',
@@ -323,6 +326,8 @@ describe('discoverFleet pricing integration (SP-045)', () => {
     expect(catalog).not.toBeNull();
     expect(fleet).toHaveLength(1);
     expect(fleet[0]?.pricing.fallback_cost_per_1m).toBe(0.375);
+    expect(fleet[0]?.limits?.max_input_tokens).toBe(128_000);
+    expect(fleet[0]?.limits?.max_output_tokens).toBe(16_384);
   });
 });
 
@@ -379,6 +384,8 @@ describe('refreshPricingCatalog (SP-045)', () => {
           mode: 'chat',
           input_cost_per_token: 1.5e-7,
           output_cost_per_token: 6e-7,
+          max_input_tokens: 128_000,
+          max_output_tokens: 16_384,
         },
       }),
     );
@@ -397,6 +404,10 @@ describe('refreshPricingCatalog (SP-045)', () => {
     expect(result.modelCount).toBe(1);
     expect(saved?.user_overrides).toEqual({ 'gpt-4o': 42.0 });
     expect(saved?.registry_snapshot['gpt-4o-mini']).toBeCloseTo(0.375, 5);
+    expect(saved?.registry_limits_snapshot?.['gpt-4o-mini']).toEqual({
+      max_input_tokens: 128_000,
+      max_output_tokens: 16_384,
+    });
     expect(saved?.last_updated).toBe(result.lastUpdated);
   });
 });

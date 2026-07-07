@@ -35,6 +35,8 @@ describe('normalizeLitellmPricing', () => {
         input_cost_per_token: 1.5e-7,
         output_cost_per_token: 6e-7,
         litellm_provider: 'openai',
+        max_input_tokens: 128_000,
+        max_output_tokens: 16_384,
       },
       'image-model': {
         mode: 'image_generation',
@@ -47,6 +49,48 @@ describe('normalizeLitellmPricing', () => {
     expect(result.registry_snapshot['gpt-4o-mini']).toBeCloseTo(0.375, 5);
     expect(result.registry_snapshot['openai/gpt-4o-mini']).toBeCloseTo(0.375, 5);
     expect(result.registry_snapshot['image-model']).toBeUndefined();
+    expect(result.registry_limits_snapshot['gpt-4o-mini']).toEqual({
+      max_input_tokens: 128_000,
+      max_output_tokens: 16_384,
+    });
+    expect(result.registry_limits_snapshot['openai/gpt-4o-mini']).toEqual({
+      max_input_tokens: 128_000,
+      max_output_tokens: 16_384,
+    });
+  });
+
+  it('falls back max_tokens to max_output_tokens when max_output_tokens is absent', () => {
+    const result = normalizeLitellmPricing({
+      'legacy-complete': {
+        mode: 'completion',
+        input_cost_per_token: 1e-6,
+        output_cost_per_token: 2e-6,
+        max_input_tokens: 8_192,
+        max_tokens: 2_048,
+      },
+    });
+
+    expect(result.registry_limits_snapshot['legacy-complete']).toEqual({
+      max_input_tokens: 8_192,
+      max_output_tokens: 2_048,
+    });
+  });
+
+  it('skips models without token costs even when limits are present', () => {
+    const result = normalizeLitellmPricing({
+      'gpt-4o-mini': {
+        mode: 'chat',
+        input_cost_per_token: 1.5e-7,
+        output_cost_per_token: 6e-7,
+      },
+      'limits-only': {
+        mode: 'chat',
+        max_input_tokens: 32_000,
+      },
+    });
+
+    expect(result.model_count).toBe(1);
+    expect(result.registry_limits_snapshot['limits-only']).toBeUndefined();
   });
 
   it('includes completion-mode models', () => {
@@ -96,6 +140,8 @@ describe('fetchLitellmPriceCatalog', () => {
           mode: 'chat',
           input_cost_per_token: 2.5e-6,
           output_cost_per_token: 1e-5,
+          max_input_tokens: 128_000,
+          max_output_tokens: 16_384,
         },
       }),
     );
@@ -109,6 +155,10 @@ describe('fetchLitellmPriceCatalog', () => {
     expect(catalog.source).toBe('registry');
     expect(catalog.user_overrides).toEqual({});
     expect(catalog.registry_snapshot['gpt-4o']).toBeCloseTo(6.25, 5);
+    expect(catalog.registry_limits_snapshot?.['gpt-4o']).toEqual({
+      max_input_tokens: 128_000,
+      max_output_tokens: 16_384,
+    });
     expect(catalog.last_updated).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(model_count).toBe(1);
   });

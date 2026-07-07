@@ -2,6 +2,7 @@ export type {
   CandidateScore,
   Message,
   ModelCapabilities,
+  ModelLimits,
   ModelPerformance,
   ModelPricing,
   ModelProfile,

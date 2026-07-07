@@ -17,6 +17,9 @@ models:
     pricing:
       registry_key: local/free
       fallback_cost_per_1m: 0.0
+    limits:
+      max_input_tokens: 32768
+      max_output_tokens: 4096
 
   - id: claude-3.5-haiku
     tier: economical-cloud
@@ -32,6 +35,9 @@ models:
     pricing:
       registry_key: anthropic/claude-3-5-haiku
       fallback_cost_per_1m: 0.8
+    limits:
+      max_input_tokens: 200000
+      max_output_tokens: 8192
 
   - id: claude-3.5-sonnet
     tier: frontier-cloud
@@ -47,3 +53,6 @@ models:
     pricing:
       registry_key: anthropic/claude-3-5-sonnet
       fallback_cost_per_1m: 3.0
+    limits:
+      max_input_tokens: 200000
+      max_output_tokens: 8192

@@ -1,0 +1,4 @@
+SP-092 complete — ModelProfile context limits and LiteLLM ingest.
+
+Completed: 2026-07-06
+Verify: npm run verify:ci (900 tests, coverage ≥77%)

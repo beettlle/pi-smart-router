@@ -8,6 +8,7 @@
 
 import type {
   ModelCapabilities,
+  ModelLimits,
   ModelPerformance,
   ModelPricing,
   ModelProfile,
@@ -43,6 +44,17 @@ interface ModelPatternRule {
 }
 
 const LOCAL_PROVIDERS = new Set(['lmstudio', 'ollama']);
+
+/** Conservative context limits when YAML and LiteLLM registry have no entry (SP-092). */
+export const DEFAULT_MODEL_LIMITS: Readonly<Record<Tier, ModelLimits>> = {
+  'zero-tier': { max_input_tokens: 32_768, max_output_tokens: 4_096 },
+  'economical-cloud': { max_input_tokens: 128_000, max_output_tokens: 8_192 },
+  'frontier-cloud': { max_input_tokens: 200_000, max_output_tokens: 16_384 },
+};
+
+export function getDefaultLimitsForTier(tier: Tier): ModelLimits {
+  return { ...DEFAULT_MODEL_LIMITS[tier] };
+}
 
 const LOCAL_DEFAULTS: ModelFamilyDefaults = {
   tier: 'zero-tier',
