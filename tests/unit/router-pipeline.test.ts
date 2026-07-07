@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { ClusterMatcher, ClusterMatchResult } from '../../src/domain/matching/cluster-matcher.js';
 import {
   HydraMatcher,
   type EmbeddingProvider,
@@ -10,7 +11,10 @@ import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { extractToolFailureSignature } from '../../src/domain/pinning/loop-escalation.js';
 import { RoutingTelemetryEmitter } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 import { CONTEXT_FIT_EXCEEDED } from '../../src/domain/routing/context-fit.js';
+import type { HttpFetchPort } from '../../src/infrastructure/local/local-zero-tier.js';
+import type { SystemInfo } from '../../src/infrastructure/hardware/hardware-probe.js';
 import type { ModelProfile, PriceCatalog, RoutingRequest } from '../../src/domain/types/index.js';
+import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
 
 function makeModel(
   overrides: Partial<ModelProfile> & { id: string; tier: ModelProfile['tier'] },
@@ -952,6 +956,197 @@ describe('RouterPipeline', () => {
       expect(decision.selected_model_id).not.toBe('small-econ');
       expect(decision.selected_model_id).not.toBe('small-frontier');
       expect(decision.features?.candidates?.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('low_intensity tier gate (SP-103)', () => {
+    const HARDWARE_CONFIG = {
+      min_memory_gb_full: 16,
+      min_memory_gb_classification: 8,
+      battery_threshold_pct: 20,
+    } as const;
+
+    const LOCAL_TEST_CONFIG = {
+      lmStudioBaseUrl: 'http://127.0.0.1:1234',
+      ollamaBaseUrl: 'http://127.0.0.1:11434',
+      pingTimeoutMs: 500,
+    } as const;
+
+    const READY_FETCH: HttpFetchPort = {
+      fetch: vi.fn(async (url: string) => {
+        if (url.includes('/v1/models')) {
+          return { ok: true, json: async () => ({ data: [{ id: 'local-model' }] }) };
+        }
+        if (url.includes('/api/tags')) {
+          return { ok: true, json: async () => ({ models: [] }) };
+        }
+        throw new Error('ECONNREFUSED');
+      }),
+    };
+
+    function makeSystemInfo(overrides?: Partial<SystemInfo>): SystemInfo {
+      return {
+        totalMemoryGb: 16,
+        arch: 'arm64',
+        platform: 'darwin',
+        batteryLevel: 80,
+        isOnAcPower: true,
+        ...overrides,
+      };
+    }
+
+    function makeClusterMatcher(
+      result: ClusterMatchResult,
+    ): ClusterMatcher {
+      return {
+        match: vi.fn(async () => result),
+      } as unknown as ClusterMatcher;
+    }
+
+    it('sets zero-tier hint for high-confidence low_stakes cluster with full_local hardware', async () => {
+      const lowStakesFleet: ModelProfile[] = [
+        makeModel({ id: 'local-llama', tier: 'zero-tier' }),
+        makeModel({ id: 'gpt-4o-mini', tier: 'economical-cloud' }),
+        makeModel({ id: 'claude-opus', tier: 'frontier-cloud' }),
+      ];
+
+      const clusterMatcher = makeClusterMatcher({
+        clusterId: 'low_stakes_general',
+        tierBias: 'zero-tier',
+        similarity: 0.92,
+        margin: 0.12,
+        confidence: 'high',
+        elapsedMs: 2,
+      });
+
+      const pipeline = new RouterPipeline(lowStakesFleet, {
+        clusterMatcher,
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: LOCAL_TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo()),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Fix the typo in the README' }),
+      );
+
+      expect(decision.features?.tier_hint).toBe('zero-tier');
+      expect(decision.features?.tier_hint_reason_code).toBe('cluster_low_stakes_general');
+      expect(decision.features?.low_intensity_score).toBeGreaterThanOrEqual(0.65);
+      expect(decision.stage).toBe('local_zero');
+      expect(decision.tier).toBe('zero-tier');
+    });
+
+    it('leaves tier_hint null for ambiguous prompts in the defer band', async () => {
+      const pipeline = new RouterPipeline(fleet, {
+        lowIntensityConfig: {
+          ...DEFAULT_OPERATOR_CONFIG.low_intensity,
+          high_threshold: 0.9,
+          low_threshold: 0.1,
+        },
+      });
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Hello, how are you today?' }),
+      );
+
+      expect(decision.features?.tier_hint).toBeNull();
+      expect(decision.features?.tier_hint_reason_code).toBeNull();
+      expect(decision.features?.low_intensity_score).not.toBeNull();
+      expect(decision.stage).toBe('fallback');
+      expect(decision.selected_model_id).toBe('gpt-4o-mini');
+    });
+
+    it('attaches tier_hint fields on every routing decision', async () => {
+      const clusterMatcher = makeClusterMatcher({
+        clusterId: 'architecture',
+        tierBias: 'frontier-cloud',
+        similarity: 0.9,
+        margin: 0.1,
+        confidence: 'high',
+        elapsedMs: 1,
+      });
+
+      const pipeline = new RouterPipeline(fleet, {
+        clusterMatcher,
+        lowIntensityConfig: {
+          ...DEFAULT_OPERATOR_CONFIG.low_intensity,
+          low_threshold: 0.55,
+        },
+      });
+      const decision = await pipeline.route(
+        makeRequest({
+          prompt_text: 'Plan the architecture for a distributed payment service with migration strategy',
+          turn_type: 'main_loop',
+        }),
+      );
+
+      expect(decision.features).toMatchObject({
+        tier_hint: 'frontier-cloud',
+        tier_hint_reason_code: 'cluster_architecture',
+        low_intensity_score: expect.any(Number),
+      });
+      expect(decision.stage).toBe('triage');
+      expect(decision.tier).toBe('frontier-cloud');
+    });
+
+    it('constrains HyDRA fleet to economical tier when local is not ready', async () => {
+      const requirements: RequirementVector = {
+        reasoning: 0.2,
+        code_gen: 0.2,
+        tool_use: 0.2,
+      };
+      const hydraMatcher = new HydraMatcher(
+        {
+          extractRequirements: vi.fn(async () => requirements),
+          dispose: vi.fn(async () => {}),
+        },
+        { artifactCachePath: '.pi-smart-router/models/' },
+      );
+
+      const clusterMatcher = makeClusterMatcher({
+        clusterId: 'low_stakes_general',
+        tierBias: 'zero-tier',
+        similarity: 0.92,
+        margin: 0.12,
+        confidence: 'high',
+        elapsedMs: 1,
+      });
+
+      const pipeline = new RouterPipeline(fleet, {
+        hydraMatcher,
+        clusterMatcher,
+        lowIntensityConfig: DEFAULT_OPERATOR_CONFIG.low_intensity,
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'what is 2+2 ?' }),
+      );
+
+      expect(decision.features?.tier_hint).toBe('economical-cloud');
+      expect(decision.features?.tier_hint_reason_code).toBe('cluster_low_stakes_general');
+      expect(decision.stage).toBe('hydra_match');
+      expect(decision.tier).toBe('economical-cloud');
+      expect(decision.selected_model_id).toBe('gpt-4o-mini');
+    });
+
+    it('uses structural reason code when cluster confidence is low', async () => {
+      const clusterMatcher = makeClusterMatcher({
+        clusterId: 'low_stakes_general',
+        tierBias: 'zero-tier',
+        similarity: 0.5,
+        margin: 0.01,
+        confidence: 'none',
+        elapsedMs: 1,
+      });
+
+      const pipeline = new RouterPipeline(fleet, { clusterMatcher });
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'what is 2+2 ?' }),
+      );
+
+      expect(decision.features?.tier_hint).toBe('economical-cloud');
+      expect(decision.features?.tier_hint_reason_code).toBe('low_intensity_structural');
     });
   });
 });

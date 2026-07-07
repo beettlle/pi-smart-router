@@ -57,6 +57,9 @@ function makeDecision(overrides: Partial<RoutingDecision> = {}): RoutingDecision
           rejected_reason: null,
         },
       ],
+      tier_hint: null,
+      tier_hint_reason_code: null,
+      low_intensity_score: null,
     },
     ...overrides,
   };

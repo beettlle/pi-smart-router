@@ -1,6 +1,6 @@
 # SP-103 Status
 
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-06
 **Review Level:** 2
@@ -10,7 +10,7 @@
 
 ## Step 1: low_intensity stage implementation
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Insert stage in pipeline order
 - [x] Compute score and set tier_hint
@@ -18,15 +18,15 @@
 
 ## Step 2: Pipeline tests
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] High/low/ambiguous prompt tests
-- [ ] Run `npm run verify:ci`
+- [x] High/low/ambiguous prompt tests
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes
 
 ## Discoveries
 
