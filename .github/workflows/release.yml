@@ -18,6 +18,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.ref.outputs.tag }}
 
     steps:
       - name: Determine ref
@@ -28,6 +31,12 @@ jobs:
           else
             echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Extract semver from tag
+        id: version
+        run: |
+          TAG="${{ steps.ref.outputs.tag }}"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout at tag
         uses: actions/checkout@v4
@@ -105,7 +114,10 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPMSECRET }}
         run: |
-          if [[ "${{ steps.ref.outputs.tag }}" == *-* ]]; then
+          VERSION="${{ steps.version.outputs.version }}"
+          if npm view "pi-smart-router@${VERSION}" version >/dev/null 2>&1; then
+            echo "pi-smart-router@${VERSION} already on npm; skipping publish"
+          elif [[ "${{ steps.ref.outputs.tag }}" == *-* ]]; then
             npm publish --access public --ignore-scripts --tag beta
           else
             npm publish --access public --ignore-scripts
@@ -115,8 +127,37 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ARGS=(--title "pi-smart-router ${{ steps.ref.outputs.tag }}" --generate-notes)
-          if [[ "${{ steps.ref.outputs.tag }}" == *-* ]]; then
+          TAG="${{ steps.ref.outputs.tag }}"
+          ARGS=(--title "pi-smart-router ${TAG}" --generate-notes)
+          if [[ "${TAG}" == *-* ]]; then
             ARGS+=(--prerelease)
           fi
-          gh release create "${{ steps.ref.outputs.tag }}" "${ARGS[@]}"
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "GitHub release ${TAG} already exists; skipping create"
+          else
+            gh release create "${TAG}" "${ARGS[@]}"
+          fi
+
+  post_publish_smoke:
+    name: Post-publish pi.dev smoke
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: https://registry.npmjs.org
+
+      - name: Install native build tools for better-sqlite3
+        run: sudo apt-get update && sudo apt-get install -y python3 make g++
+
+      - name: pi install + pi.dev gallery smoke
+        run: bash scripts/post-publish-pi-smoke.sh "${{ needs.release.outputs.version }}"
