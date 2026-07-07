@@ -205,6 +205,7 @@ describe('dataset-recorder', () => {
             low_intensity_score: null,
             p_success_cheap: null,
             p_success_alpha: null,
+            local_eligible_reason: null,
           },
         }),
         '2026-07-04T12:00:00.000Z',

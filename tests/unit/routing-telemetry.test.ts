@@ -183,6 +183,7 @@ describe('buildContextFitObservability', () => {
           low_intensity_score: null,
           p_success_cheap: null,
           p_success_alpha: null,
+          local_eligible_reason: null,
         },
       }),
       fleet: contextFleet,
@@ -224,6 +225,7 @@ describe('buildContextFitObservability', () => {
           low_intensity_score: null,
           p_success_cheap: null,
           p_success_alpha: null,
+          local_eligible_reason: null,
         },
       }),
       fleet: contextFleet,
@@ -255,6 +257,7 @@ describe('buildRoutingDecisionLogPayload', () => {
         low_intensity_score: null,
         p_success_cheap: null,
         p_success_alpha: null,
+        local_eligible_reason: null,
       },
     });
 
@@ -296,6 +299,7 @@ describe('enrichRoutingDecisionWithContextFit', () => {
         low_intensity_score: null,
         p_success_cheap: null,
         p_success_alpha: null,
+        local_eligible_reason: null,
       },
     });
 
