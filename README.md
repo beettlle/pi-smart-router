@@ -148,7 +148,13 @@ pi exposes two different **auto** models. They are easy to confuse but play diff
 - You rely on session pinning, failover, or `/smart-router status` / `history` telemetry
 - Tool-heavy sessions should fall back to `cursor/auto` or other non-Gemini models automatically (see [pi-smart-router#38](https://github.com/beettlle/pi-smart-router/issues/38))
 
-Cursor models (`cursor/*`, `composer-*`) map to **frontier-cloud** tier in `pi-model-mapper.ts` so HyDRA can score them against Gemini and Claude instead of treating them as unknown economical models ([pi-smart-router#40](https://github.com/beettlle/pi-smart-router/issues/40)). Related: [pi-smart-router#23](https://github.com/beettlle/pi-smart-router/issues/23) (turn envelope / pin order), [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37) (Gemini `thought_signature` errors).
+Cursor models (`cursor/*`, `composer-*`, and the opaque fleet id `default`) map to **frontier-cloud** tier in `pi-model-mapper.ts` so HyDRA can score them against Gemini and Claude instead of treating them as unknown economical models ([pi-smart-router#40](https://github.com/beettlle/pi-smart-router/issues/40), [pi-smart-router#70](https://github.com/beettlle/pi-smart-router/issues/70)). Related: [pi-smart-router#23](https://github.com/beettlle/pi-smart-router/issues/23) (turn envelope / pin order), [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37) (Gemini `thought_signature` errors).
+
+#### Cursor subscription quota vs API cost
+
+Cursor models bill against your **Cursor Pro subscription quota**, not per-token API rates. The mapper sets `fallback_cost_per_1m: 0` (no API billing) and a separate **`quota_cost_per_1m`** virtual rate used only for frugality scoring and telemetry ([SP-096](https://github.com/beettlle/pi-smart-router/issues/70)). Economical API models (e.g. `gemini-flash-lite`) can outscore `composer-latest` on routine `main_loop` turns when capabilities are sufficient.
+
+**Quota-sensitive fleet hygiene:** if you are near Cursor usage limits, **exclude `composer-latest`** (and other heavy Cursor frontier models) from your pi scoped fleet enable-list. Leave economical API models enabled so turn envelope and HyDRA prefer paid API tiers over subscription quota. The opaque id `default` is mapped to frontier tier — do not rely on it as an economical fallback.
 
 ### 4. Operator commands (optional)
 
@@ -182,7 +188,7 @@ When you use `smart-router/auto`, the extension does **not** read `config/models
 4. **Route** — `createRouterFromFleet()` runs the 7-stage pipeline on each request.
 5. **Delegate** — The extension resolves the chosen model in the registry and forwards the stream via pi-ai's built-in provider APIs.
 
-Unknown models receive conservative economical-cloud defaults. Local providers (`lmstudio`, `ollama`) map to `zero-tier`. Cursor provider models (`cursor/*`, `composer-*`) map to `frontier-cloud` with explicit capability defaults (SP-086).
+Unknown models receive conservative economical-cloud defaults. Local providers (`lmstudio`, `ollama`) map to `zero-tier`. Cursor provider models (`cursor/*`, `composer-*`, opaque id `default`) map to `frontier-cloud` with explicit capability defaults (SP-086, SP-098).
 
 To refresh after auth or settings changes, restart pi or `/reload` extensions.
 

@@ -186,6 +186,27 @@ describe('mapPiModelToProfile', () => {
       expect(profile.capabilities.reasoning).not.toBe(0.6);
       expect(profile.capabilities.code_gen).not.toBe(0.65);
     });
+
+    it('maps opaque fleet id default to frontier tier with virtual quota cost (SP-098)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'cursor', id: 'default' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.reasoning).toBeGreaterThanOrEqual(0.9);
+      expect(profile.pricing.fallback_cost_per_1m).toBe(0.0);
+      expect(profile.pricing.quota_cost_per_1m).toBe(DEFAULT_CURSOR_QUOTA_COST_PER_1M);
+    });
+
+    it('maps default id from non-cursor providers (SP-098)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'pi', id: 'default' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.reasoning).not.toBe(0.6);
+      expect(profile.pricing.quota_cost_per_1m).toBe(DEFAULT_CURSOR_QUOTA_COST_PER_1M);
+    });
   });
 
   describe('unknown models', () => {

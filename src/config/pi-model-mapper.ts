@@ -119,6 +119,13 @@ const UNKNOWN_DEFAULTS: ModelFamilyDefaults = {
 export const DEFAULT_CURSOR_QUOTA_COST_PER_1M = 3.0;
 
 /**
+ * Opaque pi/Cursor fleet placeholder id `default` — SP-098 / #70.
+ * Without an explicit rule this id fell through to UNKNOWN_DEFAULTS (economical-cloud)
+ * and won turn_envelope lowest-cost selection for tool_result turns.
+ */
+const OPAQUE_FLEET_DEFAULT_ID = 'default';
+
+/**
  * Cursor opaque-auto models (`cursor/auto`, etc.) — SP-086 / #40.
  * Frontier tier: Cursor picks the underlying model; HyDRA needs high capability
  * scores so these are not dominated by mapped economical Gemini/OpenAI models.
@@ -256,6 +263,10 @@ export function mapPiModelToProfile(input: PiModelInput): ModelProfile {
       ...(input.name !== undefined ? { name: input.name } : {}),
     };
     return buildProfile(localInput, LOCAL_DEFAULTS);
+  }
+
+  if (input.id === OPAQUE_FLEET_DEFAULT_ID) {
+    return buildProfile(input, CURSOR_AUTO_DEFAULTS);
   }
 
   const matched = matchPatternRules(input.id);
