@@ -17,6 +17,7 @@ import {
   trainFromExportJsonl,
   trainFromLabeledSamples,
 } from '../../src/domain/routing/p-success-classifier.js';
+import { DEFAULT_CONTEXT_FIT_DATASET_FIELDS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 
 function makeDatasetRecord(
   overrides: Partial<RoutingDatasetRecord> = {},
@@ -47,6 +48,7 @@ function makeDatasetRecord(
     routing_latency_ms: 25,
     estimated_cost_usd: 0.001,
     prompt_fingerprint: null,
+    ...DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
     ...overrides,
   };
 }

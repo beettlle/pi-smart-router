@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  createExplainHandler,
-} from '../../src/api/explain/router-explain.js';
+import { createExplainHandler } from '../../src/api/explain/router-explain.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import type { ModelProfile } from '../../src/domain/types/index.js';
+import { CONTEXT_FIT_PASS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
+import {
+  CONTEXT_FIT_EXCEEDED,
+  CONTEXT_OVERFLOW_FRONTIER_FALLBACK,
+} from '../../src/domain/routing/context-fit.js';
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────
 
@@ -25,6 +28,19 @@ const fleet: ModelProfile[] = [
   makeModel({ id: 'claude-opus', tier: 'frontier-cloud' }),
 ];
 
+const contextFleet: ModelProfile[] = [
+  makeModel({
+    id: 'small-window',
+    tier: 'economical-cloud',
+    limits: { max_input_tokens: 32_768 },
+  }),
+  makeModel({
+    id: 'large-window',
+    tier: 'frontier-cloud',
+    limits: { max_input_tokens: 200_000 },
+  }),
+];
+
 function validRequestBody(overrides?: Record<string, unknown>): Record<string, unknown> {
   return {
     request_id: '550e8400-e29b-41d4-a716-446655440000',
@@ -34,9 +50,9 @@ function validRequestBody(overrides?: Record<string, unknown>): Record<string, u
   };
 }
 
-function createHandler() {
-  const pipeline = new RouterPipeline(fleet);
-  return createExplainHandler({ fleet, pipeline });
+function createHandler(fleetOverride: ModelProfile[] = fleet) {
+  const pipeline = new RouterPipeline(fleetOverride);
+  return createExplainHandler({ fleet: fleetOverride, pipeline });
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -258,6 +274,40 @@ describe('routerExplain (T041)', () => {
       const pipeline = new RouterPipeline(fleet);
       const explain = createExplainHandler({ fleet, pipeline });
       expect(typeof explain).toBe('function');
+    });
+
+    it('includes context-fit observability for oversized estimates (SP-110)', async () => {
+      const explain = createHandler(contextFleet);
+      const result = await explain(validRequestBody({ estimated_input_tokens: 34_000 }));
+
+      expect(result.status).toBe(200);
+      if (result.status !== 200) {
+        return;
+      }
+      const contextFit = result.body.features?.context_fit;
+      expect(contextFit).toMatchObject({
+        estimated_input_tokens: 34_000,
+        context_fit_reason_code: CONTEXT_OVERFLOW_FRONTIER_FALLBACK,
+        selected_model_max_input_tokens: 200_000,
+        context_overflow_pin_break: true,
+      });
+      expect(contextFit?.context_fit_rejected_json).toContain('small-window');
+      expect(result.body.features?.candidates?.some(
+        (candidate: { model_id: string; rejected_reason: string | null }) =>
+          candidate.model_id === 'small-window' &&
+          candidate.rejected_reason === CONTEXT_FIT_EXCEEDED,
+      )).toBe(true);
+    });
+
+    it('includes context_fit_pass when all models fit', async () => {
+      const explain = createHandler(contextFleet);
+      const result = await explain(validRequestBody({ estimated_input_tokens: 1_000 }));
+
+      expect(result.status).toBe(200);
+      if (result.status !== 200) {
+        return;
+      }
+      expect(result.body.features?.context_fit?.context_fit_reason_code).toBe(CONTEXT_FIT_PASS);
     });
   });
 });

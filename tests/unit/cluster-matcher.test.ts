@@ -1,10 +1,24 @@
-import { describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+
+import { describe, expect, it, vi, beforeAll, afterAll } from 'vitest';
 
 import {
+  applyPrecomputedCentroids,
+  buildRoutingCentroidsArtifact,
   ClusterMatcher,
+  computeCentroid,
   cosineSimilarity,
+  createClusterMatcher,
+  loadClusterMatcherCatalog,
+  loadRoutingCentroidsArtifact,
+  serializeRoutingCentroidsArtifact,
+  validateCentroidClusterIds,
   type ClusterMatcherConfig,
 } from '../../src/domain/matching/cluster-matcher.js';
+import { parseRoutingClustersYaml } from '../../src/config/routing-clusters-loader.js';
+import { EMBEDDING_DIM } from '../../src/domain/matching/embedding-provider.js';
 import type {
   LoadedRoutingCluster,
   RoutingClusterCatalog,
@@ -218,6 +232,194 @@ describe('ClusterMatcher', () => {
       await expect(matcher.match(makeRequest('mismatch'))).rejects.toThrow(
         /Embedding shape mismatch/,
       );
+    });
+  });
+});
+
+// ─── Centroid bootstrap (SP-114) ─────────────────────────────────────────────
+
+const EXAMPLE_CATALOG_YAML = `
+clusters:
+  - id: low_stakes_general
+    tier_bias: zero-tier
+    reference_prompts:
+      - "what is 2+2"
+      - "define polymorphism in one sentence"
+    min_similarity: 0.82
+    min_margin: 0.05
+
+  - id: architecture
+    tier_bias: frontier-cloud
+    reference_prompts:
+      - "design a microservices migration"
+    min_similarity: 0.78
+    min_margin: 0.04
+`;
+
+function createDeterministicEmbedder(dimension = EMBEDDING_DIM): TextEmbedder {
+  return {
+    embed: vi.fn(async (text: string) => {
+      const vector = new Float32Array(dimension);
+      for (let i = 0; i < dimension; i++) {
+        vector[i] = (text.charCodeAt(i % text.length) % 97) / 100;
+      }
+      return vector;
+    }),
+    dispose: vi.fn(async () => {}),
+  };
+}
+
+describe('routing centroid bootstrap', () => {
+  let tempDir: string;
+
+  beforeAll(() => {
+    tempDir = mkdtempSync(join(tmpdir(), 'cluster-matcher-centroids-'));
+  });
+
+  afterAll(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  describe('computeCentroid', () => {
+    it('mean-pools embeddings to a stable centroid', () => {
+      const alpha = new Float32Array([1, 0]);
+      const beta = new Float32Array([0, 1]);
+      const centroid = computeCentroid([alpha, beta]);
+
+      expect(Array.from(centroid)).toEqual([0.5, 0.5]);
+    });
+  });
+
+  describe('buildRoutingCentroidsArtifact', () => {
+    it('produces stable centroids for known reference prompts', async () => {
+      const clusters = parseRoutingClustersYaml(EXAMPLE_CATALOG_YAML);
+      const embedder = createDeterministicEmbedder();
+      const artifact = await buildRoutingCentroidsArtifact(clusters, embedder);
+
+      expect(artifact.version).toBe(1);
+      expect(artifact.embedding_dim).toBe(EMBEDDING_DIM);
+      expect(artifact.clusters).toHaveLength(2);
+      expect(artifact.clusters[0]).toMatchObject({
+        cluster_id: 'low_stakes_general',
+        tier_bias: 'zero-tier',
+        reference_count: 2,
+      });
+      expect(artifact.clusters[0]!.centroid).toHaveLength(EMBEDDING_DIM);
+      expect(artifact).toMatchSnapshot();
+    });
+  });
+
+  describe('loadClusterMatcherCatalog', () => {
+    it('loads precomputed centroids when artifact exists', async () => {
+      const clustersPath = join(tempDir, 'clusters.yaml');
+      const centroidsPath = join(tempDir, 'centroids.json');
+      writeFileSync(clustersPath, EXAMPLE_CATALOG_YAML, 'utf8');
+
+      const clusters = parseRoutingClustersYaml(EXAMPLE_CATALOG_YAML);
+      const embedderForArtifact = createDeterministicEmbedder();
+      const artifact = await buildRoutingCentroidsArtifact(clusters, embedderForArtifact);
+      writeFileSync(centroidsPath, serializeRoutingCentroidsArtifact(artifact), 'utf8');
+
+      const embedder = createDeterministicEmbedder();
+      const catalog = await loadClusterMatcherCatalog({
+        clustersFilePath: clustersPath,
+        centroidsFilePath: centroidsPath,
+        embedder,
+      });
+
+      expect(catalog.clusters).toHaveLength(2);
+      expect(catalog.clusters[0]!.centroid).toBeInstanceOf(Float32Array);
+      expect(embedder.embed).not.toHaveBeenCalled();
+    });
+
+    it('falls back to inline centroid computation when artifact is missing', async () => {
+      const clustersPath = join(tempDir, 'fallback-clusters.yaml');
+      const centroidsPath = join(tempDir, 'missing-centroids.json');
+      writeFileSync(clustersPath, EXAMPLE_CATALOG_YAML, 'utf8');
+
+      const embedder = createDeterministicEmbedder();
+      const catalog = await loadClusterMatcherCatalog({
+        clustersFilePath: clustersPath,
+        centroidsFilePath: centroidsPath,
+        embedder,
+      });
+
+      expect(catalog.clusters).toHaveLength(2);
+      expect(embedder.embed).toHaveBeenCalled();
+    });
+  });
+
+  describe('validateCentroidClusterIds', () => {
+    it('rejects artifact cluster IDs that do not match the catalog', async () => {
+      const clusters = parseRoutingClustersYaml(EXAMPLE_CATALOG_YAML);
+      const embedder = createDeterministicEmbedder();
+      const artifact = await buildRoutingCentroidsArtifact(clusters, embedder);
+      const mismatched = {
+        ...artifact,
+        clusters: [
+          ...artifact.clusters,
+          {
+            cluster_id: 'unknown_cluster',
+            tier_bias: 'zero-tier' as const,
+            centroid: artifact.clusters[0]!.centroid,
+            reference_count: 1,
+          },
+        ],
+      };
+
+      expect(() => validateCentroidClusterIds(clusters, mismatched)).toThrow(
+        /unknown cluster_id 'unknown_cluster'/,
+      );
+    });
+  });
+
+  describe('createClusterMatcher', () => {
+    it('constructs matcher from catalog and centroids artifact', async () => {
+      const clustersPath = join(tempDir, 'matcher-clusters.yaml');
+      const centroidsPath = join(tempDir, 'matcher-centroids.json');
+      writeFileSync(clustersPath, EXAMPLE_CATALOG_YAML, 'utf8');
+
+      const clusters = parseRoutingClustersYaml(EXAMPLE_CATALOG_YAML);
+      const embedder = createDeterministicEmbedder();
+      const artifact = await buildRoutingCentroidsArtifact(clusters, embedder);
+      writeFileSync(centroidsPath, serializeRoutingCentroidsArtifact(artifact), 'utf8');
+
+      const matcher = await createClusterMatcher({
+        clustersFilePath: clustersPath,
+        centroidsFilePath: centroidsPath,
+        embedder,
+      });
+
+      const result = await matcher.match(makeRequest('what is 2+2'));
+      expect(['low_stakes_general', 'architecture']).toContain(result.clusterId);
+    });
+  });
+
+  describe('loadRoutingCentroidsArtifact', () => {
+    it('loads example artifact from disk', () => {
+      const artifact = loadRoutingCentroidsArtifact(
+        join(process.cwd(), 'config/routing-centroids.json.example'),
+      );
+
+      expect(artifact.clusters).toHaveLength(4);
+      expect(artifact.clusters.map((record) => record.cluster_id)).toEqual([
+        'low_stakes_general',
+        'mechanical_edit',
+        'deep_debug',
+        'architecture',
+      ]);
+    });
+  });
+
+  describe('applyPrecomputedCentroids', () => {
+    it('merges artifact centroids onto catalog clusters', async () => {
+      const clusters = parseRoutingClustersYaml(EXAMPLE_CATALOG_YAML);
+      const embedder = createDeterministicEmbedder();
+      const artifact = await buildRoutingCentroidsArtifact(clusters, embedder);
+      const loaded = applyPrecomputedCentroids(clusters, artifact);
+
+      expect(loaded[0]!.min_similarity).toBe(0.82);
+      expect(loaded[0]!.centroid).toBeInstanceOf(Float32Array);
     });
   });
 });

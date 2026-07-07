@@ -182,6 +182,61 @@ describe('dataset-recorder', () => {
 
       expect(record.has_tool_context).toBe(true);
     });
+
+    it('maps context-fit observability fields when gate rejects models', () => {
+      const record = buildDatasetRecord(
+        makeRequest({ estimated_input_tokens: 34_000 }),
+        makeDecision({
+          selected_model_id: 'large-window',
+          features: {
+            triage: null,
+            requirements: null,
+            candidates: [
+              {
+                model_id: 'small-window',
+                score: 0,
+                shortfall: 1_000,
+                rejected_reason: 'context_fit_exceeded',
+              },
+            ],
+            tier_hint: null,
+            tier_hint_reason_code: null,
+            low_intensity_score: null,
+            p_success_cheap: null,
+            p_success_alpha: null,
+          },
+        }),
+        '2026-07-04T12:00:00.000Z',
+        null,
+        undefined,
+        {
+          fleet: [
+            {
+              id: 'small-window',
+              tier: 'economical-cloud',
+              provider: 'test',
+              capabilities: { reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 },
+              pricing: { fallback_cost_per_1m: 1.0 },
+              limits: { max_input_tokens: 32_768 },
+            },
+            {
+              id: 'large-window',
+              tier: 'frontier-cloud',
+              provider: 'test',
+              capabilities: { reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 },
+              pricing: { fallback_cost_per_1m: 1.0 },
+              limits: { max_input_tokens: 200_000 },
+            },
+          ],
+        },
+      );
+
+      expect(record.estimated_input_tokens_gate).toBe(34_000);
+      expect(record.context_fit_viable_count).toBe(1);
+      expect(record.context_fit_rejected_json).toContain('small-window');
+      expect(record.selected_model_max_input_tokens).toBe(200_000);
+      expect(record.context_fit_reason_code).toBe('context_fit_pass');
+    });
   });
 
   describe('DatasetRecorder', () => {

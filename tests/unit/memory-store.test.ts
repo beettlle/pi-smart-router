@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { RoutingDatasetRecord, RoutingOutcomeRecord } from '../../src/domain/types/entities.js';
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
+import { DEFAULT_CONTEXT_FIT_DATASET_FIELDS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 
 function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): RoutingDatasetRecord {
   return {
@@ -30,6 +31,7 @@ function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): Routi
     routing_latency_ms: 8,
     estimated_cost_usd: 0.001,
     prompt_fingerprint: null,
+    ...DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
     ...overrides,
   };
 }

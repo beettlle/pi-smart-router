@@ -69,3 +69,18 @@ Stdout: JSON matching RoutingDecision schema.
 | `local_unavailable` | local_zero | Fallback to cloud |
 | `hydra_best_score` | hydra_match | Multi-objective winner |
 | `safe_default` | fallback | Error or total pipeline failure |
+
+## Context-fit observability (SP-110)
+
+When the context-fit gate runs, `features.context_fit` MAY be present on the routing decision:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `estimated_input_tokens` | number \| null | Token estimate used by the gate |
+| `context_fit_viable_count` | number \| null | Fleet models whose window fits the estimate |
+| `context_fit_rejected_json` | string \| null | JSON array of `{ model_id, max_input_tokens, reason }` rejections |
+| `context_overflow_pin_break` | boolean | Pin broke or overflow fallback escalated |
+| `selected_model_max_input_tokens` | number \| null | Declared input limit for selected model |
+| `context_fit_reason_code` | string \| null | `context_fit_pass`, `context_fit_rejected_all`, `context_overflow_pin_break`, or overflow fallback variant |
+
+Rejected models also appear in `features.candidates` with `rejected_reason: "context_fit_exceeded"`.

@@ -4,15 +4,326 @@
  * Embeds request prompt text via shared TextEmbedder, scores cosine similarity
  * against precomputed cluster centroids, and returns best match with confidence
  * from per-cluster min_similarity and min_margin thresholds.
+ *
+ * Centroids load from `config/routing-centroids.json` at startup when present;
+ * otherwise they are computed inline from reference prompts (SP-114).
  */
 
-import type { TextEmbedder } from './embedding-provider.js';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import {
+  loadRoutingClusters,
+  parseRoutingClustersYaml,
+} from '../../config/routing-clusters-loader.js';
+import { EMBEDDING_DIM, type TextEmbedder } from './embedding-provider.js';
 import type {
   LoadedRoutingCluster,
+  RoutingCluster,
   RoutingClusterCatalog,
   RoutingRequest,
   Tier,
 } from '../types/index.js';
+
+// ─── Precomputed centroid artifact (SP-114) ──────────────────────────────────
+
+export const DEFAULT_ROUTING_CENTROIDS_PATH = 'config/routing-centroids.json';
+
+export interface RoutingCentroidRecord {
+  readonly cluster_id: string;
+  readonly tier_bias: Tier;
+  readonly centroid: readonly number[];
+  readonly reference_count: number;
+}
+
+export interface RoutingCentroidsArtifact {
+  readonly version: number;
+  readonly embedding_dim: number;
+  readonly clusters: readonly RoutingCentroidRecord[];
+}
+
+export class RoutingCentroidsError extends Error {
+  override readonly name = 'RoutingCentroidsError';
+
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+  }
+}
+
+export function computeCentroid(embeddings: readonly Float32Array[]): Float32Array {
+  if (embeddings.length === 0) {
+    throw new RoutingCentroidsError('Cannot compute centroid from zero embeddings');
+  }
+
+  const dim = embeddings[0]!.length;
+  const centroid = new Float32Array(dim);
+
+  for (const embedding of embeddings) {
+    if (embedding.length !== dim) {
+      throw new RoutingCentroidsError(
+        `Embedding shape mismatch: expected ${dim}, got ${embedding.length}`,
+      );
+    }
+    for (let i = 0; i < dim; i++) {
+      centroid[i] = (centroid[i] ?? 0) + (embedding[i] ?? 0);
+    }
+  }
+
+  for (let i = 0; i < dim; i++) {
+    centroid[i] = (centroid[i] ?? 0) / embeddings.length;
+  }
+
+  return centroid;
+}
+
+function parseRoutingCentroidsArtifact(parsed: unknown): RoutingCentroidsArtifact {
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new RoutingCentroidsError('Invalid routing centroids artifact: expected object');
+  }
+
+  const record = parsed as Record<string, unknown>;
+  const version = record.version;
+  const embeddingDim = record.embedding_dim;
+  const clusters = record.clusters;
+
+  if (version !== 1) {
+    throw new RoutingCentroidsError(
+      `Unsupported routing centroids version: ${String(version)}`,
+    );
+  }
+  if (embeddingDim !== EMBEDDING_DIM) {
+    throw new RoutingCentroidsError(
+      `Invalid embedding_dim: expected ${EMBEDDING_DIM}, got ${String(embeddingDim)}`,
+    );
+  }
+  if (!Array.isArray(clusters) || clusters.length === 0) {
+    throw new RoutingCentroidsError('Invalid routing centroids artifact: clusters required');
+  }
+
+  const parsedClusters: RoutingCentroidRecord[] = [];
+  for (const entry of clusters) {
+    if (typeof entry !== 'object' || entry === null) {
+      throw new RoutingCentroidsError('Invalid cluster entry in routing centroids artifact');
+    }
+    const cluster = entry as Record<string, unknown>;
+    const clusterId = cluster.cluster_id;
+    const tierBias = cluster.tier_bias;
+    const centroid = cluster.centroid;
+    const referenceCount = cluster.reference_count;
+
+    if (typeof clusterId !== 'string' || clusterId.length === 0) {
+      throw new RoutingCentroidsError('Invalid cluster_id in routing centroids artifact');
+    }
+    if (
+      tierBias !== 'zero-tier' &&
+      tierBias !== 'economical-cloud' &&
+      tierBias !== 'frontier-cloud'
+    ) {
+      throw new RoutingCentroidsError(
+        `Invalid tier_bias for cluster '${clusterId}': ${String(tierBias)}`,
+      );
+    }
+    if (!Array.isArray(centroid) || centroid.length !== EMBEDDING_DIM) {
+      throw new RoutingCentroidsError(
+        `Invalid centroid for cluster '${clusterId}': expected ${EMBEDDING_DIM} dimensions`,
+      );
+    }
+    if (
+      !centroid.every((value) => typeof value === 'number' && Number.isFinite(value))
+    ) {
+      throw new RoutingCentroidsError(
+        `Invalid centroid values for cluster '${clusterId}': must be finite numbers`,
+      );
+    }
+    if (typeof referenceCount !== 'number' || !Number.isInteger(referenceCount) || referenceCount < 1) {
+      throw new RoutingCentroidsError(
+        `Invalid reference_count for cluster '${clusterId}'`,
+      );
+    }
+
+    parsedClusters.push({
+      cluster_id: clusterId,
+      tier_bias: tierBias,
+      centroid,
+      reference_count: referenceCount,
+    });
+  }
+
+  return {
+    version: 1,
+    embedding_dim: EMBEDDING_DIM,
+    clusters: parsedClusters,
+  };
+}
+
+export function loadRoutingCentroidsArtifact(
+  filePath: string = resolve(DEFAULT_ROUTING_CENTROIDS_PATH),
+): RoutingCentroidsArtifact {
+  let raw: string;
+  try {
+    raw = readFileSync(filePath, 'utf8');
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new RoutingCentroidsError(
+      `Failed to read routing centroids file: ${message}`,
+      { cause: err },
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new RoutingCentroidsError(`Failed to parse routing centroids JSON: ${message}`, {
+      cause: err,
+    });
+  }
+
+  return parseRoutingCentroidsArtifact(parsed);
+}
+
+export function validateCentroidClusterIds(
+  catalogClusters: readonly RoutingCluster[],
+  artifact: RoutingCentroidsArtifact,
+): void {
+  const catalogIds = new Set(catalogClusters.map((cluster) => cluster.id));
+  const artifactIds = new Set(artifact.clusters.map((cluster) => cluster.cluster_id));
+
+  for (const id of catalogIds) {
+    if (!artifactIds.has(id)) {
+      throw new RoutingCentroidsError(
+        `Routing centroids artifact missing cluster_id '${id}' from catalog`,
+      );
+    }
+  }
+
+  for (const id of artifactIds) {
+    if (!catalogIds.has(id)) {
+      throw new RoutingCentroidsError(
+        `Routing centroids artifact has unknown cluster_id '${id}'`,
+      );
+    }
+  }
+
+  const catalogById = new Map(catalogClusters.map((cluster) => [cluster.id, cluster]));
+  for (const record of artifact.clusters) {
+    const catalogCluster = catalogById.get(record.cluster_id)!;
+    if (catalogCluster.tier_bias !== record.tier_bias) {
+      throw new RoutingCentroidsError(
+        `tier_bias mismatch for cluster '${record.cluster_id}': catalog=${catalogCluster.tier_bias}, artifact=${record.tier_bias}`,
+      );
+    }
+    if (catalogCluster.reference_prompts.length !== record.reference_count) {
+      throw new RoutingCentroidsError(
+        `reference_count mismatch for cluster '${record.cluster_id}': catalog=${catalogCluster.reference_prompts.length}, artifact=${record.reference_count}`,
+      );
+    }
+  }
+}
+
+export function applyPrecomputedCentroids(
+  catalogClusters: readonly RoutingCluster[],
+  artifact: RoutingCentroidsArtifact,
+): readonly LoadedRoutingCluster[] {
+  validateCentroidClusterIds(catalogClusters, artifact);
+
+  const centroidById = new Map(
+    artifact.clusters.map((record) => [
+      record.cluster_id,
+      new Float32Array(record.centroid),
+    ]),
+  );
+
+  return catalogClusters.map((cluster) => ({
+    ...cluster,
+    centroid: centroidById.get(cluster.id)!,
+  }));
+}
+
+export async function buildRoutingCentroidsArtifact(
+  catalogClusters: readonly RoutingCluster[],
+  embedder: TextEmbedder,
+): Promise<RoutingCentroidsArtifact> {
+  const clusters: RoutingCentroidRecord[] = [];
+
+  for (const cluster of catalogClusters) {
+    const embeddings: Float32Array[] = [];
+    for (const prompt of cluster.reference_prompts) {
+      embeddings.push(await embedder.embed(prompt));
+    }
+
+    clusters.push({
+      cluster_id: cluster.id,
+      tier_bias: cluster.tier_bias,
+      centroid: Array.from(computeCentroid(embeddings)),
+      reference_count: cluster.reference_prompts.length,
+    });
+  }
+
+  return {
+    version: 1,
+    embedding_dim: EMBEDDING_DIM,
+    clusters,
+  };
+}
+
+export function serializeRoutingCentroidsArtifact(
+  artifact: RoutingCentroidsArtifact,
+): string {
+  return `${JSON.stringify(artifact, null, 2)}\n`;
+}
+
+export interface CreateClusterMatcherOptions {
+  readonly clustersFilePath?: string;
+  readonly centroidsFilePath?: string;
+  readonly embedder: TextEmbedder;
+}
+
+function isMissingCentroidsFileError(err: unknown): boolean {
+  return (
+    err instanceof RoutingCentroidsError &&
+    err.cause instanceof Error &&
+    'code' in err.cause &&
+    err.cause.code === 'ENOENT'
+  );
+}
+
+/**
+ * Load routing cluster catalog with precomputed centroids when the artifact exists.
+ * Falls back to inline centroid computation from reference prompts when missing.
+ */
+export async function loadClusterMatcherCatalog(
+  options: CreateClusterMatcherOptions,
+): Promise<RoutingClusterCatalog> {
+  const clustersFilePath =
+    options.clustersFilePath ?? resolve('config', 'routing-clusters.yaml');
+  const centroidsFilePath =
+    options.centroidsFilePath ?? resolve(DEFAULT_ROUTING_CENTROIDS_PATH);
+
+  const raw = readFileSync(clustersFilePath, 'utf8');
+  const catalogClusters = parseRoutingClustersYaml(raw);
+
+  try {
+    const artifact = loadRoutingCentroidsArtifact(centroidsFilePath);
+    return { clusters: applyPrecomputedCentroids(catalogClusters, artifact) };
+  } catch (err: unknown) {
+    if (isMissingCentroidsFileError(err)) {
+      return loadRoutingClusters({
+        filePath: clustersFilePath,
+        embedder: options.embedder,
+      });
+    }
+    throw err;
+  }
+}
+
+export async function createClusterMatcher(
+  options: CreateClusterMatcherOptions,
+): Promise<ClusterMatcher> {
+  const catalog = await loadClusterMatcherCatalog(options);
+  return new ClusterMatcher({ catalog, embedder: options.embedder });
+}
 
 // ─── Match result ────────────────────────────────────────────────────────────
 

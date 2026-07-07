@@ -17,6 +17,7 @@ import type { ModelProfile, RoutingDecision, RoutingRequest, Message } from '../
 import { RoutingRequestSchema } from '../../domain/types/schemas.js';
 import { RouterPipeline } from '../../domain/pipeline/router-pipeline.js';
 import { safeCloudDefault } from '../../domain/pipeline/safe-default.js';
+import { enrichRoutingDecisionWithContextFit } from '../../infrastructure/telemetry/routing-telemetry.js';
 
 // ─── Result types ─────────────────────────────────────────────────────────────
 
@@ -80,7 +81,10 @@ export function createExplainHandler(deps: ExplainHandlerDeps) {
 
     try {
       const decision = await pipeline.route(request);
-      return { status: 200, body: decision };
+      return {
+        status: 200,
+        body: enrichRoutingDecisionWithContextFit(request, decision, fleet),
+      };
     } catch {
       const fallbackModel = safeCloudDefault(fleet);
       const decision: RoutingDecision = {
@@ -92,7 +96,10 @@ export function createExplainHandler(deps: ExplainHandlerDeps) {
         routing_latency_ms: performance.now() - start,
         pin_reason: null,
       };
-      return { status: 503, body: decision };
+      return {
+        status: 503,
+        body: enrichRoutingDecisionWithContextFit(request, decision, fleet),
+      };
     }
   };
 }

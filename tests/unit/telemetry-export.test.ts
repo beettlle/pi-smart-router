@@ -13,6 +13,7 @@ import {
   toCommunityTelemetryRecord,
   toHydraCalibrationRecord,
 } from '../../src/infra/telemetry.js';
+import { DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 
 function makeTelemetry(overrides?: Partial<RoutingTelemetry>): RoutingTelemetry {
   return {
@@ -26,6 +27,7 @@ function makeTelemetry(overrides?: Partial<RoutingTelemetry>): RoutingTelemetry 
     estimated_cost_usd: 0.001,
     routing_latency_ms: 12,
     pin_reason: null,
+    ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
     ...overrides,
   };
 }
