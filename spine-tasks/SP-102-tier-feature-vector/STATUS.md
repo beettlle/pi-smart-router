@@ -1,7 +1,7 @@
 # SP-102 Status
 
 **Current Step:** Step 1
-**Status:** Not Started
+**Status:** In Progress
 **Last Updated:** 2026-07-06
 **Review Level:** 1
 **Size:** M
@@ -10,16 +10,16 @@
 
 ## Step 1: TierFeatureVector and buildTierFeatures
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Feature vector types and builder
+- [x] Feature vector types and builder
 
 ## Step 2: scoreLowIntensity and config
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Weighted score with configurable weights
-- [ ] Unit tests and dataset export hook
+- [x] Weighted score with configurable weights
+- [x] Unit tests and dataset export hook
 
 ## Step 3: Testing and verification
 
