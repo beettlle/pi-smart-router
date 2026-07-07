@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { RoutingDatasetRecord, RoutingOutcomeRecord } from '../../src/domain/types/index.js';
 import {
@@ -250,6 +250,8 @@ describe('loadPSuccessWeights (SP-105)', () => {
 
 describe('predictPSuccessCheapTimed (SP-105)', () => {
   it('returns probability within latency budget for trained weights', () => {
+    const nowSpy = vi.spyOn(performance, 'now').mockReturnValueOnce(100).mockReturnValueOnce(101);
+
     const weights = {
       ...createDefaultPSuccessWeights(),
       intercept: 2,
@@ -259,8 +261,23 @@ describe('predictPSuccessCheapTimed (SP-105)', () => {
     const result = predictPSuccessCheapTimed(features, weights);
 
     expect(result.probability).toBeGreaterThan(0.5);
+    expect(result.elapsed_ms).toBe(1);
     expect(result.within_budget).toBe(true);
-    expect(result.elapsed_ms).toBeLessThan(5);
     expect(Object.keys(result.feature_importances)).toHaveLength(10);
+
+    nowSpy.mockRestore();
+  });
+
+  it('flags predictions that exceed the latency budget', () => {
+    const nowSpy = vi.spyOn(performance, 'now').mockReturnValueOnce(100).mockReturnValueOnce(106);
+
+    const weights = createDefaultPSuccessWeights();
+    const features = extractPSuccessFeatures(makeDatasetRecord());
+    const result = predictPSuccessCheapTimed(features, weights, 5);
+
+    expect(result.elapsed_ms).toBe(6);
+    expect(result.within_budget).toBe(false);
+
+    nowSpy.mockRestore();
   });
 });
