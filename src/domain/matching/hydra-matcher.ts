@@ -12,6 +12,7 @@
  */
 
 import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
+import { buildHydraInput } from './hydra-input.js';
 import {
   createOnnxTextEmbedder,
   EMBEDDING_DIM,
@@ -187,7 +188,7 @@ export class HydraMatcher {
     const start = performance.now();
 
     const requirements = await this.provider.extractRequirements(
-      request.prompt_text,
+      buildHydraInput(request),
     );
     this.validateRequirements(requirements);
 

@@ -1,6 +1,6 @@
 # SP-112 Status
 
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-07
 **Review Level:** 1
@@ -17,11 +17,11 @@
 
 ## Step 2: Wire into HyDRA matcher
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Replace raw prompt in `HydraMatcher.match()`
-- [ ] Regression tests for coding prompts
-- [ ] Document in data-model.md
+- [x] Replace raw prompt in `HydraMatcher.match()`
+- [x] Regression tests for coding prompts
+- [x] Document in data-model.md
 
 ## Step 3: Testing and verification
 
