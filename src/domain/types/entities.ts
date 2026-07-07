@@ -17,7 +17,8 @@ export type PinReason =
   | 'user_forced'
   | 'loop_escalation'
   | 'compaction'
-  | 'cache_economics';
+  | 'cache_economics'
+  | 'context_overflow';
 
 export type Tier = 'zero-tier' | 'economical-cloud' | 'frontier-cloud';
 

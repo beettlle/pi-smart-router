@@ -33,13 +33,13 @@ import {
 
 // ─── Schema version & migrations ────────────────────────────────────────────
 
-const CURRENT_SCHEMA_VERSION = 4;
+const CURRENT_SCHEMA_VERSION = 5;
 
 const MIGRATION_V1 = `
   CREATE TABLE IF NOT EXISTS pins (
     session_id TEXT PRIMARY KEY,
     pinned_model_id TEXT NOT NULL,
-    pin_reason TEXT NOT NULL CHECK (pin_reason IN ('initial','user_forced','loop_escalation','compaction','cache_economics')),
+    pin_reason TEXT NOT NULL CHECK (pin_reason IN ('initial','user_forced','loop_escalation','compaction','cache_economics','context_overflow')),
     has_ever_switched INTEGER NOT NULL DEFAULT 0,
     consecutive_upstream_errors INTEGER NOT NULL DEFAULT 0,
     consecutive_tool_failures INTEGER NOT NULL DEFAULT 0,
@@ -133,6 +133,36 @@ const MIGRATION_V4 = `
   CREATE INDEX IF NOT EXISTS idx_outcomes_timestamp ON outcomes(timestamp);
   CREATE INDEX IF NOT EXISTS idx_outcomes_request ON outcomes(request_id);
   CREATE INDEX IF NOT EXISTS idx_outcomes_session ON outcomes(session_id);
+`;
+
+const MIGRATION_V5 = `
+  CREATE TABLE pins_v5 (
+    session_id TEXT PRIMARY KEY,
+    pinned_model_id TEXT NOT NULL,
+    pin_reason TEXT NOT NULL CHECK (pin_reason IN ('initial','user_forced','loop_escalation','compaction','cache_economics','context_overflow')),
+    has_ever_switched INTEGER NOT NULL DEFAULT 0,
+    consecutive_upstream_errors INTEGER NOT NULL DEFAULT 0,
+    consecutive_tool_failures INTEGER NOT NULL DEFAULT 0,
+    last_tool_failure_signature TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
+  INSERT INTO pins_v5 (
+    session_id, pinned_model_id, pin_reason,
+    has_ever_switched, consecutive_upstream_errors,
+    consecutive_tool_failures, last_tool_failure_signature,
+    created_at, updated_at
+  )
+  SELECT
+    session_id, pinned_model_id, pin_reason,
+    has_ever_switched, consecutive_upstream_errors,
+    consecutive_tool_failures, last_tool_failure_signature,
+    created_at, updated_at
+  FROM pins;
+
+  DROP TABLE pins;
+  ALTER TABLE pins_v5 RENAME TO pins;
 `;
 
 // ─── Token bucket result ────────────────────────────────────────────────────
@@ -625,6 +655,12 @@ export class SqliteStore implements StorePort {
 
     if (version < 4) {
       this.db.exec(MIGRATION_V4);
+      version = 4;
+      this.db.pragma('user_version = 4');
+    }
+
+    if (version < 5) {
+      this.db.exec(MIGRATION_V5);
       this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`);
     }
   }
