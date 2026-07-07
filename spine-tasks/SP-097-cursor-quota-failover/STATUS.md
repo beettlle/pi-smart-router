@@ -1,7 +1,7 @@
 # SP-097 Status
 
-**Current Step:** 3
-**Status:** In progress (addressing review REVISE)
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-07-06
 **Review Level:** 2
 **Size:** M
@@ -24,10 +24,10 @@
 
 ## Step 3: Tests and verification
 
-**Status:** In progress
+**Status:** Complete
 
 - [x] Failover path test
-- [ ] Run `npm run verify:ci` (re-run after flaky-test fix)
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
@@ -37,4 +37,5 @@
 ## Discoveries
 
 - Cursor quota errors on subscription models (429 or usage-limit message) are tracked in `recordOutcome` without tripping the circuit breaker; `selectFailover` prefers `cursor/auto` then economical API models.
-- Non-infra quota messages require `shouldFailoverOnProviderError` at the delegation layer (`route-and-delegate.ts`) — out of SP-097 file scope; 429 path works via existing `isInfraAssistantError` failover.
+- Fixed flaky economical-failover test: single-candidate deterministic case + separate weighted multi-candidate assertion.
+- Delegation-layer wiring of `shouldFailoverOnProviderError` in `route-and-delegate.ts` is out of SP-097 file scope; exported for downstream integration.
