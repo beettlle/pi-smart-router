@@ -7,7 +7,7 @@
  * Any stage failure falls back to safeCloudDefault(); never throws to host.
  */
 
-import type { ModelProfile, PriceCatalog, RoutingDecision, RoutingFeatureSidecar, RoutingRequest, Tier } from '../types/index.js';
+import type { ModelProfile, PriceCatalog, RoutingDecision, RoutingFeatureSidecar, RoutingRequest, Tier, CandidateScore } from '../types/index.js';
 import type { HardwareProbeConfig, HardwareProbeResult, SystemInfo } from '../../infrastructure/hardware/hardware-probe.js';
 import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
 import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
@@ -20,6 +20,10 @@ import {
   hasToolCallHistory,
   isGoogleGeminiProfile,
 } from '../routing/tool-history-guard.js';
+import {
+  filterFleetByContextFit,
+  type ContextFitConfig,
+} from '../routing/context-fit.js';
 import type { SessionPinner } from '../pinning/session-pinner.js';
 import { evaluateLoopEscalation } from '../pinning/loop-escalation.js';
 import type { LoopEscalationConfig } from '../pinning/loop-escalation.js';
@@ -54,6 +58,7 @@ export interface PipelineOptions {
   readonly telemetryEmitter?: RoutingTelemetryEmitter;
   readonly hydraMatcher?: HydraMatcherType;
   readonly priceCatalog?: PriceCatalog | null;
+  readonly contextFitConfig?: ContextFitConfig;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -70,12 +75,14 @@ export class RouterPipeline {
   private currentHardwareResult: HardwareProbeResult = 'disabled';
   private currentTriageResult: TriageResult | null = null;
   private currentHydraResult: MatchResult | null = null;
+  private currentContextFitRejected: readonly CandidateScore[] = [];
 
   constructor(fleet: readonly ModelProfile[], options?: PipelineOptions) {
     this.fleet = fleet;
     this.options = options ?? {};
     this.stages = [
       { name: 'hardware_probe', run: this.hardwareProbeStage.bind(this) },
+      { name: 'context_fit', run: this.contextFitStage.bind(this) },
       { name: 'loop_escalation', run: this.loopEscalation.bind(this) },
       { name: 'turn_envelope', run: this.turnEnvelope.bind(this) },
       { name: 'session_pin', run: this.sessionPin.bind(this) },
@@ -98,6 +105,7 @@ export class RouterPipeline {
     this.currentHardwareResult = 'disabled';
     this.currentTriageResult = null;
     this.currentHydraResult = null;
+    this.currentContextFitRejected = [];
 
     let currentStage: NamedPipelineStage | undefined;
 
@@ -175,10 +183,18 @@ export class RouterPipeline {
           }
         : null,
       requirements: this.currentHydraResult?.requirements ?? null,
-      candidates: this.currentHydraResult?.candidates ?? null,
+      candidates: this.mergeFeatureCandidates(),
     };
 
     return { ...decision, features };
+  }
+
+  private mergeFeatureCandidates(): readonly CandidateScore[] | null {
+    const hydraCandidates = this.currentHydraResult?.candidates ?? [];
+    if (this.currentContextFitRejected.length === 0 && hydraCandidates.length === 0) {
+      return null;
+    }
+    return [...this.currentContextFitRejected, ...hydraCandidates];
   }
 
   private resolveFailedStage(stage: NamedPipelineStage | undefined): string {
@@ -264,6 +280,21 @@ export class RouterPipeline {
     const systemInfo = await this.options.systemInfoProvider();
     this.currentHardwareResult = probeHardware(this.options.hardwareConfig, systemInfo);
     return { decided: false, stage: 'hardware_probe' };
+  }
+
+  /**
+   * SP-093: filter fleet to models whose context window fits estimated input
+   * tokens before session pin and HyDRA matching.
+   */
+  private async contextFitStage(request: RoutingRequest): Promise<StageResult> {
+    const result = filterFleetByContextFit(
+      this.activeFleet,
+      request,
+      this.options.contextFitConfig,
+    );
+    this.activeFleet = result.effectiveFleet;
+    this.currentContextFitRejected = result.rejected;
+    return { decided: false, stage: 'context_fit' };
   }
 
   /**
