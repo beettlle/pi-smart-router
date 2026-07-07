@@ -80,7 +80,7 @@ interface RawMetrics {
 
 function extractMetrics(profile: ModelProfile): RawMetrics {
   return {
-    cost: profile.pricing.fallback_cost_per_1m,
+    cost: profile.pricing.quota_cost_per_1m ?? profile.pricing.fallback_cost_per_1m,
     latency: profile.performance?.latency_p50_ms ?? 0,
     verbosity: profile.performance?.verbosity_factor ?? 1,
   };

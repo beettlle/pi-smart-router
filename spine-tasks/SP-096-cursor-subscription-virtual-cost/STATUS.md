@@ -1,7 +1,7 @@
 # SP-096 Status
 
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-06
 **Review Level:** 1
 **Size:** M
@@ -10,28 +10,28 @@
 
 ## Step 1: Virtual subscription cost on Cursor models
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Add quota_cost_per_1m to ModelProfile / mapper defaults
-- [ ] Set non-zero virtual cost on Cursor and Composer defaults
-- [ ] Document pricing semantics in mapper comments
+- [x] Add quota_cost_per_1m to ModelProfile / mapper defaults
+- [x] Set non-zero virtual cost on Cursor and Composer defaults
+- [x] Document pricing semantics in mapper comments
 
 ## Step 2: Multi-objective scoring integration
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Update scoreMultiObjective for subscription-aware frugality
-- [ ] Economical API models outscore composer-latest when sufficient
-- [ ] Telemetry uses virtual cost for Cursor models
+- [x] Update scoreMultiObjective for subscription-aware frugality
+- [x] Economical API models outscore composer-latest when sufficient
+- [x] Telemetry uses virtual cost for Cursor models
 
 ## Step 3: Tests and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Regression tests for inverted selection
-- [ ] Run `npm run verify:ci`
+- [x] Regression tests for inverted selection
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes

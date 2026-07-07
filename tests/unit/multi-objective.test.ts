@@ -351,4 +351,97 @@ describe('scoreMultiObjective', () => {
       expect(expensive.verbosity_penalty).toBeGreaterThan(cheap.verbosity_penalty);
     });
   });
+
+  describe('Cursor subscription virtual cost (SP-096)', () => {
+    it('prefers economical API model over composer-latest on low-requirement main_loop', () => {
+      const fleet = [
+        makeModel({
+          id: 'composer-latest',
+          tier: 'frontier-cloud',
+          provider: 'cursor',
+          capabilities: { reasoning: 0.85, code_gen: 0.95, tool_use: 0.9 },
+          pricing: { fallback_cost_per_1m: 0.0, quota_cost_per_1m: 3.0 },
+          performance: { latency_p50_ms: 400, verbosity_factor: 1.05 },
+        }),
+        makeModel({
+          id: 'gemini-2.5-flash-lite',
+          tier: 'economical-cloud',
+          provider: 'google',
+          capabilities: { reasoning: 0.7, code_gen: 0.75, tool_use: 0.7 },
+          pricing: { fallback_cost_per_1m: 0.15 },
+          performance: { latency_p50_ms: 280, verbosity_factor: 0.95 },
+        }),
+      ];
+      const hydra = [
+        makeCandidate({ model_id: 'composer-latest', score: 0.88 }),
+        makeCandidate({ model_id: 'gemini-2.5-flash-lite', score: 0.86 }),
+      ];
+      const weights: FrugalityWeights = {
+        lambda_cost: 0.5,
+        lambda_latency: 0.1,
+        lambda_verbosity: 0.15,
+      };
+
+      const result = scoreMultiObjective(hydra, fleet, weights);
+
+      expect(result.selected!.model_id).toBe('gemini-2.5-flash-lite');
+    });
+
+    it('selects frontier composer when economical candidate is shortfall-rejected', () => {
+      const fleet = [
+        makeModel({
+          id: 'composer-latest',
+          tier: 'frontier-cloud',
+          provider: 'cursor',
+          capabilities: { reasoning: 0.85, code_gen: 0.95, tool_use: 0.9 },
+          pricing: { fallback_cost_per_1m: 0.0, quota_cost_per_1m: 3.0 },
+        }),
+        makeModel({
+          id: 'gemini-2.5-flash-lite',
+          tier: 'economical-cloud',
+          provider: 'google',
+          capabilities: { reasoning: 0.7, code_gen: 0.75, tool_use: 0.7 },
+          pricing: { fallback_cost_per_1m: 0.15 },
+        }),
+      ];
+      const hydra = [
+        makeCandidate({ model_id: 'composer-latest', score: 0.88 }),
+        makeCandidate({
+          model_id: 'gemini-2.5-flash-lite',
+          score: 0,
+          rejected_reason: 'shortfall_gate',
+        }),
+      ];
+
+      const result = scoreMultiObjective(hydra, fleet, DEFAULT_WEIGHTS);
+
+      expect(result.selected!.model_id).toBe('composer-latest');
+    });
+
+    it('does not treat zero fallback alone as cheapest when quota cost is set', () => {
+      const fleet = [
+        makeModel({
+          id: 'composer-latest',
+          pricing: { fallback_cost_per_1m: 0.0, quota_cost_per_1m: 3.0 },
+        }),
+        makeModel({
+          id: 'cheap-api',
+          pricing: { fallback_cost_per_1m: 0.8 },
+        }),
+      ];
+      const hydra = [
+        makeCandidate({ model_id: 'composer-latest', score: 0.85 }),
+        makeCandidate({ model_id: 'cheap-api', score: 0.84 }),
+      ];
+      const weights: FrugalityWeights = {
+        lambda_cost: 0.9,
+        lambda_latency: 0,
+        lambda_verbosity: 0,
+      };
+
+      const result = scoreMultiObjective(hydra, fleet, weights);
+
+      expect(result.selected!.model_id).toBe('cheap-api');
+    });
+  });
 });
