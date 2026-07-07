@@ -1,7 +1,7 @@
 # SP-104 Status
 
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-07-06
 **Review Level:** 2
 **Size:** M
@@ -10,27 +10,27 @@
 
 ## Step 1: Export and label join
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Dataset+outcomes export join
-- [ ] README documentation
+- [x] Dataset+outcomes export join
+- [x] README documentation
 
 ## Step 2: Baseline classifier
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] p-success-classifier.ts
-- [ ] Example weights artifact
-- [ ] Unit tests
+- [x] p-success-classifier.ts
+- [x] Example weights artifact
+- [x] Unit tests
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Insufficient-data fallback test
-- [ ] Run `npm run verify:ci`
+- [x] Insufficient-data fallback test
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes
