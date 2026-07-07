@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "min_training_samples": 30,
+  "feature_names": [
+    "prompt_length_norm",
+    "estimated_input_tokens_norm",
+    "triage_cyclomatic_score",
+    "requirement_reasoning",
+    "requirement_code_gen",
+    "requirement_tool_use",
+    "has_tool_context",
+    "compaction_flag",
+    "routing_latency_norm",
+    "economical_tier"
+  ],
+  "intercept": 0,
+  "coefficients": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "trained_sample_count": 0
+}

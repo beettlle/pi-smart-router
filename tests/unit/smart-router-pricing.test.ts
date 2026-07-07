@@ -251,9 +251,41 @@ describe('dataset export (SP-060)', () => {
 
     const lines = jsonl.split('\n');
     expect(lines).toHaveLength(2);
-    expect(JSON.parse(lines[0]!)).toMatchObject({ request_id: 'req-a' });
+    expect(JSON.parse(lines[0]!)).toMatchObject({
+      request_id: 'req-a',
+      success_label: null,
+      outcome_signals: [],
+    });
     expect(JSON.parse(lines[1]!)).toMatchObject({ request_id: 'req-b' });
     expect(jsonl).not.toContain('prompt_text');
+  });
+
+  it('joins outcome labels into export rows', () => {
+    const jsonl = formatDatasetExportJsonl(
+      [makeDatasetRecord({ request_id: 'req-good' }), makeDatasetRecord({ request_id: 'req-bad' })],
+      [
+        {
+          request_id: 'req-good',
+          session_id: 'sess-1',
+          timestamp: '2026-07-06T12:00:00.000Z',
+          signal_type: 'feedback_good',
+          routed_model_id: 'gpt-4o-mini',
+          override_model_id: null,
+        },
+        {
+          request_id: 'req-bad',
+          session_id: 'sess-1',
+          timestamp: '2026-07-06T12:01:00.000Z',
+          signal_type: 'model_override',
+          routed_model_id: 'gpt-4o-mini',
+          override_model_id: 'claude-opus',
+        },
+      ],
+    );
+
+    const rows = jsonl.split('\n').map((line) => JSON.parse(line));
+    expect(rows[0]).toMatchObject({ success_label: true, outcome_signals: ['feedback_good'] });
+    expect(rows[1]).toMatchObject({ success_label: false, outcome_signals: ['model_override'] });
   });
 
   it('writes export file under .pi-smart-router/exports', async () => {

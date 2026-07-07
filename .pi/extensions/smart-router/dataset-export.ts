@@ -3,13 +3,17 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 
 import { createHash } from 'node:crypto';
 
+import {
+  attachOutcomeLabelsToExport,
+  indexOutcomesByRequestId,
+} from '../../../src/domain/routing/p-success-classifier.js';
 import { DATASET_MAX_ENTRIES } from '../../../src/infrastructure/telemetry/dataset-limits.js';
 import {
   DatasetRecorder,
   DATASET_ENABLED_NOTIFY_MESSAGE,
 } from '../../../src/infrastructure/telemetry/dataset-recorder.js';
 import { OutcomeRecorder } from '../../../src/infrastructure/telemetry/outcome-recorder.js';
-import type { RoutingDatasetRecord } from '../../../src/domain/types/index.js';
+import type { RoutingDatasetRecord, RoutingOutcomeRecord } from '../../../src/domain/types/index.js';
 import type { StorePort } from '../../../src/domain/types/store-port.js';
 
 const DEFAULT_DATASET_EXPORT_DIR = '.pi-smart-router/exports';
@@ -85,9 +89,18 @@ export function toDatasetExportRecord(
   return exportable;
 }
 
-export function formatDatasetExportJsonl(records: readonly RoutingDatasetRecord[]): string {
+export function formatDatasetExportJsonl(
+  records: readonly RoutingDatasetRecord[],
+  outcomeRecords: readonly RoutingOutcomeRecord[] = [],
+): string {
+  const outcomesByRequest = indexOutcomesByRequestId(outcomeRecords);
+
   return records
-    .map((record) => JSON.stringify(toDatasetExportRecord(record)))
+    .map((record) => {
+      const exportable = toDatasetExportRecord(record);
+      const linkedOutcomes = outcomesByRequest.get(record.request_id) ?? [];
+      return JSON.stringify(attachOutcomeLabelsToExport(exportable, linkedOutcomes));
+    })
     .join('\n');
 }
 
@@ -114,11 +127,13 @@ export async function exportDatasetToFile(
     return null;
   }
 
+  const outcomeRecords = await store.listOutcomeRecords({ limit });
+
   const timestamp = formatDatasetExportTimestamp();
   const exportDir = join(cwd, DEFAULT_DATASET_EXPORT_DIR);
   mkdirSync(exportDir, { recursive: true });
   const exportPath = getDatasetExportPath(cwd, timestamp);
-  const jsonl = formatDatasetExportJsonl(records);
+  const jsonl = formatDatasetExportJsonl(records, outcomeRecords);
   writeFileSync(exportPath, jsonl.length > 0 ? `${jsonl}\n` : '', 'utf8');
 
   return { path: exportPath, recordCount: records.length };

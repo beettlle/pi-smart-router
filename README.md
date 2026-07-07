@@ -289,11 +289,28 @@ Cluster IDs are stable reason-code prefixes (`cluster_low_stakes_general`, `clus
 |----------|---------|---------|
 | `ROUTER_STATE_DB_PATH` | `./.pi-smart-router/state.db` | Override SQLite state store location (telemetry, pricing catalog, session data) |
 | `SMART_ROUTER_LOG_ROUTING` | (unset) | Set to `1` to log each routing decision to stderr as JSON (debugging dogfood sessions) |
-| `SMART_ROUTER_DATASET` | (unset) | Set to `1` to opt in to privacy-safe routing dataset capture (metadata and feature fields only; 30-day / 10k-row retention). Prompt text, messages, and tool arguments are never stored. See [#8](https://github.com/beettlle/pi-smart-router/issues/8). |
+| `SMART_ROUTER_DATASET` | (unset) | Set to `1` to opt in to privacy-safe routing dataset capture (metadata and feature fields only; 30-day / 10k-row retention). Prompt text, messages, and tool arguments are never stored. Required for outcome labels and P(success) training export. See [#8](https://github.com/beettlle/pi-smart-router/issues/8). |
 | `SMART_ROUTER_DATASET_FINGERPRINT` | (unset) | Set to `1` (requires `SMART_ROUTER_DATASET=1`) to store an install-local HMAC-SHA256 fingerprint of each normalized prompt for duplicate detection within this install. The install pepper lives in `.pi-smart-router/.dataset-key` (gitignored) and is never exported. **Warning:** short or common prompts are vulnerable to offline rainbow-table guessing; use only when you accept that tradeoff. See [#10](https://github.com/beettlle/pi-smart-router/issues/10). |
 | `MODELS_YAML_PATH` | `./config/models.yaml` | Fleet catalog path (library API only) |
 | `ROUTER_SAFE_DEFAULT_TIER` | `economical-cloud` | Fallback tier on any routing failure |
 | `LITELLM_PRICING_URL` | — | LiteLLM pricing JSON source |
+
+### P(success) training export (baseline classifier)
+
+When `SMART_ROUTER_DATASET=1`, the router records privacy-safe dataset rows and behavioral outcome labels (model override, compaction pin break, `/smart-router feedback good|bad`). Export labeled training data from pi:
+
+```bash
+/smart-router export dataset [--limit N]
+```
+
+Each JSONL row joins dataset features with `success_label` and `outcome_signals`. Success means no negative outcome signals were recorded for that `request_id` (for example `model_override` or `feedback_bad` mark failure). Prompt plaintext is never included.
+
+Train a baseline logistic scorer offline from the export (see `src/domain/routing/p-success-classifier.ts`):
+
+- `trainFromExportJsonl(exportContent)` — fit coefficients from labeled JSONL
+- `predictPSuccessCheap(features, weights)` — returns `P_success_cheap` in `[0, 1]`
+
+Copy `config/p-success-weights.json.example` to `config/p-success-weights.json` and replace coefficients after training. **Minimum sample guidance:** collect at least **30** labeled economical-tier rows before relying on non-neutral predictions; below that threshold the classifier returns neutral `P_success_cheap = 0.5`. Online inference wiring is tracked in [#61](https://github.com/beettlle/pi-smart-router/issues/61) (SP-105).
 
 ### Operator tuning (frugality slider)
 
