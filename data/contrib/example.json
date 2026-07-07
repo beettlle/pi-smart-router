@@ -1,0 +1,25 @@
+[
+  {
+    "version": 1,
+    "timestamp": "2026-07-07T12:00:00.000Z",
+    "session_id_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "turn_type": "main_loop",
+    "stage": "hydra_match",
+    "reason_code": "hydra_embedding_match",
+    "selected_model_id": "gpt-4o-mini",
+    "tier": "economical-cloud",
+    "routing_latency_ms": 12,
+    "estimated_cost_usd": 0.001,
+    "estimated_input_tokens": 60,
+    "has_tool_context": false,
+    "compaction_flag": false,
+    "triage_verdict": "ambiguous",
+    "triage_reason_code": "mixed_signals",
+    "triage_cyclomatic_score": 1,
+    "requirement_reasoning": 0.5,
+    "requirement_code_gen": 0.4,
+    "requirement_tool_use": 0.2,
+    "success_label": true,
+    "outcome_signals": ["feedback_good"]
+  }
+]

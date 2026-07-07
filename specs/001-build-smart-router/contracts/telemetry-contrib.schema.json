@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pi-smart-router.dev/contracts/telemetry-contrib.schema.json",
+  "title": "TelemetryContribRecord",
+  "description": "Privacy-safe community telemetry contribution row (GitHub #67). Scalar routing features and outcome labels only — never prompt text, messages, request_id, or install-local pepper fields.",
+  "type": "object",
+  "required": [
+    "version",
+    "timestamp",
+    "session_id_hash",
+    "turn_type",
+    "reason_code",
+    "selected_model_id",
+    "routing_latency_ms"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Contrib record format version."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 routing decision timestamp."
+    },
+    "session_id_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "One-way SHA-256 hash of install-local session_id for correlation without export."
+    },
+    "turn_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stage": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reason_code": {
+      "type": "string",
+      "minLength": 1
+    },
+    "selected_model_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["zero-tier", "economical-cloud", "frontier-cloud"]
+    },
+    "routing_latency_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "estimated_cost_usd": {
+      "type": ["number", "null"],
+      "minimum": 0
+    },
+    "estimated_input_tokens": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "has_tool_context": {
+      "type": "boolean"
+    },
+    "compaction_flag": {
+      "type": "boolean"
+    },
+    "triage_verdict": {
+      "type": ["string", "null"]
+    },
+    "triage_reason_code": {
+      "type": ["string", "null"]
+    },
+    "triage_cyclomatic_score": {
+      "type": ["number", "null"],
+      "minimum": 0
+    },
+    "triage_trivial_hits": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "triage_complex_hits": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "triage_sanitized_length_delta": {
+      "type": ["integer", "null"]
+    },
+    "requirement_reasoning": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "requirement_code_gen": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "requirement_tool_use": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "cluster_id": {
+      "type": ["string", "null"]
+    },
+    "cluster_similarity": {
+      "type": ["number", "null"]
+    },
+    "cluster_margin": {
+      "type": ["number", "null"]
+    },
+    "low_intensity_score": {
+      "type": ["number", "null"]
+    },
+    "tier_hint": {
+      "type": ["string", "null"],
+      "enum": ["zero-tier", "economical-cloud", "frontier-cloud", null]
+    },
+    "p_success_cheap": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "local_eligible_reason": {
+      "type": ["string", "null"]
+    },
+    "tier_selection_reason_code": {
+      "type": ["string", "null"]
+    },
+    "success_label": {
+      "type": ["boolean", "null"],
+      "description": "Derived outcome label when behavioral signals exist."
+    },
+    "outcome_signals": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "model_override",
+          "compaction_pin_break",
+          "feedback_good",
+          "feedback_bad"
+        ]
+      }
+    }
+  }
+}
