@@ -330,6 +330,25 @@ Train a baseline logistic scorer offline from the export (see `src/domain/routin
 
 Copy `config/p-success-weights.json.example` to `config/p-success-weights.json` and replace coefficients after training. **Minimum sample guidance:** collect at least **30** labeled economical-tier rows before relying on non-neutral predictions; below that threshold the classifier returns neutral `P_success_cheap = 0.5`. Online inference wiring is tracked in [#61](https://github.com/beettlle/pi-smart-router/issues/61) (SP-105).
 
+### Community telemetry contribution (calibration)
+
+When `SMART_ROUTER_DATASET=1`, you can export privacy-safe scalar routing features (plus outcome labels) for community calibration training. The export never includes prompt text, messages, raw session identifiers, or install-local pepper fields.
+
+```bash
+pi-smart-router export telemetry-contrib [--limit N]
+```
+
+This writes schema-valid JSON to `.pi-smart-router/exports/telemetry-contrib-<timestamp>.json`. Each row conforms to [`telemetry-contrib.schema.json`](specs/001-build-smart-router/contracts/telemetry-contrib.schema.json).
+
+**How to contribute**
+
+1. Opt in to dataset capture (`SMART_ROUTER_DATASET=1`) and dogfood with `/model smart-router/auto` for several sessions.
+2. Run `export telemetry-contrib` locally and review the export — confirm it contains no prompt content.
+3. Submit anonymized rows via **pull request** under `data/contrib/` (one `.json` array or `.jsonl` file per install) **or** attach the export to a [GitHub Discussion](https://github.com/beettlle/pi-smart-router/discussions) using the community telemetry template.
+4. Maintainers aggregate contributions with `npm run routing:calibration-aggregate -- --contrib-dir data/contrib`; ingest rejects tainted payloads (prompt/message keys) and strips install-local pepper fields before offline training (SP-116, SP-117).
+
+See the synthetic reference file at [`data/contrib/example.json`](data/contrib/example.json).
+
 ### Operator tuning (frugality slider)
 
 The multi-objective scoring weights control the cost-vs-quality tradeoff:
