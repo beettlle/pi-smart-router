@@ -2,13 +2,16 @@ import type { AssistantMessage } from '@earendil-works/pi-ai/compat';
 import { describe, expect, it } from 'vitest';
 
 import {
+  classifyLengthStop,
   formatGeminiThoughtSignatureErrorMessage,
+  formatLengthStopMessage,
   isGeminiThoughtSignatureAssistantError,
   isGeminiThoughtSignatureError,
   isInfraAssistantError,
   parseAssistantMessageError,
   formatProviderErrorMessage,
   parseProviderError,
+  sanitizeLengthStopMessage,
 } from '../../src/infrastructure/delegation/provider-error.js';
 
 describe('provider-error', () => {
@@ -128,6 +131,56 @@ describe('provider-error', () => {
   it('handles non-JSON error strings with embedded status codes', () => {
     expect(parseProviderError('upstream HTTP 502 from gateway')).toEqual({ statusCode: 502 });
   });
+
+  describe('length stop classification (SP-109)', () => {
+    const contextWindow = 32_768;
+
+    it('classifies zero-output length near context window as context pressure', () => {
+      const message = makeLengthAssistant({
+        input: 34_566,
+        output: 0,
+      });
+
+      expect(classifyLengthStop(message, { contextWindow })).toBe('context_pressure');
+      expect(formatLengthStopMessage(message, { contextWindow })).toContain('Context window exceeded');
+      expect(formatLengthStopMessage(message, { contextWindow })).not.toContain(
+        'maximum output token limit',
+      );
+    });
+
+    it('classifies length stop with generated output as output truncation', () => {
+      const message = makeLengthAssistant({
+        input: 10_000,
+        output: 4_096,
+      });
+
+      expect(classifyLengthStop(message, { contextWindow })).toBe('output_truncation');
+      expect(formatLengthStopMessage(message, { contextWindow })).toContain(
+        'maximum output token limit',
+      );
+    });
+
+    it('rewrites context-pressure length stops into error messages', () => {
+      const message = makeLengthAssistant({
+        input: 34_566,
+        output: 0,
+      });
+
+      const sanitized = sanitizeLengthStopMessage(message, { contextWindow });
+      expect(sanitized.stopReason).toBe('error');
+      expect(sanitized.errorMessage).toContain('Context window exceeded');
+    });
+
+    it('keeps genuine truncation length stops unchanged', () => {
+      const message = makeLengthAssistant({
+        input: 8_000,
+        output: 1_024,
+      });
+
+      const sanitized = sanitizeLengthStopMessage(message, { contextWindow });
+      expect(sanitized).toBe(message);
+    });
+  });
 });
 
 function makeErrorAssistant(errorMessage: string): AssistantMessage {
@@ -147,6 +200,26 @@ function makeErrorAssistant(errorMessage: string): AssistantMessage {
     },
     stopReason: 'error',
     errorMessage,
+    timestamp: Date.now(),
+  };
+}
+
+function makeLengthAssistant(usage: { input: number; output: number }): AssistantMessage {
+  return {
+    role: 'assistant',
+    content: [],
+    api: 'google-generative-ai',
+    provider: 'google',
+    model: 'gemini-flash-lite-latest',
+    usage: {
+      input: usage.input,
+      output: usage.output,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: usage.input + usage.output,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
+    stopReason: 'length',
     timestamp: Date.now(),
   };
 }

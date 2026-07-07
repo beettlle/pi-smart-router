@@ -24,6 +24,8 @@ import {
   formatProviderErrorMessage,
   isGeminiThoughtSignatureAssistantError,
   parseAssistantMessageError,
+  sanitizeLengthStopMessage,
+  type LengthStopHints,
 } from '../../../src/infrastructure/delegation/provider-error.js';
 import type { StreamDelegationDeps } from './types.js';
 
@@ -177,44 +179,101 @@ export function createErrorMessage(
   };
 }
 
-function sanitizeAssistantErrorMessage(message: AssistantMessage): AssistantMessage {
-  if (message.stopReason !== 'error' || !message.errorMessage) {
-    return message;
+function sanitizeAssistantErrorMessage(
+  message: AssistantMessage,
+  lengthStopHints?: LengthStopHints,
+): AssistantMessage {
+  const lengthSanitized = sanitizeLengthStopMessage(message, lengthStopHints);
+  if (lengthSanitized.stopReason !== 'error' || !lengthSanitized.errorMessage) {
+    return lengthSanitized;
   }
-  const formatted = isGeminiThoughtSignatureAssistantError(message)
-    ? formatGeminiThoughtSignatureErrorMessage(message.errorMessage)
-    : formatProviderErrorMessage(message.errorMessage);
-  if (formatted === message.errorMessage) {
-    return message;
+
+  const formatted = isGeminiThoughtSignatureAssistantError(lengthSanitized)
+    ? formatGeminiThoughtSignatureErrorMessage(lengthSanitized.errorMessage)
+    : formatProviderErrorMessage(lengthSanitized.errorMessage);
+  if (formatted === lengthSanitized.errorMessage) {
+    return lengthSanitized;
   }
-  return { ...message, errorMessage: formatted };
+  return { ...lengthSanitized, errorMessage: formatted };
 }
 
-function sanitizeDelegatedErrorEvents(events: AssistantMessageEvent[]): void {
+function sanitizeDelegatedErrorEvents(
+  events: AssistantMessageEvent[],
+  lengthStopHints?: LengthStopHints,
+): void {
   for (let i = 0; i < events.length; i++) {
     const event = events[i];
     if (!event) {
       continue;
     }
     if (event.type === 'error') {
-      events[i] = { ...event, error: sanitizeAssistantErrorMessage(event.error) };
+      events[i] = {
+        ...event,
+        error: sanitizeAssistantErrorMessage(event.error, lengthStopHints),
+      };
     } else if (event.type === 'done' && event.message.stopReason === 'error') {
       events[i] = {
         ...event,
-        message: sanitizeAssistantErrorMessage(event.message),
+        message: sanitizeAssistantErrorMessage(event.message, lengthStopHints),
       };
     }
   }
 }
 
+function sanitizeLengthStopEvents(
+  events: AssistantMessageEvent[],
+  lengthStopHints?: LengthStopHints,
+): void {
+  if (!lengthStopHints?.contextWindow) {
+    return;
+  }
+
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i];
+    if (!event) {
+      continue;
+    }
+
+    if (event.type === 'done' && event.message.stopReason === 'length') {
+      const sanitized = sanitizeLengthStopMessage(event.message, lengthStopHints);
+      if (sanitized.stopReason === 'error') {
+        events[i] = {
+          type: 'error',
+          reason: 'error',
+          error: sanitized,
+        };
+      } else {
+        events[i] = { ...event, message: sanitized };
+      }
+    } else if (event.type === 'error' && event.error.stopReason === 'length') {
+      const sanitized = sanitizeLengthStopMessage(event.error, lengthStopHints);
+      if (sanitized.stopReason === 'error') {
+        events[i] = { ...event, error: sanitized, reason: 'error' };
+      } else {
+        events[i] = { ...event, error: sanitized };
+      }
+    }
+  }
+}
+
+export interface FlushDelegatedEventsOptions {
+  readonly sanitizeErrors?: boolean;
+  readonly contextWindow?: number;
+}
+
 export function flushDelegatedEvents(
   outer: AssistantMessageEventStream,
   events: readonly AssistantMessageEvent[],
-  options?: { sanitizeErrors?: boolean },
+  options?: FlushDelegatedEventsOptions,
 ): void {
-  const mutableEvents = options?.sanitizeErrors ? [...events] : events;
+  const lengthStopHints =
+    options?.contextWindow !== undefined
+      ? { contextWindow: options.contextWindow }
+      : undefined;
+  const mutableEvents = [...events];
+  sanitizeLengthStopEvents(mutableEvents, lengthStopHints);
   if (options?.sanitizeErrors) {
-    sanitizeDelegatedErrorEvents(mutableEvents as AssistantMessageEvent[]);
+    sanitizeDelegatedErrorEvents(mutableEvents, lengthStopHints);
   }
   for (const event of mutableEvents) {
     outer.push(event);
