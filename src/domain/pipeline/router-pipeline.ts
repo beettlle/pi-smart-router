@@ -22,6 +22,9 @@ import {
 } from '../routing/tool-history-guard.js';
 import {
   filterFleetByContextFit,
+  needsContextOverflowFallback,
+  resolveContextOverflowFallback,
+  CONTEXT_OVERFLOW_NO_FIT,
   type ContextFitConfig,
 } from '../routing/context-fit.js';
 import type { SessionPinner } from '../pinning/session-pinner.js';
@@ -71,11 +74,16 @@ export class RouterPipeline {
   /** Per-route transient fleet — defaults to constructor fleet. */
   private activeFleet: readonly ModelProfile[] = [];
 
+  /** Unfiltered fleet for overflow escalation (SP-095). */
+  private fullFleet: readonly ModelProfile[] = [];
+
   /** Per-route transient state — reset on each route() call. */
   private currentHardwareResult: HardwareProbeResult = 'disabled';
   private currentTriageResult: TriageResult | null = null;
   private currentHydraResult: MatchResult | null = null;
   private currentContextFitRejected: readonly CandidateScore[] = [];
+  private contextOverflowPreferredProvider: string | null = null;
+  private contextOverflowTriggered = false;
 
   constructor(fleet: readonly ModelProfile[], options?: PipelineOptions) {
     this.fleet = fleet;
@@ -86,6 +94,7 @@ export class RouterPipeline {
       { name: 'loop_escalation', run: this.loopEscalation.bind(this) },
       { name: 'turn_envelope', run: this.turnEnvelope.bind(this) },
       { name: 'session_pin', run: this.sessionPin.bind(this) },
+      { name: 'context_overflow_fallback', run: this.contextOverflowFallback.bind(this) },
       { name: 'triage', run: this.triage.bind(this) },
       { name: 'local_zero', run: this.localZeroTierStage.bind(this) },
       { name: 'triage_cloud_fallback', run: this.triageCloudFallback.bind(this) },
@@ -102,10 +111,13 @@ export class RouterPipeline {
       fleetOverride ?? this.fleet,
       request,
     );
+    this.fullFleet = this.activeFleet;
     this.currentHardwareResult = 'disabled';
     this.currentTriageResult = null;
     this.currentHydraResult = null;
     this.currentContextFitRejected = [];
+    this.contextOverflowPreferredProvider = null;
+    this.contextOverflowTriggered = false;
 
     let currentStage: NamedPipelineStage | undefined;
 
@@ -254,7 +266,16 @@ export class RouterPipeline {
     request: RoutingRequest,
     elapsedMs: number,
   ): RoutingDecision {
-    const fallbackModel = safeCloudDefault(this.activeFleet);
+    if (this.shouldAttemptContextOverflowFallback(request)) {
+      return this.buildContextOverflowFallbackDecision(request, elapsedMs);
+    }
+
+    const fallbackModel = safeCloudDefault(this.activeFleet, {
+      request,
+      ...(this.options.contextFitConfig !== undefined
+        ? { contextFitConfig: this.options.contextFitConfig }
+        : {}),
+    });
     const modelId = fallbackModel?.id ?? 'unknown';
     const tier = fallbackModel?.tier ?? 'economical-cloud';
 
@@ -267,6 +288,86 @@ export class RouterPipeline {
       routing_latency_ms: elapsedMs,
       pin_reason: null,
     };
+  }
+
+  private shouldAttemptContextOverflowFallback(request: RoutingRequest): boolean {
+    if (request.force_model_id) {
+      return false;
+    }
+
+    if (this.contextOverflowTriggered) {
+      return true;
+    }
+
+    return needsContextOverflowFallback(
+      this.activeFleet,
+      this.currentContextFitRejected,
+      this.fullFleet,
+    );
+  }
+
+  private buildContextOverflowFallbackDecision(
+    request: RoutingRequest,
+    elapsedMs: number,
+  ): RoutingDecision {
+    const overflow = resolveContextOverflowFallback(
+      this.fullFleet,
+      request,
+      this.contextOverflowPreferredProvider,
+      this.options.contextFitConfig,
+    );
+
+    if (overflow.kind === 'no_fit') {
+      return {
+        request_id: request.request_id,
+        selected_model_id: 'unknown',
+        tier: 'economical-cloud',
+        stage: 'fallback',
+        reason_code: CONTEXT_OVERFLOW_NO_FIT,
+        candidates: this.currentContextFitRejected,
+        routing_latency_ms: elapsedMs,
+        pin_reason: null,
+      };
+    }
+
+    const model = overflow.model!;
+    return this.withEstimatedCost(request, model, {
+      request_id: request.request_id,
+      selected_model_id: model.id,
+      tier: model.tier,
+      stage: 'fallback',
+      reason_code: overflow.reasonCode,
+      candidates: this.currentContextFitRejected,
+      routing_latency_ms: elapsedMs,
+      pin_reason: null,
+    });
+  }
+
+  /**
+   * SP-095: after context-fit and pin break, escalate to largest-fit model
+   * when economical/pinned models cannot fit the current context.
+   */
+  private async contextOverflowFallback(request: RoutingRequest): Promise<StageResult> {
+    if (!this.shouldAttemptContextOverflowFallback(request)) {
+      return { decided: false, stage: 'context_overflow_fallback' };
+    }
+
+    const elapsedMs = 0;
+    const decision = this.buildContextOverflowFallbackDecision(request, elapsedMs);
+    return {
+      decided: true,
+      stage: 'context_overflow_fallback',
+      decision,
+    };
+  }
+
+  private markContextOverflowFromPin(
+    request: RoutingRequest,
+    pinnedModelId: string,
+  ): void {
+    const pinnedModel = this.fullFleet.find((model) => model.id === pinnedModelId);
+    this.contextOverflowTriggered = true;
+    this.contextOverflowPreferredProvider = pinnedModel?.provider ?? null;
   }
 
   // ─── Implemented stages ─────────────────────────────────────────────────────
@@ -419,6 +520,7 @@ export class RouterPipeline {
       return { decided: false, stage: 'session_pin' };
     }
 
+    const existingPin = pinner.getPin(request.session_id);
     const result = pinner.lookupPin(request, this.activeFleet);
 
     switch (result.action) {
@@ -459,7 +561,22 @@ export class RouterPipeline {
       }
 
       case 'break':
+        if (result.breakReason === 'context_overflow' && existingPin) {
+          this.markContextOverflowFromPin(request, existingPin.pinned_model_id);
+        }
+        return { decided: false, stage: 'session_pin' };
+
       case 'no_pin':
+        if (existingPin) {
+          const wasContextRejected = this.currentContextFitRejected.some(
+            (candidate) => candidate.model_id === existingPin.pinned_model_id,
+          );
+          if (wasContextRejected) {
+            this.markContextOverflowFromPin(request, existingPin.pinned_model_id);
+          }
+        }
+        return { decided: false, stage: 'session_pin' };
+
       default:
         return { decided: false, stage: 'session_pin' };
     }
