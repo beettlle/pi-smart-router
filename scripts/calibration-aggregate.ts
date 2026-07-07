@@ -245,9 +245,9 @@ export async function readContribFromStdin(): Promise<Record<string, unknown>[]>
 }
 
 export function aggregateContribRecords(
-  batches: readonly Record<string, unknown>[][],
+  batches: ReadonlyArray<readonly Record<string, unknown>[]>,
 ): Record<string, unknown>[] {
-  return batches.flat();
+  return batches.flatMap((batch) => [...batch]);
 }
 
 export function formatContribJsonl(records: readonly Record<string, unknown>[]): string {
