@@ -2,8 +2,10 @@
  * Pipeline stage orchestrator — FR-001, FR-006, FR-022.
  *
  * Runs stages sequentially with early-exit on decision.
- * Turn envelope runs before session pin so turn-type tier bias applies (SP-064).
- * Session pin lookup runs before triage so existing pins hold (FR-006).
+ * Documented order (SP-119, #69):
+ *   hardware_probe → loop_escalation → turn_envelope → context_fit → low_intensity
+ *   → session_pin → triage → local_zero → triage_cloud_fallback → hydra_match
+ *   → safe_default → context_overflow_fallback
  * Any stage failure falls back to safeCloudDefault(); never throws to host.
  */
 
@@ -32,7 +34,12 @@ import type { SessionPinner } from '../pinning/session-pinner.js';
 import { evaluateLoopEscalation } from '../pinning/loop-escalation.js';
 import type { LoopEscalationConfig } from '../pinning/loop-escalation.js';
 import { selectLowestCostModel } from '../pinning/sub-route-policy.js';
-import { RoutingTelemetryEmitter, estimateRoutingCost } from '../../infrastructure/telemetry/routing-telemetry.js';
+import {
+  RoutingTelemetryEmitter,
+  estimateRoutingCost,
+  enrichRoutingDecisionWithContextFit,
+  enrichRoutingDecisionWithTierSelection,
+} from '../../infrastructure/telemetry/routing-telemetry.js';
 import type { HydraMatcher as HydraMatcherType, MatchResult } from '../matching/hydra-matcher.js';
 import type { ClusterMatcher, ClusterMatchResult } from '../matching/cluster-matcher.js';
 import { clusterReasonCode } from '../../config/routing-clusters-loader.js';
@@ -61,6 +68,24 @@ export interface StageResult {
 }
 
 export type PipelineStage = (request: RoutingRequest) => Promise<StageResult>;
+
+/** Canonical pipeline stage order — keep README/specs in sync (SP-119). */
+export const PIPELINE_STAGE_ORDER = [
+  'hardware_probe',
+  'loop_escalation',
+  'turn_envelope',
+  'context_fit',
+  'low_intensity',
+  'session_pin',
+  'triage',
+  'local_zero',
+  'triage_cloud_fallback',
+  'hydra_match',
+  'safe_default',
+  'context_overflow_fallback',
+] as const;
+
+export type PipelineStageName = (typeof PIPELINE_STAGE_ORDER)[number];
 
 interface NamedPipelineStage {
   readonly name: string;
@@ -163,6 +188,7 @@ export class RouterPipeline {
   private pSuccessWeightsLoaded = false;
   private cachedPSuccessWeights: PSuccessWeights | null = null;
   private currentContextFitRejected: readonly CandidateScore[] = [];
+  private currentContextFitViableCount = 0;
   private contextOverflowPreferredProvider: string | null = null;
   private contextOverflowTriggered = false;
 
@@ -171,16 +197,17 @@ export class RouterPipeline {
     this.options = options ?? {};
     this.stages = [
       { name: 'hardware_probe', run: this.hardwareProbeStage.bind(this) },
-      { name: 'context_fit', run: this.contextFitStage.bind(this) },
       { name: 'loop_escalation', run: this.loopEscalation.bind(this) },
       { name: 'turn_envelope', run: this.turnEnvelope.bind(this) },
+      { name: 'context_fit', run: this.contextFitStage.bind(this) },
       { name: 'low_intensity', run: this.lowIntensityGate.bind(this) },
       { name: 'session_pin', run: this.sessionPin.bind(this) },
-      { name: 'context_overflow_fallback', run: this.contextOverflowFallback.bind(this) },
       { name: 'triage', run: this.triage.bind(this) },
       { name: 'local_zero', run: this.localZeroTierStage.bind(this) },
       { name: 'triage_cloud_fallback', run: this.triageCloudFallback.bind(this) },
       { name: 'hydra_match', run: this.hydraMatcher.bind(this) },
+      { name: 'safe_default', run: this.safeDefaultStage.bind(this) },
+      { name: 'context_overflow_fallback', run: this.contextOverflowFallback.bind(this) },
     ];
   }
 
@@ -206,6 +233,7 @@ export class RouterPipeline {
     this.currentExpectedCostByTier = null;
     this.currentLocalEligibleReason = null;
     this.currentContextFitRejected = [];
+    this.currentContextFitViableCount = 0;
     this.contextOverflowPreferredProvider = null;
     this.contextOverflowTriggered = false;
 
@@ -218,7 +246,7 @@ export class RouterPipeline {
         if (result.decided && result.decision) {
           this.persistPinIfNeeded(request, result.decision);
           this.emitTelemetry(request, result.decision);
-          return this.attachFeatures(result.decision);
+          return this.attachFeatures(request, result.decision);
         }
       }
     } catch (error: unknown) {
@@ -229,13 +257,13 @@ export class RouterPipeline {
       this.logPipelineError(request, failedStage, error);
       this.emitPipelineErrorTelemetry(request, failedStage, fallback);
       this.persistPinIfNeeded(request, fallback);
-      return this.attachFeatures(fallback);
+      return this.attachFeatures(request, fallback);
     }
 
     const fallback = this.buildFallbackDecision(request, Date.now() - start);
     this.persistPinIfNeeded(request, fallback);
     this.emitTelemetry(request, fallback);
-    return this.attachFeatures(fallback);
+    return this.attachFeatures(request, fallback);
   }
 
   /**
@@ -274,8 +302,11 @@ export class RouterPipeline {
     return [...preferred, ...deprioritized];
   }
 
-  /** Attach privacy-safe dataset features captured during pipeline stages (SP-057). */
-  private attachFeatures(decision: RoutingDecision): RoutingDecision {
+  /** Attach privacy-safe dataset features captured during pipeline stages (SP-057, SP-119). */
+  private attachFeatures(
+    request: RoutingRequest,
+    decision: RoutingDecision,
+  ): RoutingDecision {
     const features: RoutingFeatureSidecar = {
       triage: this.currentTriageResult
         ? {
@@ -294,7 +325,14 @@ export class RouterPipeline {
       local_eligible_reason: this.currentLocalEligibleReason,
     };
 
-    return { ...decision, features };
+    const withBaseFeatures = { ...decision, features };
+    const withContextFit = enrichRoutingDecisionWithContextFit(
+      request,
+      withBaseFeatures,
+      this.fullFleet,
+      this.options.contextFitConfig,
+    );
+    return enrichRoutingDecisionWithTierSelection(withContextFit);
   }
 
   private mergeFeatureCandidates(): readonly CandidateScore[] | null {
@@ -456,8 +494,8 @@ export class RouterPipeline {
   }
 
   /**
-   * SP-095: after context-fit and pin break, escalate to largest-fit model
-   * when economical/pinned models cannot fit the current context.
+   * SP-095: after safe_default, escalate to largest-fit model when economical
+   * models cannot fit the current context.
    */
   private async contextOverflowFallback(request: RoutingRequest): Promise<StageResult> {
     if (!this.shouldAttemptContextOverflowFallback(request)) {
@@ -470,6 +508,41 @@ export class RouterPipeline {
       decided: true,
       stage: 'context_overflow_fallback',
       decision,
+    };
+  }
+
+  /**
+   * SP-022: economical-cloud default when no earlier stage decides.
+   * Defers to context_overflow_fallback when economical models were context-rejected.
+   */
+  private async safeDefaultStage(request: RoutingRequest): Promise<StageResult> {
+    if (this.shouldAttemptContextOverflowFallback(request)) {
+      return { decided: false, stage: 'safe_default' };
+    }
+
+    const fallbackModel = safeCloudDefault(this.activeFleet, {
+      request,
+      ...(this.options.contextFitConfig !== undefined
+        ? { contextFitConfig: this.options.contextFitConfig }
+        : {}),
+    });
+
+    if (!fallbackModel) {
+      return { decided: false, stage: 'safe_default' };
+    }
+
+    return {
+      decided: true,
+      stage: 'fallback',
+      decision: {
+        request_id: request.request_id,
+        selected_model_id: fallbackModel.id,
+        tier: fallbackModel.tier,
+        stage: 'fallback',
+        reason_code: 'safe_cloud_default',
+        routing_latency_ms: 0,
+        pin_reason: null,
+      },
     };
   }
 
@@ -507,6 +580,7 @@ export class RouterPipeline {
     );
     this.activeFleet = result.effectiveFleet;
     this.currentContextFitRejected = result.rejected;
+    this.currentContextFitViableCount = result.effectiveFleet.length;
     return { decided: false, stage: 'context_fit' };
   }
 
@@ -770,7 +844,7 @@ export class RouterPipeline {
   // ─── Low-intensity tier gate (SP-103, #58) ───────────────────────────────
 
   /**
-   * Runs after turn_envelope and before session_pin. Computes low-intensity score
+   * Runs after turn_envelope and context_fit, before session_pin. Computes low-intensity score
    * from structural signals and optional cluster match; sets tier_hint and constrains
    * the active fleet for subsequent HyDRA matching when confidence is high.
    */
@@ -988,7 +1062,7 @@ export class RouterPipeline {
    * Observational loop escalation: detects repeated identical tool failures
    * and re-pins the session to a frontier-capable tier.
    *
-   * Runs before turnEnvelope and sessionPin so it can modify pin state.
+   * Runs before turn_envelope and session_pin so it can modify pin state.
    * Never returns decided: true — turnEnvelope or sessionPin picks up the
    * (potentially escalated) pin on subsequent stages.
    */

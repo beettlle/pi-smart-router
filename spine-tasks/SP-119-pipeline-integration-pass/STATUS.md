@@ -1,7 +1,7 @@
 # SP-119 Status
 
 **Current Step:** Step 1
-**Status:** Not Started
+**Status:** In Progress
 **Last Updated:** 2026-07-07
 **Review Level:** 2
 **Size:** M
@@ -10,11 +10,11 @@
 
 ## Step 1: Stage registration and sidecar
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Register all stages in target order
-- [ ] Pass shared sidecar fields
-- [ ] Enforce stage ordering invariants
+- [x] Register all stages in target order
+- [x] Pass shared sidecar fields
+- [x] Enforce stage ordering invariants
 
 ## Step 2: Extension and integration tests
 
