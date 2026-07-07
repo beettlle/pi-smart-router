@@ -1,8 +1,8 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-07-06
+**Last Updated:** 2026-07-07
 **Status:** Active
-**Next Task ID:** SP-096
+**Next Task ID:** SP-107
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -211,6 +211,36 @@
 | SP-095 | Context-overflow fallback routing | M | SP-093, SP-094 | #51 |
 
 **Excluded this cycle:** #1, #25, #26 (hardware probe dogfooding — operator request).
+
+### Phase 29 — Cost Overage / Subscription Economics (#70)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-096 | Cursor subscription virtual cost for HyDRA scoring | M | SP-095 | #70 P0 |
+| SP-097 | Cursor quota exhaustion failover | M | SP-096 | #70 P1 |
+| SP-098 | Fleet model id default mapping and cost telemetry | S | SP-096 | #70 P2 |
+
+### Phase 30 — Tier Selection Prerequisites (#55–#57)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-099 | Routing cluster config schema and loader | M | SP-095 | #55 |
+| SP-100 | Extract shared HyDRA embedder for cluster matching | S | SP-099 | #56 |
+| SP-101 | Semantic cluster matcher | M | SP-100 | #56 |
+| SP-102 | Tier feature vector and low-intensity score | M | SP-101 | #57 |
+
+### Phase 31 — Low-Intensity Gate + P(success) + Expected Cost (#58, #61, #68)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-103 | Low-intensity tier gate pipeline stage | M | SP-102, SP-093 | #58 |
+| SP-104 | P(success) training export and baseline classifier | M | SP-062 | #61 Phase A |
+| SP-105 | P(success) online inference in low-intensity gate | M | SP-104, SP-103 | #61 Phase B |
+| SP-106 | Expected-cost tier selection | M | SP-105, SP-103 | #68 |
+
+**Excluded:** #1, #25, #26 (hardware — no hardware available).
+
+**Recommended wave order:** SP-096+SP-099+SP-104 (parallel) → SP-097/098, SP-100 → SP-101 → SP-102 → SP-103 → SP-105 → SP-106.
 
 ---
 
