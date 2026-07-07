@@ -367,6 +367,44 @@ describe('routerExplain (T041)', () => {
       expect(tierSelection?.local_zero_skip_reasons.length).toBeGreaterThan(0);
     });
 
+    it('includes combined context-fit and tier-selection rationale (SP-119)', async () => {
+      const clusterMatcher = {
+        match: async () => ({
+          clusterId: 'low_stakes_general',
+          tierBias: 'economical-cloud' as const,
+          similarity: 0.9,
+          margin: 0.1,
+          confidence: 'high' as const,
+          elapsedMs: 1,
+        }),
+        matchTable: async () => [
+          {
+            cluster_id: 'low_stakes_general',
+            tier_bias: 'economical-cloud' as const,
+            similarity: 0.9,
+            margin: 0.1,
+            confidence: 'high' as const,
+            selected: true,
+          },
+        ],
+      } as unknown as ClusterMatcher;
+
+      const explain = createHandler(contextFleet, clusterMatcher);
+      const result = await explain(validRequestBody({ estimated_input_tokens: 34_000 }));
+
+      expect(result.status).toBe(200);
+      if (result.status !== 200) {
+        return;
+      }
+
+      expect(result.body.features?.context_fit?.context_fit_reason_code).toBe(
+        CONTEXT_OVERFLOW_FRONTIER_FALLBACK,
+      );
+      expect(result.body.features?.tier_selection?.low_intensity_breakdown?.score).not.toBeNull();
+      expect(result.body.features?.tier_selection?.cluster_id).toBe('low_stakes_general');
+      expect(result.body.features?.p_success_cheap).not.toBeNull();
+    });
+
     it('includes tier_selection without cluster table when matcher is omitted', async () => {
       const explain = createHandler();
       const result = await explain(validRequestBody());

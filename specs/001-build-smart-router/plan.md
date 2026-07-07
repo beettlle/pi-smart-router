@@ -105,23 +105,28 @@ vitest.config.ts
 
 ## Pipeline Design
 
-Synchronous stage order (early exit on decision):
+Synchronous stage order (early exit on decision) — SP-119 integration pass:
 
 ```mermaid
 flowchart TD
-  REQ[RoutingRequest] --> S1[Step 1: Hardware Probe init]
-  S1 --> S2[Step 2: Triage <5ms]
-  S2 -->|decided| DISPATCH
-  S2 --> S2b[Step 2b: Turn Envelope <2ms]
-  S2b --> S3[Step 3: Session Pin <1ms]
+  REQ[RoutingRequest] --> S1[Hardware Probe]
+  S1 --> S1b[Loop Escalation]
+  S1b --> S2b[Turn Envelope <2ms]
+  S2b -->|decided| DISPATCH
+  S2b --> S2c[Context-Fit Gate]
+  S2c --> S2d[Low-Intensity Tier Gate]
+  S2d --> S3[Session Pin <1ms]
   S3 -->|pinned| DISPATCH
-  S3 --> S3b[Step 3b: Loop Escalation check]
-  S3b --> S4[Step 4: Local Zero-Tier <15ms]
+  S3 --> S2[Deterministic Triage <5ms]
+  S2 -->|complex decided| DISPATCH
+  S2 --> S4[Local Zero-Tier <15ms]
   S4 -->|local ready| DISPATCH
-  S4 --> S5[Step 5: HyDRA Matcher 80-120ms]
-  S5 --> S6[Step 6: Gateway Dispatch]
-  S6 --> DISPATCH[Upstream Provider]
-  S6 --> S7[Step 7: Telemetry emit]
+  S4 --> S5[HyDRA Matcher 80-120ms]
+  S5 --> S6[Safe Cloud Default]
+  S6 --> S6b[Context Overflow Fallback]
+  S6b --> DISPATCH[Upstream Provider]
+  S6 --> DISPATCH
+  S5 --> DISPATCH
 ```
 
 Each stage returns `{ decided: boolean, decision?: RoutingDecision, stage: string }`. Failures at any stage → `safeCloudDefault()`: first healthy `economical-cloud` model in models.yaml; if none, first healthy `frontier-cloud` model. Never throw to host agent.
