@@ -206,6 +206,25 @@ export const HydraConfigSchema = z.object({
   artifact_cache_path: z.string(),
 });
 
+export const LowIntensityWeightsSchema = z.object({
+  prompt_shortness: z.number().min(0),
+  token_shortness: z.number().min(0),
+  cyclomatic_low: z.number().min(0),
+  trivial_signal: z.number().min(0),
+  complex_inverse: z.number().min(0),
+  triage_verdict: z.number().min(0),
+  turn_type: z.number().min(0),
+  no_tool_context: z.number().min(0),
+  message_shallow: z.number().min(0),
+  prose_ratio: z.number().min(0),
+  requirement_low: z.number().min(0),
+  cluster_signal: z.number().min(0),
+});
+
+export const LowIntensityConfigSchema = z.object({
+  weights: LowIntensityWeightsSchema,
+});
+
 export const RoutingClustersConfigSchema = z.object({
   config_path: z.string().min(1),
 });
@@ -248,6 +267,7 @@ export const OperatorConfigSchema = z.object({
   pricing: PricingConfigSchema,
   local: LocalConfigSchema,
   hydra: HydraConfigSchema,
+  low_intensity: LowIntensityConfigSchema,
   routing_clusters: RoutingClustersConfigSchema.optional(),
 });
 
