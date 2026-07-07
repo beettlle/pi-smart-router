@@ -1,7 +1,7 @@
 # SP-105 Status
 
-**Current Step:** 3
-**Status:** In progress (addressing Step 3 plan review REVISE)
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-06
 **Review Level:** 2
 **Size:** M
@@ -24,7 +24,7 @@
 
 ## Step 3: Tests and verification
 
-**Status:** In progress
+**Status:** Complete
 
 - [x] High/low P tests and missing-artifact fallback
 - [x] Add defer-path test (p_success_below_alpha)
@@ -32,5 +32,5 @@
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes
