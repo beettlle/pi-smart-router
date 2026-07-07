@@ -195,8 +195,8 @@ describe('getSmartRouterArgumentCompletions', () => {
     expect(completionValues('history')).toEqual(['history']);
   });
 
-  it('offers export dataset after export token', () => {
-    expect(completionValues('export')).toEqual(['export dataset']);
+  it('offers export subcommands after export token', () => {
+    expect(completionValues('export')).toEqual(['export dataset', 'export telemetry-contrib']);
     expect(completionValues('export d')).toEqual(['export dataset']);
   });
 

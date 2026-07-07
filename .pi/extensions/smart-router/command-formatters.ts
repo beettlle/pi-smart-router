@@ -5,6 +5,10 @@ import {
 import type { RoutingDecision, RoutingTelemetry } from '../../../src/domain/types/index.js';
 import { SMART_ROUTER_USAGE } from './commands.js';
 import {
+  DEFAULT_TELEMETRY_CONTRIB_EXPORT_LIMIT,
+  parseExportTelemetryContribArgs,
+} from '../../../src/cli/smart-router-cli.js';
+import {
   DEFAULT_DATASET_EXPORT_LIMIT,
   MAX_DATASET_EXPORT_LIMIT,
 } from './dataset-export.js';
@@ -82,6 +86,15 @@ export function parseSmartRouterArgs(args: string): SmartRouterCommand {
       command: 'export',
       subcommand: 'dataset',
       limit: parseExportLimit(tokens.slice(2)),
+    };
+  }
+
+  if (tokens[0] === 'export' && tokens[1] === 'telemetry-contrib') {
+    const { limit } = parseExportTelemetryContribArgs(tokens.join(' '));
+    return {
+      command: 'export',
+      subcommand: 'telemetry-contrib',
+      limit: Math.min(limit, DEFAULT_TELEMETRY_CONTRIB_EXPORT_LIMIT),
     };
   }
 

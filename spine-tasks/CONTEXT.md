@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-07
 **Status:** Active
-**Next Task ID:** SP-120
+**Next Task ID:** SP-121
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -268,6 +268,7 @@
 | SP-117 | Calibration train serialize and verify pipeline | M | SP-116 | #66 (part 2) |
 | SP-118 | Community telemetry contribution export | S | SP-116, SP-060 | #67 |
 | SP-119 | Pipeline integration pass for routing stages | M | SP-111, SP-112, SP-115, SP-110, SP-113 | #69 |
+| SP-120 | npm release pipeline and publish manifest | M | SP-090 | — |
 
 **Excluded:** #1, #25, #26 (hardware — no hardware available).
 

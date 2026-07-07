@@ -2,6 +2,8 @@
 
 **Auto-model router middleware for the [pi](https://pi.dev) coding agent.**
 
+> **v0.1.0** is initial development (SemVer `0.y.z`). The public API and routing behavior may change until `1.0.0`.
+
 pi-smart-router intercepts every LLM inference request and dynamically routes it to the optimal execution engine — balancing cost, capability, latency, and time-to-first-token (TTFT) — without requiring you to manually pick a model for each turn.
 
 | pi-smart-router is | pi-smart-router is not |
@@ -36,8 +38,6 @@ The pipeline runs **12 stages sequentially with early exit** — the moment any 
 | Safe Cloud Default | — | First healthy economical-cloud model (context-fit aware) |
 | Context Overflow Fallback | — | Escalates to largest-fit model when economical tiers cannot fit |
 
-If no stage decides, `safeCloudDefault` selects the first healthy economical-cloud model.
-
 ## Research lineage
 
 pi-smart-router builds on ideas from several production and research routing systems:
@@ -51,7 +51,7 @@ See [docs/PRD.md](docs/PRD.md) for full architectural justification.
 
 | Dependency | Required | Notes |
 |------------|----------|-------|
-| [Node.js](https://nodejs.org/) >= 20 | Yes | ES module package |
+| [Node.js](https://nodejs.org/) >= 22 | Yes | ES module package; matches CI and `package.json` engines |
 | [pi](https://pi.dev) coding agent | Yes | Extension host |
 | macOS Apple Silicon | MVP | Primary supported platform |
 | Linux (x64/arm64) | Experimental | Probe logic supported; not validated on real hardware |
@@ -61,7 +61,41 @@ See [docs/PRD.md](docs/PRD.md) for full architectural justification.
 
 ## Install
 
-Clone this repository and install dependencies:
+> **Security:** Pi packages run with full system access. Extensions execute arbitrary code. Review source before installing third-party packages ([pi packages docs](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/packages.md)).
+
+### Via pi (recommended)
+
+Install from [npm](https://www.npmjs.com/package/pi-smart-router) / [pi.dev/packages](https://pi.dev/packages):
+
+```bash
+pi install npm:pi-smart-router
+pi --list-models | grep smart-router
+```
+
+Project-local install (writes to `.pi/settings.json`):
+
+```bash
+pi install -l npm:pi-smart-router
+```
+
+Then in pi:
+
+```text
+/model smart-router/auto
+/smart-router status
+```
+
+**First run:** `pi install` runs `npm install` for package dependencies (`better-sqlite3` compiles natively). The first routed request downloads HyDRA ONNX weights to `.pi-smart-router/models/` under your state directory.
+
+### Via npm (library API)
+
+```bash
+npm install pi-smart-router
+```
+
+Use `createRouter()` / `createRouterFromFleet()` for programmatic integration without the pi extension. See [Optional: YAML fleet (library API)](#optional-yaml-fleet-library-api).
+
+### From source (contributors)
 
 ```bash
 git clone https://github.com/beettlle/pi-smart-router.git
@@ -69,33 +103,29 @@ cd pi-smart-router
 npm install
 ```
 
-The project ships a **project-local pi extension** at `.pi/extensions/smart-router/`. pi auto-discovers it when you run `pi` from the repo root (after the project is trusted — see below).
+The repo ships a **project-local pi extension** at `.pi/extensions/smart-router/`. pi auto-discovers it when you run `pi` from the repo root (after the project is trusted — see [Develop from clone](#develop-from-clone)).
 
-> **Note:** A standalone `npm install pi-smart-router` publish path is not the primary install flow yet. Use the repo clone for the bundled extension.
+## Quick start
 
-## Dogfooding (pi extension)
+After installing via `pi install npm:pi-smart-router` (or from clone — see below):
 
-Use the project-local extension at `.pi/extensions/smart-router/` to develop and test routing inside pi. This is the primary operator path for this repo.
-
-**Quick path** (from repo root):
-
-1. `npm install`
-2. Start pi from this directory; accept the trust prompt (or run `/trust` and restart pi)
-3. Authenticate providers (`/login`) and enable models in your scoped list if you use one (`/scoped-models`)
-4. `/model smart-router/auto` — every turn runs through the routing pipeline
-5. `/smart-router status` or `/smart-router history` — inspect routing decisions
+1. Authenticate providers (`/login`) and enable models in your scoped list if you use one (`/scoped-models`)
+2. `/model smart-router/auto` — every turn runs through the routing pipeline
+3. `/smart-router status` or `/smart-router history` — inspect routing decisions
 
 Set `SMART_ROUTER_LOG_ROUTING=1` before starting pi to print each routing decision to stderr (see [Environment variables](#environment-variables)).
 
 ## Use with pi
 
-Detailed steps for the dogfooding path above.
+Detailed steps for the operator path above.
 
-### 1. Authenticate your providers
+### Installed via npm
 
-Configure API keys for the providers you use in pi as usual (`/login`, pi settings, or environment variables). The router builds its fleet from **pi's model registry** — models you have not authenticated are not candidates.
+Global install (`pi install npm:pi-smart-router`) registers the extension from `~/.pi/agent/settings.json`. No project `/trust` prompt is required for npm-installed extensions — start `pi` from any directory.
 
-### 2. Trust the project
+After auth or model list changes, restart pi or run `/reload`.
+
+### Develop from clone
 
 Project-local extensions under `.pi/extensions/` load only after the project is trusted. Without trust, the smart-router provider is never registered — `smart-router` will not appear in `/scoped-models` or `/model`, and `/smart-router` commands will not exist.
 
@@ -103,7 +133,7 @@ Project-local extensions under `.pi/extensions/` load only after the project is 
 
 **Later or missed prompt:** run `/trust` inside pi to save a trust decision for this directory (or its parent) to `~/.pi/agent/trust.json`. Trust on a **parent folder** (for example `~/Documents/github`) applies to this repo as well. After `/trust`, **restart pi** — the current session is not reloaded automatically.
 
-**Verify the extension loaded** (from the repo root, before or after starting pi):
+**Verify the extension loaded** (from the repo root):
 
 ```bash
 cd pi-smart-router
@@ -118,9 +148,9 @@ You should see `smart-router  auto`. If the line is missing:
 
 Non-interactive one-shot checks can pass `--approve` to trust project-local resources for that run only.
 
-### 3. Select the auto model
+### Select the auto model
 
-Start pi from the repo root, then switch to the smart-router provider:
+Switch to the smart-router provider (from any directory after npm install, or from repo root when developing from clone):
 
 ```text
 /model smart-router/auto
@@ -161,7 +191,7 @@ Cursor models bill against your **Cursor Pro subscription quota**, not per-token
 
 **Quota-sensitive fleet hygiene:** if you are near Cursor usage limits, **exclude `composer-latest`** (and other heavy Cursor frontier models) from your pi scoped fleet enable-list. Leave economical API models enabled so turn envelope and HyDRA prefer paid API tiers over subscription quota. The opaque id `default` is mapped to frontier tier — do not rely on it as an economical fallback.
 
-### 4. Operator commands (optional)
+### Operator commands
 
 | Command | Purpose |
 |---------|---------|
@@ -171,6 +201,9 @@ Cursor models bill against your **Cursor Pro subscription quota**, not per-token
 | `/smart-router mode scoped` | Route only among pi's **enabled model patterns** (default) |
 | `/smart-router mode all` | Route among **all authenticated models** in the registry |
 | `/smart-router pricing refresh` | Manually fetch LiteLLM pricing from `LITELLM_PRICING_URL`, persist to SQLite, and rebuild the fleet with updated rates |
+| `/smart-router export dataset [--limit N]` | Export opt-in routing dataset as JSONL (requires `SMART_ROUTER_DATASET=1`) |
+| `/smart-router export telemetry-contrib [--limit N]` | Export privacy-safe community telemetry JSON for calibration contributions |
+| `/smart-router feedback good\|bad` | Label the last auto-routed request outcome (requires `SMART_ROUTER_DATASET=1`) |
 | `/smart-router unpin` | Clear the current session pin (in-memory and SQLite) so the next request runs the full routing pipeline |
 
 Fleet mode persists in the session. Use `scoped` to respect your `/model` enable-list; use `all` when you want the router to consider every provider you have logged into.
@@ -180,7 +213,7 @@ After typing `/smart-router ` (with a trailing space), press **TAB** to see subc
 ### 5. Verify
 
 ```bash
-npm run typecheck && npm test
+npm run verify:ci
 ```
 
 ## Fleet behavior
@@ -190,7 +223,7 @@ When you use `smart-router/auto`, the extension does **not** read `config/models
 1. **Discover** — `modelRegistry.getAvailable()` returns authenticated models from pi.
 2. **Scope** — In `scoped` mode, filter to patterns from pi settings (`getEnabledModels()`). In `all` mode, use the full registry.
 3. **Map** — `src/config/pi-model-mapper.ts` maps each pi model to a `ModelProfile` (tier, capabilities, pricing) using provider and model-id patterns.
-4. **Route** — `createRouterFromFleet()` runs the 7-stage pipeline on each request.
+4. **Route** — `createRouterFromFleet()` runs the 12-stage pipeline on each request.
 5. **Delegate** — The extension resolves the chosen model in the registry and forwards the stream via pi-ai's built-in provider APIs.
 
 Unknown models receive conservative economical-cloud defaults. Local providers (`lmstudio`, `ollama`) map to `zero-tier`. Cursor provider models (`cursor/*`, `composer-*`, opaque id `default`) map to `frontier-cloud` with explicit capability defaults (SP-086, SP-098).
@@ -220,7 +253,7 @@ const decision = await router.dispatch.dispatch(routingRequest);
 
 | Path | When to use | Routing | Lifecycle hooks |
 |------|-------------|---------|-----------------|
-| **Pi extension** (recommended) | Running inside pi | `.pi/extensions/smart-router/` registers `smart-router/auto` and delegates streams | Extension calls `router.register()`; compaction/model overrides wired automatically |
+| **Pi extension** (recommended) | Running inside pi | `pi install npm:pi-smart-router` (or project-local `.pi/extensions/smart-router/` when developing from clone) registers `smart-router/auto` and delegates streams | Extension calls `router.register()`; compaction/model overrides wired automatically |
 | **Library API** | Custom host, tests, or non-pi embedders | Your code calls `router.dispatch.dispatch()` (or wraps the pipeline) | Call `router.register(hooks)` to wire compaction and `model_select` events |
 
 The library `createPiRouterMiddleware()` / `RouterHandle.register()` registers **lifecycle hooks only** — not routing, context capture, or `before_provider_request`. Do not expect `middleware` to intercept LLM streams; that is the extension's `streamSimple` path or your embedder's dispatch loop.
@@ -328,14 +361,16 @@ Train a baseline logistic scorer offline from the export (see `src/domain/routin
 - `trainFromExportJsonl(exportContent)` — fit coefficients from labeled JSONL
 - `predictPSuccessCheap(features, weights)` — returns `P_success_cheap` in `[0, 1]`
 
-Copy `config/p-success-weights.json.example` to `config/p-success-weights.json` and replace coefficients after training. **Minimum sample guidance:** collect at least **30** labeled economical-tier rows before relying on non-neutral predictions; below that threshold the classifier returns neutral `P_success_cheap = 0.5`. Online inference wiring is tracked in [#61](https://github.com/beettlle/pi-smart-router/issues/61) (SP-105).
+Copy `config/p-success-weights.json.example` to `config/p-success-weights.json` and replace coefficients after training. **Minimum sample guidance:** collect at least **30** labeled economical-tier rows before relying on non-neutral predictions; below that threshold the classifier returns neutral `P_success_cheap = 0.5`. **Online inference** is active in the low-intensity gate; without trained weights the router uses neutral defaults until you add `config/p-success-weights.json`.
 
 ### Community telemetry contribution (calibration)
 
 When `SMART_ROUTER_DATASET=1`, you can export privacy-safe scalar routing features (plus outcome labels) for community calibration training. The export never includes prompt text, messages, raw session identifiers, or install-local pepper fields.
 
 ```bash
-pi-smart-router export telemetry-contrib [--limit N]
+/smart-router export telemetry-contrib [--limit N]
+# or from shell (cwd must contain .pi-smart-router/state.db):
+npx pi-smart-router export telemetry-contrib [--limit N]
 ```
 
 This writes schema-valid JSON to `.pi-smart-router/exports/telemetry-contrib-<timestamp>.json`. Each row conforms to [`telemetry-contrib.schema.json`](specs/001-build-smart-router/contracts/telemetry-contrib.schema.json).
@@ -382,9 +417,9 @@ The embedding matcher uses `@huggingface/transformers` with the `Xenova/all-Mini
 | Cheap Cloud | `economical-cloud` | Budget API models for routine work | Claude Haiku |
 | Frontier Cloud | `frontier-cloud` | Top-tier models for complex reasoning | Claude Sonnet |
 
-### Pi extension (`.pi/extensions/smart-router/`)
+### Pi extension
 
-The project-local extension (primary pi integration path):
+The pi integration path (npm install or project-local clone):
 
 - Registers provider **`smart-router`** with model **`auto`**
 - Implements **`streamSimple`** — runs the pipeline, resolves the target in `ModelRegistry`, delegates to the built-in streaming API for that provider
@@ -436,9 +471,9 @@ This typically happens when a session with prior tool calls is routed to Gemini 
 
 Related: [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37), [pi-smart-router#38](https://github.com/beettlle/pi-smart-router/issues/38), [pi-smart-router#40](https://github.com/beettlle/pi-smart-router/issues/40), [pi-smart-router#41](https://github.com/beettlle/pi-smart-router/issues/41), [pi#6342](https://github.com/earendil-works/pi/issues/6342).
 
-### Explain endpoint
+### Explain endpoint (library API)
 
-The explain handler runs the identical pipeline but returns the `RoutingDecision` without dispatching upstream inference — guaranteeing bit-for-bit decision equivalence with the live path. Useful for debugging, operator trust, and shadow runs.
+The explain handler runs the identical pipeline but returns the `RoutingDecision` without dispatching upstream inference — guaranteeing bit-for-bit decision equivalence with the live path. Useful for debugging, operator trust, and shadow runs. Exposed via the library API (`src/api/explain/router-explain.ts`); HTTP/CLI wiring is embedder-specific.
 
 ## API
 
@@ -481,23 +516,49 @@ git clone https://github.com/beettlle/pi-smart-router.git
 cd pi-smart-router
 npm install
 npm run build
-npm run typecheck && npm test
+npm run verify:ci
 ```
 
-Contributors must run `npm run build` before publishing or consuming the library API from `dist/`. The pi extension at `.pi/extensions/smart-router/` uses TypeScript source directly and does not require a build for local dogfooding.
+Contributors must run `npm run build` before publishing or consuming the library API from `dist/`. The pi extension uses TypeScript source directly (via pi's jiti loader) and does not require a local build for clone-based dogfooding.
 
 ### Scripts
 
 | Script | Purpose |
 |--------|---------|
 | `npm run build` | Compile library to `dist/` (`tsc --project tsconfig.build.json`) |
+| `npm run release:check` | Pre-release gate (same as `verify:ci`) |
+| `npm run verify:ci` | Full CI parity: build, typecheck, lint, test, coverage |
 | `npm run typecheck` | TypeScript strict mode check (`tsc --noEmit`) |
 | `npm test` | Run test suite (`vitest run`) |
+| `npm run coverage:check` | Tests with line-coverage thresholds |
 | `npm run lint` | ESLint + fleet catalog validation |
+| `npm run routing:bootstrap-centroids` | Regenerate `config/routing-centroids.json` from cluster catalog |
+| `npm run routing:calibration-aggregate` | Aggregate community telemetry for calibration |
+| `npm run routing:train-calibration` | Train routing calibration artifact bundle |
+| `npm run routing:verify-calibration` | Verify calibration bundle against benchmark prompts |
+
+### Releasing
+
+Tag-triggered publish via GitHub Actions (requires `NPMSECRET` repository secret):
+
+1. `npm run release:check`
+2. `npm version 0.1.0` (creates commit + `v0.1.0` tag)
+3. `git push && git push --tags`
+4. Actions → **Release** runs `npm publish` and creates a GitHub Release
+5. Post-publish smoke: `pi install npm:pi-smart-router` and `/model smart-router/auto`
+
+Re-publish a failed release: Actions → Release → Run workflow with existing tag (e.g. `v0.1.0`).
+
+Dry-run tarball contents locally:
+
+```bash
+npm run release:check
+npm pack --dry-run
+```
 
 ### Test suite
 
-647 tests across 34 test files covering:
+1117 tests across 61 test files covering:
 
 - Unit tests for every pipeline stage, domain module, and infrastructure component
 - Contract tests validating routing request/decision schemas

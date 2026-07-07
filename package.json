@@ -4,8 +4,28 @@
   "description": "Auto-model router middleware for the pi.dev coding agent",
   "type": "module",
   "license": "MIT",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi",
+    "smart-router",
+    "routing",
+    "ai",
+    "agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/beettlle/pi-smart-router.git"
+  },
+  "homepage": "https://github.com/beettlle/pi-smart-router#readme",
+  "bugs": {
+    "url": "https://github.com/beettlle/pi-smart-router/issues"
+  },
   "engines": {
     "node": ">=22"
+  },
+  "bin": {
+    "pi-smart-router": "./bin/pi-smart-router.mjs"
   },
   "exports": {
     ".": {
@@ -16,11 +36,22 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "src",
+    "bin",
+    ".pi/extensions/smart-router",
+    "!.pi/extensions/smart-router/node_modules",
+    "!.pi/extensions/smart-router/node_modules/**",
+    "!.pi/extensions/smart-router/package-lock.json",
+    "config",
+    "skills",
+    "specs/001-build-smart-router/contracts/telemetry-contrib.schema.json",
+    "data/contrib/example.json"
   ],
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "npm run release:check",
+    "release:check": "npm run verify:ci",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "coverage:check": "vitest run --coverage",
@@ -31,6 +62,18 @@
     "routing:verify-calibration": "npm run build && node --experimental-strip-types scripts/verify-routing-calibration.ts",
     "routing:test-projection": "npm run build && node --experimental-strip-types scripts/test-hydra-projection.ts",
     "verify:ci": "npm run build && npm run typecheck && npm run lint && npm test && npm run coverage:check"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-ai": {
+      "optional": true
+    },
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "^0.80.3",
@@ -56,8 +99,12 @@
     "better-sqlite3@12.11.1": true
   },
   "pi": {
+    "extensions": [
+      ".pi/extensions/smart-router/index.ts"
+    ],
     "skills": [
       "./skills"
-    ]
+    ],
+    "minPiVersion": "0.80.0"
   }
 }

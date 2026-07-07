@@ -6,13 +6,14 @@ import {
   parseSmartRouterArgs,
 } from './command-formatters.js';
 import { exportDatasetToFile } from './dataset-export.js';
+import { exportTelemetryContrib } from '../../../src/cli/smart-router-cli.js';
 import { bindSharedModelRegistry, rebuildFleet } from './fleet-bootstrap.js';
 import { refreshPricingCatalog } from './pricing-lifecycle.js';
 import { FLEET_MODE_ENTRY_TYPE } from './session-lifecycle.js';
 import type { SmartRouterRuntime } from './types.js';
 
 export const SMART_ROUTER_USAGE =
-  '/smart-router [status] | history [limit] | mode scoped|all | pricing refresh | export dataset [--limit N] | feedback good|bad | unpin';
+  '/smart-router [status] | history [limit] | mode scoped|all | pricing refresh | export dataset [--limit N] | export telemetry-contrib [--limit N] | feedback good|bad | unpin';
 
 type CompletionItem = { value: string; label: string };
 
@@ -37,6 +38,7 @@ const PRICING_COMPLETIONS: CompletionItem[] = [
 
 const EXPORT_COMPLETIONS: CompletionItem[] = [
   { value: 'export dataset', label: 'Export privacy-safe dataset JSONL' },
+  { value: 'export telemetry-contrib', label: 'Export community telemetry JSON' },
 ];
 
 const FEEDBACK_COMPLETIONS: CompletionItem[] = [
@@ -55,6 +57,8 @@ export const SMART_ROUTER_FULL_INVOCATIONS = [
   'pricing refresh',
   'export dataset',
   'export dataset --limit 100',
+  'export telemetry-contrib',
+  'export telemetry-contrib --limit 100',
   'feedback good',
   'feedback bad',
   'unpin',
@@ -135,7 +139,7 @@ export function registerSmartRouterCommand(
           return;
         }
 
-        if (parsed.command === 'export') {
+        if (parsed.command === 'export' && parsed.subcommand === 'dataset') {
           const result = await exportDatasetToFile(runtime.store, ctx.cwd, parsed.limit);
           if (!result) {
             ctx.ui.notify('No routing dataset records to export.', 'info');
@@ -143,6 +147,28 @@ export function registerSmartRouterCommand(
           }
           ctx.ui.notify(
             `Exported ${result.recordCount} dataset record(s) to ${result.path}`,
+            'info',
+          );
+          return;
+        }
+
+        if (parsed.command === 'export' && parsed.subcommand === 'telemetry-contrib') {
+          const result = await exportTelemetryContrib({
+            store: runtime.store,
+            cwd: ctx.cwd,
+            limit: parsed.limit,
+          });
+          if (!result.path) {
+            ctx.ui.notify(
+              result.recordCount === 0
+                ? 'No telemetry-contrib records to export (opt in with SMART_ROUTER_DATASET=1).'
+                : 'No telemetry-contrib records written.',
+              'info',
+            );
+            return;
+          }
+          ctx.ui.notify(
+            `Exported ${result.recordCount} telemetry-contrib record(s) to ${result.path}`,
             'info',
           );
           return;

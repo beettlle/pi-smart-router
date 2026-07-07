@@ -36,6 +36,7 @@ export type SmartRouterCommand =
   | { command: 'mode'; mode: FleetMode }
   | { command: 'pricing'; subcommand: 'refresh' }
   | { command: 'export'; subcommand: 'dataset'; limit: number }
+  | { command: 'export'; subcommand: 'telemetry-contrib'; limit: number }
   | { command: 'feedback'; rating: 'good' | 'bad' }
   | { command: 'unpin' };
 
