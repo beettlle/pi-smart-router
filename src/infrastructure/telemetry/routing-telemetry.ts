@@ -12,7 +12,7 @@ import type {
   RoutingRequest,
   RoutingTelemetry,
 } from '../../domain/types/index.js';
-import { resolvePrice } from '../pricing/price-broker.js';
+import { resolveFrugalityCostPer1M } from '../pricing/price-broker.js';
 import {
   TELEMETRY_MAX_ENTRIES,
   TELEMETRY_WINDOW_MS,
@@ -30,8 +30,8 @@ export function estimateRoutingCost(
   catalog: PriceCatalog | null,
 ): number {
   const tokens = request.estimated_input_tokens ?? request.prompt_text.length;
-  const resolved = resolvePrice(model, catalog);
-  return (tokens / 1_000_000) * resolved.cost_per_1m_tokens;
+  const costPer1M = resolveFrugalityCostPer1M(model, catalog);
+  return (tokens / 1_000_000) * costPer1M;
 }
 
 export {

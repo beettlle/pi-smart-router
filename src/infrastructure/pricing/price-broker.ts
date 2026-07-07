@@ -167,3 +167,17 @@ export function applyCatalogPricesToFleet(
 
   return applyCatalogLimitsToFleet(priced, catalog);
 }
+
+/**
+ * Resolve per-request cost rate for frugality scoring and telemetry (SP-096).
+ * Subscription-quota virtual cost takes precedence over API/catalog rates.
+ */
+export function resolveFrugalityCostPer1M(
+  model: ModelProfile,
+  catalog: PriceCatalog | null,
+): number {
+  if (model.pricing.quota_cost_per_1m !== undefined) {
+    return model.pricing.quota_cost_per_1m;
+  }
+  return resolvePrice(model, catalog).cost_per_1m_tokens;
+}
