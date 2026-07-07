@@ -471,7 +471,7 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
       expect(decision.tier).toBe('economical-cloud');
     });
 
-    it('does not route ambiguous prompts to local even when hardware is full_local', async () => {
+    it('does not route complex prompts to local even when phrasing is short (SP-111)', async () => {
       const pipeline = new RouterPipeline(FLEET, {
         hardwareConfig: HARDWARE_CONFIG,
         localConfig: TEST_CONFIG,
@@ -480,7 +480,7 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
       });
 
       const decision = await pipeline.route(
-        makeRequest({ prompt_text: 'hello world' }),
+        makeRequest({ prompt_text: 'refactor auth layer' }),
       );
 
       expect(decision.stage).not.toBe('local_zero');

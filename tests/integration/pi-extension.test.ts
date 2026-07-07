@@ -28,6 +28,7 @@ import {
   getRoutingFeatureSidecar,
 } from '../../.pi/extensions/smart-router/index.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
+import type { ClusterMatcher } from '../../src/domain/matching/cluster-matcher.js';
 import { mapFleetFromRegistry,
   mapPiModelToProfile,
   type PiModelInput,
@@ -703,6 +704,42 @@ describe('Pi extension integration (SP-043)', () => {
       expect(decision.tier).toBe('zero-tier');
       expect(decision.selected_model_id).toBe('llama3.2:3b');
       expect(decision.reason_code).toBe('local_model_ready');
+
+      sqliteStore.close();
+    });
+
+    it('routes ambiguous Q&A to local_zero on fresh session when local is ready (SP-111)', async () => {
+      const fleet = mapFleetFromRegistry(REGISTRY_MODELS);
+      const sessionPinner = new SessionPinner();
+      const sqliteStore = new SqliteStore({ dbPath: ':memory:', models: [] });
+      const baseOptions = createDispatchOptions(sqliteStore, sessionPinner);
+      const router = createRouterFromFleet(fleet, {
+        ...baseOptions,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 16 })),
+        httpFetchPort: readyFetch,
+        clusterMatcher: {
+          match: async () => ({
+            clusterId: 'low_stakes_general',
+            tierBias: 'zero-tier' as const,
+            similarity: 0.92,
+            margin: 0.12,
+            confidence: 'high' as const,
+            elapsedMs: 2,
+          }),
+        } as unknown as ClusterMatcher,
+      });
+
+      const decision = await router.dispatch.dispatch(
+        buildRoutingRequest(
+          makeContext([userMessage('what is 2+2 ?')]),
+          { sessionId: 'ext-sp111-fresh' },
+        ),
+      );
+
+      expect(decision.stage).toBe('local_zero');
+      expect(decision.tier).toBe('zero-tier');
+      expect(decision.selected_model_id).toBe('llama3.2:3b');
+      expect(decision.features?.local_eligible_reason).toBe('cluster_low_stakes_general');
 
       sqliteStore.close();
     });

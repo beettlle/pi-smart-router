@@ -6,7 +6,7 @@ import {
   type EmbeddingProvider,
   type RequirementVector,
 } from '../../src/domain/matching/hydra-matcher.js';
-import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
+import { RouterPipeline, resolveLocalEligible } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { extractToolFailureSignature } from '../../src/domain/pinning/loop-escalation.js';
 import { RoutingTelemetryEmitter } from '../../src/infrastructure/telemetry/routing-telemetry.js';
@@ -1151,6 +1151,142 @@ describe('RouterPipeline', () => {
 
       expect(decision.features?.tier_hint).toBe('economical-cloud');
       expect(decision.features?.tier_hint_reason_code).toBe('low_intensity_structural');
+    });
+
+    it('routes ambiguous low-stakes Q&A to local_zero when cluster and hardware are ready (SP-111)', async () => {
+      const lowStakesFleet: ModelProfile[] = [
+        makeModel({ id: 'local-llama', tier: 'zero-tier' }),
+        makeModel({ id: 'gpt-4o-mini', tier: 'economical-cloud' }),
+      ];
+
+      const clusterMatcher = makeClusterMatcher({
+        clusterId: 'low_stakes_general',
+        tierBias: 'zero-tier',
+        similarity: 0.92,
+        margin: 0.12,
+        confidence: 'high',
+        elapsedMs: 2,
+      });
+
+      const pipeline = new RouterPipeline(lowStakesFleet, {
+        clusterMatcher,
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: LOCAL_TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo()),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'what is 2+2 ?' }),
+      );
+
+      expect(decision.stage).toBe('local_zero');
+      expect(decision.tier).toBe('zero-tier');
+      expect(decision.features?.local_eligible_reason).toBe('cluster_low_stakes_general');
+    });
+
+    it('emits triage_trivial local_eligible_reason for trivial keyword prompts (SP-111)', async () => {
+      const lowStakesFleet: ModelProfile[] = [
+        makeModel({ id: 'local-llama', tier: 'zero-tier' }),
+        makeModel({ id: 'gpt-4o-mini', tier: 'economical-cloud' }),
+      ];
+
+      const pipeline = new RouterPipeline(lowStakesFleet, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: LOCAL_TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo()),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Format this JSON file' }),
+      );
+
+      expect(decision.stage).toBe('local_zero');
+      expect(decision.features?.local_eligible_reason).toBe('triage_trivial');
+    });
+
+    it('does not route complex prompts to local even when phrasing is short (SP-111)', async () => {
+      const pipeline = new RouterPipeline(fleet, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: LOCAL_TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo()),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'refactor auth layer' }),
+      );
+
+      expect(decision.stage).not.toBe('local_zero');
+      expect(decision.tier).not.toBe('zero-tier');
+      expect(decision.features?.local_eligible_reason).toBeNull();
+    });
+  });
+
+  describe('resolveLocalEligible (SP-111)', () => {
+    const highThreshold = DEFAULT_OPERATOR_CONFIG.low_intensity.high_threshold;
+
+    it('prefers triage_trivial over cluster and low-intensity signals', () => {
+      const result = resolveLocalEligible({
+        triageVerdict: 'trivial',
+        tierHint: 'zero-tier',
+        lowIntensityScore: 0.9,
+        highThreshold,
+        clusterMatch: {
+          clusterId: 'low_stakes_general',
+          tierBias: 'zero-tier',
+          similarity: 0.9,
+          margin: 0.1,
+          confidence: 'high',
+          elapsedMs: 1,
+        },
+      });
+
+      expect(result).toEqual({ eligible: true, reason: 'triage_trivial' });
+    });
+
+    it('uses cluster reason when high-confidence zero-tier cluster matches', () => {
+      const result = resolveLocalEligible({
+        triageVerdict: 'ambiguous',
+        tierHint: 'zero-tier',
+        lowIntensityScore: 0.7,
+        highThreshold,
+        clusterMatch: {
+          clusterId: 'mechanical_edit',
+          tierBias: 'zero-tier',
+          similarity: 0.9,
+          margin: 0.1,
+          confidence: 'high',
+          elapsedMs: 1,
+        },
+      });
+
+      expect(result).toEqual({ eligible: true, reason: 'cluster_mechanical_edit' });
+    });
+
+    it('uses low_intensity_structural when only structural gate qualifies', () => {
+      const result = resolveLocalEligible({
+        triageVerdict: 'ambiguous',
+        tierHint: 'zero-tier',
+        lowIntensityScore: 0.7,
+        highThreshold,
+        clusterMatch: null,
+      });
+
+      expect(result).toEqual({ eligible: true, reason: 'low_intensity_structural' });
+    });
+
+    it('rejects when no eligibility signal is present', () => {
+      const result = resolveLocalEligible({
+        triageVerdict: 'complex',
+        tierHint: 'frontier-cloud',
+        lowIntensityScore: 0.2,
+        highThreshold,
+        clusterMatch: null,
+      });
+
+      expect(result).toEqual({ eligible: false, reason: null });
     });
   });
 

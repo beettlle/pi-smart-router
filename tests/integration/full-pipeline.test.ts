@@ -9,10 +9,17 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
+import type { ClusterMatcher } from '../../src/domain/matching/cluster-matcher.js';
 import { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { extractToolFailureSignature } from '../../src/domain/pinning/loop-escalation.js';
+import type { SystemInfo } from '../../src/infrastructure/hardware/hardware-probe.js';
+import {
+  DEFAULT_LOCAL_CONFIG,
+  type HttpFetchPort,
+} from '../../src/infrastructure/local/local-zero-tier.js';
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -348,6 +355,106 @@ describe('Full pipeline E2E (T060)', () => {
       expect(postEscalation.tier).toBe('frontier-cloud');
       expect(postEscalation.stage).toBe('session_pin');
       expect(postEscalation.reason_code).toBe('session_pinned');
+    });
+  });
+
+  describe('local_zero eligibility beyond trivial triage (SP-111)', () => {
+    const readyFetch: HttpFetchPort = {
+      fetch: async (url) => {
+        if (url.includes('/v1/models')) {
+          return { ok: true, json: async () => ({ data: [{ id: 'local-gemma' }] }) };
+        }
+        if (url.includes('/api/tags')) {
+          return { ok: true, json: async () => ({ models: [] }) };
+        }
+        throw new Error('ECONNREFUSED');
+      },
+    };
+
+    function makeSystemInfo(overrides?: Partial<SystemInfo>): SystemInfo {
+      return {
+        totalMemoryGb: 16,
+        arch: 'arm64',
+        platform: 'darwin',
+        batteryLevel: 80,
+        isOnAcPower: true,
+        ...overrides,
+      };
+    }
+
+    const clusterMatcher = {
+      match: async () => ({
+        clusterId: 'low_stakes_general',
+        tierBias: 'zero-tier' as const,
+        similarity: 0.92,
+        margin: 0.12,
+        confidence: 'high' as const,
+        elapsedMs: 2,
+      }),
+    } as unknown as ClusterMatcher;
+
+    it('routes fresh-session Q&A to local_zero when local services are ready', async () => {
+      const gateway = new GatewayDispatch(e2eFleet, {
+        hardwareConfig: DEFAULT_OPERATOR_CONFIG.local,
+        localConfig: DEFAULT_LOCAL_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo()),
+        httpFetchPort: readyFetch,
+        clusterMatcher,
+      });
+
+      const decision = await gateway.dispatch(
+        makeRequest({
+          request_id: 'sp111-fresh-qa',
+          session_id: 'sp111-fresh-session',
+          prompt_text: 'what is 2+2 ?',
+        }),
+      );
+
+      expect(decision.stage).toBe('local_zero');
+      expect(decision.tier).toBe('zero-tier');
+      expect(decision.selected_model_id).toBe('local-gemma');
+      expect(decision.features?.local_eligible_reason).toBe('cluster_low_stakes_general');
+    });
+
+    it('preserves trivial keyword path to local_zero', async () => {
+      const gateway = new GatewayDispatch(e2eFleet, {
+        hardwareConfig: DEFAULT_OPERATOR_CONFIG.local,
+        localConfig: DEFAULT_LOCAL_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo()),
+        httpFetchPort: readyFetch,
+      });
+
+      const decision = await gateway.dispatch(
+        makeRequest({
+          request_id: 'sp111-trivial',
+          session_id: 'sp111-trivial-session',
+          prompt_text: 'Format this JSON file',
+        }),
+      );
+
+      expect(decision.stage).toBe('local_zero');
+      expect(decision.features?.local_eligible_reason).toBe('triage_trivial');
+    });
+
+    it('skips local_zero for complex prompts even when phrasing is short', async () => {
+      const gateway = new GatewayDispatch(e2eFleet, {
+        hardwareConfig: DEFAULT_OPERATOR_CONFIG.local,
+        localConfig: DEFAULT_LOCAL_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo()),
+        httpFetchPort: readyFetch,
+      });
+
+      const decision = await gateway.dispatch(
+        makeRequest({
+          request_id: 'sp111-complex',
+          session_id: 'sp111-complex-session',
+          prompt_text: 'refactor auth layer',
+        }),
+      );
+
+      expect(decision.stage).not.toBe('local_zero');
+      expect(decision.tier).not.toBe('zero-tier');
+      expect(decision.features?.local_eligible_reason).toBeNull();
     });
   });
 
