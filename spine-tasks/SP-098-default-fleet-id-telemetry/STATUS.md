@@ -1,7 +1,7 @@
 # SP-098 Status
 
 **Current Step:** Step 1
-**Status:** Not Started
+**Status:** In Progress
 **Last Updated:** 2026-07-06
 **Review Level:** 1
 **Size:** S
@@ -10,10 +10,10 @@
 
 ## Step 1: Map or exclude default fleet id
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Explicit mapper rule or turn_envelope exclusion for default id
-- [ ] Unit test
+- [x] Explicit mapper rule or turn_envelope exclusion for default id
+- [x] Unit test
 
 ## Step 2: Testing and verification
 
