@@ -9,6 +9,11 @@
 import type { ModelProfile, RoutingDecision } from './domain/types/index.js';
 import { loadModels, type FleetCatalog } from './config/models-loader.js';
 import {
+  loadRoutingClusters,
+  clusterReasonCode,
+  type TextEmbedder,
+} from './config/routing-clusters-loader.js';
+import {
   GatewayDispatch,
   type GatewayDispatchOptions,
 } from './infrastructure/gateway/gateway-dispatch.js';
@@ -76,6 +81,12 @@ export function createRouterFromFleet(
 // ─── Re-exports for consumer convenience ─────────────────────────────────────
 
 export type { RoutingDecision, ModelProfile };
+export {
+  loadRoutingClusters,
+  clusterReasonCode,
+};
+export type { TextEmbedder };
+export type { RoutingClusterCatalog } from './domain/types/index.js';
 export type {
   PiRouterMiddleware,
   PiRouterMiddlewareOptions,
