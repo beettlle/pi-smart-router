@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-07
 **Status:** Active
-**Next Task ID:** SP-107
+**Next Task ID:** SP-110
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -241,6 +241,18 @@
 **Excluded:** #1, #25, #26 (hardware — no hardware available).
 
 **Recommended wave order:** SP-096+SP-099+SP-104 (parallel) → SP-097/098, SP-100 → SP-101 → SP-102 → SP-103 → SP-105 → SP-106.
+
+### Phase 32 — Backlog Orchestrator Cycle 12 (#70 completion, #52)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-107 | Wire Cursor quota failover in delegation layer | S | SP-097 | #70 P1 gap |
+| SP-108 | Delegation output headroom guard + explicit maxTokens | M | SP-095, SP-092, SP-107 | #52 |
+| SP-109 | Length stop error classification (context vs output) | S | SP-108 | #52 |
+
+**Excluded:** #1, #25, #26 (hardware — no hardware available).
+
+**Recommended wave order:** SP-107 → SP-108 → SP-109 (serial; shared `route-and-delegate.ts`).
 
 ---
 
