@@ -1,7 +1,7 @@
 # SP-118 Status
 
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Step 3
+**Status:** In Progress
 **Last Updated:** 2026-07-07
 **Review Level:** 1
 **Size:** S
@@ -10,26 +10,26 @@
 
 ## Step 1: Export command and schema
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Define telemetry-contrib schema
-- [ ] Implement export subcommand
-- [ ] Strip pepper fields
+- [x] Define telemetry-contrib schema
+- [x] Implement export subcommand
+- [x] Strip pepper fields
 
 ## Step 2: Contribution workflow docs
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] README contribution section
-- [ ] Synthetic example contrib file
-- [ ] Wire validation
+- [x] README contribution section
+- [x] Synthetic example contrib file
+- [x] Wire validation
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Unit tests for export and validation
-- [ ] Run `npm run verify:ci`
+- [x] Unit tests for export and validation
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
