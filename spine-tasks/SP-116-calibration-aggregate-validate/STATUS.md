@@ -1,7 +1,7 @@
 # SP-116 Status
 
-**Current Step:** Done
-**Status:** Complete
+**Current Step:** 3
+**Status:** In progress (addressing plan review REVISE)
 **Last Updated:** 2026-07-07
 **Review Level:** 2
 **Size:** M
@@ -26,7 +26,7 @@
 
 ## Step 3: Testing and verification
 
-**Status:** ✅ Complete
+**Status:** 🔄 In progress (re-review after pepper-field fix)
 
 - [x] Unit tests for valid and tainted payloads
 - [x] Run `npm run verify:ci`

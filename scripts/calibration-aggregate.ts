@@ -14,7 +14,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
-import { TELEMETRY_EXPORT_FORBIDDEN_KEYS } from '../src/infra/telemetry.js';
 import { MIN_TRAINING_SAMPLES } from '../src/domain/routing/p-success-classifier.js';
 
 export const DEFAULT_CONTRIB_DIR = 'data/contrib';
@@ -27,10 +26,24 @@ export const MINIMUM_TRAINING_SAMPLES = {
   routing_centroids: 10,
 } as const;
 
-export const CALIBRATION_CONTRIB_FORBIDDEN_KEYS: readonly string[] = [
-  ...TELEMETRY_EXPORT_FORBIDDEN_KEYS,
-  'install_key',
+/** Keys whose presence rejects the whole contrib row (prompt content, raw identifiers). */
+export const CALIBRATION_CONTRIB_REJECT_KEYS: readonly string[] = [
+  'session_id',
+  'prompt_text',
+  'messages',
+  'prompt',
+  'prompt_fingerprint',
+] as const;
+
+/** Install-local pepper and correlation fields — stripped after validation, not rejected. */
+export const CALIBRATION_CONTRIB_STRIP_KEYS: readonly string[] = [
+  'request_id',
+  'pepper',
+  'install_pepper',
+  'dataset_pepper',
+  'dataset_key',
   'pepper_key',
+  'install_key',
 ] as const;
 
 /** Keys whose names suggest prompt or message content — reject on ingest. */
@@ -82,7 +95,7 @@ function collectForbiddenKeys(
     const keyPath = path ? `${path}.${key}` : key;
 
     if (
-      (CALIBRATION_CONTRIB_FORBIDDEN_KEYS as readonly string[]).includes(key) ||
+      (CALIBRATION_CONTRIB_REJECT_KEYS as readonly string[]).includes(key) ||
       CONTRIB_TAINTED_KEY_PATTERN.test(key)
     ) {
       found.push(keyPath);
@@ -118,7 +131,7 @@ export function sanitizeContribRecord(
   record: Record<string, unknown>,
 ): Record<string, unknown> {
   const sanitized = { ...record };
-  for (const key of CALIBRATION_CONTRIB_FORBIDDEN_KEYS) {
+  for (const key of CALIBRATION_CONTRIB_STRIP_KEYS) {
     delete sanitized[key];
   }
   return sanitized;

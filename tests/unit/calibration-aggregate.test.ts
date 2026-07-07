@@ -61,17 +61,37 @@ describe('calibration aggregate (SP-116)', () => {
   });
 
   it('strips install-local pepper fields from otherwise valid rows', () => {
-    const scrubbed = sanitizeContribRecord({
+    const withPepper = {
       ...validContribRecord(),
       dataset_key: 'install-local-key',
       pepper: 'local-pepper',
       request_id: 'req-secret',
-    });
+    };
 
+    const scrubbed = sanitizeContribRecord(withPepper);
     expect(scrubbed).not.toHaveProperty('dataset_key');
     expect(scrubbed).not.toHaveProperty('pepper');
     expect(scrubbed).not.toHaveProperty('request_id');
     expect(scrubbed.requirement_reasoning).toBe(0.5);
+
+    const jsonl = formatContribJsonl([withPepper]);
+    const parsed = parseContribJsonl(jsonl.trimEnd(), 'fixture');
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]).not.toHaveProperty('dataset_key');
+    expect(parsed[0]).not.toHaveProperty('pepper');
+    expect(parsed[0]).not.toHaveProperty('request_id');
+    expect(parsed[0]?.requirement_reasoning).toBe(0.5);
+
+    const dir = mkdtempSync(join(tmpdir(), 'sp116-pepper-'));
+    try {
+      writeFileSync(join(dir, 'contrib.jsonl'), jsonl);
+      const result = collectContribFromDir(dir);
+      expect(result.records).toHaveLength(1);
+      expect(result.records[0]).not.toHaveProperty('dataset_key');
+      expect(result.records[0]?.requirement_reasoning).toBe(0.5);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('parses JSONL and aggregates contrib files from a directory', () => {
