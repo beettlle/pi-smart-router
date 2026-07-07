@@ -11,6 +11,11 @@
  * Budget: 80–120 ms (configurable, default 100 ms).
  */
 
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { z } from 'zod';
+
 import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
 import { buildHydraInput } from './hydra-input.js';
 import {
@@ -60,11 +65,113 @@ export interface HydraMatcherConfig {
   readonly artifactCachePath: string;
   readonly budgetMs?: number;
   readonly frugality?: FrugalityWeights;
+  readonly projectionWeightsPath?: string;
 }
 
 const DEFAULT_BUDGET_MS = 100;
 const MIN_BUDGET_MS = 80;
 const MAX_BUDGET_MS = 120;
+
+export const DEFAULT_HYDRA_PROJECTION_WEIGHTS_PATH = resolve(
+  'config',
+  'hydra-projection-weights.json',
+);
+
+export const HYDRA_PROJECTION_OUTPUT_DIM = 3;
+
+export const HydraProjectionWeightsSchema = z.object({
+  version: z.literal(1),
+  embedding_dim: z.literal(EMBEDDING_DIM),
+  weights: z
+    .array(z.array(z.number().finite()).length(EMBEDDING_DIM))
+    .length(HYDRA_PROJECTION_OUTPUT_DIM),
+  bias: z.array(z.number().finite()).length(HYDRA_PROJECTION_OUTPUT_DIM),
+});
+
+export interface HydraProjectionWeights {
+  readonly version: 1;
+  readonly embedding_dim: typeof EMBEDDING_DIM;
+  readonly weights: readonly (readonly number[])[];
+  readonly bias: readonly number[];
+}
+
+export interface LoadHydraProjectionWeightsOptions {
+  readonly filePath?: string;
+}
+
+export class HydraProjectionWeightsLoaderError extends Error {
+  override readonly name = 'HydraProjectionWeightsLoaderError';
+
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+  }
+}
+
+function formatZodIssues(error: z.ZodError): string {
+  return error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('\n');
+}
+
+export function parseHydraProjectionWeightsJson(raw: string): HydraProjectionWeights {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new HydraProjectionWeightsLoaderError(`Failed to parse JSON: ${message}`, {
+      cause: err,
+    });
+  }
+
+  const result = HydraProjectionWeightsSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new HydraProjectionWeightsLoaderError(
+      `Invalid HyDRA projection weights artifact:\n${formatZodIssues(result.error)}`,
+      { cause: result.error },
+    );
+  }
+
+  return result.data;
+}
+
+/**
+ * Load HyDRA projection weights from disk. Returns null when the artifact is
+ * missing; throws only when the file exists but is invalid.
+ */
+export function loadHydraProjectionWeights(
+  options?: LoadHydraProjectionWeightsOptions,
+): HydraProjectionWeights | null {
+  const filePath = options?.filePath ?? DEFAULT_HYDRA_PROJECTION_WEIGHTS_PATH;
+
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  let raw: string;
+  try {
+    raw = readFileSync(filePath, 'utf8');
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new HydraProjectionWeightsLoaderError(`Failed to read weights file: ${message}`, {
+      cause: err,
+    });
+  }
+
+  return parseHydraProjectionWeightsJson(raw);
+}
+
+/** Resolve projection weights — missing artifacts fall back to placeholder projection. */
+export function resolveHydraProjectionWeights(
+  options?: LoadHydraProjectionWeightsOptions,
+): HydraProjectionWeights | null {
+  try {
+    return loadHydraProjectionWeights(options);
+  } catch (err: unknown) {
+    console.warn('HyDRA projection weights artifact invalid; using placeholder projection', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
 
 // ─── Scoring helpers ─────────────────────────────────────────────────────────
 
@@ -120,20 +227,7 @@ function meanSlice(embedding: Float32Array, start: number, end: number): number 
   return sum / (end - start);
 }
 
-/**
- * Fixed deterministic projection from 384-dim embedding to 3 requirement
- * dimensions via mean-pooled thirds + sigmoid normalization.
- *
- * Production refinement: replace with a learned linear projection loaded
- * from artifact cache (Phase 2).
- */
-export function projectToRequirements(embedding: Float32Array): RequirementVector {
-  if (embedding.length !== EMBEDDING_DIM) {
-    throw new Error(
-      `Embedding shape mismatch: expected ${EMBEDDING_DIM}, got ${embedding.length}`,
-    );
-  }
-
+function projectToRequirementsPlaceholder(embedding: Float32Array): RequirementVector {
   const third = Math.floor(EMBEDDING_DIM / 3);
 
   return {
@@ -143,17 +237,74 @@ export function projectToRequirements(embedding: Float32Array): RequirementVecto
   };
 }
 
+function linearProjection(
+  embedding: Float32Array,
+  weights: HydraProjectionWeights,
+): readonly [number, number, number] {
+  const logits: number[] = [];
+
+  for (let dim = 0; dim < HYDRA_PROJECTION_OUTPUT_DIM; dim++) {
+    const row = weights.weights[dim]!;
+    let sum = weights.bias[dim] ?? 0;
+    for (let i = 0; i < EMBEDDING_DIM; i++) {
+      sum += (embedding[i] ?? 0) * (row[i] ?? 0);
+    }
+    logits.push(sum);
+  }
+
+  return [logits[0]!, logits[1]!, logits[2]!];
+}
+
+function projectToRequirementsLearned(
+  embedding: Float32Array,
+  weights: HydraProjectionWeights,
+): RequirementVector {
+  const [reasoningLogit, codeGenLogit, toolUseLogit] = linearProjection(embedding, weights);
+
+  return {
+    reasoning: sigmoid(reasoningLogit),
+    code_gen: sigmoid(codeGenLogit),
+    tool_use: sigmoid(toolUseLogit),
+  };
+}
+
+/**
+ * Project a 384-dim embedding to 3 requirement dimensions.
+ *
+ * Uses learned linear projection (sigmoid(embedding @ W + b)) when weights are
+ * provided; otherwise falls back to deterministic mean-pooled-thirds placeholder.
+ */
+export function projectToRequirements(
+  embedding: Float32Array,
+  weights?: HydraProjectionWeights | null,
+): RequirementVector {
+  if (embedding.length !== EMBEDDING_DIM) {
+    throw new Error(
+      `Embedding shape mismatch: expected ${EMBEDDING_DIM}, got ${embedding.length}`,
+    );
+  }
+
+  if (weights) {
+    return projectToRequirementsLearned(embedding, weights);
+  }
+
+  return projectToRequirementsPlaceholder(embedding);
+}
+
 // ─── HyDRA embedding adapter ─────────────────────────────────────────────────
 
 /**
  * Adapts a shared TextEmbedder for HyDRA requirement extraction.
  * dispose() delegates to the underlying embedder for shared lifecycle.
  */
-export function wrapHydraEmbeddingProvider(embedder: TextEmbedder): EmbeddingProvider {
+export function wrapHydraEmbeddingProvider(
+  embedder: TextEmbedder,
+  projectionWeights?: HydraProjectionWeights | null,
+): EmbeddingProvider {
   return {
     async extractRequirements(text: string): Promise<RequirementVector> {
       const embedding = await embedder.embed(text);
-      return projectToRequirements(embedding);
+      return projectToRequirements(embedding, projectionWeights);
     },
 
     async dispose(): Promise<void> {
@@ -168,6 +319,7 @@ export class HydraMatcher {
   private readonly provider: EmbeddingProvider;
   private readonly budgetMs: number;
   private readonly frugality: FrugalityWeights;
+  private readonly projectionWeights: HydraProjectionWeights | null;
 
   constructor(provider: EmbeddingProvider, config: HydraMatcherConfig) {
     const budget = config.budgetMs ?? DEFAULT_BUDGET_MS;
@@ -179,6 +331,14 @@ export class HydraMatcher {
     this.provider = provider;
     this.budgetMs = budget;
     this.frugality = config.frugality ?? DEFAULT_OPERATOR_CONFIG.frugality;
+    this.projectionWeights = resolveHydraProjectionWeights(
+      config.projectionWeightsPath ? { filePath: config.projectionWeightsPath } : undefined,
+    );
+  }
+
+  /** Whether learned projection weights were loaded at init. */
+  usesLearnedProjection(): boolean {
+    return this.projectionWeights !== null;
   }
 
   async match(
@@ -273,6 +433,10 @@ export class HydraMatcher {
 
 // ─── ONNX embedding provider factory ─────────────────────────────────────────
 
+export interface CreateOnnxEmbeddingProviderOptions {
+  readonly projectionWeightsPath?: string;
+}
+
 /**
  * Creates an EmbeddingProvider backed by the shared ONNX text embedder.
  * For multi-matcher setups, create one TextEmbedder via createOnnxTextEmbedder
@@ -280,7 +444,11 @@ export class HydraMatcher {
  */
 export async function createOnnxEmbeddingProvider(
   artifactCachePath: string,
+  options?: CreateOnnxEmbeddingProviderOptions,
 ): Promise<EmbeddingProvider> {
   const embedder = await createOnnxTextEmbedder(artifactCachePath);
-  return wrapHydraEmbeddingProvider(embedder);
+  const projectionWeights = resolveHydraProjectionWeights(
+    options?.projectionWeightsPath ? { filePath: options.projectionWeightsPath } : undefined,
+  );
+  return wrapHydraEmbeddingProvider(embedder, projectionWeights);
 }
