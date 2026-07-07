@@ -19,6 +19,8 @@ done
 
 echo "Installing pi coding agent CLI..."
 npm install -g --ignore-scripts "@earendil-works/pi-coding-agent@^0.80.0"
+export PATH="$(npm prefix -g)/bin:${PATH}"
+command -v pi
 pi --version
 
 echo "Installing pi-smart-router from npm (pi consumer path)..."

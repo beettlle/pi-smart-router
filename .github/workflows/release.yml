@@ -145,10 +145,10 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Checkout at tag
+      - name: Checkout smoke script
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.release.outputs.tag }}
+          ref: main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
