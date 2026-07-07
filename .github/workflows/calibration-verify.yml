@@ -1,0 +1,34 @@
+name: Calibration Verify
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'config/routing-calibration.json'
+      - 'config/routing-calibration.json.example'
+      - 'scripts/train-routing-calibration.ts'
+      - 'scripts/verify-routing-calibration.ts'
+      - 'specs/001-build-smart-router/contracts/routing-calibration.schema.json'
+
+jobs:
+  verify-calibration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify routing calibration bundle
+        run: npm run routing:verify-calibration -- config/routing-calibration.json.example

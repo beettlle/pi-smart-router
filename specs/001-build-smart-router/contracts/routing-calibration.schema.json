@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pi-smart-router.dev/contracts/routing-calibration.schema.json",
+  "title": "RoutingCalibrationBundle",
+  "description": "Versioned multi-artifact routing calibration bundle (GitHub #66). Contains learned weights and thresholds for HyDRA projection, triage, P(success), and cluster centroids. Feature vectors only — never prompt text or messages.",
+  "type": "object",
+  "required": [
+    "version",
+    "minimum_training_samples",
+    "hydra_projection",
+    "triage_thresholds",
+    "p_success_weights",
+    "routing_centroids"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Bundle format version; runtime rejects incompatible versions."
+    },
+    "minimum_training_samples": {
+      "$ref": "#/$defs/minimum_training_samples"
+    },
+    "hydra_projection": {
+      "$ref": "#/$defs/hydra_projection"
+    },
+    "triage_thresholds": {
+      "$ref": "#/$defs/triage_thresholds"
+    },
+    "p_success_weights": {
+      "$ref": "#/$defs/p_success_weights"
+    },
+    "routing_centroids": {
+      "$ref": "#/$defs/routing_centroids"
+    }
+  },
+  "$defs": {
+    "minimum_training_samples": {
+      "type": "object",
+      "description": "Minimum labeled contrib rows required before each artifact deviates from baked-in defaults.",
+      "required": [
+        "hydra_projection",
+        "triage_thresholds",
+        "p_success_weights",
+        "routing_centroids"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "hydra_projection": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "HyDRA 384×3 projection head — recommend ≥100 hydra_match rows with requirement vectors."
+        },
+        "triage_thresholds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Triage cyclomatic threshold fit — recommend ≥50 rows with triage_cyclomatic_score and verdict labels."
+        },
+        "p_success_weights": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Economical-tier P(success) logistic regression — 30 labeled rows (MIN_TRAINING_SAMPLES)."
+        },
+        "routing_centroids": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Cluster centroid refresh — recommend ≥10 rows per cluster or use bootstrap-routing-centroids offline."
+        }
+      }
+    },
+    "hydra_projection": {
+      "type": "object",
+      "description": "Learned linear projection: sigmoid(embedding @ W + b) → [reasoning, code_gen, tool_use].",
+      "required": ["version", "embedding_dim", "weights", "bias"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "integer", "const": 1 },
+        "embedding_dim": { "type": "integer", "const": 384 },
+        "weights": {
+          "type": "array",
+          "description": "Row-major 384×3 weight matrix flattened (1152 floats).",
+          "items": { "type": "number" },
+          "minItems": 1152,
+          "maxItems": 1152
+        },
+        "bias": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "trained_sample_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "triage_thresholds": {
+      "type": "object",
+      "description": "Calibrated triage fast-path thresholds.",
+      "required": ["version", "cyclomatic_threshold"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "integer", "const": 1 },
+        "cyclomatic_threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Cyclomatic complexity score at or above → complex verdict."
+        },
+        "trained_sample_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "p_success_weights": {
+      "type": "object",
+      "description": "Logistic regression weights for economical-tier P(success).",
+      "required": [
+        "version",
+        "min_training_samples",
+        "feature_names",
+        "intercept",
+        "coefficients",
+        "trained_sample_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "integer", "const": 1 },
+        "min_training_samples": { "type": "integer", "minimum": 0 },
+        "feature_names": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "intercept": { "type": "number" },
+        "coefficients": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 1
+        },
+        "trained_sample_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "routing_centroids": {
+      "type": "object",
+      "description": "Precomputed semantic cluster centroids (SP-114).",
+      "required": ["version", "embedding_dim", "clusters"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "integer", "const": 1 },
+        "embedding_dim": { "type": "integer", "const": 384 },
+        "clusters": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["cluster_id", "tier_bias", "centroid", "reference_count"],
+            "additionalProperties": false,
+            "properties": {
+              "cluster_id": { "type": "string", "minLength": 1 },
+              "tier_bias": {
+                "type": "string",
+                "enum": ["zero-tier", "economical-cloud", "frontier-cloud"]
+              },
+              "centroid": {
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 384,
+                "maxItems": 384
+              },
+              "reference_count": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    }
+  }
+}
