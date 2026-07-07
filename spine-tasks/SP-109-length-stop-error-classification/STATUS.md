@@ -1,7 +1,7 @@
 # SP-109 Status
 
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-07
 **Review Level:** 1
 **Size:** S
@@ -10,25 +10,25 @@
 
 ## Step 1: Length failure classifier
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Classifier helper for length stops
-- [ ] Context-pressure vs output-truncation formatter
+- [x] Classifier helper for length stops
+- [x] Context-pressure vs output-truncation formatter
 
 ## Step 2: Wire into sanitization
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Integrate with delegation error sanitization path
+- [x] Integrate with delegation error sanitization path
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Unit tests for both classification paths
-- [ ] Run `npm run verify:ci`
+- [x] Unit tests for both classification paths
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes

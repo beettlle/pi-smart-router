@@ -277,7 +277,9 @@ export async function routeAndDelegate(
       options,
       sessionId,
     );
-    flushDelegatedEvents(outer, fallbackResult.events);
+    flushDelegatedEvents(outer, fallbackResult.events, {
+      contextWindow: fallbackModel.contextWindow,
+    });
     return;
   }
 
@@ -431,7 +433,10 @@ export async function routeAndDelegate(
         result.finalMessage &&
         isGeminiThoughtSignatureAssistantError(result.finalMessage)
       ) {
-        flushDelegatedEvents(outer, result.events, { sanitizeErrors: true });
+        flushDelegatedEvents(outer, result.events, {
+          sanitizeErrors: true,
+          contextWindow: targetModel.contextWindow,
+        });
         return;
       }
 
@@ -450,13 +455,19 @@ export async function routeAndDelegate(
             effectiveFleet,
           );
           if (!failover) {
-            flushDelegatedEvents(outer, result.events, { sanitizeErrors: true });
+            flushDelegatedEvents(outer, result.events, {
+          sanitizeErrors: true,
+          contextWindow: targetModel.contextWindow,
+        });
             return;
           }
 
           const alternateModel = resolveTargetModel(deps, failover);
           if (!alternateModel || alternateModel.id === targetModel.id) {
-            flushDelegatedEvents(outer, result.events, { sanitizeErrors: true });
+            flushDelegatedEvents(outer, result.events, {
+          sanitizeErrors: true,
+          contextWindow: targetModel.contextWindow,
+        });
             return;
           }
 
@@ -477,6 +488,7 @@ export async function routeAndDelegate(
 
       flushDelegatedEvents(outer, result.events, {
         sanitizeErrors: result.failed,
+        contextWindow: targetModel.contextWindow,
       });
       return;
     } catch (error) {
@@ -541,7 +553,9 @@ export async function routeAndDelegate(
           pendingFailoverInfo.errorObj,
         );
       }
-      flushDelegatedEvents(outer, fallbackResult.events);
+      flushDelegatedEvents(outer, fallbackResult.events, {
+      contextWindow: fallbackModel.contextWindow,
+    });
       return;
     }
   }
