@@ -225,6 +225,8 @@ export const LowIntensityConfigSchema = z.object({
   weights: LowIntensityWeightsSchema,
   high_threshold: z.number().min(0).max(1),
   low_threshold: z.number().min(0).max(1),
+  /** Minimum P_success_cheap to bias toward economical/local tier (SP-105). */
+  p_success_alpha: z.number().min(0).max(1),
 }).superRefine((value, ctx) => {
   if (value.high_threshold <= value.low_threshold) {
     ctx.addIssue({

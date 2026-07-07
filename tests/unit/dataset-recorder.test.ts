@@ -60,6 +60,8 @@ function makeDecision(overrides: Partial<RoutingDecision> = {}): RoutingDecision
       tier_hint: null,
       tier_hint_reason_code: null,
       low_intensity_score: null,
+      p_success_cheap: null,
+      p_success_alpha: null,
     },
     ...overrides,
   };

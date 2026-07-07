@@ -15,6 +15,10 @@ import type { HttpFetchPort } from '../../src/infrastructure/local/local-zero-ti
 import type { SystemInfo } from '../../src/infrastructure/hardware/hardware-probe.js';
 import type { ModelProfile, PriceCatalog, RoutingRequest } from '../../src/domain/types/index.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
+import {
+  P_SUCCESS_FEATURE_NAMES,
+  type PSuccessWeights,
+} from '../../src/domain/routing/p-success-classifier.js';
 
 function makeModel(
   overrides: Partial<ModelProfile> & { id: string; tier: ModelProfile['tier'] },
@@ -1147,6 +1151,111 @@ describe('RouterPipeline', () => {
 
       expect(decision.features?.tier_hint).toBe('economical-cloud');
       expect(decision.features?.tier_hint_reason_code).toBe('low_intensity_structural');
+    });
+  });
+
+  describe('P(success) online inference (SP-105)', () => {
+    function makeClusterMatcher(
+      result: ClusterMatchResult,
+    ): ClusterMatcher {
+      return {
+        match: vi.fn(async () => result),
+      } as unknown as ClusterMatcher;
+    }
+
+    function makeHighPWeights(): PSuccessWeights {
+      return {
+        version: 1,
+        min_training_samples: 30,
+        feature_names: P_SUCCESS_FEATURE_NAMES,
+        intercept: 6,
+        coefficients: P_SUCCESS_FEATURE_NAMES.map(() => 0),
+        trained_sample_count: 50,
+      };
+    }
+
+    function makeLowPWeights(): PSuccessWeights {
+      return {
+        version: 1,
+        min_training_samples: 30,
+        feature_names: P_SUCCESS_FEATURE_NAMES,
+        intercept: -6,
+        coefficients: P_SUCCESS_FEATURE_NAMES.map(() => 0),
+        trained_sample_count: 50,
+      };
+    }
+
+    it('routes economical when P_success >= alpha with trained weights', async () => {
+      const pipeline = new RouterPipeline(fleet, {
+        pSuccessWeights: makeHighPWeights(),
+        lowIntensityConfig: {
+          ...DEFAULT_OPERATOR_CONFIG.low_intensity,
+          high_threshold: 0.9,
+          low_threshold: 0.1,
+          p_success_alpha: 0.5,
+        },
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Hello, how are you today?' }),
+      );
+
+      expect(decision.features?.p_success_cheap).toBeGreaterThanOrEqual(0.5);
+      expect(decision.features?.p_success_alpha).toBe(0.5);
+      expect(decision.features?.tier_hint).toBe('economical-cloud');
+      expect(decision.features?.tier_hint_reason_code).toBe('p_success_cheap');
+    });
+
+    it('defers or routes frontier when P_success is below alpha', async () => {
+      const clusterMatcher = makeClusterMatcher({
+        clusterId: 'architecture',
+        tierBias: 'frontier-cloud',
+        similarity: 0.9,
+        margin: 0.1,
+        confidence: 'high',
+        elapsedMs: 1,
+      });
+
+      const pipeline = new RouterPipeline(fleet, {
+        pSuccessWeights: makeLowPWeights(),
+        clusterMatcher,
+        lowIntensityConfig: {
+          ...DEFAULT_OPERATOR_CONFIG.low_intensity,
+          low_threshold: 0.55,
+          p_success_alpha: 0.5,
+        },
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({
+          prompt_text:
+            'Plan the architecture for a distributed payment service with migration strategy',
+          turn_type: 'main_loop',
+        }),
+      );
+
+      expect(decision.features?.p_success_cheap).toBeLessThan(0.5);
+      expect(decision.features?.tier_hint).toBe('frontier-cloud');
+      expect(decision.stage).toBe('triage');
+    });
+
+    it('falls back to structural scoring when weights artifact is untrained', async () => {
+      const pipeline = new RouterPipeline(fleet, {
+        pSuccessWeightsPath: '/nonexistent/p-success-weights.json',
+        lowIntensityConfig: {
+          ...DEFAULT_OPERATOR_CONFIG.low_intensity,
+          high_threshold: 0.9,
+          low_threshold: 0.1,
+        },
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Hello, how are you today?' }),
+      );
+
+      expect(decision.features?.p_success_cheap).toBe(0.5);
+      expect(decision.features?.tier_hint).toBeNull();
+      expect(decision.features?.tier_hint_reason_code).toBeNull();
     });
   });
 });

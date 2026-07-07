@@ -41,6 +41,12 @@ import {
   buildTierFeatures,
   scoreLowIntensity,
 } from '../routing/tier-features.js';
+import {
+  predictPSuccessCheapTimed,
+  resolvePSuccessWeights,
+  tierFeaturesToPSuccessFeatures,
+  type PSuccessWeights,
+} from '../routing/p-success-classifier.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
 
@@ -72,6 +78,9 @@ export interface PipelineOptions {
   readonly lowIntensityConfig?: LowIntensityConfig;
   readonly priceCatalog?: PriceCatalog | null;
   readonly contextFitConfig?: ContextFitConfig;
+  /** Preloaded P(success) weights for tests; lazy-loads artifact when omitted (SP-105). */
+  readonly pSuccessWeights?: PSuccessWeights;
+  readonly pSuccessWeightsPath?: string;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -95,6 +104,10 @@ export class RouterPipeline {
   private currentTierHint: Tier | null = null;
   private currentTierHintReasonCode: string | null = null;
   private currentLowIntensityScore: number | null = null;
+  private currentPSuccessCheap: number | null = null;
+  private currentPSuccessAlpha: number | null = null;
+  private pSuccessWeightsLoaded = false;
+  private cachedPSuccessWeights: PSuccessWeights | null = null;
   private currentContextFitRejected: readonly CandidateScore[] = [];
   private contextOverflowPreferredProvider: string | null = null;
   private contextOverflowTriggered = false;
@@ -134,6 +147,8 @@ export class RouterPipeline {
     this.currentTierHint = null;
     this.currentTierHintReasonCode = null;
     this.currentLowIntensityScore = null;
+    this.currentPSuccessCheap = null;
+    this.currentPSuccessAlpha = null;
     this.currentContextFitRejected = [];
     this.contextOverflowPreferredProvider = null;
     this.contextOverflowTriggered = false;
@@ -218,6 +233,8 @@ export class RouterPipeline {
       tier_hint: this.currentTierHint,
       tier_hint_reason_code: this.currentTierHintReasonCode,
       low_intensity_score: this.currentLowIntensityScore,
+      p_success_cheap: this.currentPSuccessCheap,
+      p_success_alpha: this.currentPSuccessAlpha,
     };
 
     return { ...decision, features };
@@ -675,6 +692,8 @@ export class RouterPipeline {
   private async lowIntensityGate(request: RoutingRequest): Promise<StageResult> {
     const config =
       this.options.lowIntensityConfig ?? DEFAULT_OPERATOR_CONFIG.low_intensity;
+    const alpha = config.p_success_alpha;
+    this.currentPSuccessAlpha = alpha;
 
     const triageResult = triageClassify(request.prompt_text);
     let clusterMatch: ClusterMatchResult | undefined;
@@ -690,20 +709,109 @@ export class RouterPipeline {
       }
     }
 
-    const features = buildTierFeatures(request, triageResult, undefined, clusterMatch);
-    const score = scoreLowIntensity(features, config.weights);
+    const tierFeatures = buildTierFeatures(request, triageResult, undefined, clusterMatch);
+    const score = scoreLowIntensity(tierFeatures, config.weights);
     this.currentLowIntensityScore = score;
 
-    const { tierHint, reasonCode } = this.resolveTierHint(
+    const weights = this.resolvePSuccessWeights();
+    const pFeatures = tierFeaturesToPSuccessFeatures(tierFeatures);
+    const pResult = predictPSuccessCheapTimed(pFeatures, weights);
+    this.currentPSuccessCheap = pResult.probability;
+
+    const structuralHint = this.resolveTierHint(
       score,
       config.high_threshold,
       config.low_threshold,
       clusterMatch,
     );
-    this.currentTierHint = tierHint;
-    this.currentTierHintReasonCode = reasonCode;
+    const weightsTrained =
+      weights.trained_sample_count >= weights.min_training_samples;
+    const adjustedHint = weightsTrained
+      ? this.applyPSuccessTierHint(
+          structuralHint,
+          score,
+          pResult,
+          alpha,
+          config,
+          clusterMatch,
+        )
+      : structuralHint;
+    this.currentTierHint = adjustedHint.tierHint;
+    this.currentTierHintReasonCode = adjustedHint.reasonCode;
 
     return { decided: false, stage: 'low_intensity' };
+  }
+
+  private resolvePSuccessWeights(): PSuccessWeights {
+    if (this.options.pSuccessWeights) {
+      return this.options.pSuccessWeights;
+    }
+
+    if (!this.pSuccessWeightsLoaded) {
+      this.cachedPSuccessWeights = resolvePSuccessWeights({
+        ...(this.options.pSuccessWeightsPath !== undefined
+          ? { filePath: this.options.pSuccessWeightsPath }
+          : {}),
+      });
+      this.pSuccessWeightsLoaded = true;
+    }
+
+    return this.cachedPSuccessWeights!;
+  }
+
+  private applyPSuccessTierHint(
+    structuralHint: { tierHint: Tier | null; reasonCode: string | null },
+    structuralScore: number,
+    pResult: ReturnType<typeof predictPSuccessCheapTimed>,
+    alpha: number,
+    config: LowIntensityConfig,
+    clusterMatch?: ClusterMatchResult,
+  ): { tierHint: Tier | null; reasonCode: string | null } {
+    if (pResult.probability >= alpha) {
+      this.logPSuccessExplain(pResult.probability, alpha, pResult, 'p_success_cheap');
+      return {
+        tierHint: this.resolveLowIntensityTierHint(),
+        reasonCode: 'p_success_cheap',
+      };
+    }
+
+    if (structuralScore <= config.low_threshold) {
+      return {
+        tierHint: 'frontier-cloud',
+        reasonCode: this.resolveHighIntensityReasonCode(clusterMatch),
+      };
+    }
+
+    if (structuralScore >= config.high_threshold) {
+      this.logPSuccessExplain(
+        pResult.probability,
+        alpha,
+        pResult,
+        'p_success_below_alpha',
+      );
+      return {
+        tierHint: null,
+        reasonCode: 'p_success_below_alpha',
+      };
+    }
+
+    return structuralHint;
+  }
+
+  private logPSuccessExplain(
+    probability: number,
+    alpha: number,
+    pResult: ReturnType<typeof predictPSuccessCheapTimed>,
+    reason: string,
+  ): void {
+    console.info('P(success) tier gate', {
+      reason,
+      p_success_cheap: probability,
+      p_success_alpha: alpha,
+      elapsed_ms: pResult.elapsed_ms,
+      within_budget: pResult.within_budget,
+      feature_importances: pResult.feature_importances,
+    });
   }
 
   private resolveTierHint(

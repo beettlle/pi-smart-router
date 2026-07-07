@@ -114,6 +114,8 @@ describe('community telemetry export (SP-082)', () => {
       tier_hint: null,
       tier_hint_reason_code: null,
       low_intensity_score: null,
+      p_success_cheap: null,
+      p_success_alpha: null,
     };
 
     const exported = toHydraCalibrationRecord(makeTelemetry(), features);
@@ -138,6 +140,8 @@ describe('community telemetry export (SP-082)', () => {
           tier_hint: null,
           tier_hint_reason_code: null,
           low_intensity_score: null,
+          p_success_cheap: null,
+          p_success_alpha: null,
         },
       ],
     ]);
