@@ -458,6 +458,45 @@ describe('Full pipeline E2E (T060)', () => {
     });
   });
 
+  describe('context-fit + tier selection integration (SP-119)', () => {
+    const overflowFleet: ModelProfile[] = [
+      makeModel({
+        id: 'gemini-flash-lite',
+        tier: 'economical-cloud',
+        provider: 'google',
+        limits: { max_input_tokens: 32_768 },
+      }),
+      makeModel({
+        id: 'gemini-1.5-pro',
+        tier: 'frontier-cloud',
+        provider: 'google',
+        limits: { max_input_tokens: 2_000_000 },
+      }),
+    ];
+
+    it('routes 34K-token pinned session to larger-fit model with context-fit sidecar', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-34k', 'gemini-flash-lite', 'initial');
+      const gateway = new GatewayDispatch(overflowFleet, { sessionPinner: pinner });
+
+      const decision = await gateway.dispatch(
+        makeRequest({
+          request_id: 'sp119-34k',
+          session_id: 'sess-34k',
+          prompt_text: 'continue',
+          estimated_input_tokens: 34_000,
+        }),
+      );
+
+      expect(decision.selected_model_id).not.toBe('gemini-flash-lite');
+      expect(decision.selected_model_id).toBe('gemini-1.5-pro');
+      expect(decision.features?.context_fit?.estimated_input_tokens).toBe(34_000);
+      expect(decision.features?.tier_selection?.low_intensity_breakdown?.score).not.toBeNull();
+      expect(decision.features?.tier_hint).toBeDefined();
+      expect(decision.features?.p_success_cheap).not.toBeNull();
+    });
+  });
+
   describe('safe-default fallback: resilience guarantees', () => {
     it('returns valid decision even with empty fleet', async () => {
       const gateway = new GatewayDispatch([]);

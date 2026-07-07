@@ -1,6 +1,6 @@
 # SP-119 Status
 
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-07
 **Review Level:** 2
@@ -18,11 +18,11 @@
 
 ## Step 2: Extension and integration tests
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Extension supplies all routing request fields
-- [ ] 34K-token overflow integration test
-- [ ] Fresh-session local_zero integration test
+- [x] Extension supplies all routing request fields
+- [x] 34K-token overflow integration test
+- [x] Fresh-session local_zero integration test
 
 ## Step 3: Testing and verification
 
