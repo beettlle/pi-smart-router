@@ -7,6 +7,7 @@ import {
 import {
   wrapHydraEmbeddingProvider,
   projectToRequirements,
+  type HydraProjectionWeights,
 } from '../../src/domain/matching/hydra-matcher.js';
 
 // ─── Test helpers ────────────────────────────────────────────────────────────
@@ -36,6 +37,27 @@ describe('wrapHydraEmbeddingProvider', () => {
 
     expect(embedder.embed).toHaveBeenCalledWith('test prompt');
     expect(requirements).toEqual(projectToRequirements(embedding));
+  });
+
+  it('uses learned projection weights when provided', async () => {
+    const embedding = makeEmbedding(0);
+    embedding[0] = 2;
+    const embedder = makeMockEmbedder(embedding);
+    const weights: HydraProjectionWeights = {
+      version: 1,
+      embedding_dim: 384,
+      weights: [
+        Array.from({ length: EMBEDDING_DIM }, (_, index) => (index === 0 ? 1 : 0)),
+        Array.from({ length: EMBEDDING_DIM }, () => 0),
+        Array.from({ length: EMBEDDING_DIM }, () => 0),
+      ],
+      bias: [0, 0, 0],
+    };
+    const provider = wrapHydraEmbeddingProvider(embedder, weights);
+
+    const requirements = await provider.extractRequirements('test prompt');
+
+    expect(requirements.reasoning).toBeCloseTo(1 / (1 + Math.exp(-2)), 6);
   });
 
   it('delegates dispose to the shared embedder', async () => {

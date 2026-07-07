@@ -1,8 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import {
   HydraMatcher,
+  HydraProjectionWeightsLoaderError,
+  loadHydraProjectionWeights,
+  parseHydraProjectionWeightsJson,
   projectToRequirements,
+  resolveHydraProjectionWeights,
   type EmbeddingProvider,
+  type HydraProjectionWeights,
   type RequirementVector,
   type HydraMatcherConfig,
 } from '../../src/domain/matching/hydra-matcher.js';
@@ -65,6 +74,36 @@ const DEFAULT_CONFIG: HydraMatcherConfig = {
   artifactCachePath: '.pi-smart-router/models/',
   budgetMs: 100,
 };
+
+function makeProjectionWeights(
+  overrides: Partial<{
+    reasoningScale: number;
+    codeGenScale: number;
+    toolUseScale: number;
+    bias: readonly [number, number, number];
+  }> = {},
+): HydraProjectionWeights {
+  const row = (scale: number): number[] =>
+    Array.from({ length: EMBEDDING_DIM }, (_, index) => (index === 0 ? scale : 0));
+
+  return {
+    version: 1,
+    embedding_dim: EMBEDDING_DIM,
+    weights: [
+      row(overrides.reasoningScale ?? 1),
+      row(overrides.codeGenScale ?? 1),
+      row(overrides.toolUseScale ?? 1),
+    ],
+    bias: overrides.bias ?? [0, 0, 0],
+  };
+}
+
+function makeTempWeightsFile(content: unknown): string {
+  const dir = mkdtempSync(join(tmpdir(), 'hydra-projection-'));
+  const filePath = join(dir, 'weights.json');
+  writeFileSync(filePath, JSON.stringify(content), 'utf8');
+  return filePath;
+}
 
 // ─── HydraMatcher ────────────────────────────────────────────────────────────
 
@@ -608,5 +647,122 @@ describe('projectToRequirements', () => {
     const b = projectToRequirements(embedding);
 
     expect(a).toEqual(b);
+  });
+
+  it('uses learned linear projection when weights are provided', () => {
+    const embedding = new Float32Array(EMBEDDING_DIM);
+    embedding[0] = 2;
+
+    const weights = makeProjectionWeights({ bias: [0, 0, 0] });
+    const learned = projectToRequirements(embedding, weights);
+    const placeholder = projectToRequirements(embedding);
+
+    expect(learned.reasoning).toBeCloseTo(1 / (1 + Math.exp(-2)), 6);
+    expect(learned.code_gen).toBeCloseTo(1 / (1 + Math.exp(-2)), 6);
+    expect(learned.tool_use).toBeCloseTo(1 / (1 + Math.exp(-2)), 6);
+    expect(learned).not.toEqual(placeholder);
+  });
+
+  it('applies per-dimension bias in learned projection', () => {
+    const embedding = new Float32Array(EMBEDDING_DIM).fill(0);
+    const weights = makeProjectionWeights({ bias: [2, 0, -2] });
+
+    const learned = projectToRequirements(embedding, weights);
+
+    expect(learned.reasoning).toBeCloseTo(1 / (1 + Math.exp(-2)), 6);
+    expect(learned.code_gen).toBe(0.5);
+    expect(learned.tool_use).toBeCloseTo(1 / (1 + Math.exp(2)), 6);
+  });
+});
+
+// ─── HyDRA projection weights loader ───────────────────────────────────────
+
+describe('HyDRA projection weights loader', () => {
+  const tempFiles: string[] = [];
+
+  afterEach(() => {
+    for (const filePath of tempFiles.splice(0)) {
+      rmSync(filePath, { recursive: true, force: true });
+    }
+  });
+
+  it('parses a valid artifact with version and shape metadata', () => {
+    const weights = makeProjectionWeights();
+    const parsed = parseHydraProjectionWeightsJson(JSON.stringify(weights));
+
+    expect(parsed.version).toBe(1);
+    expect(parsed.embedding_dim).toBe(EMBEDDING_DIM);
+    expect(parsed.weights).toHaveLength(3);
+    expect(parsed.bias).toHaveLength(3);
+  });
+
+  it('rejects invalid artifact shape', () => {
+    const invalid = {
+      version: 1,
+      embedding_dim: 384,
+      weights: [[0], [0], [0]],
+      bias: [0, 0, 0],
+    };
+
+    expect(() => parseHydraProjectionWeightsJson(JSON.stringify(invalid))).toThrow(
+      HydraProjectionWeightsLoaderError,
+    );
+  });
+
+  it('returns null when artifact file is missing', () => {
+    expect(
+      loadHydraProjectionWeights({ filePath: '/tmp/does-not-exist-hydra-projection.json' }),
+    ).toBeNull();
+  });
+
+  it('loads weights from disk when artifact exists', () => {
+    const filePath = makeTempWeightsFile(makeProjectionWeights());
+    tempFiles.push(filePath);
+
+    const loaded = loadHydraProjectionWeights({ filePath });
+
+    expect(loaded?.version).toBe(1);
+    expect(loaded?.weights).toHaveLength(3);
+  });
+
+  it('falls back to placeholder when artifact is invalid', () => {
+    const filePath = makeTempWeightsFile({ version: 2 });
+    tempFiles.push(filePath);
+
+    expect(resolveHydraProjectionWeights({ filePath })).toBeNull();
+  });
+});
+
+describe('HydraMatcher projection init', () => {
+  const tempFiles: string[] = [];
+
+  afterEach(() => {
+    for (const filePath of tempFiles.splice(0)) {
+      rmSync(filePath, { recursive: true, force: true });
+    }
+  });
+
+  it('reports learned projection when weights artifact is present', () => {
+    const filePath = makeTempWeightsFile(makeProjectionWeights());
+    tempFiles.push(filePath);
+    const provider = makeMockProvider({ reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 });
+
+    const matcher = new HydraMatcher(provider, {
+      ...DEFAULT_CONFIG,
+      projectionWeightsPath: filePath,
+    });
+
+    expect(matcher.usesLearnedProjection()).toBe(true);
+  });
+
+  it('reports placeholder projection when weights artifact is missing', () => {
+    const provider = makeMockProvider({ reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 });
+
+    const matcher = new HydraMatcher(provider, {
+      ...DEFAULT_CONFIG,
+      projectionWeightsPath: '/tmp/missing-hydra-projection-weights.json',
+    });
+
+    expect(matcher.usesLearnedProjection()).toBe(false);
   });
 });
