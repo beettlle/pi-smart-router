@@ -1,0 +1,1 @@
+SP-106 complete — expected-cost tier selection wired into low_intensity gate with E[cost] argmin, pin/cache economics, subscription-aware pricing, telemetry, and full verify:ci pass.
