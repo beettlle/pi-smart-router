@@ -167,6 +167,8 @@ export interface RoutingFeatureSidecar {
   readonly p_success_alpha: number | null;
   /** Context-fit gate observability (SP-110). */
   readonly context_fit?: ContextFitObservability;
+  /** Why local_zero eligibility passed (SP-111, #59). */
+  readonly local_eligible_reason: string | null;
 }
 
 export interface RoutingDecision {

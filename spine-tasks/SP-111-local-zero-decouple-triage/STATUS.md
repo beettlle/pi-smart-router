@@ -1,7 +1,7 @@
 # SP-111 Status
 
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-07
 **Review Level:** 2
 **Size:** M
@@ -10,28 +10,28 @@
 
 ## Step 1: Local eligibility disjunction
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Implement `localEligible` helper
-- [ ] Wire into `localZeroTierStage`
-- [ ] Preserve hardware, readiness, context-fit, SC-007 guards
+- [x] Implement `localEligible` helper
+- [x] Wire into `localZeroTierStage`
+- [x] Preserve hardware, readiness, context-fit, SC-007 guards
 
 ## Step 2: Reason codes and sidecar
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Emit `local_eligible_reason` on routing decision
-- [ ] Ensure low-intensity gate output read before local_zero
+- [x] Emit `local_eligible_reason` on routing decision
+- [x] Ensure low-intensity gate output read before local_zero
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Integration test for generic Q&A local routing
-- [ ] Regression tests for trivial and complex prompts
-- [ ] Run `npm run verify:ci`
+- [x] Integration test for generic Q&A local routing
+- [x] Regression tests for trivial and complex prompts
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes

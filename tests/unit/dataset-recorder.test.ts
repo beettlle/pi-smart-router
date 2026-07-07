@@ -62,6 +62,7 @@ function makeDecision(overrides: Partial<RoutingDecision> = {}): RoutingDecision
       low_intensity_score: null,
       p_success_cheap: null,
       p_success_alpha: null,
+      local_eligible_reason: null,
     },
     ...overrides,
   };
