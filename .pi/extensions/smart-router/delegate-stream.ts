@@ -14,6 +14,7 @@ import {
   modelToExecutionModel,
   resolveDelegationOptions,
   type DelegatedStreamResult,
+  type DelegationHeadroomContext,
 } from './delegation-runtime.js';
 import type { StreamDelegationDeps } from './types.js';
 
@@ -22,6 +23,7 @@ export async function collectDelegatedStream(
   context: Context,
   deps: StreamDelegationDeps,
   options: SimpleStreamOptions | undefined,
+  headroomContext?: DelegationHeadroomContext,
 ): Promise<DelegatedStreamResult> {
   if (options?.signal?.aborted) {
     throw new Error('Request was aborted');
@@ -31,6 +33,7 @@ export async function collectDelegatedStream(
     deps.modelRegistry,
     targetModel,
     options,
+    headroomContext,
   );
   const delegateStream = deps.delegateStream ?? defaultDelegateStream;
   const inner = delegateStream(targetModel, context, delegationOptions);
@@ -63,6 +66,7 @@ export async function delegateWithOutcome(
   deps: StreamDelegationDeps,
   options: SimpleStreamOptions | undefined,
   sessionId: string | undefined,
+  headroomContext?: DelegationHeadroomContext,
 ): Promise<DelegatedStreamResult> {
   const delegationContext = buildDelegationContext(
     context,
@@ -76,6 +80,7 @@ export async function delegateWithOutcome(
     delegationContext,
     deps,
     options,
+    headroomContext,
   );
 
   if (!result.finalMessage) {

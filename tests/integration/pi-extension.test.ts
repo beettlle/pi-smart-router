@@ -707,4 +707,74 @@ describe('Pi extension integration (SP-043)', () => {
       sqliteStore.close();
     });
   });
+
+  describe('delegation output headroom (SP-108)', () => {
+    beforeEach(() => {
+      mockDelegateStreamSimple.mockReset();
+    });
+
+    it('escalates before provider dispatch when input leaves no output headroom', async () => {
+      const headroomFleet: ModelProfile[] = [
+        {
+          id: 'gemini-flash-lite',
+          tier: 'economical-cloud',
+          provider: 'google',
+          capabilities: { reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 },
+          pricing: { fallback_cost_per_1m: 0.1 },
+          limits: { max_input_tokens: 32_768, max_output_tokens: 8_192 },
+        },
+        {
+          id: 'gemini-1.5-pro',
+          tier: 'frontier-cloud',
+          provider: 'google',
+          capabilities: { reasoning: 0.8, code_gen: 0.8, tool_use: 0.8 },
+          pricing: { fallback_cost_per_1m: 3.0 },
+          limits: { max_input_tokens: 2_000_000, max_output_tokens: 8_192 },
+        },
+      ];
+      const flashLite = makeRegistryModel({
+        provider: 'google',
+        id: 'gemini-flash-lite',
+        api: 'google-generative-ai',
+        contextWindow: 32_768,
+        maxTokens: 8_192,
+      });
+      const geminiPro = makeRegistryModel({
+        provider: 'google',
+        id: 'gemini-1.5-pro',
+        api: 'google-generative-ai',
+        contextWindow: 2_000_000,
+        maxTokens: 8_192,
+      });
+      const router = createRouterFromFleet(headroomFleet);
+      vi.spyOn(router.dispatch, 'dispatch').mockResolvedValue({
+        request_id: 'req-headroom',
+        selected_model_id: 'gemini-flash-lite',
+        tier: 'economical-cloud',
+        stage: 'fallback',
+        reason_code: 'safe_cloud_default',
+        routing_latency_ms: 1,
+        pin_reason: null,
+      });
+      mockDelegateStreamSimple.mockImplementation((model) => makeSuccessStream(model));
+
+      const streamSimple = createStreamSimple(withDelegateStream({
+        router,
+        modelRegistry: createMockRegistry([flashLite, geminiPro]),
+        fleet: headroomFleet,
+        executionLedger: new ExecutionLedger(),
+      }));
+
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext([userMessage('continue')]), {
+          sessionId: 'ext-headroom',
+          estimatedInputTokens: 34_000,
+        } as Parameters<typeof streamSimple>[2]),
+      );
+
+      expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+      expect(mockDelegateStreamSimple.mock.calls[0]?.[0]?.id).toBe('gemini-1.5-pro');
+      expect(mockDelegateStreamSimple.mock.calls[0]?.[2]?.maxTokens).toBe(8_192);
+    });
+  });
 });
