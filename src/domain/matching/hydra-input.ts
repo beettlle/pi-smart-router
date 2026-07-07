@@ -38,8 +38,10 @@ function resolveTurnType(request: RoutingRequest): string {
  */
 export function buildHydraInput(
   request: RoutingRequest,
-  _triage?: TriageResult,
+  triage?: TriageResult,
 ): string {
+  void triage;
+
   const flags = [
     `turns:${resolveMessageCount(request)}`,
     `tools:${resolveHasToolContext(request) ? 1 : 0}`,

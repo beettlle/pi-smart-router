@@ -6,6 +6,7 @@ import {
   type RequirementVector,
   type HydraMatcherConfig,
 } from '../../src/domain/matching/hydra-matcher.js';
+import { EMBEDDING_DIM } from '../../src/domain/matching/embedding-provider.js';
 import { buildHydraInput } from '../../src/domain/matching/hydra-input.js';
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 
@@ -28,6 +29,20 @@ function makeModel(overrides: Partial<ModelProfile> = {}): ModelProfile {
     capabilities: { reasoning: 0.8, code_gen: 0.9, tool_use: 0.7 },
     pricing: { fallback_cost_per_1m: 1.0 },
     ...overrides,
+  };
+}
+
+function makeInputSensitiveProvider(): EmbeddingProvider {
+  return {
+    extractRequirements: vi.fn(async (text: string) => {
+      const embedding = new Float32Array(EMBEDDING_DIM);
+      for (let i = 0; i < EMBEDDING_DIM; i++) {
+        const code = text.charCodeAt(i % text.length) ?? 0;
+        embedding[i] = Math.sin(code + i * 0.01);
+      }
+      return projectToRequirements(embedding);
+    }),
+    dispose: vi.fn(async () => {}),
   };
 }
 
@@ -364,6 +379,23 @@ describe('HydraMatcher', () => {
       await expect(matcher.match(makeRequest(), [makeModel()])).rejects.toThrow(
         /Invalid requirement dimension/,
       );
+    });
+
+    it('produces different requirement vectors when token metadata differs', async () => {
+      const provider = makeInputSensitiveProvider();
+      const matcher = new HydraMatcher(provider, DEFAULT_CONFIG);
+      const prompt = 'what is 2+2 ?';
+
+      const lowTokens = await matcher.match(
+        makeRequest({ prompt_text: prompt, estimated_input_tokens: 50 }),
+        [makeModel()],
+      );
+      const highTokens = await matcher.match(
+        makeRequest({ prompt_text: prompt, estimated_input_tokens: 34_000 }),
+        [makeModel()],
+      );
+
+      expect(lowTokens.requirements).not.toEqual(highTokens.requirements);
     });
   });
 
