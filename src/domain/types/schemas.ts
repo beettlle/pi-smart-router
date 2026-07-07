@@ -206,12 +206,49 @@ export const HydraConfigSchema = z.object({
   artifact_cache_path: z.string(),
 });
 
+export const RoutingClustersConfigSchema = z.object({
+  config_path: z.string().min(1),
+});
+
+/** Stable snake_case cluster id — used as reason-code suffix (`cluster_${id}`). */
+export const RoutingClusterIdSchema = z
+  .string()
+  .min(1)
+  .regex(/^[a-z][a-z0-9_]*$/, 'Cluster id must be lowercase snake_case');
+
+export const RoutingClusterSchema = z.object({
+  id: RoutingClusterIdSchema,
+  tier_bias: TierSchema,
+  reference_prompts: z.array(z.string().min(1)).min(1),
+  min_similarity: z.number().min(0).max(1),
+  min_margin: z.number().min(0).max(1),
+});
+
+export const RoutingClustersFileSchema = z
+  .object({
+    clusters: z.array(RoutingClusterSchema).min(1),
+  })
+  .superRefine((value, ctx) => {
+    const seen = new Set<string>();
+    for (const [index, cluster] of value.clusters.entries()) {
+      if (seen.has(cluster.id)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Duplicate cluster id: ${cluster.id}`,
+          path: ['clusters', index, 'id'],
+        });
+      }
+      seen.add(cluster.id);
+    }
+  });
+
 export const OperatorConfigSchema = z.object({
   frugality: FrugalityConfigSchema,
   loop_escalation: LoopEscalationConfigSchema,
   pricing: PricingConfigSchema,
   local: LocalConfigSchema,
   hydra: HydraConfigSchema,
+  routing_clusters: RoutingClustersConfigSchema.optional(),
 });
 
 // ─── Inferred types ──────────────────────────────────────────────────────────

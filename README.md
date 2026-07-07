@@ -260,6 +260,27 @@ models:
 
 Tiers: `zero-tier`, `economical-cloud`, `frontier-cloud`. See [config/models.yaml.example](config/models.yaml.example).
 
+### Routing cluster catalog (library API)
+
+Reference prompts grouped by tier bias for semantic cluster matching (SP-099). Operators tune clusters in YAML without code changes; centroids are computed at load time as the mean embedding of each cluster's reference prompts.
+
+```bash
+cp config/routing-clusters.yaml.example ./config/routing-clusters.yaml
+# Edit reference_prompts, min_similarity, and min_margin per cluster
+```
+
+```typescript
+import { loadRoutingClusters } from 'pi-smart-router';
+
+const catalog = await loadRoutingClusters({
+  filePath: './config/routing-clusters.yaml',
+  embedder: myTextEmbedder, // shared ONNX embedder (SP-100)
+});
+// Reason codes: cluster_${id} — e.g. cluster_low_stakes_general
+```
+
+Cluster IDs are stable reason-code prefixes (`cluster_low_stakes_general`, `cluster_architecture`, etc.). See [config/routing-clusters.yaml.example](config/routing-clusters.yaml.example).
+
 ## Configuration
 
 ### Environment variables
@@ -440,6 +461,7 @@ Contributors must run `npm run build` before publishing or consuming the library
 | [specs/001-build-smart-router/data-model.md](specs/001-build-smart-router/data-model.md) | Entity definitions, schemas, configuration reference |
 | [specs/001-build-smart-router/quickstart.md](specs/001-build-smart-router/quickstart.md) | Setup and verification guide |
 | [config/models.yaml.example](config/models.yaml.example) | Fleet catalog template (library API) |
+| [config/routing-clusters.yaml.example](config/routing-clusters.yaml.example) | Routing cluster reference-prompt catalog (library API) |
 
 ## Built with
 

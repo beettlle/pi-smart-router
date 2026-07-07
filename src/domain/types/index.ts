@@ -1,5 +1,6 @@
 export type {
   CandidateScore,
+  LoadedRoutingCluster,
   Message,
   ModelCapabilities,
   ModelLimits,
@@ -8,6 +9,9 @@ export type {
   ModelProfile,
   PriceCatalog,
   RequirementVector,
+  RoutingCluster,
+  RoutingClusterCatalog,
+  RoutingClusterId,
   RoutingDatasetRecord,
   RoutingDecision,
   RoutingFeatureSidecar,
