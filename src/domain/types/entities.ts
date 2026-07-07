@@ -141,6 +141,10 @@ export interface RoutingFeatureSidecar {
   readonly triage: TriageFeatureSummary | null;
   readonly requirements: RequirementVector | null;
   readonly candidates: readonly CandidateScore[] | null;
+  /** Tier gate hint from low_intensity stage (SP-103, #62 explain). */
+  readonly tier_hint: Tier | null;
+  readonly tier_hint_reason_code: string | null;
+  readonly low_intensity_score: number | null;
 }
 
 export interface RoutingDecision {

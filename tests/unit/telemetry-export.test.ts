@@ -111,6 +111,9 @@ describe('community telemetry export (SP-082)', () => {
           rejected_reason: null,
         },
       ],
+      tier_hint: null,
+      tier_hint_reason_code: null,
+      low_intensity_score: null,
     };
 
     const exported = toHydraCalibrationRecord(makeTelemetry(), features);
@@ -132,6 +135,9 @@ describe('community telemetry export (SP-082)', () => {
           triage: null,
           requirements: { reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 },
           candidates: null,
+          tier_hint: null,
+          tier_hint_reason_code: null,
+          low_intensity_score: null,
         },
       ],
     ]);
