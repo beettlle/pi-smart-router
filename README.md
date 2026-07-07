@@ -526,7 +526,8 @@ Contributors must run `npm run build` before publishing or consuming the library
 | Script | Purpose |
 |--------|---------|
 | `npm run build` | Compile library to `dist/` (`tsc --project tsconfig.build.json`) |
-| `npm run release:check` | Pre-release gate (same as `verify:ci`) |
+| `npm run release:check` | Pre-release gate: `verify:ci` + consumer pack (`npm install --omit=dev` on tarball) |
+| `npm run release:consumer-pack` | Pack tarball and verify production dependencies resolve (catches missing runtime deps) |
 | `npm run verify:ci` | Full CI parity: build, typecheck, lint, test, coverage |
 | `npm run typecheck` | TypeScript strict mode check (`tsc --noEmit`) |
 | `npm test` | Run test suite (`vitest run`) |
@@ -539,15 +540,14 @@ Contributors must run `npm run build` before publishing or consuming the library
 
 ### Releasing
 
-Tag-triggered publish via GitHub Actions (requires `NPMSECRET` repository secret):
+Tag-triggered publish via GitHub Actions (requires `NPMSECRET` repository secret). pi.dev gallery listing syncs automatically from npm (`pi-package` keyword); no separate submit step.
 
-1. `npm run release:check`
-2. `npm version 0.1.0` (creates commit + `v0.1.0` tag)
+1. `npm run release:check` (includes consumer pack verify)
+2. `npm version 0.1.1` (creates commit + `v0.1.1` tag)
 3. `git push && git push --tags`
-4. Actions → **Release** runs `npm publish` and creates a GitHub Release
-5. Post-publish smoke: `pi install npm:pi-smart-router` and `/model smart-router/auto`
+4. Actions → **Release** runs pack smoke, consumer pack verify, `npm publish`, and creates a GitHub Release
 
-Re-publish a failed release: Actions → Release → Run workflow with existing tag (e.g. `v0.1.0`).
+Re-publish a failed release: Actions → Release → Run workflow with existing tag (e.g. `v0.1.1`).
 
 Dry-run tarball contents locally:
 
@@ -555,6 +555,16 @@ Dry-run tarball contents locally:
 npm run release:check
 npm pack --dry-run
 ```
+
+**Post-publish smoke (manual, macOS):** CI does not run `pi install`. After publish:
+
+```bash
+pi install npm:pi-smart-router@0.1.1
+pi --list-models | grep smart-router
+# in pi: /model smart-router/auto, /smart-router status
+```
+
+Confirm https://pi.dev/packages/pi-smart-router shows the new version (may lag npm by a few minutes).
 
 ### Test suite
 

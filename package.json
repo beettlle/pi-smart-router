@@ -1,6 +1,6 @@
 {
   "name": "pi-smart-router",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Auto-model router middleware for the pi.dev coding agent",
   "type": "module",
   "license": "MIT",
@@ -51,7 +51,8 @@
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
     "prepublishOnly": "npm run release:check",
-    "release:check": "npm run verify:ci",
+    "release:check": "npm run verify:ci && npm run release:consumer-pack",
+    "release:consumer-pack": "bash scripts/verify-consumer-pack.sh",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "coverage:check": "vitest run --coverage",
@@ -86,13 +87,13 @@
     "eslint": "^8.57.1",
     "typescript": "^5.8.3",
     "@vitest/coverage-v8": "^3.2.3",
-    "vitest": "^3.2.3",
-    "yaml": "^2.9.0"
+    "vitest": "^3.2.3"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "^0.80.3",
     "@huggingface/transformers": "^4.2.0",
     "better-sqlite3": "^12.11.1",
+    "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
   "allowScripts": {

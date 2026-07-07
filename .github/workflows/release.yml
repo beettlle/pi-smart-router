@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to publish (e.g. v0.1.0). Must already exist."
+        description: "Tag to publish (e.g. v0.1.1). Must already exist."
         required: true
         type: string
 
@@ -18,9 +18,6 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-      tag: ${{ steps.ref.outputs.tag }}
 
     steps:
       - name: Determine ref
@@ -85,6 +82,9 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
+      - name: Install native build tools for better-sqlite3
+        run: sudo apt-get update && sudo apt-get install -y python3 make g++
+
       - name: Install dependencies
         run: npm ci
 
@@ -106,6 +106,9 @@ jobs:
             echo "ERROR: nested extension node_modules must not ship in the tarball"
             exit 1
           fi
+
+      - name: Consumer pack verify
+        run: bash scripts/verify-consumer-pack.sh
 
       - name: CLI help smoke
         run: node bin/pi-smart-router.mjs 2>&1 | grep -q 'export telemetry-contrib'
@@ -137,27 +140,3 @@ jobs:
           else
             gh release create "${TAG}" "${ARGS[@]}"
           fi
-
-  post_publish_smoke:
-    name: Post-publish pi.dev smoke
-    needs: release
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - name: Checkout smoke script
-        uses: actions/checkout@v4
-        with:
-          ref: main
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          registry-url: https://registry.npmjs.org
-
-      - name: Install native build tools for better-sqlite3
-        run: sudo apt-get update && sudo apt-get install -y python3 make g++
-
-      - name: pi install + pi.dev gallery smoke
-        run: bash scripts/post-publish-pi-smoke.sh "${{ needs.release.outputs.version }}"
