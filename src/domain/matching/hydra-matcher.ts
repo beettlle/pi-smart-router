@@ -13,6 +13,11 @@
 
 import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
 import {
+  createOnnxTextEmbedder,
+  EMBEDDING_DIM,
+  type TextEmbedder,
+} from './embedding-provider.js';
+import {
   scoreMultiObjective,
   type FrugalityWeights,
 } from '../scoring/multi-objective.js';
@@ -59,8 +64,6 @@ export interface HydraMatcherConfig {
 const DEFAULT_BUDGET_MS = 100;
 const MIN_BUDGET_MS = 80;
 const MAX_BUDGET_MS = 120;
-
-const EMBEDDING_DIM = 384;
 
 // ─── Scoring helpers ─────────────────────────────────────────────────────────
 
@@ -136,6 +139,25 @@ export function projectToRequirements(embedding: Float32Array): RequirementVecto
     reasoning: sigmoid(meanSlice(embedding, 0, third)),
     code_gen: sigmoid(meanSlice(embedding, third, 2 * third)),
     tool_use: sigmoid(meanSlice(embedding, 2 * third, EMBEDDING_DIM)),
+  };
+}
+
+// ─── HyDRA embedding adapter ─────────────────────────────────────────────────
+
+/**
+ * Adapts a shared TextEmbedder for HyDRA requirement extraction.
+ * dispose() delegates to the underlying embedder for shared lifecycle.
+ */
+export function wrapHydraEmbeddingProvider(embedder: TextEmbedder): EmbeddingProvider {
+  return {
+    async extractRequirements(text: string): Promise<RequirementVector> {
+      const embedding = await embedder.embed(text);
+      return projectToRequirements(embedding);
+    },
+
+    async dispose(): Promise<void> {
+      await embedder.dispose();
+    },
   };
 }
 
@@ -250,60 +272,14 @@ export class HydraMatcher {
 
 // ─── ONNX embedding provider factory ─────────────────────────────────────────
 
-interface OnnxPipelineOutput {
-  readonly data: Float32Array;
-}
-
-type OnnxExtractorFn = (
-  text: string,
-  options: { readonly pooling: string; readonly normalize: boolean },
-) => Promise<OnnxPipelineOutput>;
-
-interface TransformersModule {
-  pipeline(
-    task: string,
-    model: string,
-    options: Record<string, unknown>,
-  ): Promise<OnnxExtractorFn>;
-}
-
 /**
- * Creates an EmbeddingProvider backed by @huggingface/transformers ONNX runtime.
- * Model: Xenova/all-MiniLM-L6-v2 (384-dim).
- *
- * The package is loaded dynamically — not required at compile time.
- * Install: `npm i @huggingface/transformers`
+ * Creates an EmbeddingProvider backed by the shared ONNX text embedder.
+ * For multi-matcher setups, create one TextEmbedder via createOnnxTextEmbedder
+ * and pass wrapHydraEmbeddingProvider(embedder) to HyDRA while sharing embed().
  */
 export async function createOnnxEmbeddingProvider(
   artifactCachePath: string,
 ): Promise<EmbeddingProvider> {
-  const moduleName = '@huggingface/transformers';
-  let mod: TransformersModule;
-  try {
-    mod = (await import(moduleName)) as TransformersModule;
-  } catch {
-    throw new Error(
-      `ONNX embedding requires ${moduleName}. Install: npm i ${moduleName}`,
-    );
-  }
-
-  const extractor: OnnxExtractorFn = await mod.pipeline(
-    'feature-extraction',
-    'Xenova/all-MiniLM-L6-v2',
-    { cache_dir: artifactCachePath },
-  );
-
-  return {
-    async extractRequirements(text: string): Promise<RequirementVector> {
-      const output = await extractor(text, {
-        pooling: 'mean',
-        normalize: true,
-      });
-      return projectToRequirements(output.data);
-    },
-
-    async dispose(): Promise<void> {
-      /* @huggingface/transformers pipelines have no explicit dispose */
-    },
-  };
+  const embedder = await createOnnxTextEmbedder(artifactCachePath);
+  return wrapHydraEmbeddingProvider(embedder);
 }

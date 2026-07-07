@@ -1,7 +1,7 @@
 # SP-100 Status
 
-**Current Step:** Step 1
-**Status:** Not Started
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-06
 **Review Level:** 1
 **Size:** S
@@ -10,19 +10,19 @@
 
 ## Step 1: Extract embedder
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Create embedding-provider module
-- [ ] Refactor hydra-matcher to use shared provider
+- [x] Create embedding-provider module
+- [x] Refactor hydra-matcher to use shared provider
 
 ## Step 2: Tests and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] HyDRA tests pass
-- [ ] Run `npm run verify:ci`
+- [x] HyDRA tests pass
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] All acceptance criteria from PROMPT met
-- [ ] `npm run verify:ci` passes
+- [x] All acceptance criteria from PROMPT met
+- [x] `npm run verify:ci` passes
