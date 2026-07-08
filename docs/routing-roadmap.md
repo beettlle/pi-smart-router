@@ -44,7 +44,7 @@ Ordered for **task success per dollar**. Status reflects the codebase as of 2026
 | **Evidence** | [SAAR (vLLM, 2026-06)](https://vllm.ai/blog/2026-06-02-session-aware-agentic-routing); Weave/Cursor sub-agent patterns; gemini-research §2. Confidence: high. |
 | **Effort** | M (buffer) / L (sub-agent + pi contract) |
 | **Status** | **Partial** — turn envelope early-exits `planning` → frontier; pin preserved in SQLite but model switches on path. **Missing:** sub-agent delegate, `planning_turn_buffer`, SAAR knobs, breakeven gate. |
-| **Follow-on** | Net-new: “Cache-preserving planning (sub-agent or buffer)”; SP-121+ after Phase 33. |
+| **Follow-on** | GitHub [#71](https://github.com/beettlle/pi-smart-router/issues/71) (sub-agent delegate), [#72](https://github.com/beettlle/pi-smart-router/issues/72) (SAAR pin), [#73](https://github.com/beettlle/pi-smart-router/issues/73) (cache breakeven). |
 
 ### P1 — P(success) calibration (isotonic + richer labels)
 
@@ -56,7 +56,7 @@ Ordered for **task success per dollar**. Status reflects the codebase as of 2026
 | **Evidence** | [SWE-Gym](https://arxiv.org/abs/2412.21139); [ToolRM](https://arxiv.org/abs/2509.11963); UCCI (gemini-research §5 — verify citation before SLO claims). Confidence: high (method), medium (our label volume). |
 | **Effort** | M |
 | **Status** | **Partial** — SP-104/105/106/116/117 landed. **Gap:** isotonic artifact, verifier-grade label volume, counterfactual eval. |
-| **Follow-on** | Net-new: “Isotonic P(success) calibrator”; extend SP-117 bundle format. |
+| **Follow-on** | GitHub [#74](https://github.com/beettlle/pi-smart-router/issues/74); extend SP-117 bundle format. |
 
 ### P1 — Benchmark-grounded capability profiles
 
@@ -68,7 +68,7 @@ Ordered for **task success per dollar**. Status reflects the codebase as of 2026
 | **Evidence** | [HyDRA arXiv:2605.17106](https://arxiv.org/abs/2605.17106); Switchcraft (gemini-research §4). Confidence: medium–high (methodology). |
 | **Effort** | M |
 | **Status** | **Partial** — shortfall + YAML/registry exist; scores mostly pattern defaults. SP-115 learned 384×3 projection done. |
-| **Follow-on** | Net-new: “Benchmark-sourced capability profile refresh”. |
+| **Follow-on** | GitHub [#75](https://github.com/beettlle/pi-smart-router/issues/75). |
 
 ### P2 — OATS offline centroid refinement
 
@@ -79,7 +79,7 @@ Ordered for **task success per dollar**. Status reflects the codebase as of 2026
 | **Evidence** | OATS (gemini-research §6 — verify citation). Confidence: medium. |
 | **Effort** | S–M |
 | **Status** | **Partial** — SP-114 bootstrap done; static centroids. |
-| **Follow-on** | Extend SP-117 or net-new calibration step. |
+| **Follow-on** | GitHub [#77](https://github.com/beettlle/pi-smart-router/issues/77); extend SP-117 calibration step. |
 
 ### P2 — Virtual cost v2 (quota decay + cache breakeven)
 
@@ -90,7 +90,7 @@ Ordered for **task success per dollar**. Status reflects the codebase as of 2026
 | **Evidence** | SP-096; SAAR; Zylos FinOps; gemini-research §7 (SeqRoute framing only). Confidence: medium. |
 | **Effort** | M |
 | **Status** | **Partial** — `quota_cost_per_1m` + expected-cost exist. **Missing:** rolling window position, KV savings credit, breakeven in pin-break. |
-| **Follow-on** | Net-new on SP-096/106. |
+| **Follow-on** | GitHub [#78](https://github.com/beettlle/pi-smart-router/issues/78) (virtual cost v2); complements [#73](https://github.com/beettlle/pi-smart-router/issues/73) (breakeven). |
 
 ### P3 — Encoder upgrade path (Granite 97M before ModernBERT)
 
@@ -101,7 +101,7 @@ Ordered for **task success per dollar**. Status reflects the codebase as of 2026
 | **Evidence** | [ModernBERT arXiv:2412.13663](https://arxiv.org/abs/2412.13663); Granite R2 (gemini-research §3). Confidence: high (long context helps); medium (ops cost). |
 | **Effort** | M–L |
 | **Status** | **Partial** — MiniLM + SP-115 learned head. **Gap:** long-context encoder option. |
-| **Follow-on** | After P0–P2 policy fixes; feature-flag encoder swap. |
+| **Follow-on** | GitHub [#80](https://github.com/beettlle/pi-smart-router/issues/80) (Granite trial), [#81](https://github.com/beettlle/pi-smart-router/issues/81) (ModernBERT/K=4); feature-flag encoder swap. |
 
 ---
 
@@ -109,24 +109,24 @@ Ordered for **task success per dollar**. Status reflects the codebase as of 2026
 
 Beyond Top 6. “P2/P3” here means after P0–P1, not a renumber of Top 6.
 
-| Priority | Change | Expected impact | Pipeline stage(s) | Evidence | Effort | Status | Follow-on |
-|----------|--------|-----------------|-------------------|----------|--------|--------|-----------|
-| P0 | Ephemeral planning sub-agent / `planning_delegate` | Preserve cache; frontier reasoning | turn_envelope, explain | Gemini §2, Weave | L | Gap | Pi contract + router |
-| P0 | Planning buffer + SAAR pin knobs | Continuity / $ | turn_envelope, session_pin | SAAR | M | Partial | SP-121+ |
-| P0 | Cache breakeven in sub-route / pin-break | Prevent $3 cache miss for $0.30 save | session_pin, expected-cost | Gemini §2, SAAR | M | Gap | Virtual cost v2 |
-| P1 | Isotonic P(success) calibrator | Honest thresholds | low_intensity, calibration | UCCI | M | Gap | SP-117 bundle |
-| P1 | Benchmark profiles + AST tool validation | Quality floor | hydra, mapper | HyDRA, Switchcraft | M | Partial | Net-new CI job |
-| P1 | HyDRA 7-flag metadata prefix (vs SP-112 4-flag) | Better requirement prediction | hydra input | HyDRA | S–M | Partial (SP-112) | Extend prefix |
-| P2 | OATS centroid refinement | Fewer false-low cluster matches | low_intensity, clusters | OATS | S–M | Partial | SP-117 |
-| P2 | Virtual cost v2 | Subscription-aware $ | pin, pricing | SP-096, SeqRoute* | M | Partial | Net-new |
-| P2 | TwinRouterBench + counterfactual replay | Agent-native eval | offline eval | Gemini §9 | L | Gap | Net-new harness |
-| P3 | Granite 97M encoder trial | Long context, 384-dim | hydra | Granite R2 | M | Gap | Feature flag |
-| P3 | ModernBERT / K=4 heads (true HyDRA) | Full fidelity | hydra | HyDRA 2605.17106 | L | Gap | After Granite trial |
-| P3 | Entropy triage (adversarial) | R2A suffix defense | triage | Gemini §8 | S–M | Partial (sanitization) | Near-term |
+| Priority | Change | Expected impact | Pipeline stage(s) | Evidence | Effort | Status | GitHub |
+|----------|--------|-----------------|-------------------|----------|--------|--------|--------|
+| P0 | Ephemeral planning sub-agent / `planning_delegate` | Preserve cache; frontier reasoning | turn_envelope, explain | Gemini §2, Weave | L | Gap | [#71](https://github.com/beettlle/pi-smart-router/issues/71) |
+| P0 | Planning buffer + SAAR pin knobs | Continuity / $ | turn_envelope, session_pin | SAAR | M | Partial | [#72](https://github.com/beettlle/pi-smart-router/issues/72) |
+| P0 | Cache breakeven in sub-route / pin-break | Prevent $3 cache miss for $0.30 save | session_pin, expected-cost | Gemini §2, SAAR | M | Gap | [#73](https://github.com/beettlle/pi-smart-router/issues/73) |
+| P1 | Isotonic P(success) calibrator | Honest thresholds | low_intensity, calibration | UCCI | M | Gap | [#74](https://github.com/beettlle/pi-smart-router/issues/74) |
+| P1 | Benchmark profiles + AST tool validation | Quality floor | hydra, mapper | HyDRA, Switchcraft | M | Partial | [#75](https://github.com/beettlle/pi-smart-router/issues/75) |
+| P1 | HyDRA 7-flag metadata prefix (vs SP-112 4-flag) | Better requirement prediction | hydra input | HyDRA | S–M | Partial (SP-112) | [#76](https://github.com/beettlle/pi-smart-router/issues/76) |
+| P2 | OATS centroid refinement | Fewer false-low cluster matches | low_intensity, clusters | OATS | S–M | Partial | [#77](https://github.com/beettlle/pi-smart-router/issues/77) |
+| P2 | Virtual cost v2 | Subscription-aware $ | pin, pricing | SP-096, SeqRoute* | M | Partial | [#78](https://github.com/beettlle/pi-smart-router/issues/78) |
+| P2 | TwinRouterBench + counterfactual replay | Agent-native eval | offline eval | Gemini §9 | L | Gap | [#79](https://github.com/beettlle/pi-smart-router/issues/79) |
+| P3 | Granite 97M encoder trial | Long context, 384-dim | hydra | Granite R2 | M | Gap | [#80](https://github.com/beettlle/pi-smart-router/issues/80) |
+| P3 | ModernBERT / K=4 heads (true HyDRA) | Full fidelity | hydra | HyDRA 2605.17106 | L | Gap | [#81](https://github.com/beettlle/pi-smart-router/issues/81) |
+| P3 | Entropy triage (adversarial) | R2A suffix defense | triage | Gemini §8 | S–M | Partial (sanitization) | [#82](https://github.com/beettlle/pi-smart-router/issues/82) |
 | P3 | Explain / telemetry depth | Shadow compare | explain | SP-110/113 | S–M | Partial | Phase 33 |
 | P3 | Local zero decoupled from trivial-only | More local share | local_zero | SP-111 | M | Phase 33 | SP-111 |
-| P3 | Pin-only operator mode | Emergency fallback | session_pin, config | SAAR | S | Gap | Config flag |
-| P3 | Hardware `tokens_per_second` gate | Better local routing | hardware_probe | LiteLLM | M | Gap | #1/#25/#26 |
+| P3 | Pin-only operator mode | Emergency fallback | session_pin, config | SAAR | S | Gap | [#83](https://github.com/beettlle/pi-smart-router/issues/83) |
+| P3 | Hardware `tokens_per_second` gate | Better local routing | hardware_probe | LiteLLM | M | Gap | [#84](https://github.com/beettlle/pi-smart-router/issues/84) |
 | — | Pipeline integration pass | Stage order | all | SP-119 | M | Phase 33 | SP-119 last |
 | **Deferred** | SeqRoute MDP + HBR + CQL | Quota RL | — | Gemini §7 | L | Deferred | v2+ research |
 | **Deferred** | SAE residual-stream defense | Adversarial | hydra | Gemini §8 | L | Deferred | Phase 2 security |
@@ -323,16 +323,41 @@ Full parallel dump: [research/routing-quality-2026-07.json](research/routing-qua
 
 ### Spine / GitHub mapping
 
-| Roadmap item | Existing | Net-new |
-|--------------|----------|---------|
-| P0 cache-preserving planning | Pin + turn envelope (SP-064) | Sub-agent + buffer + breakeven |
-| P1 isotonic P(success) | SP-104–117 | Isotonic artifact |
-| P1 capability profiles | Mapper + shortfall | Benchmark CI refresh |
-| P2 OATS | SP-114 | Calibration step |
-| P2 virtual cost v2 | SP-096, SP-106 | Quota λ + KV savings |
-| P3 encoder | SP-115 | Granite / ModernBERT flag |
-| Eval harness | — | TwinRouterBench + counterfactual |
+| Roadmap item | Existing | GitHub |
+|--------------|----------|--------|
+| P0 cache-preserving planning | Pin + turn envelope (SP-064) | [#71](https://github.com/beettlle/pi-smart-router/issues/71), [#72](https://github.com/beettlle/pi-smart-router/issues/72), [#73](https://github.com/beettlle/pi-smart-router/issues/73) |
+| P1 isotonic P(success) | SP-104–117 | [#74](https://github.com/beettlle/pi-smart-router/issues/74) |
+| P1 capability profiles | Mapper + shortfall | [#75](https://github.com/beettlle/pi-smart-router/issues/75) |
+| P1 HyDRA 7-flag prefix | SP-112 (4-flag) | [#76](https://github.com/beettlle/pi-smart-router/issues/76) |
+| P2 OATS | SP-114 | [#77](https://github.com/beettlle/pi-smart-router/issues/77) |
+| P2 virtual cost v2 | SP-096, SP-106 | [#78](https://github.com/beettlle/pi-smart-router/issues/78) |
+| P2 eval harness | — | [#79](https://github.com/beettlle/pi-smart-router/issues/79) |
+| P3 encoder | SP-115 | [#80](https://github.com/beettlle/pi-smart-router/issues/80), [#81](https://github.com/beettlle/pi-smart-router/issues/81) |
+| P3 entropy triage | Confounder sanitization | [#82](https://github.com/beettlle/pi-smart-router/issues/82) |
+| P3 pin-only fallback | — | [#83](https://github.com/beettlle/pi-smart-router/issues/83) |
+| P3 tokens_per_second gate | hardware_probe | [#84](https://github.com/beettlle/pi-smart-router/issues/84) |
 | Phase 33 | SP-110–119 | Finish integration |
+
+### GitHub backlog (execution tracking)
+
+Flat issues created 2026-07-08 from this roadmap. Titles use `routing: P0|P1|P2|P3 —` prefix. Repro script: `scripts/github/create-routing-quality-issues.sh`.
+
+| Priority | Issue | Title |
+|----------|-------|-------|
+| P0 | [#71](https://github.com/beettlle/pi-smart-router/issues/71) | cache-preserving planning via ephemeral sub-agent delegate |
+| P0 | [#72](https://github.com/beettlle/pi-smart-router/issues/72) | SAAR session pin |
+| P0 | [#73](https://github.com/beettlle/pi-smart-router/issues/73) | cache breakeven gate |
+| P1 | [#74](https://github.com/beettlle/pi-smart-router/issues/74) | isotonic P(success) calibrator |
+| P1 | [#75](https://github.com/beettlle/pi-smart-router/issues/75) | benchmark-grounded capability profiles |
+| P1 | [#76](https://github.com/beettlle/pi-smart-router/issues/76) | HyDRA 7-flag metadata prefix |
+| P2 | [#77](https://github.com/beettlle/pi-smart-router/issues/77) | OATS offline centroid refinement |
+| P2 | [#78](https://github.com/beettlle/pi-smart-router/issues/78) | virtual cost v2 |
+| P2 | [#79](https://github.com/beettlle/pi-smart-router/issues/79) | agent-native router eval harness |
+| P3 | [#80](https://github.com/beettlle/pi-smart-router/issues/80) | Granite 97M encoder trial |
+| P3 | [#81](https://github.com/beettlle/pi-smart-router/issues/81) | ModernBERT + K=4 capability heads |
+| P3 | [#82](https://github.com/beettlle/pi-smart-router/issues/82) | entropy-based adversarial suffix checks |
+| P3 | [#83](https://github.com/beettlle/pi-smart-router/issues/83) | pin-only operator fallback |
+| P3 | [#84](https://github.com/beettlle/pi-smart-router/issues/84) | rolling tokens_per_second gate |
 
 ---
 
