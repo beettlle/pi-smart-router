@@ -45,7 +45,7 @@ pi-smart-router builds on ideas from several production and research routing sys
 - **Adopted:** [GitHub Copilot HyDRA](https://arxiv.org/abs/2409.08379) (shortfall matching decoupled from model identities), Zero-Tier local edge-cache pattern, [Weave Router](https://github.com/workweave/router) session pinning and multi-objective selection
 - **Rejected:** FrugalGPT sequential cascading (tail latency), RouteLLM matrix factorization (confounder vulnerability), turn-by-turn dynamic routing (cache destruction)
 
-See [docs/PRD.md](docs/PRD.md) for full architectural justification.
+See [docs/PRD.md](docs/PRD.md) for full architectural justification, [docs/deep-research.md](docs/deep-research.md) for the research survey, [docs/routing-roadmap.md](docs/routing-roadmap.md) for the prioritized quality backlog, [docs/gemini-research.md](docs/gemini-research.md) for the second-source agent-router report, and [docs/research/README.md](docs/research/README.md) for research provenance.
 
 ## Prerequisites
 

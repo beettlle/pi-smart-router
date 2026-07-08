@@ -12,6 +12,8 @@
 
 A coding agent implementing this system must understand the specific research architectures we are adapting and the pitfalls we are explicitly avoiding.
 
+**Prioritized quality backlog:** For impact-ordered follow-on work (cache-preserving planning, capability grounding, isotonic P(success), virtual cost v2, encoder upgrades), see [routing-roadmap.md](routing-roadmap.md). Research sources: [gemini-research.md](gemini-research.md), [research/README.md](research/README.md), [research/routing-quality-2026-07.json](research/routing-quality-2026-07.json). The roadmap sits beside this PRD and [deep-research.md](deep-research.md); it does not change the MVP pipeline contract below.
+
 ### 2.1. Rejected Frameworks & Pitfalls
 
 **Rejected: FrugalGPT (Sequential Cascading)**

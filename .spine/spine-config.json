@@ -78,7 +78,8 @@
   "worktreeSetupHook": "",
   "worktreeSetupIgnorePaths": [],
   "referenceDocs": [
-    "docs/constitution.md"
+    "docs/constitution.md",
+    "docs/routing-roadmap.md"
   ],
   "standards": [],
   "neverLoad": []

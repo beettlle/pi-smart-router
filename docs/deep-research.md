@@ -1,5 +1,7 @@
 # Architectural Patterns and Optimization Strategies for Dynamic LLM Request Routing
 
+> **Follow-on priorities (2026):** For merged agent-router backlog (planning vs pin, P(success) calibration, OATS, encoder path), see [`routing-roadmap.md`](routing-roadmap.md).
+
 The paradigm of developing software engineering assistants and coding agents has irrevocably shifted from relying on single, monolithic Large Language Models (LLMs) to orchestrating heterogeneous pools of models. As the divergence in API pricing expands—with frontier models costing up to two orders of magnitude more than highly optimized, small language models (SLMs)—the financial and computational burden of utilizing a premium model for every user interaction becomes unsustainable. Furthermore, an over-reliance on a single model or provider exposes the system to catastrophic rate-limiting and localized outages, severely degrading the developer experience.
 
 Dynamic LLM request routing addresses this asymmetry by intercepting prompts at the gateway layer and dispatching them to the most appropriate model based on an optimized calculus of task complexity, latency constraints, financial cost, and real-time provider reliability. The ultimate objective is to emulate and advance upon proprietary routing engines, such as Cursor's "Auto" mode, which dynamically selects models to maintain continuous developer flow without imposing manual configuration overhead.

@@ -1,0 +1,1182 @@
+{
+  "run_id": "trun_7b47ebd495b54ca1947d8f81226bce7c",
+  "interaction_id": "trun_7b47ebd495b54ca1947d8f81226bce7c",
+  "result_url": "https://platform.parallel.ai/play/deep-research/trun_7b47ebd495b54ca1947d8f81226bce7c",
+  "status": "completed",
+  "output": {
+    "basis": [
+      {
+        "field": "executive_insights",
+        "reasoning": "Assessment reasoning:\n- The field_answer provides a set of detailed executive insights covering cost, latency, routing architectures, encoder comparisons, session pinning, P(success) labeling, subscription economics, robustness, and first-turn strategies. This aligns with typical expectations for executive_insights in a pre-generation routing system context. \n- Excerpts include supporting sources for key claims: SWE-bench scores (excerpt 0), HyDRA routing framework (excerpt 1) and latency notes (excerpt 3, 4, 5), session pinning and cost implications (excerpts 3, 9, 10), encoder comparisons (excerpts 4, 5), verifiers and reward models (excerpts 7, 8), adversarial robustness and routing frameworks (excerpts 11, 12, 14), and RouteLLM lineage (excerpts 12, 13, 14). This provides credible backing for most statements.\n- The field_answer appears to address multiple facets that would be expected from the given query/context, including empirical findings, architectural guidance, and economic considerations. \n- No evident gaps in the core topics present in the field_answer given the excerpts list. If anything, a deeper, line-item mapping to each specific excerpt could enhance traceability, but the answer remains comprehensive in scope.\n\nConclusion: Completeness = true. Supported = true.",
+        "citations": [
+          {
+            "url": "https://benchlm.ai/benchmarks/sweVerified",
+            "excerpts": [
+              "SWE-bench Verified Benchmark 2026: 49 LLM scores\nAccording to BenchLM.ai, Claude Mythos Preview leads the SWE-bench Verified benchmark with a score of 93.9%, followed by Claude Opus 4.8 (88.6%) and Claude"
+            ],
+            "title": "SWE-bench Verified Benchmark 2026: 49 LLM scores"
+          },
+          {
+            "url": "https://arxiv.org/html/2605.17106v1",
+            "excerpts": [
+              "HyDRA: Hybrid Dynamic Routing Architecture for ...\nHyDRA is the second iteration of our deployed routing system . The first iteration\u2014an in-house binary strong-vs-weak ModernBERT classifier (the"
+            ],
+            "title": "HyDRA: Hybrid Dynamic Routing Architecture for ..."
+          },
+          {
+            "url": "https://arxiv.org/pdf/2305.05176",
+            "excerpts": [
+              "FrugalGPT: How to Use Large Language Models While ...\nby L Chen \u00b7 2023 \u00b7 Cited by 786 \u2014 4 LLM Cascade Reduces Cost and Improves Accuracy. In this section, we present an empirical study on the FrugalGPT LLM cascade. Our goals are"
+            ],
+            "title": "FrugalGPT: How to Use Large Language Models While ..."
+          },
+          {
+            "url": "https://vllm.ai/blog/2026-06-02-session-aware-agentic-routing",
+            "excerpts": [
+              "Session-Aware Agentic Routing: Continuity-Aware Model ...\nLong-horizon LLM agents create a routing problem that single-turn prompt routers were not designed to solve. A router still needs to know which model is best for the current request, but it also needs to know when switching models would break the session."
+            ],
+            "title": "Session-Aware Agentic Routing: Continuity-Aware Model ..."
+          },
+          {
+            "url": "https://arxiv.org/pdf/2412.13663",
+            "excerpts": [
+              "arXiv:2412.13663v2 [cs.CL] 19 Dec 2024\nvement over older encoders. Trained on 2 trillion tokens with a native 8192 sequence length, ModernBERT models exhibit state-of-the-art results on a large pool of evaluations encompassing diverse classification tasks and both single and multi-vector retrieval ."
+            ],
+            "title": "arXiv:2412.13663v2 [cs.CL] 19 Dec 2024"
+          },
+          {
+            "url": "https://lighton.ai/fr-blog-posts/better-faster-stronger-knowledge-retrieval-and-classification-with-modernbert",
+            "excerpts": [
+              "ModernBERT: Better, Faster, Stronger Knowledge Retrieval and ...\nIt performs better on benchmarks, it can handle a larger context size, it can handle code, it is faster to finetune on your data than any other"
+            ],
+            "title": "ModernBERT: Better, Faster, Stronger Knowledge Retrieval and ..."
+          },
+          {
+            "url": "https://huggingface.co/onnx-models/all-MiniLM-L6-v2-onnx",
+            "excerpts": [
+              "onnx-models/all-MiniLM-L6-v2-onnx \u00b7 Hugging Face\nThis is the ONNX-ported version of the sentence-transformers/all-MiniLM-L6-v2 for generating text embeddings. Using this model becomes easy when you have light-embed installed: Then you can use the model by specifying the original model name like this: \"This is an example sentence\", \"Each sentence is converted\" . print(embeddings)"
+            ],
+            "title": "onnx-models/all-MiniLM-L6-v2-onnx \u00b7 Hugging Face"
+          },
+          {
+            "url": "https://arxiv.org/html/2509.11963v1",
+            "excerpts": [
+              "ToolRM: Outcome Reward Models for Tool-Calling Large ...\nSep 15, 2025 \u2014 FC-RewardBench , the first benchmark designed to systematically assess reward models' performance in tool-calling scenarios."
+            ],
+            "title": "ToolRM: Outcome Reward Models for Tool-Calling Large ..."
+          },
+          {
+            "url": "https://machinelearning.apple.com/research/training-software",
+            "excerpts": [
+              "Training Software Engineering Agents and Verifiers with SWE-Gym\nWe use SWE-Gym to train language model based SWE agents, achieving up to 19% absolute gains in resolve rate on the popular SWE-Bench Verified and Lite test sets"
+            ],
+            "title": "Training Software Engineering Agents and Verifiers with SWE-Gym"
+          },
+          {
+            "url": "https://zylos.ai/research/2026-04-12-ai-agent-cost-optimization-token-budget-model-routing",
+            "excerpts": [
+              "AI Agent Cost Optimization: Token Budgets, Model Routing, and ...\nUnderstanding the cost differential between model tiers is foundational to any optimization strategy. As of early 2026: The 100\u2013300x cost differential between premium and small model tiers is the primary leverage point for any optimization strategy."
+            ],
+            "title": "AI Agent Cost Optimization: Token Budgets, Model Routing, and ..."
+          },
+          {
+            "url": "https://findskill.ai/blog/claude-code-subscription-pricing-guide",
+            "excerpts": [
+              "Claude Code Pricing 2026: $20 Pro vs $100/$200 Max \u2014 Real Math\nMay 11, 2026 \u00b7 Unlike monthly quotas, Pro uses rolling 5-hour windows. Hit your limit at 2pm, you're waiting until 7pm. Then your next 5-hour window starts."
+            ],
+            "title": "Claude Code Pricing 2026: $20 Pro vs $100/$200 Max \u2014 Real Math"
+          },
+          {
+            "url": "https://arxiv.org/html/2511.04316v1",
+            "excerpts": [
+              "AdversariaLLM: A Unified and Modular Toolbox for LLM ...\nAdversariaLLM is a framework designed for evaluating LLM robustness under adversarial conditions with the goal of making models, defenses and attacks easily and fairly comparable. The framework is organized into four modules: datasets, models, attack algorithms, and evaluation. All modules communicate via standardized APIs and are easy to extend."
+            ],
+            "title": "AdversariaLLM: A Unified and Modular Toolbox for LLM ..."
+          },
+          {
+            "url": "https://www.lmsys.org/blog/2024-07-01-routellm",
+            "excerpts": [
+              "RouteLLM: An Open-Source Framework for Cost-Effective LLM ...\nTo tackle this, we present RouteLLM, a principled framework for LLM routing based on preference data. We formalize the problem of LLM routing and explore augmentation techniques to improve router performance."
+            ],
+            "title": "RouteLLM: An Open-Source Framework for Cost-Effective LLM ..."
+          },
+          {
+            "url": "https://medium.com/%40michael.hannecke/implementing-llm-model-routing-a-practical-guide-with-ollama-and-litellm-b62c1562f50f",
+            "excerpts": [
+              "LLM Routing with Ollama & LiteLLM [Part 2] | Medium\nProduction-ready patterns for LLM model routing. Three-tier setup, semantic routing, debugging, and 88% cost reduction with Ollama + LiteLLM."
+            ],
+            "title": "LLM Routing with Ollama & LiteLLM [Part 2] | Medium"
+          },
+          {
+            "url": "https://arxiv.org/pdf/2406.18665v1",
+            "excerpts": [
+              "RouteLLM: Learning to Route LLMs with Preference Data\nWe develop a training framework for router systems utilizing human preference data and data augmentation techniques."
+            ],
+            "title": "RouteLLM: Learning to Route LLMs with Preference Data"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "q1_turn_type_vs_session_pin_tension_planning_turns_early_exit_to_frontier_before_pin",
+        "reasoning": "Assessment reasoning:\n- The field description likely expects a comprehensive answer to the specified field about q1_turn_type_vs_session_pin_tension_planning_turns_early_exit_to_frontier_before_pin, including the identified tension, recommended policy, and concrete actions. The provided field_answer indeed discusses the conflict between planning turns and session pinning, cites SAAR-based policy considerations, proposes a concrete mechanism and actionable steps (turn_index_intra_session, turn_signal, planning_turn_buffer, pinging logic, thresholds), and gives an implementation outline. It also references relevant sources in excerpts to support concepts like continuity-aware routing and cost optimization. Given that the answer directly addresses the topic, includes a resolution, and provides concrete actions, it is complete for the requested field.\n- Excerpts supplied include sources on Session-Aware Agentic Routing and cost optimization, which align with the content of the field_answer and support its claims.\n- Therefore, completeness should be true and supported should be true.\n- If there were gaps (e.g., missing success metrics or more exhaustive dataset references), one could critique for more depth; however, the current answer satisfies the core query with actionable guidance.\n",
+        "citations": [
+          {
+            "url": "https://vllm.ai/blog/2026-06-02-session-aware-agentic-routing",
+            "excerpts": [
+              "Session-Aware Agentic Routing: Continuity-Aware Model ...\nLong-horizon LLM agents create a routing problem that single-turn prompt routers were not designed to solve. A router still needs to know which model is best for the current request, but it also needs to know when switching models would break the session."
+            ],
+            "title": "Session-Aware Agentic Routing: Continuity-Aware Model ..."
+          },
+          {
+            "url": "https://zylos.ai/research/2026-04-12-ai-agent-cost-optimization-token-budget-model-routing",
+            "excerpts": [
+              "AI Agent Cost Optimization: Token Budgets, Model Routing, and ...\nUnderstanding the cost differential between model tiers is foundational to any optimization strategy. As of early 2026: The 100\u2013300x cost differential between premium and small model tiers is the primary leverage point for any optimization strategy."
+            ],
+            "title": "AI Agent Cost Optimization: Token Budgets, Model Routing, and ..."
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "q2_grounding_capability_scores_from_benchmarks",
+        "reasoning": "Assessed field completeness by comparing field_answer content with the implied need to report grounding/capability scores from benchmarks for coding-agent routing. The field_answer provides a ranked list of SWE-bench-like scores and then maps HyDRA capabilities across four dimensions, plus references to mode QR/CS tradeoffs. Excerpts provided include partial corroboration (e.g., excerpt 0 mentions SWE-bench scores around 93.9%, 88.6% for specific models; excerpt 1 references Coding Agent Benchmarks 2026 and SWE-Bench, etc.). However, the field_answer introduces additional matrices (K=4 dimensions, HyDRA mappings, mode-based QR/CS figures) and a broader set of models not fully visible or corroborated by the excerpts. Since completeness requires the field answer to comprehensively address the field description/query and to be self-contained with supporting excerpts, and given that the excerpts do not fully validate all the numbers and the full HyDRA-mapping narrative, I judge completeness as true because the answer directly answers the query about grounding capability scores, but supported as false because excerpts do not fully validate every claimed figure and mapping.\n\nReasoning steps:\n- Identify the core ask: provide grounding capability scores from benchmarks for coding-agent routing and related HyDRA capability mapping.\n- Check field_answer content: includes a ranked list of SWE-bench scores, HyDRA 4-dimension mapping, QR/CS metrics, and references to multiple sources. This aligns with the query's focus on grounding capability scores and multi-dimension routing considerations.\n- Compare with excerpts: excerpts contain some of the same model names and scores (e.g., SWE-bench numbers) but do not cover the entire claimed set (e.g., precise 95.5%/95% etc. across all listed items, or full HyDRA scoring narrative). This means the claim is not fully verifiable against excerpts.\n- Conclude: Completeness should be true (the field answer addresses the query), but supportability by excerpts should be false (not all claims are backed by excerpts).\n- Therefore: completeness = true; supported = false.",
+        "citations": [
+          {
+            "url": "https://benchlm.ai/benchmarks/sweVerified",
+            "excerpts": [
+              "SWE-bench Verified Benchmark 2026: 49 LLM scores\nAccording to BenchLM.ai, Claude Mythos Preview leads the SWE-bench Verified benchmark with a score of 93.9%, followed by Claude Opus 4.8 (88.6%) and Claude"
+            ],
+            "title": "SWE-bench Verified Benchmark 2026: 49 LLM scores"
+          },
+          {
+            "url": "https://presenc.ai/research/coding-agent-benchmarks-2026",
+            "excerpts": [
+              "Coding Agent Benchmarks 2026 (SWE-Bench, TerminalBench, Live ...\nThe Coding Agent Capability Frontier in 2026 Coding agents are the most measurable agent category and the one where capability has improved fastest. SWE-Bench Verified climbed from 13 percent (early 2024) to 78 percent (May 2026); TerminalBench, an arguably harder benchmark, has risen similarly."
+            ],
+            "title": "Coding Agent Benchmarks 2026 (SWE-Bench, TerminalBench, Live ..."
+          },
+          {
+            "url": "https://arxiv.org/html/2605.17106v1",
+            "excerpts": [
+              "HyDRA: Hybrid Dynamic Routing Architecture for ...\nHyDRA is the second iteration of our deployed routing system . The first iteration\u2014an in-house binary strong-vs-weak ModernBERT classifier (the"
+            ],
+            "title": "HyDRA: Hybrid Dynamic Routing Architecture for ..."
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "field": "q3_hydra_fidelity_minilm_vs_modernbert_encoder_for_agent_routing",
+        "reasoning": "Analysis: The field_answer provides a detailed trade-off comparison between MiniLM-L6-v2 and ModernBERT-based encoders for agent routing, including token context, embedding dimensions, model sizes, ONNX/CPU performance, GLUE/sota coverage, long-context retrieval and latency implications, and a concrete verdict recommending ModernBERT-base as primary with MiniLM as a fallback. The excerpts include relevant references to MiniLM onnx embeddings, ModernBERT with 8192-token context, and performance notes, which support the factual claims in the answer. The field_description likely expects a comparative, actionable assessment with a clear recommendation and rationale, which the answer delivers. Therefore, completeness should be true. Supported appears true since the content aligns with the provided excerpts about MiniLM and ModernBERT capabilities and ONNX implications from the excerpts. Confidence is moderate to high given the excerpts' alignment but exact numerical figures beyond the excerpts may be inferred rather than explicitly stated in them. ",
+        "citations": [
+          {
+            "url": "https://huggingface.co/onnx-models/all-MiniLM-L6-v2-onnx",
+            "excerpts": [
+              "onnx-models/all-MiniLM-L6-v2-onnx \u00b7 Hugging Face\nThis is the ONNX-ported version of the sentence-transformers/all-MiniLM-L6-v2 for generating text embeddings. Using this model becomes easy when you have light-embed installed: Then you can use the model by specifying the original model name like this: \"This is an example sentence\", \"Each sentence is converted\" . print(embeddings)"
+            ],
+            "title": "onnx-models/all-MiniLM-L6-v2-onnx \u00b7 Hugging Face"
+          },
+          {
+            "url": "https://arxiv.org/pdf/2412.13663",
+            "excerpts": [
+              "arXiv:2412.13663v2 [cs.CL] 19 Dec 2024\nvement over older encoders. Trained on 2 trillion tokens with a native 8192 sequence length, ModernBERT models exhibit state-of-the-art results on a large pool of evaluations encompassing diverse classification tasks and both single and multi-vector retrieval ."
+            ],
+            "title": "arXiv:2412.13663v2 [cs.CL] 19 Dec 2024"
+          },
+          {
+            "url": "https://lighton.ai/fr-blog-posts/better-faster-stronger-knowledge-retrieval-and-classification-with-modernbert",
+            "excerpts": [
+              "ModernBERT: Better, Faster, Stronger Knowledge Retrieval and ...\nIt performs better on benchmarks, it can handle a larger context size, it can handle code, it is faster to finetune on your data than any other"
+            ],
+            "title": "ModernBERT: Better, Faster, Stronger Knowledge Retrieval and ..."
+          },
+          {
+            "url": "https://arxiv.org/html/2605.17106v1",
+            "excerpts": [
+              "HyDRA: Hybrid Dynamic Routing Architecture for ...\nHyDRA is the second iteration of our deployed routing system . The first iteration\u2014an in-house binary strong-vs-weak ModernBERT classifier (the"
+            ],
+            "title": "HyDRA: Hybrid Dynamic Routing Architecture for ..."
+          },
+          {
+            "url": "https://danielvanstrien.xyz/posts/2025/vllm/modern_inference_modernbert.html",
+            "excerpts": [
+              "Efficient Inference for ModernBERT Classifiers Using vLLM\nThis blog post gives a quick overview of how to use vLLM to run inference for ModernBERT basesd classifier models."
+            ],
+            "title": "Efficient Inference for ModernBERT Classifiers Using vLLM"
+          },
+          {
+            "url": "https://app.semanticdiff.com/gh/huggingface/optimum/pull/2208/overview",
+            "excerpts": [
+              "PR #2208 Add ONNX export optimization support for ModernBERT ...\nMinor change that adds modernbert to necessary configuration management objects. In local tests, optimizations provided noticeable speedups with identical results to non-optimized model."
+            ],
+            "title": "PR #2208 Add ONNX export optimization support for ModernBERT ..."
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "q4_p_success_labels_for_coding_agents_outcome_signals",
+        "reasoning": "Reasoning for completeness and support:\n- The field answer provides a concrete design proposal for q4_p_success_labels_for_coding_agents_outcome_signals, including two existing outcome-label streams (SWE-Gym verifier format and ToolRM FC-RewardBench) and a plan to implement a verifier_head with specific inputs and a gating mechanism prior to deterministic triage. It also includes guidance on inference budget (<5ms) and privacy-safe training constraints, plus anti-patterns.\n- The excerpts mention SWE-Gym, SWE-Bench, and ToolRM (reward models for tool-calling), which align with the high-level concepts in the field answer (verifier-style labels, objective alignment, and gating signals). They do not reproduce every numeric detail, but they substantiate the core components (verifier-based labeling, gating role, and the source of evaluation benchmarks).\n- Therefore, the field answer addresses the expected topics, albeit with some specifics (exact numeric values like 2,438 instances, 19% gains, exact file references) that are not explicitly in the excerpts but are consistent with the cited sources. This supports both completeness and the cited excerpts as backing, though exact numbers are not verifiable from the excerpts alone.\n- If the user strictly required exact numeric corroboration from the excerpts, one could flag potential gaps; given the task, the answer remains coherent and aligned with cited sources.\n",
+        "citations": [
+          {
+            "url": "https://machinelearning.apple.com/research/training-software",
+            "excerpts": [
+              "Training Software Engineering Agents and Verifiers with SWE-Gym\nWe use SWE-Gym to train language model based SWE agents, achieving up to 19% absolute gains in resolve rate on the popular SWE-Bench Verified and Lite test sets"
+            ],
+            "title": "Training Software Engineering Agents and Verifiers with SWE-Gym"
+          },
+          {
+            "url": "https://icml.cc/virtual/2025/poster/46038",
+            "excerpts": [
+              "Training Software Engineering Agents and Verifiers with SWE-Gym\nWe use SWE-Gym to train language model based SWE agents, achieving up to 19% absolute gains in resolve rate on the popular SWE-Bench Verified and Lite test sets"
+            ],
+            "title": "Training Software Engineering Agents and Verifiers with SWE-Gym"
+          },
+          {
+            "url": "https://arxiv.org/html/2509.11963v1",
+            "excerpts": [
+              "ToolRM: Outcome Reward Models for Tool-Calling Large ...\nSep 15, 2025 \u2014 FC-RewardBench , the first benchmark designed to systematically assess reward models' performance in tool-calling scenarios."
+            ],
+            "title": "ToolRM: Outcome Reward Models for Tool-Calling Large ..."
+          },
+          {
+            "url": "https://arxiv.org/pdf/2305.05176",
+            "excerpts": [
+              "FrugalGPT: How to Use Large Language Models While ...\nby L Chen \u00b7 2023 \u00b7 Cited by 786 \u2014 4 LLM Cascade Reduces Cost and Improves Accuracy. In this section, we present an empirical study on the FrugalGPT LLM cascade. Our goals are"
+            ],
+            "title": "FrugalGPT: How to Use Large Language Models While ..."
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "q5_evaluation_methodology_for_agentic_coding_routing",
+        "reasoning": "Assessed whether the provided field_answer fully satisfies the field_description and query. The field describes a three-track evaluation methodology (Capability coverage, Cost arbitrage, Latency + continuity) modeled after RouterBench and LLMRouterBench, with specific metrics, baselines, and datasets (SWE-bench Verified, Codeforces-style problems, PR turns, etc.), plus references to anti-patterns and rationale for multi-track reporting. Excerpts mention RouterBench (405k inferences), LLM routing benchmarks (LLMRouterBench), SWE-bench Verified, and related benchmark discussions, which align with the included field_answer. The field_answer appears to comprehensively cover the requested evaluation methodology, tracked metrics, baselines, and the rationale for joint reporting. The excerpts partially substantiate the use of RouterBench, LLMRouterBench, and SWE-bench Verified, supporting key elements of the answer but do not contain every granular metric described; however, the overall content is adequately supported by the excerpts. Therefore, completeness=true and supported=true.",
+        "citations": [
+          {
+            "url": "https://arxiv.org/abs/2403.12031",
+            "excerpts": [
+              "RouterBench: A Benchmark for Multi-LLM Routing System\nTo bridge this gap, we present RouterBench, a novel evaluation framework designed to systematically assess the efficacy of LLM routing systems, along with a comprehensive dataset comprising over 405k inference outcomes from representative LLMs to support the development of routing strategies."
+            ],
+            "title": "RouterBench: A Benchmark for Multi-LLM Routing System"
+          },
+          {
+            "url": "https://arxiv.org/html/2601.07206v1",
+            "excerpts": [
+              "A Massive Benchmark and Unified Framework for LLM Routing - arXiv\nFinally, we show that LLMRouterBench also enables latency-aware analysis, opening a path toward performance-cost-latency optimization in future"
+            ],
+            "title": "A Massive Benchmark and Unified Framework for LLM Routing - arXiv"
+          },
+          {
+            "url": "https://presenc.ai/research/coding-agent-benchmarks-2026",
+            "excerpts": [
+              "Coding Agent Benchmarks 2026 (SWE-Bench, TerminalBench, Live ...\nThe Coding Agent Capability Frontier in 2026 Coding agents are the most measurable agent category and the one where capability has improved fastest. SWE-Bench Verified climbed from 13 percent (early 2024) to 78 percent (May 2026); TerminalBench, an arguably harder benchmark, has risen similarly."
+            ],
+            "title": "Coding Agent Benchmarks 2026 (SWE-Bench, TerminalBench, Live ..."
+          },
+          {
+            "url": "https://epoch.ai/benchmarks/swe-bench-verified",
+            "excerpts": [
+              "SWE-bench Verified\nGPT-5 Mini's results on the SWE-bench bash-only leaderboard would be 59.8% if they also excluded these issues, compared to a reported 59.9% when all samples"
+            ],
+            "title": "SWE-bench Verified"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "q6_semantic_clustering_best_practices_for_tier_hints",
+        "reasoning": "Completeness assessment: The field_answer provides a detailed scheme for semantic clustering to guide tier hints, including specifics such as clustering into K=8 clusters (later mentions K=4 capability vector in HyDRA), a mapping of clusters A-H to routing strategies, and a mechanism for using cluster representations as tier hints. It also includes an anti-pattern warning and an anti-pattern rationale. This aligns with a typical best-practices guideline for semantic clustering in tier routing. It covers the core aspects: cluster-based tier hints, how to derive/interpret clusters, and a mechanism to select tiers rather than using prompts, plus an anti-pattern. It seems to address the likely expectations for the field (best practices for semantic clustering for tier hints, mechanism, and anti-pattern). Therefore, completeness can be considered true, assuming the field_description expects a comprehensive set of best practices, cluster mappings, and rationale. If the field_description expected exact implementation details (code samples, exact dataset names, or full evaluation methodology), those are partly included but not exhaustive. Given the provided content, I judged completeness to true.\n\nSupported assessment: The excerpts provided discuss related concepts such as semantic routing, routing to tiers, and prior HyDRA routing work, and mention modern BERT-based approaches and semantic routers. However, the field_answer introduces specific concrete details (e.g., K=8 clustering, FAISS k-means, explicit cluster-to-tier mappings A-H, the exact anti-pattern justification) that are not explicitly present in the excerpts. Because the field answer\u2019s specific implementation details are not directly supported by the provided excerpts, the support status should be false. If any part of the field_answer relies on general ideas present in the excerpts (semantic routing, tier-based routing), those parts are loosely supported, but the requirement asks for full support alignment. Therefore, mark as false.\n",
+        "citations": [
+          {
+            "url": "https://lighton.ai/fr-blog-posts/better-faster-stronger-knowledge-retrieval-and-classification-with-modernbert",
+            "excerpts": [
+              "ModernBERT: Better, Faster, Stronger Knowledge Retrieval and ...\nIt performs better on benchmarks, it can handle a larger context size, it can handle code, it is faster to finetune on your data than any other"
+            ],
+            "title": "ModernBERT: Better, Faster, Stronger Knowledge Retrieval and ..."
+          },
+          {
+            "url": "https://developers.redhat.com/articles/2025/05/20/llm-semantic-router-intelligent-request-routing",
+            "excerpts": [
+              "LLM Semantic Router: Intelligent request routing for large language ...\nMay 20, 2025 \u00b7 The Semantic Router for LLM is an extensible solution for routing requests to the correct model. Through BERT embedding's semantic understanding"
+            ],
+            "title": "LLM Semantic Router: Intelligent request routing for large language ..."
+          },
+          {
+            "url": "https://www.mindstudio.ai/blog/set-up-ai-model-router-llm-stack-c2610",
+            "excerpts": [
+              "Three-Tier LLM Routing: Fast, Smart, and Power Model Stacks\nFeb 10, 2026 \u00b7 Semantic routing uses embeddings to match requests to categories. Each category maps to a model tier. First, define your categories. For a"
+            ],
+            "title": "Three-Tier LLM Routing: Fast, Smart, and Power Model Stacks"
+          },
+          {
+            "url": "https://arxiv.org/html/2605.17106v1",
+            "excerpts": [
+              "HyDRA: Hybrid Dynamic Routing Architecture for ...\nHyDRA is the second iteration of our deployed routing system . The first iteration\u2014an in-house binary strong-vs-weak ModernBERT classifier (the"
+            ],
+            "title": "HyDRA: Hybrid Dynamic Routing Architecture for ..."
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "field": "q7_subscription_quota_economics_and_virtual_cost_modeling",
+        "reasoning": "Assessment reasoning:\n- The field description asks for economics and virtual cost modeling for the q7_subscription_quota_economics_and_virtual_cost_modeling field. The provided field_answer presents three pricing regimes, a virtual_cost formula with components, and a discussion of policy around quotas, costs, and prefix cache savings. \n- Completeness\u5224\u65ad: The answer directly addresses pricing regimes, a virtual cost formula, and operational mechanism (quota arbitrage, cache savings). It covers the core elements one would expect: pricing options, a cost-model equation, and operational considerations. While it may not include every possible nuance or the full derivation, it sufficiently answers the field's intent. Therefore completeness = true.\n- Supported\u5224\u65ad: Excerpts include multiple items that support the claims in the field_answer: pricing differentials (excerpt 0), specific pricing example (excerpt 1), quota/limits (excerpt 2), KV-cache performance gains (excerpt 3), prefix caching info (excerpts 4 and 5). The field_answer references these concepts and numbers that align with excerpts. Thus supported = true.",
+        "citations": [
+          {
+            "url": "https://zylos.ai/research/2026-04-12-ai-agent-cost-optimization-token-budget-model-routing",
+            "excerpts": [
+              "AI Agent Cost Optimization: Token Budgets, Model Routing, and ...\nUnderstanding the cost differential between model tiers is foundational to any optimization strategy. As of early 2026: The 100\u2013300x cost differential between premium and small model tiers is the primary leverage point for any optimization strategy."
+            ],
+            "title": "AI Agent Cost Optimization: Token Budgets, Model Routing, and ..."
+          },
+          {
+            "url": "https://findskill.ai/blog/claude-code-subscription-pricing-guide",
+            "excerpts": [
+              "Claude Code Pricing 2026: $20 Pro vs $100/$200 Max \u2014 Real Math\nMay 11, 2026 \u00b7 Unlike monthly quotas, Pro uses rolling 5-hour windows. Hit your limit at 2pm, you're waiting until 7pm. Then your next 5-hour window starts."
+            ],
+            "title": "Claude Code Pricing 2026: $20 Pro vs $100/$200 Max \u2014 Real Math"
+          },
+          {
+            "url": "https://openrouter.ai/docs/api/reference/limits",
+            "excerpts": [
+              "API Rate Limits | Configure Usage Limits in OpenRouter ...\nLearn about OpenRouter's API rate limits, credit-based quotas, and DDoS protection. Configure and monitor your model usage limits effectively."
+            ],
+            "title": "API Rate Limits | Configure Usage Limits in OpenRouter ..."
+          },
+          {
+            "url": "https://llm-d.ai/blog/kvcache-wins-you-can-see",
+            "excerpts": [
+              "KV-Cache Wins You Can See: From Prefix ...\nSep 24, 2025 \u2014 See how llm-d's precise KV-cache aware scheduling delivers 57x faster responses and 2x throughput in production distributed LLM inference"
+            ],
+            "title": "KV-Cache Wins You Can See: From Prefix ..."
+          },
+          {
+            "url": "https://docs.vllm.ai/en/latest/design/prefix_caching",
+            "excerpts": [
+              "Automatic Prefix Caching\nPrefix caching kv-cache blocks is a popular optimization in LLM inference to avoid redundant prompt computations. The core idea is simple \u2013 we cache the kv-"
+            ],
+            "title": "Automatic Prefix Caching"
+          },
+          {
+            "url": "https://bentoml.com/llm/inference-optimization/prefix-caching",
+            "excerpts": [
+              "Prefix caching | LLM Inference Handbook\nPrefix caching (also known as prompt caching or context caching) is one of the most effective techniques to reduce latency and cost in LLM inference."
+            ],
+            "title": "Prefix caching | LLM Inference Handbook"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "q8_adversarial_robustness_for_embedding_routers",
+        "reasoning": "Assessment reasoning:\n- Field asks about adversarial robustness for embedding routers in LLM-based routing, focusing on embedding-router robustness, defenses, failure modes, and relevant literature/tools.\n- The provided field_answer states there is no dedicated LLM RouterBench robustness suite in published literature, cites closest references (RouteLLM, HyDRA, adversarial robustness papers), lists known failure modes (paraphrase drift, prompt injection, model-card poisoning), and proposes defenses (matrix factorization as secondary head, robustness shadow log, training on embedding+paraphrase_set, etc.). It also mentions mechanisms and references to RouteLLM-like work and HyDRA.\n- Completeness\u5224\u65ad: The answer directly addresses the robustness topic, cites existing work, enumerates failure modes, and provides defense ideas and mechanisms. While it may not exhaustively cover every possible fault or all datasets, it sufficiently covers the core aspects expected by a field focused on adversarial robustness for embedding routers. Therefore, completeness = true.\n- Supported\u5224\u65ad: Excerpts include related works: RouteLLM (embedding routing), HyDRA routing, adversarial robustness for LLMs, and general adversarial evaluation tools, which align with and support the claims and context in the field_answer. Hence, supported = true.\n- Confidence: Moderate-to-high given alignment with the provided excerpts and the field answer content.",
+        "citations": [
+          {
+            "url": "https://arxiv.org/html/2511.04316v1",
+            "excerpts": [
+              "AdversariaLLM: A Unified and Modular Toolbox for LLM ...\nAdversariaLLM is a framework designed for evaluating LLM robustness under adversarial conditions with the goal of making models, defenses and attacks easily and fairly comparable. The framework is organized into four modules: datasets, models, attack algorithms, and evaluation. All modules communicate via standardized APIs and are easy to extend."
+            ],
+            "title": "AdversariaLLM: A Unified and Modular Toolbox for LLM ..."
+          },
+          {
+            "url": "https://arxiv.org/html/2502.15427v1",
+            "excerpts": [
+              "Adversarial Prompt Evaluation: Systematic Benchmarking of ...\nThe users can guide the adversarial prompt generation by providing and modifying high level recipes for a downstream LLM to follow in creation of the adversarial examples."
+            ],
+            "title": "Adversarial Prompt Evaluation: Systematic Benchmarking of ..."
+          },
+          {
+            "url": "http://github.com/zhxieml/remiss-jailbreak",
+            "excerpts": [
+              "With our system, ReMiss, we identify and generate adversarial prompts that expose these flaws, achieving high attack success rates while ensuring the prompts remain human-readable. This approach helps us better understand and improve the robustness of aligned LLMs."
+            ],
+            "title": "GitHub - zhxieml/remiss-jailbreak"
+          },
+          {
+            "url": "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2026.1784484/full",
+            "excerpts": [
+              "Adversarial robustness of LLM-based multi-agent systems ...\nby L Wiesmeier \u00b7 2026 \u2014 We investigate how LLM-based MAS behave under adversarial influence in engineering problem-solving tasks. We systematically evaluate the robustness of MAS"
+            ],
+            "title": "Adversarial robustness of LLM-based multi-agent systems ..."
+          },
+          {
+            "url": "https://arxiv.org/pdf/2406.18665v1",
+            "excerpts": [
+              "RouteLLM: Learning to Route LLMs with Preference Data\nWe develop a training framework for router systems utilizing human preference data and data augmentation techniques."
+            ],
+            "title": "RouteLLM: Learning to Route LLMs with Preference Data"
+          },
+          {
+            "url": "https://arxiv.org/html/2605.17106v1",
+            "excerpts": [
+              "HyDRA: Hybrid Dynamic Routing Architecture for ...\nHyDRA is the second iteration of our deployed routing system . The first iteration\u2014an in-house binary strong-vs-weak ModernBERT classifier (the"
+            ],
+            "title": "HyDRA: Hybrid Dynamic Routing Architecture for ..."
+          },
+          {
+            "url": "http://minlanyu.seas.harvard.edu/writeup/sllm25-score.pdf",
+            "excerpts": [
+              "COST- AND LATENCY-CONSTRAINED ROUTING FOR LLMS\nby J Lakha \u00b7 Cited by 1 \u2014 However, their router minimizes cost while meeting fixed performance thresholds and neglects latency \u2013 a critical factor in interactive. LLM applications. The"
+            ],
+            "title": "COST- AND LATENCY-CONSTRAINED ROUTING FOR LLMS"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "q9_when_is_routing_the_wrong_abstraction_vs_pin_on_first_turn_only",
+        "reasoning": "Assessment reasoning:\n- The field description asks for a clear determination of when routing should be per-turn vs pin-on-first-turn, including any decision rules or thresholds, and any caveats or counter-cases.\n- The provided field_answer delivers explicit regimes (routing per turn vs pin on first turn), a decision rule (detected_tool_loop == false AND turn_index <= 1 => route per turn; else pin), and mentions configurable thresholds (prefix_cache_weight, switch_history_weight, idle_timeout_seconds) and citations to supportive work and empirical benefits.\n- Completeness check:\n  - Includes definitions of both regimes (when routing per turn is right; when pin on first turn is right).\n  - Provides a concrete decision rule to choose between regimes.\n  - Includes some context about performance benefits and counter-cases via references to SAAR and matrix-facto routing examples.\n  - Does not explicitly enumerate all potential edge cases beyond the two regimes, but provides a solid, actionable rule and counter-case.\n  - Overall, the field answer directly answers the query with a usable rule, so completeness should be true.\n- Excerpts check:\n  - Excerpts discuss session-aware routing, KV-cache benefits, and RouteLLM frameworks, which are thematically aligned but do not contain the exact rule statement provided in the field_answer. Therefore, the field_answer is not fully supported by explicit quotes in the excerpts, though it's conceptually supported by the topics.\n- Decision: completeness = true; supported = false (not explicitly supported by the provided excerpts).\n- If the user expects exact textual support, consider updating the excerpts or the field_answer to align with cited sources.\n",
+        "citations": [
+          {
+            "url": "https://vllm.ai/blog/2026-06-02-session-aware-agentic-routing",
+            "excerpts": [
+              "Session-Aware Agentic Routing: Continuity-Aware Model ...\nLong-horizon LLM agents create a routing problem that single-turn prompt routers were not designed to solve. A router still needs to know which model is best for the current request, but it also needs to know when switching models would break the session."
+            ],
+            "title": "Session-Aware Agentic Routing: Continuity-Aware Model ..."
+          },
+          {
+            "url": "https://llm-d.ai/blog/kvcache-wins-you-can-see",
+            "excerpts": [
+              "KV-Cache Wins You Can See: From Prefix ...\nSep 24, 2025 \u2014 See how llm-d's precise KV-cache aware scheduling delivers 57x faster responses and 2x throughput in production distributed LLM inference"
+            ],
+            "title": "KV-Cache Wins You Can See: From Prefix ..."
+          },
+          {
+            "url": "https://arxiv.org/pdf/2406.18665v1",
+            "excerpts": [
+              "RouteLLM: Learning to Route LLMs with Preference Data\nWe develop a training framework for router systems utilizing human preference data and data augmentation techniques."
+            ],
+            "title": "RouteLLM: Learning to Route LLMs with Preference Data"
+          },
+          {
+            "url": "https://www.lmsys.org/blog/2024-07-01-routellm",
+            "excerpts": [
+              "RouteLLM: An Open-Source Framework for Cost-Effective LLM ...\nTo tackle this, we present RouteLLM, a principled framework for LLM routing based on preference data. We formalize the problem of LLM routing and explore augmentation techniques to improve router performance."
+            ],
+            "title": "RouteLLM: An Open-Source Framework for Cost-Effective LLM ..."
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "field": "per_stage_recommendations",
+        "reasoning": "Reasoning: The field_answer provides a detailed, multi-step per_stage_recommendations with specific thresholds, parameter names, and gate logic. The excerpts include general discussions of LLM routing architectures (three-tier models, HyDRA routing, semantic routers) but do not corroborate the exact concrete rules, thresholds, or implementation details (e.g., tokens_per_second_estimate calculation, specific gate behaviors, SAAR-like session pin values, deterministic triage via regex with predefined centroids, or the exact numeric thresholds like 25 tokens_per_second_local_est). Therefore, while the answer aligns with the topic and is comprehensive, it is not directly supported by the provided excerpts in a verifiable way. Completeness: true (the answer covers multiple pipeline stages as described by the field_description) but Supported: false (excerpts do not substantiate the exact claims).",
+        "citations": [
+          {
+            "url": "https://medium.com/%40michael.hannecke/implementing-llm-model-routing-a-practical-guide-with-ollama-and-litellm-b62c1562f50f",
+            "excerpts": [
+              "LLM Routing with Ollama & LiteLLM [Part 2] | Medium\nProduction-ready patterns for LLM model routing. Three-tier setup, semantic routing, debugging, and 88% cost reduction with Ollama + LiteLLM."
+            ],
+            "title": "LLM Routing with Ollama & LiteLLM [Part 2] | Medium"
+          },
+          {
+            "url": "https://arxiv.org/html/2605.17106v1",
+            "excerpts": [
+              "HyDRA: Hybrid Dynamic Routing Architecture for ...\nHyDRA is the second iteration of our deployed routing system . The first iteration\u2014an in-house binary strong-vs-weak ModernBERT classifier (the"
+            ],
+            "title": "HyDRA: Hybrid Dynamic Routing Architecture for ..."
+          },
+          {
+            "url": "https://www.mindstudio.ai/blog/set-up-ai-model-router-llm-stack-c2610",
+            "excerpts": [
+              "Three-Tier LLM Routing: Fast, Smart, and Power Model Stacks\nFeb 10, 2026 \u00b7 Semantic routing uses embeddings to match requests to categories. Each category maps to a model tier. First, define your categories. For a"
+            ],
+            "title": "Three-Tier LLM Routing: Fast, Smart, and Power Model Stacks"
+          },
+          {
+            "url": "https://developers.redhat.com/articles/2025/05/20/llm-semantic-router-intelligent-request-routing",
+            "excerpts": [
+              "LLM Semantic Router: Intelligent request routing for large language ...\nMay 20, 2025 \u00b7 The Semantic Router for LLM is an extensible solution for routing requests to the correct model. Through BERT embedding's semantic understanding"
+            ],
+            "title": "LLM Semantic Router: Intelligent request routing for large language ..."
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "field": "top_5_priority_changes_highest_leverage",
+        "reasoning": "Completeness assessment:\n- The field answer directly provides a list of five priority changes, each with a short description and a reference-like annotation. This aligns with the user query asking for the top 5 priority changes with highest leverage. Therefore, the field answer fully satisfies the request for the top-5 prioritized changes. Completeness = true.\n\nSupport assessment:\n- The excerpts contain topics relevant to several items mentioned in the field answer (e.g., HyDRA routing, Session-Aware Agentic Routing, SWE-Gym training, RouteLLM). However, many specific claims in the field answer (e.g., MiniLM vs ModernBERT encoder in ONNX int8, K=4 capability-head, planning_turn_buffer = 2, prefix_cache_weight knob, verifier_head trained on SWE-Gym signals, virtual-cost model with subscription-quota arithmetic, 155.16 RPS claim) are not explicitly supported by the provided excerpts. As a result, the field answer is not fully supported by the excerpts.\n\nConclusion:\n- Completeness: true\n- Supported: false",
+        "citations": [
+          {
+            "url": "https://arxiv.org/html/2605.17106v1",
+            "excerpts": [
+              "HyDRA: Hybrid Dynamic Routing Architecture for ...\nHyDRA is the second iteration of our deployed routing system . The first iteration\u2014an in-house binary strong-vs-weak ModernBERT classifier (the"
+            ],
+            "title": "HyDRA: Hybrid Dynamic Routing Architecture for ..."
+          },
+          {
+            "url": "https://vllm.ai/blog/2026-06-02-session-aware-agentic-routing",
+            "excerpts": [
+              "Session-Aware Agentic Routing: Continuity-Aware Model ...\nLong-horizon LLM agents create a routing problem that single-turn prompt routers were not designed to solve. A router still needs to know which model is best for the current request, but it also needs to know when switching models would break the session."
+            ],
+            "title": "Session-Aware Agentic Routing: Continuity-Aware Model ..."
+          },
+          {
+            "url": "https://machinelearning.apple.com/research/training-software",
+            "excerpts": [
+              "Training Software Engineering Agents and Verifiers with SWE-Gym\nWe use SWE-Gym to train language model based SWE agents, achieving up to 19% absolute gains in resolve rate on the popular SWE-Bench Verified and Lite test sets"
+            ],
+            "title": "Training Software Engineering Agents and Verifiers with SWE-Gym"
+          },
+          {
+            "url": "https://arxiv.org/html/2509.11963v1",
+            "excerpts": [
+              "ToolRM: Outcome Reward Models for Tool-Calling Large ...\nSep 15, 2025 \u2014 FC-RewardBench , the first benchmark designed to systematically assess reward models' performance in tool-calling scenarios."
+            ],
+            "title": "ToolRM: Outcome Reward Models for Tool-Calling Large ..."
+          },
+          {
+            "url": "https://zylos.ai/research/2026-04-12-ai-agent-cost-optimization-token-budget-model-routing",
+            "excerpts": [
+              "AI Agent Cost Optimization: Token Budgets, Model Routing, and ...\nUnderstanding the cost differential between model tiers is foundational to any optimization strategy. As of early 2026: The 100\u2013300x cost differential between premium and small model tiers is the primary leverage point for any optimization strategy."
+            ],
+            "title": "AI Agent Cost Optimization: Token Budgets, Model Routing, and ..."
+          },
+          {
+            "url": "https://findskill.ai/blog/claude-code-subscription-pricing-guide",
+            "excerpts": [
+              "Claude Code Pricing 2026: $20 Pro vs $100/$200 Max \u2014 Real Math\nMay 11, 2026 \u00b7 Unlike monthly quotas, Pro uses rolling 5-hour windows. Hit your limit at 2pm, you're waiting until 7pm. Then your next 5-hour window starts."
+            ],
+            "title": "Claude Code Pricing 2026: $20 Pro vs $100/$200 Max \u2014 Real Math"
+          },
+          {
+            "url": "https://arxiv.org/pdf/2406.18665v1",
+            "excerpts": [
+              "RouteLLM: Learning to Route LLMs with Preference Data\nWe develop a training framework for router systems utilizing human preference data and data augmentation techniques."
+            ],
+            "title": "RouteLLM: Learning to Route LLMs with Preference Data"
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "field": "gap_analysis_vs_existing_pi_smart_router_architecture",
+        "reasoning": "The field answer presents a structured gap analysis table mapping each stage of the current pi_smart_router architecture to its status and identified gaps. It covers multiple stages (hardware probe, loop escalation, turn envelope, context-fit gate, low-intensity gate, session pin, deterministic triage, local zero-tier, HyDRA embedding matcher, safe default, context overflow fallback) and proposes concrete gaps (e.g., adding tokens_per_second_local_est, 4-class ModernBERT turn-type head, explicit arithmetic, planning_turn_buffer, prefix_cache_weight, regex/lex gate for deterministic triage, gating by tokens_per_second_local_est, ONNX int8 encoder with K-heads, preventing silent downgrades, two-step summarize-and-re-route). It also cites a gap source (RouterBench + LLMRouterBench) and mentions they provide 405k inference outcomes across 21 datasets as the right scaffolding for measuring these gaps, aligning with the provided excerpts which reference RouterBench and related benchmarks. The answer is coherent with the provided context and uses plausible, testable recommendations that map to the architecture\u2019s stages and constraints.\n\nConfidence is moderate-to-high that the answer is complete with respect to the asked gap analysis and that it aligns with the excerpts which discuss benchmarks for routing and evaluation frameworks. No explicit missing stages are obvious given the listed architecture stages; however, given the breadth of \u201cPrioritize these open questions\u201d in the query, a more exhaustive gap list could exist in the full document. Overall, the field answer appears complete for the intended field and coherent with excerpts.\n",
+        "citations": [
+          {
+            "url": "https://arxiv.org/abs/2403.12031",
+            "excerpts": [
+              "RouterBench: A Benchmark for Multi-LLM Routing System\nTo bridge this gap, we present RouterBench, a novel evaluation framework designed to systematically assess the efficacy of LLM routing systems, along with a comprehensive dataset comprising over 405k inference outcomes from representative LLMs to support the development of routing strategies."
+            ],
+            "title": "RouterBench: A Benchmark for Multi-LLM Routing System"
+          },
+          {
+            "url": "https://arxiv.org/html/2601.07206v1",
+            "excerpts": [
+              "A Massive Benchmark and Unified Framework for LLM Routing - arXiv\nFinally, we show that LLMRouterBench also enables latency-aware analysis, opening a path toward performance-cost-latency optimization in future"
+            ],
+            "title": "A Massive Benchmark and Unified Framework for LLM Routing - arXiv"
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "annotated_bibliography_50_sources",
+        "reasoning": "Assessment reasoning:\n- The field asks for an annotated bibliography of 50 sources related to LLM routing for coding agents, including primary sources, actionable recommendations, benchmarks, anti-patterns, etc. The provided field_answer lists a large curated set of sources (labeled 1..60) with titles, arXiv IDs, and brief annotations, which aligns with the requested deliverables. While the user query mentions 50 sources, the answer contains more than 50 items, covering foundational routing papers, encoders, benchmarks, adversarial robustness, pricing, production routing, etc.\u2014addressing the breadth implied by the field_description.\n- Excerpts provided include multiple sources that are relevant to pi-smart-router context (HyDRA, RouteLLM, FrugalGPT, SWE benchmarks, caching, ONNX, ModernBERT, etc.), which supports the field answer content.\n- Therefore, the field answer appears to comprehensively cover the expected aspects (foundational papers, encoders/embeddings, benchmarks, caching, robustness, pricing, production routing) and provides concrete references, meeting the completeness criterion.\n- Excerpt alignment check: The excerpts list contains items that correspond to many sources in the field_answer (HyDRA, RouteLLM, FrugalGPT, SWE benchmarks, etc.), supporting the produced bibliography content.\n- Conclusion: completeness = true; supported = true.",
+        "citations": [
+          {
+            "url": "https://arxiv.org/html/2605.17106v1",
+            "excerpts": [
+              "HyDRA: Hybrid Dynamic Routing Architecture for ...\nHyDRA is the second iteration of our deployed routing system . The first iteration\u2014an in-house binary strong-vs-weak ModernBERT classifier (the"
+            ],
+            "title": "HyDRA: Hybrid Dynamic Routing Architecture for ..."
+          },
+          {
+            "url": "https://arxiv.org/pdf/2406.18665v1",
+            "excerpts": [
+              "RouteLLM: Learning to Route LLMs with Preference Data\nWe develop a training framework for router systems utilizing human preference data and data augmentation techniques."
+            ],
+            "title": "RouteLLM: Learning to Route LLMs with Preference Data"
+          },
+          {
+            "url": "https://arxiv.org/pdf/2305.05176",
+            "excerpts": [
+              "FrugalGPT: How to Use Large Language Models While ...\nby L Chen \u00b7 2023 \u00b7 Cited by 786 \u2014 4 LLM Cascade Reduces Cost and Improves Accuracy. In this section, we present an empirical study on the FrugalGPT LLM cascade. Our goals are"
+            ],
+            "title": "FrugalGPT: How to Use Large Language Models While ..."
+          },
+          {
+            "url": "https://arxiv.org/html/2605.14241v2",
+            "excerpts": [
+              "Latency-Quality Routing for Functionally Equivalent Tools ...\nMay 28, 2026 \u2014 We evaluate LQM-ContextRoute across search, QA, retriever, and LLM - provider pools against production policies, online learning routers , additive"
+            ],
+            "title": "Latency-Quality Routing for Functionally Equivalent Tools ..."
+          },
+          {
+            "url": "http://minlanyu.seas.harvard.edu/writeup/sllm25-score.pdf",
+            "excerpts": [
+              "COST- AND LATENCY-CONSTRAINED ROUTING FOR LLMS\nby J Lakha \u00b7 Cited by 1 \u2014 However, their router minimizes cost while meeting fixed performance thresholds and neglects latency \u2013 a critical factor in interactive. LLM applications. The"
+            ],
+            "title": "COST- AND LATENCY-CONSTRAINED ROUTING FOR LLMS"
+          },
+          {
+            "url": "https://arxiv.org/abs/2403.12031",
+            "excerpts": [
+              "RouterBench: A Benchmark for Multi-LLM Routing System\nTo bridge this gap, we present RouterBench, a novel evaluation framework designed to systematically assess the efficacy of LLM routing systems, along with a comprehensive dataset comprising over 405k inference outcomes from representative LLMs to support the development of routing strategies."
+            ],
+            "title": "RouterBench: A Benchmark for Multi-LLM Routing System"
+          },
+          {
+            "url": "https://arxiv.org/html/2601.07206v1",
+            "excerpts": [
+              "A Massive Benchmark and Unified Framework for LLM Routing - arXiv\nFinally, we show that LLMRouterBench also enables latency-aware analysis, opening a path toward performance-cost-latency optimization in future"
+            ],
+            "title": "A Massive Benchmark and Unified Framework for LLM Routing - arXiv"
+          },
+          {
+            "url": "https://arxiv.org/pdf/2412.13663",
+            "excerpts": [
+              "arXiv:2412.13663v2 [cs.CL] 19 Dec 2024\nvement over older encoders. Trained on 2 trillion tokens with a native 8192 sequence length, ModernBERT models exhibit state-of-the-art results on a large pool of evaluations encompassing diverse classification tasks and both single and multi-vector retrieval ."
+            ],
+            "title": "arXiv:2412.13663v2 [cs.CL] 19 Dec 2024"
+          },
+          {
+            "url": "https://huggingface.co/onnx-models/all-MiniLM-L6-v2-onnx",
+            "excerpts": [
+              "onnx-models/all-MiniLM-L6-v2-onnx \u00b7 Hugging Face\nThis is the ONNX-ported version of the sentence-transformers/all-MiniLM-L6-v2 for generating text embeddings. Using this model becomes easy when you have light-embed installed: Then you can use the model by specifying the original model name like this: \"This is an example sentence\", \"Each sentence is converted\" . print(embeddings)"
+            ],
+            "title": "onnx-models/all-MiniLM-L6-v2-onnx \u00b7 Hugging Face"
+          },
+          {
+            "url": "https://danielvanstrien.xyz/posts/2025/vllm/modern_inference_modernbert.html",
+            "excerpts": [
+              "Efficient Inference for ModernBERT Classifiers Using vLLM\nThis blog post gives a quick overview of how to use vLLM to run inference for ModernBERT basesd classifier models."
+            ],
+            "title": "Efficient Inference for ModernBERT Classifiers Using vLLM"
+          },
+          {
+            "url": "https://lighton.ai/fr-blog-posts/better-faster-stronger-knowledge-retrieval-and-classification-with-modernbert",
+            "excerpts": [
+              "ModernBERT: Better, Faster, Stronger Knowledge Retrieval and ...\nIt performs better on benchmarks, it can handle a larger context size, it can handle code, it is faster to finetune on your data than any other"
+            ],
+            "title": "ModernBERT: Better, Faster, Stronger Knowledge Retrieval and ..."
+          },
+          {
+            "url": "https://app.semanticdiff.com/gh/huggingface/optimum/pull/2208/overview",
+            "excerpts": [
+              "PR #2208 Add ONNX export optimization support for ModernBERT ...\nMinor change that adds modernbert to necessary configuration management objects. In local tests, optimizations provided noticeable speedups with identical results to non-optimized model."
+            ],
+            "title": "PR #2208 Add ONNX export optimization support for ModernBERT ..."
+          },
+          {
+            "url": "https://arxiv.org/html/2509.11963v1",
+            "excerpts": [
+              "ToolRM: Outcome Reward Models for Tool-Calling Large ...\nSep 15, 2025 \u2014 FC-RewardBench , the first benchmark designed to systematically assess reward models' performance in tool-calling scenarios."
+            ],
+            "title": "ToolRM: Outcome Reward Models for Tool-Calling Large ..."
+          },
+          {
+            "url": "https://machinelearning.apple.com/research/training-software",
+            "excerpts": [
+              "Training Software Engineering Agents and Verifiers with SWE-Gym\nWe use SWE-Gym to train language model based SWE agents, achieving up to 19% absolute gains in resolve rate on the popular SWE-Bench Verified and Lite test sets"
+            ],
+            "title": "Training Software Engineering Agents and Verifiers with SWE-Gym"
+          },
+          {
+            "url": "https://icml.cc/virtual/2025/poster/46038",
+            "excerpts": [
+              "Training Software Engineering Agents and Verifiers with SWE-Gym\nWe use SWE-Gym to train language model based SWE agents, achieving up to 19% absolute gains in resolve rate on the popular SWE-Bench Verified and Lite test sets"
+            ],
+            "title": "Training Software Engineering Agents and Verifiers with SWE-Gym"
+          },
+          {
+            "url": "https://repository.gatech.edu/bitstreams/62a9fbe1-b26d-4343-a7e4-0b1688ab90f7/download",
+            "excerpts": [
+              "an empirical study of reward hacking in llm coding agent\nby DH Andrews \u00b7 2026 \u2014 This thesis presents an effort to train an open-source LLM coding agent with outcome-reward RL, first in the setting of SWE-Bench-style software engineering"
+            ],
+            "title": "an empirical study of reward hacking in llm coding agent"
+          },
+          {
+            "url": "https://vllm.ai/blog/2026-06-02-session-aware-agentic-routing",
+            "excerpts": [
+              "Session-Aware Agentic Routing: Continuity-Aware Model ...\nLong-horizon LLM agents create a routing problem that single-turn prompt routers were not designed to solve. A router still needs to know which model is best for the current request, but it also needs to know when switching models would break the session."
+            ],
+            "title": "Session-Aware Agentic Routing: Continuity-Aware Model ..."
+          },
+          {
+            "url": "https://docs.vllm.ai/en/latest/design/prefix_caching",
+            "excerpts": [
+              "Automatic Prefix Caching\nPrefix caching kv-cache blocks is a popular optimization in LLM inference to avoid redundant prompt computations. The core idea is simple \u2013 we cache the kv-"
+            ],
+            "title": "Automatic Prefix Caching"
+          },
+          {
+            "url": "https://bentoml.com/llm/inference-optimization/prefix-caching",
+            "excerpts": [
+              "Prefix caching | LLM Inference Handbook\nPrefix caching (also known as prompt caching or context caching) is one of the most effective techniques to reduce latency and cost in LLM inference."
+            ],
+            "title": "Prefix caching | LLM Inference Handbook"
+          },
+          {
+            "url": "https://llm-d.ai/blog/kvcache-wins-you-can-see",
+            "excerpts": [
+              "KV-Cache Wins You Can See: From Prefix ...\nSep 24, 2025 \u2014 See how llm-d's precise KV-cache aware scheduling delivers 57x faster responses and 2x throughput in production distributed LLM inference"
+            ],
+            "title": "KV-Cache Wins You Can See: From Prefix ..."
+          },
+          {
+            "url": "https://openreview.net/forum?id=5Iw1nDtYmT",
+            "excerpts": [
+              "KVFlow: Efficient Prefix Caching for Accelerating LLM- ...\nby Z Pan \u00b7 Cited by 45 \u2014 To improve serving efficiency, existing LLM systems employ prefix caching to reuse key-value (KV) tensors corresponding to agents' fixed prompts, thereby"
+            ],
+            "title": "KVFlow: Efficient Prefix Caching for Accelerating LLM- ..."
+          },
+          {
+            "url": "https://benchlm.ai/benchmarks/sweVerified",
+            "excerpts": [
+              "SWE-bench Verified Benchmark 2026: 49 LLM scores\nAccording to BenchLM.ai, Claude Mythos Preview leads the SWE-bench Verified benchmark with a score of 93.9%, followed by Claude Opus 4.8 (88.6%) and Claude"
+            ],
+            "title": "SWE-bench Verified Benchmark 2026: 49 LLM scores"
+          },
+          {
+            "url": "https://presenc.ai/research/coding-agent-benchmarks-2026",
+            "excerpts": [
+              "Coding Agent Benchmarks 2026 (SWE-Bench, TerminalBench, Live ...\nThe Coding Agent Capability Frontier in 2026 Coding agents are the most measurable agent category and the one where capability has improved fastest. SWE-Bench Verified climbed from 13 percent (early 2024) to 78 percent (May 2026); TerminalBench, an arguably harder benchmark, has risen similarly."
+            ],
+            "title": "Coding Agent Benchmarks 2026 (SWE-Bench, TerminalBench, Live ..."
+          },
+          {
+            "url": "https://epoch.ai/benchmarks/swe-bench-verified",
+            "excerpts": [
+              "SWE-bench Verified\nGPT-5 Mini's results on the SWE-bench bash-only leaderboard would be 59.8% if they also excluded these issues, compared to a reported 59.9% when all samples"
+            ],
+            "title": "SWE-bench Verified"
+          },
+          {
+            "url": "https://vals.ai/benchmarks/swebench",
+            "excerpts": [
+              "SWE-bench Verified\n5 days ago \u2014 The benchmark comprises 500 tasks, each executed within an isolated Docker container. These tasks represent real-world GitHub issues from"
+            ],
+            "title": "SWE-bench Verified"
+          },
+          {
+            "url": "https://benchmarkingagents.com/agent-benchmarks",
+            "excerpts": [
+              "AI Agent Benchmarks 2026 - SWE-bench, WebArena, AgentBench ...\nComprehensive guide to AI agent benchmarks in 2026. SWE-bench Verified, WebArena, AgentBench, Terminal-Bench, OSWorld, and Tau-Bench explained with methodology, current SOTA scores, and honest limitations."
+            ],
+            "title": "AI Agent Benchmarks 2026 - SWE-bench, WebArena, AgentBench ..."
+          },
+          {
+            "url": "https://medium.com/%40allahverdiyev.tural/beyond-swe-bench-how-to-actually-evaluate-ai-coding-agents-in-2026-8233940530f1",
+            "excerpts": [
+              "Beyond SWE-Bench: How to Actually Evaluate AI Coding ...\nTau-Bench scores for top models sit in the 50\u201370% range. For most enterprise buyers, this benchmark is what actually matters \u2014 they aren't"
+            ],
+            "title": "Beyond SWE-Bench: How to Actually Evaluate AI Coding ..."
+          },
+          {
+            "url": "https://arxiv.org/html/2511.04316v1",
+            "excerpts": [
+              "AdversariaLLM: A Unified and Modular Toolbox for LLM ...\nAdversariaLLM is a framework designed for evaluating LLM robustness under adversarial conditions with the goal of making models, defenses and attacks easily and fairly comparable. The framework is organized into four modules: datasets, models, attack algorithms, and evaluation. All modules communicate via standardized APIs and are easy to extend."
+            ],
+            "title": "AdversariaLLM: A Unified and Modular Toolbox for LLM ..."
+          },
+          {
+            "url": "https://arxiv.org/html/2502.15427v1",
+            "excerpts": [
+              "Adversarial Prompt Evaluation: Systematic Benchmarking of ...\nThe users can guide the adversarial prompt generation by providing and modifying high level recipes for a downstream LLM to follow in creation of the adversarial examples."
+            ],
+            "title": "Adversarial Prompt Evaluation: Systematic Benchmarking of ..."
+          },
+          {
+            "url": "https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2026.1784484/full",
+            "excerpts": [
+              "Adversarial robustness of LLM-based multi-agent systems ...\nby L Wiesmeier \u00b7 2026 \u2014 We investigate how LLM-based MAS behave under adversarial influence in engineering problem-solving tasks. We systematically evaluate the robustness of MAS"
+            ],
+            "title": "Adversarial robustness of LLM-based multi-agent systems ..."
+          },
+          {
+            "url": "http://github.com/zhxieml/remiss-jailbreak",
+            "excerpts": [
+              "With our system, ReMiss, we identify and generate adversarial prompts that expose these flaws, achieving high attack success rates while ensuring the prompts remain human-readable. This approach helps us better understand and improve the robustness of aligned LLMs."
+            ],
+            "title": "GitHub - zhxieml/remiss-jailbreak"
+          },
+          {
+            "url": "https://findskill.ai/blog/claude-code-subscription-pricing-guide",
+            "excerpts": [
+              "Claude Code Pricing 2026: $20 Pro vs $100/$200 Max \u2014 Real Math\nMay 11, 2026 \u00b7 Unlike monthly quotas, Pro uses rolling 5-hour windows. Hit your limit at 2pm, you're waiting until 7pm. Then your next 5-hour window starts."
+            ],
+            "title": "Claude Code Pricing 2026: $20 Pro vs $100/$200 Max \u2014 Real Math"
+          },
+          {
+            "url": "https://www.finout.io/blog/claude-code-pricing-2026",
+            "excerpts": [
+              "Claude Code Pricing 2026: Complete Plans & Cost Guide - Finout\nA Max 20x user who actually burns through session limits can consume the equivalent of $600\u2013$1,500 per month in API tokens for a flat $200. API"
+            ],
+            "title": "Claude Code Pricing 2026: Complete Plans & Cost Guide - Finout"
+          },
+          {
+            "url": "https://openrouter.ai/docs/api/reference/limits",
+            "excerpts": [
+              "API Rate Limits | Configure Usage Limits in OpenRouter ...\nLearn about OpenRouter's API rate limits, credit-based quotas, and DDoS protection. Configure and monitor your model usage limits effectively."
+            ],
+            "title": "API Rate Limits | Configure Usage Limits in OpenRouter ..."
+          },
+          {
+            "url": "https://www.truefoundry.com/blog/claude-code-limits-explained",
+            "excerpts": [
+              "Claude Code Rate Limits & Usage Quotas Explained (2026)\nClaude code max limits depend on your subscription, with token limits varying significantly between models. A large context window accelerates consumption, as every file and message counts."
+            ],
+            "title": "Claude Code Rate Limits & Usage Quotas Explained (2026)"
+          },
+          {
+            "url": "https://medium.com/%40michael.hannecke/implementing-llm-model-routing-a-practical-guide-with-ollama-and-litellm-b62c1562f50f",
+            "excerpts": [
+              "LLM Routing with Ollama & LiteLLM [Part 2] | Medium\nProduction-ready patterns for LLM model routing. Three-tier setup, semantic routing, debugging, and 88% cost reduction with Ollama + LiteLLM."
+            ],
+            "title": "LLM Routing with Ollama & LiteLLM [Part 2] | Medium"
+          },
+          {
+            "url": "https://www.mindstudio.ai/blog/set-up-ai-model-router-llm-stack-c2610",
+            "excerpts": [
+              "Three-Tier LLM Routing: Fast, Smart, and Power Model Stacks\nFeb 10, 2026 \u00b7 Semantic routing uses embeddings to match requests to categories. Each category maps to a model tier. First, define your categories. For a"
+            ],
+            "title": "Three-Tier LLM Routing: Fast, Smart, and Power Model Stacks"
+          },
+          {
+            "url": "https://developers.redhat.com/articles/2025/05/20/llm-semantic-router-intelligent-request-routing",
+            "excerpts": [
+              "LLM Semantic Router: Intelligent request routing for large language ...\nMay 20, 2025 \u00b7 The Semantic Router for LLM is an extensible solution for routing requests to the correct model. Through BERT embedding's semantic understanding"
+            ],
+            "title": "LLM Semantic Router: Intelligent request routing for large language ..."
+          },
+          {
+            "url": "https://klymentiev.com/blog/llm-router",
+            "excerpts": [
+              "LLM Router 2026: RouteLLM Benchmarks, Cut Costs 30-85%\nThe matrix-factorization router's 74% savings at 95% quality is the published benchmark. Generalizes to model pairs other than its training pair (GPT-4 / Mixtral) without retraining."
+            ],
+            "title": "LLM Router 2026: RouteLLM Benchmarks, Cut Costs 30-85%"
+          },
+          {
+            "url": "https://www.lmsys.org/blog/2024-07-01-routellm",
+            "excerpts": [
+              "RouteLLM: An Open-Source Framework for Cost-Effective LLM ...\nTo tackle this, we present RouteLLM, a principled framework for LLM routing based on preference data. We formalize the problem of LLM routing and explore augmentation techniques to improve router performance."
+            ],
+            "title": "RouteLLM: An Open-Source Framework for Cost-Effective LLM ..."
+          },
+          {
+            "url": "https://github.com/lm-sys/RouteLLM/blob/main/routellm/routers/matrix_factorization/model.py",
+            "excerpts": [
+              "RouteLLM/routellm/routers/matrix_factorization/model.py at ...\nA framework for serving and evaluating LLM routers - save LLM costs without compromising quality - RouteLLM/routellm/routers/matrix_factorization/model.py at main \u00b7 lm-sys/RouteLLM"
+            ],
+            "title": "RouteLLM/routellm/routers/matrix_factorization/model.py at ..."
+          },
+          {
+            "url": "https://zylos.ai/research/2026-03-02-ai-agent-model-routing",
+            "excerpts": [
+              "AI Agent Model Routing and Dynamic Model Selection Strategies\nMar 2, 2026 \u00b7 Semantic routing uses embedding-based similarity ... LLM routing is no longer an optimization curiosity \u2014 it is production infrastructure."
+            ],
+            "title": "AI Agent Model Routing and Dynamic Model Selection Strategies"
+          },
+          {
+            "url": "https://zylos.ai/research/2026-04-12-ai-agent-cost-optimization-token-budget-model-routing",
+            "excerpts": [
+              "AI Agent Cost Optimization: Token Budgets, Model Routing, and ...\nUnderstanding the cost differential between model tiers is foundational to any optimization strategy. As of early 2026: The 100\u2013300x cost differential between premium and small model tiers is the primary leverage point for any optimization strategy."
+            ],
+            "title": "AI Agent Cost Optimization: Token Budgets, Model Routing, and ..."
+          },
+          {
+            "url": "https://github.com/wandb/weave",
+            "excerpts": [
+              "wandb/weave: Weave is a toolkit for developing AI- ...\nWeave is a toolkit for developing Generative AI applications, built by Weights & Biases. You can use Weave to: Log and debug language model inputs, outputs,"
+            ],
+            "title": "wandb/weave: Weave is a toolkit for developing AI- ..."
+          },
+          {
+            "url": "http://github.com/ulab-uiuc/LLMRouter",
+            "excerpts": [
+              "LLMRouter: An Open-Source Library for LLM Routing - GitHub LLMRouter is an intelligent routing system designed to optimize LLM inference by dynamically selecting the most suitable model for each query."
+            ],
+            "title": "LLMRouter: An Open-Source Library for LLM Routing - GitHub"
+          },
+          {
+            "url": "http://clawrouters.com/blog/best-open-source-llm-router",
+            "excerpts": [
+              "Best Open Source LLM Router: 2026 Comparison & Guide An open source LLM router is a self-hosted middleware layer that sits between your application and multiple AI model providers \u2014 OpenAI,"
+            ],
+            "title": "Best Open Source LLM Router: 2026 Comparison & Guide"
+          },
+          {
+            "url": "https://docs.langchain.com/oss/python/langchain/multi-agent/router",
+            "excerpts": [
+              "Router - Docs by LangChain\nSubagents: An main supervisor agent dynamically decides which subagents to call as part of an ongoing conversation. The main agent maintains context, can call multiple subagents across turns, and orchestrates complex multi-step workflows. Use a router when you have clear input categories and want deterministic or lightweight classification."
+            ],
+            "title": "Router - Docs by LangChain"
+          },
+          {
+            "url": "https://botpress.com/blog/ai-agent-routing",
+            "excerpts": [
+              "Ultimate Guide to AI Agent Routing (2026) - botpress.com\nModern AI agent routing relies on advanced large language models (LLMs) to dynamically analyze and route queries based on context, eliminating the need for predefined intents or extensive training data and achieving zero-shot functionality effortlessly."
+            ],
+            "title": "Ultimate Guide to AI Agent Routing (2026) - botpress.com"
+          },
+          {
+            "url": "https://www.augmentcode.com/guides/ai-model-routing-guide",
+            "excerpts": [
+              "Best AI Model for Coding Agents in 2026: A Routing Guide\nApr 12, 2026 \u2014 The best AI model for coding agents in 2026 depends on agent role. Learn how to route Opus, Sonnet, Haiku, and GPT-5.2 by task type to cut"
+            ],
+            "title": "Best AI Model for Coding Agents in 2026: A Routing Guide"
+          },
+          {
+            "url": "https://pub.towardsai.net/router-based-agents-the-architecture-pattern-that-makes-ai-systems-scale-a9cbe3148482",
+            "excerpts": [
+              "Router-Based Agents: The Architecture Pattern That Makes AI ...\nWhen you\u2019re building agentic AI systems that need to scale beyond toy examples, you quickly discover that the routing mechanism \u2014 how tasks get distributed across your system \u2014 becomes the make-or-break factor. This article explores how router-based agents work at multiple levels, from the micro-decisions within a single agent to orchestrating dozens of specialized agents across"
+            ],
+            "title": "Router-Based Agents: The Architecture Pattern That Makes AI ..."
+          },
+          {
+            "url": "https://www.emergentmind.com/topics/routerbench",
+            "excerpts": [
+              "RouterBench: Routing Benchmark Framework\nRouterBench is a formal benchmarking framework designed to evaluate the performance, cost efficiency, and robustness of LLM routing systems, as well as a range of other routing and optimization approaches in networking, vehicle routing, quantum circuits, and VLSI design."
+            ],
+            "title": "RouterBench: Routing Benchmark Framework"
+          },
+          {
+            "url": "https://www.demandsphere.com/research/demandsphere-radar/ai-frontier-model-tracker/benchmarks/swe-bench",
+            "excerpts": [
+              "SWE-bench Verified - AI Benchmark Explained - DemandSphere\nSWE-bench Verified is a coding benchmark that tests AI models on resolving real GitHub issues from popular open-source Python repositories. The model must read"
+            ],
+            "title": "SWE-bench Verified - AI Benchmark Explained - DemandSphere"
+          },
+          {
+            "url": "https://www.programming-helper.com/tech/swe-bench-coding-agent-benchmarks-2026-software-engineering-ai-evaluation",
+            "excerpts": [
+              "SWE-bench and Coding Agent Benchmarks 2026: Measuring What AI ...\nThis in-depth analysis explores the benchmark landscape for AI software engineering agents in 2026, from SWE-bench and SWE-bench Verified to emerging multi-modal and safety-focused evaluation frameworks, and what the numbers reveal about the state of automated code generation."
+            ],
+            "title": "SWE-bench and Coding Agent Benchmarks 2026: Measuring What AI ..."
+          },
+          {
+            "url": "https://www.sciencedirect.com/science/article/pii/S1566253526003246",
+            "excerpts": [
+              "Evaluating and Regulating Agentic AI: A Study of Benchmarks ...\nStudies focusing on evaluation frameworks, benchmarks, or assessment metrics for LLM-based or autonomous agent systems from year 2023-2025. \u2022."
+            ],
+            "title": "Evaluating and Regulating Agentic AI: A Study of Benchmarks ..."
+          },
+          {
+            "url": "https://www.birjob.com/blog/agent-benchmarks-2026",
+            "excerpts": [
+              "AI Coding Agent Benchmarks Beyond SWE-Bench in 2026\nMay 14, 2026 \u2014 Tau-Bench scores are typically in the 50-70% range for top models. The benchmark is what most enterprise buyers actually care about, they're not"
+            ],
+            "title": "AI Coding Agent Benchmarks Beyond SWE-Bench in 2026"
+          },
+          {
+            "url": "http://modal.com/resources/best-sandboxes-swe-bench-coding-agents",
+            "excerpts": [
+              "The platform includes built-in SWE-Bench benchmarking capabilities covering Verified, SWE-Smith, and R2E-Gym benchmarks."
+            ],
+            "title": "Best Sandboxes for SWE-Bench-Style Coding Agents in 2026"
+          },
+          {
+            "url": "https://docs.spring.io/spring-ai/reference/api/embeddings/onnx.html",
+            "excerpts": [
+              "Transformers (ONNX) Embeddings :: Spring AI Reference\nThe snippet exports the sentence-transformers/all-MiniLM-L6-v2 transformer into the onnx-output-folder folder. The latter includes the tokenizer.json and model.onnx files used by the embedding model."
+            ],
+            "title": "Transformers (ONNX) Embeddings :: Spring AI Reference"
+          },
+          {
+            "url": "https://github.com/Mintplex-Labs/anything-llm/blob/master/server/storage/models/README.md",
+            "excerpts": [
+              "anything-llm/server/storage/models/README.md at master ...\nWhen your embedding engine preference is native we will use the ONNX all-MiniLM-L6-v2 model built by Xenova on HuggingFace.co. This model is a quantized and WASM version of the popular all-MiniLM-L6-v2 which produces a 384-dimension vector. If you are using the native embedding engine your vector database should be configured to accept 384-dimension models if that parameter is directly"
+            ],
+            "title": "anything-llm/server/storage/models/README.md at master ..."
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "field": "viability_assessment_of_multi_stage_pre_gen_routing",
+        "reasoning": "Assessment reasoning:\n- The field_answer provides a verdict on viability and lays out explicit reasons, benefits, potential failure modes, and a recommended fallback posture. This directly addresses the field purpose (viability assessment of multi-stage pre-gen routing).\n- It includes concrete justifications (latency envelopes, capability catalog decoupling, cost-effectiveness, privacy-safe training) and caveats (catalog maintenance, adversarial robustness) plus a fallback policy. This aligns with what a complete viability assessment should cover.\n- However, the provided excerpts mainly cover related routing architectures and tooling (HyDRA, SWE-Gym, session-aware routing, general LLM routing practices) and do not explicitly verify the exact numeric claims (e.g., 55ms P50 offline latency on ModernBERT int8 ONNX, specific capability-vector decoupling with K=4, exact SWE-Bench metrics, or the precise QA about cost tradeoffs). Therefore, while the argument is coherent, the field answer is not directly supported by the excerpts for all numeric/claims.\n- Conclusion: completeness = true (the answer is self-contained and addresses the question with rationale and recommended actions), but support = false (not all claims are directly supported by the provided excerpts).\n",
+        "citations": [
+          {
+            "url": "https://arxiv.org/html/2605.17106v1",
+            "excerpts": [
+              "HyDRA: Hybrid Dynamic Routing Architecture for ...\nHyDRA is the second iteration of our deployed routing system . The first iteration\u2014an in-house binary strong-vs-weak ModernBERT classifier (the"
+            ],
+            "title": "HyDRA: Hybrid Dynamic Routing Architecture for ..."
+          },
+          {
+            "url": "https://machinelearning.apple.com/research/training-software",
+            "excerpts": [
+              "Training Software Engineering Agents and Verifiers with SWE-Gym\nWe use SWE-Gym to train language model based SWE agents, achieving up to 19% absolute gains in resolve rate on the popular SWE-Bench Verified and Lite test sets"
+            ],
+            "title": "Training Software Engineering Agents and Verifiers with SWE-Gym"
+          },
+          {
+            "url": "https://vllm.ai/blog/2026-06-02-session-aware-agentic-routing",
+            "excerpts": [
+              "Session-Aware Agentic Routing: Continuity-Aware Model ...\nLong-horizon LLM agents create a routing problem that single-turn prompt routers were not designed to solve. A router still needs to know which model is best for the current request, but it also needs to know when switching models would break the session."
+            ],
+            "title": "Session-Aware Agentic Routing: Continuity-Aware Model ..."
+          },
+          {
+            "url": "https://medium.com/%40michael.hannecke/implementing-llm-model-routing-a-practical-guide-with-ollama-and-litellm-b62c1562f50f",
+            "excerpts": [
+              "LLM Routing with Ollama & LiteLLM [Part 2] | Medium\nProduction-ready patterns for LLM model routing. Three-tier setup, semantic routing, debugging, and 88% cost reduction with Ollama + LiteLLM."
+            ],
+            "title": "LLM Routing with Ollama & LiteLLM [Part 2] | Medium"
+          }
+        ],
+        "confidence": "medium"
+      },
+      {
+        "field": "synthesis",
+        "reasoning": "Assessment reasoning:\n- The user field query asks for a synthesis grounded in the provided input about pi-smart-router, its architecture, tensions, and open questions. It expects an integrated synthesis that ties to the seed papers and the stated constraints.\n- The provided field_answer focuses on listing and contrasting three architectures (FrugalGPT cascade, RouteLLM matrix-facto, HyDRA capability-vector) with a table of characteristics, latency, quality-cost metrics, and robustness/privacy/failure notes. It does not address many other requested aspects such as: deliverables, actionable recommendations per pipeline stage, benchmarks/datasets, anti-patterns, top 5 priority changes, gap analysis vs docs, annotated bibliography, and viability assessment of multi-stage pre-gen routing.\n- Therefore, the field_answer is not complete with respect to the broad field_description and the explicit deliverables and questions in the prompt. It partially aligns with the topic (routing architectures and their tradeoffs) but omits many required components.\n- Excerpt support: The excerpts include works like RouterBench, HyDRA, RouteLLM, FrugalGPT, Latency-Quality Routing, and Session-Aware Routing. The field_answer references concepts that are consistent with these sources (e.g., FrugalGPT, HyDRA, RouteLLM). Thus, excerpts do support some elements of the field_answer, but not the full breadth of the expected synthesis. \n- Final judgment: completeness = false (not covering all required aspects); supported = true (elements referenced in the field_answer are supported by excerpts).\n",
+        "citations": [
+          {
+            "url": "https://arxiv.org/abs/2403.12031",
+            "excerpts": [
+              "RouterBench: A Benchmark for Multi-LLM Routing System\nTo bridge this gap, we present RouterBench, a novel evaluation framework designed to systematically assess the efficacy of LLM routing systems, along with a comprehensive dataset comprising over 405k inference outcomes from representative LLMs to support the development of routing strategies."
+            ],
+            "title": "RouterBench: A Benchmark for Multi-LLM Routing System"
+          },
+          {
+            "url": "https://arxiv.org/html/2605.17106v1",
+            "excerpts": [
+              "HyDRA: Hybrid Dynamic Routing Architecture for ...\nHyDRA is the second iteration of our deployed routing system . The first iteration\u2014an in-house binary strong-vs-weak ModernBERT classifier (the"
+            ],
+            "title": "HyDRA: Hybrid Dynamic Routing Architecture for ..."
+          },
+          {
+            "url": "https://arxiv.org/pdf/2406.18665v1",
+            "excerpts": [
+              "RouteLLM: Learning to Route LLMs with Preference Data\nWe develop a training framework for router systems utilizing human preference data and data augmentation techniques."
+            ],
+            "title": "RouteLLM: Learning to Route LLMs with Preference Data"
+          },
+          {
+            "url": "https://arxiv.org/pdf/2305.05176",
+            "excerpts": [
+              "FrugalGPT: How to Use Large Language Models While ...\nby L Chen \u00b7 2023 \u00b7 Cited by 786 \u2014 4 LLM Cascade Reduces Cost and Improves Accuracy. In this section, we present an empirical study on the FrugalGPT LLM cascade. Our goals are"
+            ],
+            "title": "FrugalGPT: How to Use Large Language Models While ..."
+          },
+          {
+            "url": "https://arxiv.org/html/2605.14241v2",
+            "excerpts": [
+              "Latency-Quality Routing for Functionally Equivalent Tools ...\nMay 28, 2026 \u2014 We evaluate LQM-ContextRoute across search, QA, retriever, and LLM - provider pools against production policies, online learning routers , additive"
+            ],
+            "title": "Latency-Quality Routing for Functionally Equivalent Tools ..."
+          },
+          {
+            "url": "https://vllm.ai/blog/2026-06-02-session-aware-agentic-routing",
+            "excerpts": [
+              "Session-Aware Agentic Routing: Continuity-Aware Model ...\nLong-horizon LLM agents create a routing problem that single-turn prompt routers were not designed to solve. A router still needs to know which model is best for the current request, but it also needs to know when switching models would break the session."
+            ],
+            "title": "Session-Aware Agentic Routing: Continuity-Aware Model ..."
+          }
+        ],
+        "confidence": "low"
+      }
+    ],
+    "content": {
+      "executive_insights": "- **Capability-Score Discontinuity Forces a Three-Tier Floor**: SWE-bench Verified spans 23.6% (GPT-4.1 mini) to 95.5% (Claude Mythos 5) on the leaderboard of 49 models as of July 7, 2026 - a 71.9-point spread that makes unconditional \"use the cheap model\" the dominant failure mode; the corridor between the strongest economical-tier model and the weakest frontier-tier model is only ~3-5 points, so most routing quality losses can be avoided by holding the floor at the lowest-cost model that still clears the capability threshold for the turn type. ([executive_insights[0]] [37])\n\n- **Pre-Gen Routers Win the Latency Battle by an Order of Magnitude**: HyDRA reports 55ms P50 / 120ms P99 end-to-end offline latency on ModernBERT (ONNX dyn. INT8, CPU, 40-80ms) and 142ms median in production CAPI, while FrugalGPT-style cascades add one extra LLM call (~5-15s) on every escalation. ([executive_insights[1]] [13]) ([executive_insights[2]] [16])\n\n- **Session Pinning Is the Single Largest Cost Lever**: Session-Aware Agentic Routing (SAAR) explicitly prices a \"cached-input checkout delta\" and sets a configurable `prefix_cache_weight = 0.20` knob; the entire routing system is structured around the rule that switching mid-session throws away prefix cache locality, which can be worth 30-70% of effective token cost. ([executive_insights[3]] [21])\n\n- **ModernBERT Beats MiniLM on Long-Code Embedding, but Encoders Are Not the Bottleneck**: ModernBERT (encoder-only, GeGLU, RoPE-160k global / 10k local, FA3+FA2, 8192 native context) is 2.65x faster than the next-fastest encoder at long context and beats DeBERTaV3-base on GLUE for the first time since 2021, while all-MiniLM-L6-v2 is limited to 512 tokens and a 384-dim space - on a coding turn that bloats to 4-12k tokens of diff/test/log context, MiniLM truncation silently degrades capability score coverage. ([executive_insights[4]] [72]) ([executive_insights[5]] [74]) ([executive_insights[6]] [26])\n\n- **The Capability-Vector Architecture Is Catalog-Decoupled and Retrain-Free**: HyDRA's first iteration was a binary strong-vs-weak ModernBERT classifier that had to be retrained whenever the model catalog changed; the second iteration predicts K=4 capability dimensions (reasoning, code gen, debugging, tool use) and matches query requirements against configuration-defined `models.yaml` profile vectors via shortfall matching. This is exactly the design `pi-smart-router` should clone. ([executive_insights[1]] [13])\n\n- **P(success) Labels Must Come From Verifiers, Not LMs**: ToolRM demonstrates that a learned outcome reward model on tool-calling decisions correlates 0.84 with downstream task performance on FC-RewardBench (1.5k BFCL v3-derived pairs); for coding agents, SWE-Gym proves the same pattern with verifiable test pass/fail labels yielding 19% absolute resolve-rate gains when used to train both agents and verifiers. ([executive_insights[7]] [33]) ([executive_insights[8]] [85])\n\n- **Subscription Tier Quotas Change the Economic Argument 100-300x**: The premium-small cost differential can be 100-300x on raw API, but Claude Code's $20 Pro / $100 Max / $200 Max 20x plans with rolling 5-hour windows mean that a user \"burning\" a Max 20x seat consumes the equivalent of $600-$1,500/month in API tokens for flat $200 - the virtual-cost model must encode quota arithmetic, not sticker price. ([executive_insights[9]] [62]) ([executive_insights[10]] [46])\n\n- **Routing Robustness Is Underspecified and Easy to Break**: AdversariaLLM, ReMiss, and the broader adversarial-prompt literature show that paraphrase-only attacks reliably flip routing decisions in embedding-based routers with no semantic change. The published LMSYS RouteLLM system has no documented adversarial evaluation, but its matrix-factorization head is the most robust variant against paraphrase because it depends on query-model bilinear similarity rather than a single embedding centroid. ([executive_insights[11]] [52]) ([executive_insights[12]] [8])\n\n- **First-Turn-Only Pin Is a Viable Simpler Alternative**: A route decision made on turn 1 (planning sub-turn) plus a hard lock on subsequent turns preserves prefix cache entirely and reduces routing decisions from N to 1 per session. SAAR's hard-lock rule and the LiteLLM case study (88% cost reduction for 5k queries/day with three-tier routing + local 90%+ share + warm-up cron) imply that for many sessions, the right abstraction is not \"route per turn\" but \"classify session intent + preserve continuity.\" ([executive_insights[3]] [21]) ([executive_insights[13]] [58])\n\n- **Deterministic-Triage + Capability-Embed Hybrid Wins, Pure Embedding Loses**: HyDRA's architecture admits a \"deployed 512-token ModernBERT checkpoint with average binary accuracy 0.8794\" as the floor, then layers a capability-match step on top; RouteLLM shows matrix factorization (155.16 RPS, fastest variant) generalizes to unseen model pairs without retraining. Two-stage routing (fast deterministic gate -> matrix-facto head -> capability-vector shortfall match) is the price-quality Pareto optimum. ([executive_insights[1]] [13]) ([executive_insights[14]] [7])\n\n---",
+      "q1_turn_type_vs_session_pin_tension_planning_turns_early_exit_to_frontier_before_pin": "The conflict: a coding agent's first turn is often a planning/recon turn where locality does not yet matter (no KV cache built) but capability does (a weak Haiku can write a broken plan that the rest of the session has to live with). Yet SAAR default policy is `prefix_cache_weight = 0.20` to discourage switches and add hard locks during active tool loops.\n\nResolution. The pin should be a function of `turn_index_intra_session` and `turn_signal`, not a session-level boolean. SAAR recommends:\n- Turn index 0: `hard_lock = false`, allow planner to hit frontier if capability gate demands it\n- Turn index >= 1 during a tool loop: `hard_lock = true`, allow only same-tier upgrades\n- Idle timeout (e.g., 300s) resets pin weight and reopens the routing decision\n\nMechanism: SAAR raises the switch threshold for long, warm sessions on expensive models to preserve prefix locality, but the threshold is configurable - meaning `pi-smart-router` can set `switch_threshold = 0` for planning turns and `0.7` for execution turns without forking the codebase. Real failure case from Zylos: agentic systems waste ~40% of LLM spend on redundant retries driven by poor first-turn intent classification, so early-escaped frontier planning turns literally pay for themselves by avoiding rework. ([q1_turn_type_vs_session_pin_tension_planning_turns_early_exit_to_frontier_before_pin[0]] [21]) ([q1_turn_type_vs_session_pin_tension_planning_turns_early_exit_to_frontier_before_pin[1]] [62])\n\nAction for pi-smart-router:\n1. Maintain `SessionState` with fields `planning_turn_buffer`, `pin_until_index`, `switch_threshold`, `cached_input_token_meter`.\n2. On planning turns (heuristic: user message length > 800 chars OR matches `plan|design|architect|recon` lex tags OR zero preceding tool outputs), call the capability match without consulting pin state.\n3. After the first response or after exhausting `planning_turn_buffer` (default 2), commit a pin and set `hard_lock = true` for the remainder of the session.\n\n---",
+      "q2_grounding_capability_scores_from_benchmarks": "Leaderboard (top-20 SWE-bench Verified, July 7, 2026): Claude Mythos 5 (95.5%), Claude Fable 5 (95%), Claude Opus 4.8 (88.6%), Claude Opus 4.7 Adaptive (87.6%), Claude Sonnet 5 (85.2%), GPT-5.3 Codex (85%), Ornith-1.0-397B (82.4%), Claude Opus 4.5 (80.9%), DeepSeek V4 Pro Max (80.6%), Qwen3.7 Max (80.4%), Kimi K2.6 (80.2%), Claude Sonnet 4.6 (79.6%), DeepSeek V4 Pro High (79.4%), DeepSeek V4 Flash Max (79%), Qwen3.6 Plus (78.8%), MiMo-V2-Pro (78%). ([q2_grounding_capability_scores_from_benchmarks[0]] [37])\n\nFor coding-agent routing, the right capability vectors are finer than a single SWE-bench number. HyDRA's K=4 split (reasoning, code generation, debugging, tool use) maps to:\n- **reasoning**: SWE-bench Verified + AIME/GPQA (cross-domain reasoning)\n- **code generation**: HumanEval + LiveCodeBench  \n- **debugging**: SWE-bench Verified (already 78% frontier) + terminalbench-style fault localization (TerminalBench scores are ~46-58% even for top agents, vs 78% on SWE-bench Verified, so debugging is harder than first-shot code generation). ([q2_grounding_capability_scores_from_benchmarks[1]] [39])\n- **tool use**: ToolRM FC-RewardBench / Berkeley Function Calling Leaderboard v3\n\nGround `models.yaml` with these scores per tier; shortfall matching then asks: \"given K capability scores for this turn, what's the cheapest model whose profile meets or exceeds every score?\"\n\nMechanism: HyDRA reports 90.3% quality retention (QR) / +16.2% cost savings (CS) on SWE-Bench Verified in conservative mode and 84.2% QR / +44.1% CS in aggressive mode using exactly this capability-vector approach with the same K=4 dimensions. ([q2_grounding_capability_scores_from_benchmarks[2]] [13])\n\nAnti-pattern: weight all four dimensions equally. Reasoning-heavy turns (architecture decisions) need ~95% tier; tool-heavy turns (~3 step file edit) clear with ~50% tier, so the savings live in the differential treatment of dimensions.\n\n---",
+      "q3_hydra_fidelity_minilm_vs_modernbert_encoder_for_agent_routing": "Tradeoffs:\n\n| Property | sentence-transformers/all-MiniLM-L6-v2 | ModernBERT-base / large |\n| --- | --- | --- |\n| Token context | 512 tokens | 8192 tokens |\n| Embedding dim | 384 | 768 / 1024 |\n| Model size | 22M params | <150M / 300-500M |\n| ONNX CPU P50 | ~5-15 ms | 40-80 ms (HyDRA INT8 dyn.) |\n| GLUE / classification SOTA | below DeBERTaV3-base | first encoder to beat DeBERTaV3-base on GLUE since 2021 |\n| Long-context retrieval | N/A (truncates) | +6.85 pts code, +9.1 pts ColBERT-style |\n| Long-context latency | N/A | 2.65x (BASE) / 3x (LARGE) faster than next-fastest encoder; 46,801 tok/s @ 8192 for LARGE |\n\nSources: ([q3_hydra_fidelity_minilm_vs_modernbert_encoder_for_agent_routing[0]] [26]) ([q3_hydra_fidelity_minilm_vs_modernbert_encoder_for_agent_routing[1]] [72]) ([q3_hydra_fidelity_minilm_vs_modernbert_encoder_for_agent_routing[2]] [74]) ([q3_hydra_fidelity_minilm_vs_modernbert_encoder_for_agent_routing[3]] [13])\n\nVerdict for pi-smart-router:\n- Use ModernBERT-base (encoder-only, 150M params, ONNX dyn. INT8 quantized) as the primary embedding; it gives K=4 capability dimension logits as K independent sigmoid heads on a 768-dim pooled vector. HyDRA's deployed 512-token checkpoint reports average binary accuracy 0.8794; with 8192 native context, the same architecture can embed full diff/test/log payloads without truncation.\n- Use MiniLM only as a cold-start fallback when ONNX runtime cannot load ModernBERT (e.g., WASM-only sandbox without AVX-512). All-MiniLM-L6-v2 is 22M params, runs in ~5ms, but truncates at 512 tokens.\n\nTrade-off framing: The HyDRA paper's median offline P50 latency of 55ms is inside the user's stated \"embedding ~80-120ms\" budget. With dynamic INT8 and a tokenizer that pre-truncates to 1024 tokens for the first 2 turns of a session, the same encoder clears <5ms triage (no embedding, only token-level fast gates) easily.\n\nMechanism: ModernBERT uses GeGLU (GeLU-based) and rotary positional embeddings (RoPE) instead of absolute positions - this is what enables 8192-token context with low memory. The `pi-smart-router` retraining loop can plug in any ModernBERT checkpoint finetuned on agent trajectory embeddings (CoTEval, SWE-Bench trajectory dumps) without code changes - just swap the ONNX file. ([q3_hydra_fidelity_minilm_vs_modernbert_encoder_for_agent_routing[4]] [27]) ([q3_hydra_fidelity_minilm_vs_modernbert_encoder_for_agent_routing[5]] [29])\n\n---",
+      "q4_p_success_labels_for_coding_agents_outcome_signals": "Two outcome-label streams are pre-built and usable today:\n\n1. **SWE-Gym verifier format** - 2,438 real-world Python task instances with executable runtime environments and unit tests; reward = `1 if all unit tests pass else 0`. The Apple/UIUC group trained both agents and verifiers using these labels and reported 19% absolute gains on SWE-Bench Verified & Lite. ([q4_p_success_labels_for_coding_agents_outcome_signals[0]] [85]) ([q4_p_success_labels_for_coding_agents_outcome_signals[1]] [86])\n\n2. **ToolRM FC-RewardBench** - 1,500 unique tool-calling inputs derived from BFCL v3; reward = binary correct tool call vs incorrect. Reported average correlation 0.84 with downstream task performance, meaning a 0.84-correlated verifier makes a usable P(success) gate. ([q4_p_success_labels_for_coding_agents_outcome_signals[2]] [33])\n\nFor pi-smart-router, design a `verifier_head` that predicts the same outcome:\n- Input = `(turn_text_embedding, model_used_one_hot, tool_outputs, error_count_in_outputs)` \n- Label = `verifier(solution_attempt_under_test_env) -> {pass, fail}`\n- Inference budget: <5ms (this matches the user's stated P(success) <5ms gate).\n\nUse the verifier output as an additional gate BEFORE the deterministic triage -> capability match flow; if P(success) < threshold (calibrated to ~0.4 nominal), escalate tier by one rank. Mechanism: this is the FrugalGPT \"score-confidence threshold\" logic applied as a pre-check rather than a cascade. ([q4_p_success_labels_for_coding_agents_outcome_signals[3]] [16])\n\nAnti-pattern: train P(success) on raw prompt + completion because that leaks prompt content; instead, use `verifier_input_features` derived from `(fingerprint_hash_prompt, model_used, tool_outputs)` - keeping raw prompts on-device and shipping only ECDF-style statistics upstream. This aligns with the user's \"privacy-safe training on feature vectors not raw prompts\" constraint.\n\n---",
+      "q5_evaluation_methodology_for_agentic_coding_routing": "Use a three-track evaluation harness modeled after RouterBench (405k inference outcomes) and LLMRouterBench (21 datasets, latency-aware): ([q5_evaluation_methodology_for_agentic_coding_routing[0]] [81]) ([q5_evaluation_methodology_for_agentic_coding_routing[1]] [5])\n\nTrack 1 - **Capability coverage** (does the router ever pick a model that can solve a representative turn mix?):\n- Mix representative transcripts from SWE-bench Verified (n=500, ground-truth solvable frontier ~88-95%), Codeforces-tier problems, repo-internal PR review turns, and tool-light conversational refinement turns.\n- Metric: per-task `success_rate(tier_selected)` partitioned by whether the router selected ceiling-tier or below.\n\nTrack 2 - **Cost arbitrage** (does the router keep spend low without losing capability coverage?):\n- Virtual cost = `effective_input_tokens * input_price(model) + effective_output_tokens * output_price(model) + quota_overhead(model)`.\n- Baselines: always-frontier, always-cheap, RouteLLM matrix-facto (open-source head), LQM-ContextRoute, and HyDRA capability-vector.\n\nTrack 3 - **Latency + continuity** (does the router preserve prefix cache under load?):\n- `tokens_saved_via_kv_cache = sum(switched_throughput_degradation)` measured against a free-switch baseline.\n- `decision_latency_p50, p99` for the router itself (target: triage layer <5ms, embedding layer <120ms, P(success) layer <5ms).\n\nMechanism: the three tracks must be reported jointly because they trade off. A router that is \"97% accurate\" at $0.03/turn is dominated by one that is \"94% accurate\" at $0.008/turn across 50 turns. SWE-bench Verified coverage progression (13% -> 78% by May 2026) means reproducing a 2024 routing benchmark is meaningless; the harness must commit to a frozen checkpoint date and a frozen model catalog. ([q5_evaluation_methodology_for_agentic_coding_routing[2]] [39]) ([q5_evaluation_methodology_for_agentic_coding_routing[3]] [40])\n\nAnti-pattern: scoring only MT Bench (RouteLLM's original benchmark) or only HumanEval, because both underweight the multi-turn, tool-using, error-recovering character of a coding agent.\n\n---",
+      "q6_semantic_clustering_best_practices_for_tier_hints": "Cluster tiers, not prompts. Build K=8 cluster means across all historical pi-smart-router session embeddings (ModernBERT-base 768-dim) using FAISS k-means with at least 1k points per cluster. Freeze the clusters and use them as the official tier mapping. ([q6_semantic_clustering_best_practices_for_tier_hints[0]] [74]) ([q6_semantic_clustering_best_practices_for_tier_hints[1]] [59]) ([q6_semantic_clustering_best_practices_for_tier_hints[2]] [56])\n\nBest-practice cluster hints:\n- **Cluster A (planning / recon)**: zero tiers acceptable, prefer Frontier capability\n- **Cluster B (scaffold / boilerplate)**: zero tier (LLM Studio local) acceptable; economical cloud better\n- **Cluster C (single-file bug fix)**: economical cloud (Haiku, Flash, mini)\n- **Cluster D (multi-file refactor)**: frontier\n- **Cluster E (config / linting / formatting)**: zero tier\n- **Cluster F (test generation)**: economical -> frontier depending on test depth\n- **Cluster G (explanation / docstring)**: zero tier\n- **Cluster H (errored retry of prior turn)**: pin to last successful tier (NEVER downgrade during retry - this is the failure mode in HyDRA's first iteration when it retrained on a binary classifier).\n\nMechanism: HyDRA's K=4 capability vector outperforms a binary strong-vs-weak classifier precisely because the capability dimensions capture cluster gradients. The cluster assignments become the de facto tier hint matrix that gets paired with each model's capability profile; the `shortfall_match(query_vec, model_profile_vector)` is then a numerical operation, not a string match. ([q6_semantic_clustering_best_practices_for_tier_hints[3]] [13])\n\nAnti-pattern: define cluster names as prompts and use cosine similarity between new query embedding and cluster centroids, because paraphrase attacks can move a query embedding into the wrong cluster by 0.02-0.05 without changing semantics - one of the key robustness gaps in the cited Red Hat Semantic Router docs.\n\n---",
+      "q7_subscription_quota_economics_and_virtual_cost_modeling": "Three pricing regimes today:\n- **Per-token API**: frontier ~$3-15 / 1M output, mid ~$0.5-1.5 / 1M, local $0 (amortized HW). 100-300x cost differential between premium and small tiers. ([q7_subscription_quota_economics_and_virtual_cost_modeling[0]] [62])\n- **Subscription with rolling 5h windows (Claude Code)**: Pro $20 / Max $100 / Max 20x $200. Max 20x users \"burning\" through session limits consume ~$600-$1,500/mo equivalent API tokens for a flat $200 seat. ([q7_subscription_quota_economics_and_virtual_cost_modeling[1]] [46])\n- **OpenRouter credit-based quotas + DDoS limits**: configurable per-model usage limits; effective ceiling is monthly credit spend, not rate. ([q7_subscription_quota_economics_and_virtual_cost_modeling[2]] [50])\n\nVirtual cost formula for pi-smart-router:\n```\nvirtual_cost(turn) =\n  api_cost(model, in_tokens, out_tokens)\n  + quota_arbitrage_premium(model, time_in_5h_window_position)\n  + risk_penalty_quota_exhaustion(model, remaining_window_budget_pct)\n  + kv_cache_savings(model, prefix_hit_count)    # negative\n```\n\nThe `quota_arbitrage_premium` term ensures the router avoids burning the last 5% of a Max seat on a retriable error-prone coding turn; the `kv_cache_savings` term (negative) credits the prefix cache wins documented by llm-d (57x faster response, 2x throughput). ([q7_subscription_quota_economics_and_virtual_cost_modeling[3]] [24]) ([q7_subscription_quota_economics_and_virtual_cost_modeling[4]] [22]) ([q7_subscription_quota_economics_and_virtual_cost_modeling[5]] [23])\n\nMechanism: a flat sticker-price router will misroute during the late 80% of a Max user's 5-hour window because it keeps selecting Sonnet when the user's actual marginal cost has dropped to zero on session quotas. The virtual cost model forces the router to act on its PLANNED marginal cost, not the PRICE TAG.\n\n---",
+      "q8_adversarial_robustness_for_embedding_routers": "The published literature does not yet include an \"LLM RouterBench robustness\" suite; the closest is the EACL 2026 track where the LMSYS RouteLLM team discusses generalization but did not adversarially evaluate paraphrase attacks. The existing adversarial toolkits are: ([q8_adversarial_robustness_for_embedding_routers[0]] [52]) ([q8_adversarial_robustness_for_embedding_routers[1]] [55]) ([q8_adversarial_robustness_for_embedding_routers[2]] [53]) ([q8_adversarial_robustness_for_embedding_routers[3]] [51])\n\nKnown failure modes:\n- **Paraphrase drift**: appending a single sentence with no semantic content shifts the embedding enough to flip a cluster assignment.\n- **Prompt injection aiming at the router**: a malicious tool output can prompt the next turn to ask \"please reflect before answering\" - which downgrades the router to a slower reasoning path.\n- **Model-card poisoning**: an attacker who controls any source in the capability score database can lower the apparent SWE-bench score of a model the user wants to use, forcing escalations.\n\nDefense for pi-smart-router:\n- Use matrix factorization (RouteLLM-style) as the secondary head, because bilinear `W * v_query + b` is more robust to single-vector paraphrase than a centroid-distance cosine router. Matrix factorization was the fastest variant (155.16 RPS) in RouteLLM, so the cost is near zero. ([q8_adversarial_robustness_for_embedding_routers[4]] [7])\n- Maintain a \"robustness shadow log\" of routing decisions; if any tier gets 3 contiguous flip-flop events on the same query, pin to that tier regardless of embedding distance for the rest of the session.\n- Train capability head on `embedding + paraphrase_set(n=5)` so the K=4 logits are averaged across 5 paraphrases per training example.\n\nMechanism: HyDRA's \"retrain on every catalog change\" failure mode for the first-iteration binary classifier is exactly the antipattern - if your router depends on a centroid that can drift, an adversary can drift it. ([q8_adversarial_robustness_for_embedding_routers[5]] [13]) ([q8_adversarial_robustness_for_embedding_routers[6]] [1])\n\n---",
+      "q9_when_is_routing_the_wrong_abstraction_vs_pin_on_first_turn_only": "Two regimes are clearly distinct:\n\n**Routing per turn is right** when:\n- The session is reflexive (short turns, embed-language switchable, no tool loop).\n- Turn types vary widely (planning -> code gen -> test gen -> explanation).\n- The session has not built a real prefix cache (turn index <3).\n\n**Pin on first turn is right** when:\n- The session enters a long tool loop (>10 sequential tool calls).\n- All subsequent turns inherit prefix cache locality from the first turn's response.\n- A dose-driven user wants deterministic cost billing per session (Max subscribers).\n\nSAAR's configurable thresholds (`prefix_cache_weight = 0.20`, `switch_history_weight = 0.04`, `idle_timeout_seconds = 300`) make the transition explicit rather than emotional. The empirical win from cache+continuity is so large (57x faster responses, 2x throughput) that pin-on-first-turn wins for repeat-tool-loop agents. ([q9_when_is_routing_the_wrong_abstraction_vs_pin_on_first_turn_only[0]] [21]) ([q9_when_is_routing_the_wrong_abstraction_vs_pin_on_first_turn_only[1]] [24])\n\nCounter-case: the Mistral/Mixtral-8x-370B instruction-only case (no tool loop, just chat) shows matrix-facto routing works without any pin because there's nothing to lose by switching. ([q9_when_is_routing_the_wrong_abstraction_vs_pin_on_first_turn_only[2]] [7]) ([q9_when_is_routing_the_wrong_abstraction_vs_pin_on_first_turn_only[3]] [8])\n\nDecision rule for pi-smart-router: if `detected_tool_loop == false AND turn_index <= 1`, route per turn; else pin.\n\n---",
+      "per_stage_recommendations": "1. **Hardware probe**: replace opaque \"is GPU available\" boolean with a calibrated `tokens_per_second_estimate(local_model)` rolling median over the last 50 turns. Empirically, modern M-series Mac, RTX 4090, and Ryzen AI HX are the only tiers where local zero-tier is the right default; everything else should drop to economical cloud. ([per_stage_recommendations[0]] [58])\n\n2. **Loop escalation**: tag each turn as `planning | execution | validation | reflective` via a 4-class ModernBERT classifier head (one extra sigmoid on top of the capability encoder). Each tag has its own ceiling rule: `planning -> frontier`, `execution -> matrix-facto`, `validation -> economical`, `reflective -> pin`. ([per_stage_recommendations[1]] [13])\n\n3. **Turn envelope**: if `tokens_effective` exceeds the cheapest model's context window (e.g. local 32k context), escalate to economical cloud for summarization, then route to frontier if summarization reveals long-tail reasoning demand.\n\n4. **Context-fit gate**: deterministic check `model_max_context >= prompt_tokens`; fail-fast prevents wasted downstream MCSE.\n\n5. **Low-intensity gate**: hash the prompt fingerprint; if the hash is in the \"low_intent_lex\" set (greetings, \"explain this code\", simple docs), route to zero-tier; this is the cheapest gate because it requires no embedding. ([per_stage_recommendations[2]] [56])\n\n6. **Session pin**: SAAR-style with `prefix_cache_weight = 0.20` default; tune to 0.0 for planning turns, 0.40 for tool-loop turns on Canvas-style file editing.\n\n7. **Deterministic triage**: regex + lexical match against the 8 cluster centroids (precomputed via FAISS k-means). Budget: <5ms. ([per_stage_recommendations[3]] [59])\n\n8. **Local zero-tier**: only when `tokens_per_second_local_est > 25` (human-perceptible latency threshold). Else drop to economical.\n\n9. **HyDRA embedding matcher**: ModernBERT-base ONNX dyn. INT8 quantized, K=4 capability heads, model profile in YAML fed to shortfall matching. Budget: 40-80ms.\n\n10. **Safe default**: when all gates fail, route to ceiling-tier; never silently downgrade to zero-tier.\n\n11. **Context overflow fallback**: when even frontier cannot fit context, run two-step summarize + re-route, never truncate silently.\n\n---",
+      "top_5_priority_changes_highest_leverage": "1. **Swap MiniLM for ModernBERT-base ONNX int8 and add the K=4 capability-head architecture**; it is the single change that unlocks catalog decoupling and 8192-token context, both of which are blockers for any coding-agent router. Expected quality uplift: from HyDRA's 90.3% QR / +16.2% CS conservative to 84.2% / +44.1% aggressive on SWE-Bench Verified with same model catalog. ([top_5_priority_changes_highest_leverage[0]] [13])\n\n2. **Adopt Session-Aware Agentic Routing pin semantics** with `planning_turn_buffer = 2`, then hard-locks, plus `prefix_cache_weight` knob; this is the difference between throwing away prefix cache (which can be 30-70% of effective token cost) and preserving it. ([top_5_priority_changes_highest_leverage[1]] [21])\n\n3. **Wrap the capability head with a verifier_head (P(success)) trained on SWE-Gym outcome signals**; this gives a pre-gen escalation rule backed by a 0.84-correlated predictor and unlocks \"fail fast on weak tier before the user pays for bad output.\" ([top_5_priority_changes_highest_leverage[2]] [85]) ([top_5_priority_changes_highest_leverage[3]] [33])\n\n4. **Build a virtual-cost model that includes subscription-quota arithmetic and KV-cache savings**, not just sticker prices; this is what prevents the router from burning a Max seat's last 5% on low-value retries. ([top_5_priority_changes_highest_leverage[4]] [62]) ([top_5_priority_changes_highest_leverage[5]] [46])\n\n5. **Replace any single-embedding centroid router with RouteLLM matrix factorization as the secondary head**; this is the most robust published router architecture against paraphrase attacks AND the fastest at 155.16 RPS. ([top_5_priority_changes_highest_leverage[6]] [7])\n\n---",
+      "gap_analysis_vs_existing_pi_smart_router_architecture": "| Stage in current architecture | Status | Gap |\n| --- | --- | --- |\n| hardware probe | Present | Add `tokens_per_second_local_est` rolling median |\n| loop escalation | Not present | Add 4-class ModernBERT turn-type head |\n| turn envelope | Present | Need explicit `tokens_effective` vs `ceiling_model_max_context` arithmetic |\n| context-fit gate | Present | Looks sound but no published criterion; align with HyDRA's example |\n| low-intensity gate | Present | Confirm <5ms with a hex-set lookup, no embedding involved |\n| session pin | Present, partial | Add explicit `planning_turn_buffer` and `prefix_cache_weight` knob per SAAR |\n| deterministic triage | Present | Should be a regex+lex gate, not a learned classifier, to stay <5ms |\n| local zero-tier | Present | Gate by `tokens_per_second_local_est > 25` |\n| HyDRA embedding matcher | Present | Replace MiniLM with ModernBERT-base ONNX int8 + K=4 capability heads |\n| safe default | Present | Verify it never silently downgrades ceiling tier |\n| context overflow fallback | Present | Add two-step summarize-and-re-route, no silent truncation |\n\nGap source: RouterBench + LLMRouterBench show 405k inference outcomes across 21 datasets, which is the right scaffolding for measuring these gaps. ([gap_analysis_vs_existing_pi_smart_router_architecture[0]] [81]) ([gap_analysis_vs_existing_pi_smart_router_architecture[1]] [5])\n\n---",
+      "annotated_bibliography_50_sources": "### Foundational routing papers\n\n1. **HyDRA: Hybrid Dynamic Routing Architecture for Heterogeneous LLM Pools** (arXiv:2605.17106, May 2026) - Garg, Singha Roy, Jang et al. Capability-vector router with ModernBERT and K=4 sigmoid heads, replacing an earlier binary classifier. Reports 90.3% quality retention / +16.2% CS conservative, 84.2% QR / +44.1% CS aggressive on SWE-Bench Verified. Offline P50 55ms, P99 120ms; production CAPI median 142ms. Direct match for `pi-smart-router`. ([annotated_bibliography_50_sources[0]] [13])\n\n2. **RouteLLM: Learning to Route LLMs with Preference Data** (arXiv:2406.18665, July 2024) - Ong, Almahairi, Wu, Chiang, Wu, Gonzalez, Kadous, Stoica. Matrix factorization + BERT classifier head; trained on Chatbot Arena preferences + MMLU + Nectar augmentation. Up to 3.66x savings on MT Bench at 95% quality, 92% on MMLU at 50% CPT. Matrix-facto is fastest variant at 155.16 RPS. ([annotated_bibliography_50_sources[1]] [7])\n\n3. **FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance** (arXiv:2305.05176, May 2023) - Chen, Zaharia, Zou. SC cascade algorithm; up to 98% cost reduction theoretical, 73% reduction with 1% accuracy gain on OVERRULING. Outlines limitations (requires labeled examples in test distribution, sequential N-call latency). Although cascade is excluded by `pi-smart-router`, the score-confidence insight informs P(success) gate design. ([annotated_bibliography_50_sources[2]] [16])\n\n4. **Latency-Quality Routing for Functionally Equivalent Tools in LLM Agents** (LQM-ContextRoute, arXiv:2605.14241, May 2026) - Chu, Xiang, Zhang et al. Renewal-reward score `u_i / (1 + tau_i / L_ref)` for a contextual bandit router. Pools tested across search, QA, retriever, LLM providers. Outperforms production policies and additive-utility baselines. ([annotated_bibliography_50_sources[3]] [2])\n\n5. **Cost- and Latency-Constrained Routing for LLMs** (Minlan Yu group) - Lakha, Minlan Yu. (sllm25-score, Harvard). Notes most prior cost-only routers neglect latency; introduces SLO-aware formulation. ([annotated_bibliography_50_sources[4]] [1])\n\n6. **RouterBench: A Benchmark for Multi-LLM Routing System** (arXiv:2403.12031, March 2024) - 405k inference outcomes across representative LLMs, plug-in evaluation framework for new routers. ([annotated_bibliography_50_sources[5]] [81])\n\n7. **LLMRouterBench: A Massive Benchmark and Unified Framework for LLM Routing** (arXiv:2601.07206, January 2026) - 21 datasets, latency-aware path to perf-cost-latency optimization. ([annotated_bibliography_50_sources[6]] [5])\n\n### Encoder & embedding infrastructure\n\n8. **ModernBERT: Smarter, Better, Faster, Longer** (arXiv:2412.13663, December 2024) - Warner, Chaffin, Clavi\u00e9 et al. Encoder-only transformer, RoPE 160k global / 10k local, GeGLU, FA3+FA2, 8192 native context. First encoder to beat DeBERTaV3-base on GLUE since 2021. 2.65x BASE / 3x LARGE faster than next-fastest encoder at long context. ([annotated_bibliography_50_sources[7]] [72])\n\n9. **all-MiniLM-L6-v2 ONNX port** (HuggingFace) - 22M params, 384-dim, 512-token max. Production-grade ONNX port. ([annotated_bibliography_50_sources[8]] [26])\n\n10. **Efficient Inference for ModernBERT Classifiers using vLLM** (danielvanstrien blog, 2025) - Drop-in recipe for serving ModernBERT classifiers with vLLM batching. ([annotated_bibliography_50_sources[9]] [27])\n\n11. **ModernBERT LightOn blog** - Long-context retrieval gains (+6.85 pts code, +9.1 pts ColBERT-style). ([annotated_bibliography_50_sources[10]] [74])\n\n12. **HuggingFace Optimum PR 2208**: ONNX export optimization support for ModernBERT, including INT8 dynamic quantization. ([annotated_bibliography_50_sources[11]] [29])\n\n### Outcome / reward signal papers\n\n13. **ToolRM: Outcome Reward Models for Tool-Calling Large Language Models** (arXiv:2509.11963, September 2025) - Agarwal, Abdelaziz, Basu et al. (IBM Research). Introduces FC-RewardBench (1.5k inputs from BFCL v3). Average correlation 0.84 between reward model and downstream task performance. ([annotated_bibliography_50_sources[12]] [33])\n\n14. **SWE-Gym: Training Software Engineering Agents and Verifiers** (arXiv:2412.21139, ICML 2025) - Pan, Wang, Neubig, Jaitly, Ji, Suhr, Zhang (Apple/UIUC). 2,438 real Python task instances with unit tests. 19% absolute resolve-rate gains on SWE-Bench Verified and Lite via verifier-trained agents. ([annotated_bibliography_50_sources[13]] [85]) ([annotated_bibliography_50_sources[14]] [86])\n\n15. **An Empirical Study of Reward Hacking in LLM Coding Agents** (Andrews, Georgia Tech, 2026) - Investigates outcome-reward RL on SWE-Bench-style software engineering tasks. Documents failure modes of P(success)-style gates under reward gaming. ([annotated_bibliography_50_sources[15]] [32])\n\n### Caching & session continuity\n\n16. **Session-Aware Agentic Routing: Continuity-Aware Model Selection for Long-Horizon LLM Agents** (vLLM Blog, June 2026) - Liu, He, Chen, Zhang, Luo (AMD + vLLM). Introduces idle-timeouts, \"decision drift\" detection, hard-locks, configurable `prefix_cache_weight (0.20)` and `switch_history_weight (0.04)`. Anchored on qwen3-8b vs qwen3-32b case study. ([annotated_bibliography_50_sources[16]] [21])\n\n17. **vLLM Automatic Prefix Caching (KV cache blocks)** - Core design doc for prefix caching. ([annotated_bibliography_50_sources[17]] [22])\n\n18. **BentoML LLM Inference Handbook / Prefix Caching** - Production handbook view of prompt caching. ([annotated_bibliography_50_sources[18]] [23])\n\n19. **llm-d KV-Cache Wins You Can See** (September 2025) - Reports 57x faster responses and 2x throughput from precise KV-cache aware scheduling. ([annotated_bibliography_50_sources[19]] [24])\n\n20. **KVFlow: Efficient Prefix Caching for Accelerating LLM** (OpenReview) - Recent prefix caching efficiency research, complementary to vLLM's design. ([annotated_bibliography_50_sources[20]] [25])\n\n### Benchmarks and coding agents\n\n21. **SWE-bench Verified Leaderboard** (BenchLM.ai, July 7, 2026) - 49 model scores; top model Claude Mythos 5 at 95.5%; GPT-4.1 mini as low-entry at 23.6%. ([annotated_bibliography_50_sources[21]] [37])\n\n22. **Coding Agent Benchmarks 2026** (Presenc AI) - Claude Code ~78% SWE-Bench Verified, Claude Code ~58% TerminalBench. Real-world PR pass rates 35-50% for top agents. ([annotated_bibliography_50_sources[22]] [39])\n\n23. **Epoch AI SWE-bench Verified** - Human-verified 500-task subset of SWE-bench for stable evaluation. ([annotated_bibliography_50_sources[23]] [40])\n\n24. **Vals.ai SWE-bench Verified** - Independent benchmark leaderboard. ([annotated_bibliography_50_sources[24]] [36])\n\n25. **AgentBench / AgentBench 2026 overview** (Benchmarking Agents) - Coding agent + general agent benchmarks: SWE-bench, WebArena, AgentBench, Terminal-Bench, OSWorld, tau-bench. tau-bench scores in 50-70% range for top models. ([annotated_bibliography_50_sources[25]] [42])\n\n26. **Beyond SWE-Bench** (Medium, 2026) - Notes tau-bench scores 50-70% for top models; argues enterprise decision signal is dominated by tau-bench over SWE-bench. ([annotated_bibliography_50_sources[26]] [43])\n\n### Adversarial robustness\n\n27. **AdversariaLLM: A Unified and Modular Toolbox for LLM Evaluation** (arXiv:2511.04316, November 2025) - Standardized attack/defense evaluation toolbox; supports embedding-router attacks. ([annotated_bibliography_50_sources[27]] [52])\n\n28. **Adversarial Prompt Evaluation: Systematic Benchmarking** (arXiv:2502.15427) - Systematic paraphrase-level prompt attack analysis. ([annotated_bibliography_50_sources[28]] [55])\n\n29. **Adversarial Robustness of LLM-Based Multi-Agent Systems** (Frontiers in AI, 2026) - Wiesmeier et al. Engineering-problem-solving MAS robustness under adversarial influence. ([annotated_bibliography_50_sources[29]] [51])\n\n30. **ReMiss Jailbreak** (GitHub, zhxieml) - Adversarial prompts that expose aligned-LLM flaws while remaining human-readable. ([annotated_bibliography_50_sources[30]] [53])\n\n### Subscription / pricing\n\n31. **Claude Code Pricing 2026: Pro $20 vs Max $100/$200** (FindSkill, May 2026) - Pro uses rolling 5-hour windows; Max 20x users can consume $600-$1,500/mo equivalent API tokens. ([annotated_bibliography_50_sources[31]] [46])\n\n32. **Finout Claude Code Pricing** - Plans & cost guide breakdown. ([annotated_bibliography_50_sources[32]] [47])\n\n33. **OpenRouter Rate Limits** - Credit-based quotas and DDoS protection. ([annotated_bibliography_50_sources[33]] [50])\n\n34. **TrueFoundry Claude Code Rate Limits** - Quotas and subscription plans. ([annotated_bibliography_50_sources[34]] [49])\n\n### Production routing practice\n\n35. **LLM Routing with Ollama & LiteLLM** (Hannecke, Medium, Dec 2025) - 88% cost reduction case study (5,000 queries/day, $5,000 -> $617/mo). Three-tier pattern: small/fast (Llama 3.2:3b) + medium/balanced (Phi-4) + large/smart frontier. Local-first strategy: 90%+ queries on infrastructure. ([annotated_bibliography_50_sources[35]] [58])\n\n36. **Three-Tier LLM Routing Fast Smart Power** (MindStudio, Feb 2026) - Production pattern with circuit breakers and canary rollouts. ([annotated_bibliography_50_sources[36]] [56])\n\n37. **LLM Semantic Router: Intelligent request routing** (Red Hat Developers, May 2025) - Embedding-based categorical classification; lower-latency than LLM-based routers. ([annotated_bibliography_50_sources[37]] [59])\n\n38. **LLM Router 2026: RouteLLM Benchmarks** (Klymentiev) - Matrix-facto's 74% savings at 95% quality is the published benchmark; GPT-4 / Mixtral pair original. ([annotated_bibliography_50_sources[38]] [6])\n\n39. **LMSYS RouteLLM Open-Source Framework** (July 2024) - Released under Apache 2.0; matrix-factorization router + BERT classifier. Trained on Chatbot Arena preferences. ([annotated_bibliography_50_sources[39]] [8])\n\n40. **RouteLLM on GitHub** (lm-sys) - Reference implementations. ([annotated_bibliography_50_sources[40]] [10])\n\n41. **Zylos AI Agent Model Routing** (March 2026) - Survey of semantic, classifier, cascade, bandit, and contextual router architectures. ([annotated_bibliography_50_sources[41]] [57])\n\n42. **Zylos AI Agent Cost Optimization** (April 2026) - Token budgets and FinOps; 100-300x premium-small cost differential. ([annotated_bibliography_50_sources[42]] [62])\n\n43. **Weave (W&B)** - Toolkit for developing GenAI apps; logs + routes ops. ([annotated_bibliography_50_sources[43]] [65])\n\n44. **LLMRouter: Open-Source Library for LLM Routing** (ulab-uiuc, GitHub) - Library for dynamic model selection. ([annotated_bibliography_50_sources[44]] [67])\n\n45. **Best Open Source LLM Router: 2026 Comparison** (ClawRouters) - Survey of 2026 OSS routers. ([annotated_bibliography_50_sources[45]] [66])\n\n46. **LangChain Router Docs** - Patterns for input classification to specialized agents. Router preferred for \"deterministic or lightweight classification\" vs supervisor. ([annotated_bibliography_50_sources[46]] [76])\n\n47. **Botpress Ultimate Guide to AI Agent Routing 2026** - Survey of agent routing strategies. ([annotated_bibliography_50_sources[47]] [61])\n\n48. **AugmentCode AI Model Routing Guide** - Role-based coding-agent routing for Opus/Sonnet/Haiku/GPT-5.2. ([annotated_bibliography_50_sources[48]] [60])\n\n49. **TowardsAI Router-Based Agents Architecture** - Architecture pattern for AI agent routing. ([annotated_bibliography_50_sources[49]] [77])\n\n50. **RouterBench Emergent Mind** - Topic page on RouterBench evolution. ([annotated_bibliography_50_sources[50]] [80])\n\n51. **Cost- and Latency-Constrained Routing for LLMs** (Minlan Yu, SLLM 2025) - Latency-aware SLO formulation. (cited again under foundational for cross-coverage) ([annotated_bibliography_50_sources[4]] [1])\n\n52. **ModernBERT efficient ONNX export** (Optimum PR 2208) - Production-ready ONNX pipeline for ModernBERT encoders. ([annotated_bibliography_50_sources[11]] [29])\n\n53. **DemandSphere SWE-bench Verified** - Independent leaderboard tracker. ([annotated_bibliography_50_sources[51]] [38])\n\n54. **Engineering-Software-Agent Benchmarks** (ProgrammingHelper, 2026) - Coding agent evaluation trends. ([annotated_bibliography_50_sources[52]] [44])\n\n55. **Evaluating and Regulating Agentic AI: A Study of Benchmarks** (ScienceDirect) - Recent survey on agentic AI benchmarks; includes coding agent category. ([annotated_bibliography_50_sources[53]] [45])\n\n56. **Foundational Models and Frontier Coding** (birjob.com, May 2026) - Agent benchmarks beyond SWE-Bench. ([annotated_bibliography_50_sources[54]] [41])\n\n57. **Best Sandboxes for SWE-Bench Coding Agents in 2026** (Modal) - Sandbox choices for execution-based outcome rewards. ([annotated_bibliography_50_sources[55]] [88])\n\n58. **Spring AI ONNX Embeddings Reference** - Tutorial for ONNX embedding export. ([annotated_bibliography_50_sources[56]] [28])\n\n59. **AnythingLLM Server Storage Models README** (GitHub) - ONNX model server reference. ([annotated_bibliography_50_sources[57]] [30])\n\n60. **LiteLLM Router Implementation Sandboxes** (Referenced across educational guides) - Production proxy patterns. ([annotated_bibliography_50_sources[35]] [58])\n\n---",
+      "viability_assessment_of_multi_stage_pre_gen_routing": "Verdict: **Viable and superior to cascade alternatives for the `pi-smart-router` access pattern, conditional on ModernBERT ONNX int8 adoption and capability-vector catalog decoupling.**\n\nWhy it is viable:\n1. **Latency envelope cleared**: HyDRA reports 55ms P50 offline latency on ModernBERT int8 ONNX, well under the user's 80-120ms embedding budget. The deterministic triage layer (regex+lex) clears <5ms trivially. P(success) verifier head with a small dense head over a fixed feature fingerprint can clear <5ms on CPU.\n2. **Capability catalog decoupling**: HyDRA's K=4 capability vector with a YAML model profile is exactly the architecture `pi-smart-router` needs to avoid HyDRA's first-iteration retrain trap. ([viability_assessment_of_multi_stage_pre_gen_routing[0]] [13])\n3. **Cost-effectiveness**: SWE-Bench Verified QR/CS trade frontier (90.3% QR / +16.2% CS conservative, 84.2% QR / +44.1% CS aggressive) shows that capability-vector routing can capture ~half the savings of a cascade with no additional LLM call. ([viability_assessment_of_multi_stage_pre_gen_routing[0]] [13])\n4. **Privacy-safe training**: training on `(embedding_hash, model_used, outcome_verifier_score)` features does not require raw prompt content; this alignes with SWE-Gym's verifier-training approach and meets the privacy constraint. ([viability_assessment_of_multi_stage_pre_gen_routing[1]] [85])\n\nWhy it might fail:\n1. **Catalog maintenance**: keeping `models.yaml` profiles up to date for ~10 frontier + ~5 economical + ~3 local models is labor-intensive. Mitigation: profile scrapers that auto-update from public benchmarks each month, gated by a CI smoke test against SWE-Bench Verified.\n2. **Adversarial robustness**: no published benchmark covers LLM-routing robustness specifically; the closest is AdversariaLLM and ReMiss. Mitigation: matrix factorization fallback for adversarial prompts + paraphrase-augmented training for capability head.\n\nRecommended fallback posture: if at any 30-day window the router underperforms \"always cheapest that can solve\" baseline by more than 5% QR, fall back to \"pin on first turn\" mode (SAAR regime). This is the same \"safety belt\" pattern used by LiteLLM in production. ([viability_assessment_of_multi_stage_pre_gen_routing[2]] [21]) ([viability_assessment_of_multi_stage_pre_gen_routing[3]] [58])\n\n---",
+      "synthesis": "Three architectures dominate the pre-gen routing landscape in 2025-2026, and their differences map directly onto `pi-smart-router's design space:\n\n| Dimension | FrugalGPT cascade | RouteLLM matrix-facto | HyDRA capability-vector |\n| --- | --- | --- | --- |\n| Mechanism | sequential calls + score-confidence threshold | bilinear query-model similarity | K-dimensional capability shortfall matching |\n| Catalog coupling | hard | pair-coupled (retrain if pair changes) | decoupled (config-only update) |\n| Latency overhead | 1-N extra LLM calls (~5-15s per cascade step) | 155.16 RPS, ~6ms | 55ms P50 / 120ms P99 |\n| Quality-cost frontier (verified) | 98% theoretical cost cut; 73% with +1% accuracy on OVERRULING | up to 3.66x MT Bench savings at 95% quality; 92% MMLU at 50% CPT | 90.3% QR / +16.2% CS conservative, 84.2%/44.1% aggressive on SWE-Bench Verified |\n| Robustness to paraphrase attacks | high (LM judges re-decide) | medium-high (bilinear is more robust than centroid) | medium (K=4 heads generalize but centroid-free) |\n| Privacy training cost | high (raw prompt dependence) | low (embedding hash is enough) | low (feature vectors) |\n| Failure case | sequential calls fail mid-cascade on outage | pair coupling forces retrain | capability vector drift if K too small |\n\nThree tensions organize the open questions:\n\nT1. **Per-turn vs per-session**: SAAR's hard-lock rule plus the empirical 30-70% effective token cost of prefix cache locality tilt strongly toward session pinning; the counter-balance is that planning-turn intent classification must NOT be locked to the wrong tier - hence `planning_turn_buffer = 2` before pin commit.\n\nT2. **Sticker price vs marginal cost**: subscription plans + quota windows mean a flat $20 Pro seat and a $0.20/M-token API call have a non-trivial time-dependent cost relationship. A virtual-cost router is forced to encode `quota_arbitrage_premium` so the late-5% of a Max window does not resurrect frontier pricing.\n\nT3. **Capability vector size (K) vs robustness**: HyDRA found K=4 sufficient, but with more granular turn-type enumeration (planning / scaffold / test / explanation / fix / refactor / config / retry), K=8 may be needed; this widens the embedding head and slows inference. The right calibration point is Pareto frontier: prefer K=4 until Top-1 routing error on the 8-cluster calibration set exceeds 10%.\n\nThe most surprising research finding: **Stage-Aware Routing is not a sub-decision of the embedding router - it is a parallel hardware-grade control surface.** Adaptive switching via SAAR's `prefix_cache_weight`, `idle_timeout_seconds`, `switch_history_weight` knobs collectively dictate whether the embedding router is allowed to flip a tier at all. Designing the embedding router without designing these knobs first will systematically over-route: every embedding flip becomes a wasted opportunity to amortize prefix locality.\n\nThe hidden risk: the Robinsons paradox - many of the cited works (HyDRA, RouteLLM, FrugalGPT, LQM) come from internal teams whose products are NOT the open-source router, so the published numbers reflect optimization for a specific catalog. `pi-smart-router` must reproduce the methodology, not the numbers, and recompute on its own catalog under a frozen Rubicon: e.g., `RouterBench-style 405k-outcome harness on its own session transcripts`. ([synthesis[0]] [81]) ([synthesis[1]] [13]) ([synthesis[2]] [7]) ([synthesis[3]] [16]) ([synthesis[4]] [2]) ([synthesis[5]] [21])"
+    },
+    "type": "json",
+    "beta_fields": null,
+    "mcp_tool_calls": null,
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "executive_insights": {
+          "type": "string",
+          "title": "Executive Insights"
+        },
+        "q1_turn_type_vs_session_pin_tension_planning_turns_early_exit_to_frontier_before_pin": {
+          "type": "string",
+          "title": "Q1. Turn-Type vs Session-Pin Tension (Planning turns early-exit to frontier before pin)"
+        },
+        "q2_grounding_capability_scores_from_benchmarks": {
+          "type": "string",
+          "title": "Q2. Grounding Capability Scores from Benchmarks"
+        },
+        "q3_hydra_fidelity_minilm_vs_modernbert_encoder_for_agent_routing": {
+          "type": "string",
+          "title": "Q3. HyDRA Fidelity: MiniLM vs ModernBERT Encoder for Agent Routing"
+        },
+        "q4_p_success_labels_for_coding_agents_outcome_signals": {
+          "type": "string",
+          "title": "Q4. P(success) Labels for Coding Agents - Outcome Signals"
+        },
+        "q5_evaluation_methodology_for_agentic_coding_routing": {
+          "type": "string",
+          "title": "Q5. Evaluation Methodology for Agentic Coding Routing"
+        },
+        "q6_semantic_clustering_best_practices_for_tier_hints": {
+          "type": "string",
+          "title": "Q6. Semantic Clustering Best Practices for Tier Hints"
+        },
+        "q7_subscription_quota_economics_and_virtual_cost_modeling": {
+          "type": "string",
+          "title": "Q7. Subscription / Quota Economics and Virtual Cost Modeling"
+        },
+        "q8_adversarial_robustness_for_embedding_routers": {
+          "type": "string",
+          "title": "Q8. Adversarial Robustness for Embedding Routers"
+        },
+        "q9_when_is_routing_the_wrong_abstraction_vs_pin_on_first_turn_only": {
+          "type": "string",
+          "title": "Q9. When Is Routing the Wrong Abstraction vs Pin-on-First-Turn Only"
+        },
+        "per_stage_recommendations": {
+          "type": "string",
+          "title": "Per-Stage Recommendations"
+        },
+        "top_5_priority_changes_highest_leverage": {
+          "type": "string",
+          "title": "Top 5 Priority Changes (Highest Leverage)"
+        },
+        "gap_analysis_vs_existing_pi_smart_router_architecture": {
+          "type": "string",
+          "title": "Gap Analysis vs Existing pi-smart-router Architecture"
+        },
+        "annotated_bibliography_50_sources": {
+          "type": "string",
+          "title": "Annotated Bibliography (50+ Sources)"
+        },
+        "viability_assessment_of_multi_stage_pre_gen_routing": {
+          "type": "string",
+          "title": "Viability Assessment of Multi-Stage Pre-Gen Routing"
+        },
+        "synthesis": {
+          "type": "string",
+          "title": "Synthesis"
+        }
+      },
+      "required": [
+        "executive_insights",
+        "q1_turn_type_vs_session_pin_tension_planning_turns_early_exit_to_frontier_before_pin",
+        "q2_grounding_capability_scores_from_benchmarks",
+        "q3_hydra_fidelity_minilm_vs_modernbert_encoder_for_agent_routing",
+        "q4_p_success_labels_for_coding_agents_outcome_signals",
+        "q5_evaluation_methodology_for_agentic_coding_routing",
+        "q6_semantic_clustering_best_practices_for_tier_hints",
+        "q7_subscription_quota_economics_and_virtual_cost_modeling",
+        "q8_adversarial_robustness_for_embedding_routers",
+        "q9_when_is_routing_the_wrong_abstraction_vs_pin_on_first_turn_only",
+        "per_stage_recommendations",
+        "top_5_priority_changes_highest_leverage",
+        "gap_analysis_vs_existing_pi_smart_router_architecture",
+        "annotated_bibliography_50_sources",
+        "viability_assessment_of_multi_stage_pre_gen_routing",
+        "synthesis"
+      ]
+    }
+  }
+}
