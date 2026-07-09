@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-09
 **Status:** Active
-**Next Task ID:** SP-140
+**Next Task ID:** SP-146
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -351,6 +351,28 @@
 | B | SP-132, SP-135, SP-139 | SP-139 after SP-138; SP-132 after SP-131 |
 | C | SP-133, SP-136 | SP-133 after SP-132; SP-136 after SP-135 |
 | D | SP-137 | After SP-136 |
+
+### Phase 37 — Release v0.4.0 Delegate (#86, #71)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-140 | Consumer-safe resolveModelScope resolution | M | SP-087 | #86 (part 1) |
+| SP-141 | Consumer pack extension bootstrap verify | S | SP-140 | #86 (part 2) |
+| SP-142 | Planning delegate contract types and explain | S | SP-123 | #71 (part 1) |
+| SP-143 | Turn envelope planning delegate path | M | SP-142 | #71 (part 2) |
+| SP-144 | Pi extension planning delegate spawn wiring | M | SP-143 | #71 (part 3) |
+| SP-145 | Planning delegate integration tests and docs | S | SP-143, SP-144 | #71 (part 4) |
+
+**Source:** v0.4.0 Delegate release plan (issue #86 consumer install bug, issue #71 cache-preserving planning delegate). Decomposed into six S/M tasks.
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-140, SP-142 | Parallel — disjoint scopes |
+| B | SP-141, SP-143 | SP-141 after SP-140; SP-143 after SP-142 |
+| C | SP-144 | After SP-143 (extension consumes pipeline signal) |
+| D | SP-145 | After SP-143 + SP-144 |
 
 ---
 
