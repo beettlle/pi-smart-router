@@ -344,6 +344,10 @@ Cluster IDs are stable reason-code prefixes (`cluster_low_stakes_general`, `clus
 | `SMART_ROUTER_DATASET_FINGERPRINT` | (unset) | Set to `1` (requires `SMART_ROUTER_DATASET=1`) to store an install-local HMAC-SHA256 fingerprint of each normalized prompt for duplicate detection within this install. The install pepper lives in `.pi-smart-router/.dataset-key` (gitignored) and is never exported. **Warning:** short or common prompts are vulnerable to offline rainbow-table guessing; use only when you accept that tradeoff. See [#10](https://github.com/beettlle/pi-smart-router/issues/10). |
 | `MODELS_YAML_PATH` | `./config/models.yaml` | Fleet catalog path (library API only) |
 | `SMART_ROUTER_PLANNING_TURN_BUFFER` | `2` | SAAR planning buffer: frontier planning turns allowed before hard-lock ([v0.2.0 Continuity](https://github.com/beettlle/pi-smart-router/issues/72)) |
+| `SMART_ROUTER_PLANNING_DELEGATE_ENABLED` | `true` | Enable cache-preserving planning delegate ([#71](https://github.com/beettlle/pi-smart-router/issues/71)) |
+| `SMART_ROUTER_PLANNING_DELEGATE_MAX_MESSAGES` | `12` | Compressed-context message cap for frontier sub-call |
+| `SMART_ROUTER_PLANNING_DELEGATE_MAX_TOKENS` | `16384` | Compressed-context token cap for frontier sub-call |
+| `SMART_ROUTER_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY` | `true` | Exclude tool execution history from delegate payload |
 | `SMART_ROUTER_PREFIX_CACHE_WEIGHT` | `0.20` | SAAR weight on warm prefix value in cache breakeven math (0–1; [#73](https://github.com/beettlle/pi-smart-router/issues/73)) |
 | `SMART_ROUTER_IDLE_TIMEOUT_SECONDS` | `300` | SAAR idle seconds before pin reopens for full re-route |
 | `SMART_ROUTER_SWITCH_THRESHOLD` | `0.5` | SAAR switch score gate (0–1) for tier upgrades during hard-lock |
@@ -370,6 +374,34 @@ v0.2.0 adds **Session-Aware Agentic Routing (SAAR)** pin knobs ([#72](https://gi
 5. Use `pi router explain` (or `POST /v1/route/explain`) on the same session — `features.breakeven` and `features.saar` mirror telemetry fields for operator audit.
 
 See [routing-roadmap.md](docs/routing-roadmap.md) §2 P0 for design context.
+
+### Planning delegate (v0.4.0 Delegate)
+
+When a **planning** turn would route primary inference to frontier while a warm **economical** session pin is active, smart-router prefers **cache-preserving delegation** ([#71](https://github.com/beettlle/pi-smart-router/issues/71)):
+
+1. **Pipeline** (`turn_envelope`) emits `planning_delegate` — primary stays on the pinned economical model; `features.planning_delegate` names the frontier **delegate** model and compressed-context limits.
+2. **Pi extension** (`.pi/extensions/smart-router`) runs an ephemeral frontier sub-call with compressed context (tool execution history excluded by default), injects the result as an observation user message, then delegates **primary** streaming to the pinned economical model.
+3. **Fallback** — when delegate is disabled, spawn fails, or the delegate model is missing from the registry, the extension falls back to a **direct frontier** route with a documented `fallback_reason` in explain/telemetry.
+
+| Knob | Env var | Default | Effect |
+|------|---------|---------|--------|
+| Delegate enabled | `SMART_ROUTER_PLANNING_DELEGATE_ENABLED` | `true` | When `false`, SAAR buffer allows direct frontier planning (`planning_direct_frontier` + `planning_delegate_disabled`) |
+| Compressed message cap | `SMART_ROUTER_PLANNING_DELEGATE_MAX_MESSAGES` | `12` | Max messages sent to the frontier sub-call |
+| Compressed token cap | `SMART_ROUTER_PLANNING_DELEGATE_MAX_TOKENS` | `16384` | Token budget for compressed delegate context |
+| Exclude tool history | `SMART_ROUTER_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY` | `true` | Strip tool-call / tool-result turns from delegate payload |
+
+**Coordination boundary with pi core:** smart-router owns **routing** (when to delegate, which models, compressed limits, fallback reason codes). **Sub-agent spawn and observation injection** run in the pi extension via `streamSimple` — pi core must expose a delegate/stream API the extension can call; smart-router does not orchestrate pi's outer sub-agent scheduler. Operators enabling `/model smart-router/auto` get delegate behavior automatically when the extension is loaded; no separate pi sub-agent config is required beyond a frontier model in the registry.
+
+**Dogfood verification (planning delegate)**
+
+1. Start pi with routing logs: `SMART_ROUTER_LOG_ROUTING=1 pi` and `/model smart-router/auto`.
+2. Begin a session on an economical pin (routine prompts), then trigger planning turns (e.g. architecture or multi-step design work).
+3. Inspect stderr JSON — on delegate turns expect `reason_code: planning_delegate`, `planning_delegate_summary.path: "delegate"`, `primary_model_id` equal to the pin, and `delegate_model_id` pointing at frontier.
+4. Confirm primary inference stays on the economical model (cache-friendly) while stderr shows `[smart-router] planning delegate sub-call completed` with the frontier model id.
+5. Disable delegate (`SMART_ROUTER_PLANNING_DELEGATE_ENABLED=false`) and repeat — expect `planning_direct_frontier` with `fallback_reason: planning_delegate_disabled`.
+6. Use `pi router explain` (or `POST /v1/route/explain`) on the same session — `features.planning_delegate` mirrors live routing (`path: delegate` vs `direct`, `fallback_reason` when applicable).
+
+See [routing-roadmap.md](docs/routing-roadmap.md) §2 P0 and GitHub [#71](https://github.com/beettlle/pi-smart-router/issues/71) for acceptance criteria.
 
 ### P(success) training export (baseline classifier)
 

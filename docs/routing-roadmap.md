@@ -43,7 +43,7 @@ Ordered for **task success per dollar**. Status reflects the codebase as of 2026
 | **Pipeline stages** | `turn_envelope`, `session_pin`, explain/delegate contract |
 | **Evidence** | [SAAR (vLLM, 2026-06)](https://vllm.ai/blog/2026-06-02-session-aware-agentic-routing); Weave/Cursor sub-agent patterns; gemini-research §2. Confidence: high. |
 | **Effort** | M (buffer) / L (sub-agent + pi contract) |
-| **Status** | **Partial** — turn envelope early-exits `planning` → frontier; pin preserved in SQLite but model switches on path. **Missing:** sub-agent delegate, `planning_turn_buffer`, SAAR knobs, breakeven gate. |
+| **Status** | **Landed** — turn envelope emits `planning_delegate`; pi extension spawns compressed frontier sub-call; primary stays pinned ([#71](https://github.com/beettlle/pi-smart-router/issues/71)). **Remaining:** `planning_turn_buffer` hard-lock interplay, breakeven gate refinements. |
 | **Follow-on** | GitHub [#71](https://github.com/beettlle/pi-smart-router/issues/71) (sub-agent delegate), [#72](https://github.com/beettlle/pi-smart-router/issues/72) (SAAR pin), [#73](https://github.com/beettlle/pi-smart-router/issues/73) (cache breakeven). |
 
 ### P1 — P(success) calibration (isotonic + richer labels)
@@ -111,7 +111,7 @@ Beyond Top 6. “P2/P3” here means after P0–P1, not a renumber of Top 6.
 
 | Priority | Change | Expected impact | Pipeline stage(s) | Evidence | Effort | Status | GitHub |
 |----------|--------|-----------------|-------------------|----------|--------|--------|--------|
-| P0 | Ephemeral planning sub-agent / `planning_delegate` | Preserve cache; frontier reasoning | turn_envelope, explain | Gemini §2, Weave | L | Gap | [#71](https://github.com/beettlle/pi-smart-router/issues/71) |
+| P0 | Ephemeral planning sub-agent / `planning_delegate` | Preserve cache; frontier reasoning | turn_envelope, explain | Gemini §2, Weave | L | Landed | [#71](https://github.com/beettlle/pi-smart-router/issues/71) |
 | P0 | Planning buffer + SAAR pin knobs | Continuity / $ | turn_envelope, session_pin | SAAR | M | Partial | [#72](https://github.com/beettlle/pi-smart-router/issues/72) |
 | P0 | Cache breakeven in sub-route / pin-break | Prevent $3 cache miss for $0.30 save | session_pin, expected-cost | Gemini §2, SAAR | M | Gap | [#73](https://github.com/beettlle/pi-smart-router/issues/73) |
 | P1 | Isotonic P(success) calibrator | Honest thresholds | low_intensity, calibration | UCCI | M | Gap | [#74](https://github.com/beettlle/pi-smart-router/issues/74) |
