@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 1: Fixture schema and sample traces
+**Status:** In Progress
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,11 +10,11 @@
 
 ## Step 1: Fixture schema and sample traces
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Define JSON schema for step-level agent trace fixtures
-- [ ] Add sample fixtures under `tests/eval/fixtures/`
-- [ ] Document frozen model catalog + checkpoint date fields
+- [x] Define JSON schema for step-level agent trace fixtures
+- [x] Add sample fixtures under `tests/eval/fixtures/`
+- [x] Document frozen model catalog + checkpoint date fields
 
 ## Step 2: Counterfactual replay core
 
