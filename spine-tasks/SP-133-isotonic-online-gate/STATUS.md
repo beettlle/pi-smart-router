@@ -1,5 +1,5 @@
 **Current Step:** 3
-**Status:** Complete
+**Status:** In progress (addressing Step 3 REVISE — coverage on loader error paths)
 **Last Updated:** 2026-07-09
 **Review Level:** 2
 **Review Counter:** 0

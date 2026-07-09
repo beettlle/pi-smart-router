@@ -1,8 +1,9 @@
+import { chmod } from 'node:fs/promises';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   applyIsotonicLookup,
@@ -16,8 +17,11 @@ import {
 import {
   applyIsotonicCalibrator,
   applyIsotonicCalibratorTimed,
+  IsotonicCalibratorLoaderError,
   loadIsotonicCalibrator,
   parseIsotonicCalibratorFromBundle,
+  parseIsotonicCalibratorJson,
+  resolveIsotonicCalibrator,
 } from '../../src/domain/routing/isotonic-calibrator.js';
 import {
   createDefaultPSuccessWeights,
@@ -204,6 +208,96 @@ describe('isotonic calibrator runtime lookup (SP-133)', () => {
     for (let index = 0; index < 1_000; index++) {
       const result = applyIsotonicCalibratorTimed(index / 1_000, artifact);
       expect(result.within_budget).toBe(true);
+    }
+  });
+
+  it('rejects malformed JSON and invalid artifact schema', () => {
+    expect(() => parseIsotonicCalibratorJson('{not json')).toThrow(IsotonicCalibratorLoaderError);
+    expect(() => parseIsotonicCalibratorJson('{not json')).toThrow(/Failed to parse JSON/);
+
+    expect(() =>
+      parseIsotonicCalibratorJson(
+        JSON.stringify({
+          version: 1,
+          min_training_samples: 30,
+          x_knots: [0],
+          y_knots: [0, 1],
+          trained_sample_count: 40,
+          holdout_ece_raw: null,
+          holdout_ece_calibrated: null,
+        }),
+      ),
+    ).toThrow(/Invalid isotonic calibrator artifact/);
+  });
+
+  it('rejects routing-calibration bundles missing or with invalid isotonic_calibrator', () => {
+    expect(() => parseIsotonicCalibratorFromBundle(null)).toThrow(/must be a JSON object/);
+    expect(() => parseIsotonicCalibratorFromBundle({ version: 2 })).toThrow(
+      /missing isotonic_calibrator/,
+    );
+    expect(() =>
+      parseIsotonicCalibratorFromBundle({
+        version: 2,
+        isotonic_calibrator: { version: 2, x_knots: [0, 1], y_knots: [0, 1] },
+      }),
+    ).toThrow(/Invalid isotonic_calibrator/);
+  });
+
+  it('throws when bundle file exists but JSON is invalid', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'isotonic-runtime-bad-'));
+    const bundlePath = join(dir, 'routing-calibration.json');
+    await writeFile(bundlePath, '{broken', 'utf8');
+
+    expect(() => loadIsotonicCalibrator({ filePath: bundlePath })).toThrow(
+      IsotonicCalibratorLoaderError,
+    );
+    expect(() => loadIsotonicCalibrator({ filePath: bundlePath })).toThrow(
+      /Failed to parse routing calibration JSON/,
+    );
+  });
+
+  it('throws when bundle omits isotonic_calibrator key', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'isotonic-runtime-missing-'));
+    const bundlePath = join(dir, 'routing-calibration.json');
+    await writeFile(bundlePath, JSON.stringify({ version: 2 }), 'utf8');
+
+    expect(() => loadIsotonicCalibrator({ filePath: bundlePath })).toThrow(
+      /missing isotonic_calibrator/,
+    );
+  });
+
+  it('resolveIsotonicCalibrator returns null and warns on invalid on-disk artifact', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'isotonic-runtime-resolve-'));
+    const bundlePath = join(dir, 'routing-calibration.json');
+    await writeFile(bundlePath, JSON.stringify({ version: 2, isotonic_calibrator: 'bad' }), 'utf8');
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(resolveIsotonicCalibrator({ filePath: bundlePath })).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Isotonic calibrator artifact invalid; using raw logistic fallback',
+      expect.objectContaining({ error: expect.stringContaining('Invalid isotonic_calibrator') }),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it('throws when bundle file is unreadable', async () => {
+    if (process.platform === 'win32') {
+      return;
+    }
+
+    const dir = await mkdtemp(join(tmpdir(), 'isotonic-runtime-unreadable-'));
+    const bundlePath = join(dir, 'routing-calibration.json');
+    await writeFile(bundlePath, JSON.stringify({ version: 2 }), 'utf8');
+    await chmod(bundlePath, 0o000);
+
+    try {
+      expect(() => loadIsotonicCalibrator({ filePath: bundlePath })).toThrow(
+        /Failed to read routing calibration file/,
+      );
+    } finally {
+      await chmod(bundlePath, 0o644);
     }
   });
 });
