@@ -120,6 +120,8 @@ describe('community telemetry export (SP-082)', () => {
       tier_hint_reason_code: null,
       low_intensity_score: null,
       p_success_cheap: null,
+      p_success_raw: null,
+      p_success_calibrated: null,
       p_success_alpha: null,
       local_eligible_reason: null,
     };
@@ -147,6 +149,8 @@ describe('community telemetry export (SP-082)', () => {
           tier_hint_reason_code: null,
           low_intensity_score: null,
           p_success_cheap: null,
+      p_success_raw: null,
+      p_success_calibrated: null,
           p_success_alpha: null,
           local_eligible_reason: null,
         },
