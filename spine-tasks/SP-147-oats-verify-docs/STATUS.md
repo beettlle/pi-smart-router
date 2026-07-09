@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 2: Runtime and docs
+**Status:** In Progress
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,17 +10,17 @@
 
 ## Step 1: Verify script extension
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Add OATS centroid sanity checks to verify script
-- [ ] Benchmark prompt assertions for refined centroid cluster assignment
+- [x] Add OATS centroid sanity checks to verify script
+- [x] Benchmark prompt assertions for refined centroid cluster assignment
 
 ## Step 2: Runtime and docs
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Confirm cluster matcher loads OATS-refined centroids from bundle
-- [ ] Document OATS regeneration in README operator section
+- [x] Confirm cluster matcher loads OATS-refined centroids from bundle
+- [x] Document OATS regeneration in README operator section
 
 ## Step 3: Testing and verification
 
@@ -47,7 +47,7 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-09 | Step 1 | Extended verify script with OATS validation and cluster benchmarks |
 
 ## Blockers
 
