@@ -143,9 +143,37 @@
           "model_override",
           "compaction_pin_break",
           "feedback_good",
-          "feedback_bad"
+          "feedback_bad",
+          "tool_failure_chain",
+          "stop_reason_invalid",
+          "reprompt_detected",
+          "high_edit_distance",
+          "provider_failover",
+          "stop_reason_length",
+          "infra_error"
         ]
       }
+    },
+    "tool_failure_chain_count": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Consecutive identical tool failures at routing time (privacy-safe scalar)."
+    },
+    "stop_reason_invalid": {
+      "type": ["boolean", "null"],
+      "description": "True when provider stop_reason indicates invalid task completion."
+    },
+    "reprompt_rate": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Normalized session re-prompt rate without storing prompt text."
+    },
+    "edit_distance_proxy": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Normalized prompt-length delta proxy for edit/re-prompt detection."
     }
   }
 }

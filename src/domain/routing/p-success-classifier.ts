@@ -23,18 +23,85 @@ export const MIN_TRAINING_SAMPLES = 30;
 /** Neutral probability when training data is insufficient or artifact missing. */
 export const NEUTRAL_P_SUCCESS = 0.5;
 
-/** Outcome signals that mark a routing attempt as unsuccessful for cheap-tier training. */
-export const FAILURE_OUTCOME_SIGNALS: readonly OutcomeSignalType[] = [
+/** Behavioral outcome signals that mark cheap-tier training failure (SP-062). */
+export const BEHAVIORAL_FAILURE_OUTCOME_SIGNALS: readonly OutcomeSignalType[] = [
   'model_override',
   'feedback_bad',
 ] as const;
 
-/** Outcome signals reserved for future execution telemetry (failover, length, infra). */
-export const FUTURE_FAILURE_SIGNALS = [
+/** Verifier-grade failure proxies derived from privacy-safe telemetry scalars (SP-131). */
+export const VERIFIER_FAILURE_OUTCOME_SIGNALS = [
+  'tool_failure_chain',
+  'stop_reason_invalid',
+  'reprompt_detected',
+  'high_edit_distance',
+] as const;
+
+export type VerifierFailureOutcomeSignal = (typeof VERIFIER_FAILURE_OUTCOME_SIGNALS)[number];
+
+/** Execution telemetry failure signals (SP-104 review follow-up, SP-131). */
+export const EXECUTION_FAILURE_OUTCOME_SIGNALS = [
   'provider_failover',
   'stop_reason_length',
   'infra_error',
 ] as const;
+
+export type ExecutionFailureOutcomeSignal = (typeof EXECUTION_FAILURE_OUTCOME_SIGNALS)[number];
+
+/** Union of all training label signals consumed by P(success) export and aggregate paths. */
+export type TrainingOutcomeSignal =
+  | OutcomeSignalType
+  | VerifierFailureOutcomeSignal
+  | ExecutionFailureOutcomeSignal;
+
+/** Outcome signals that mark a routing attempt as unsuccessful for cheap-tier training. */
+export const FAILURE_OUTCOME_SIGNALS: readonly TrainingOutcomeSignal[] = [
+  ...BEHAVIORAL_FAILURE_OUTCOME_SIGNALS,
+  ...VERIFIER_FAILURE_OUTCOME_SIGNALS,
+  ...EXECUTION_FAILURE_OUTCOME_SIGNALS,
+] as const;
+
+/** @deprecated Use EXECUTION_FAILURE_OUTCOME_SIGNALS */
+export const FUTURE_FAILURE_SIGNALS = EXECUTION_FAILURE_OUTCOME_SIGNALS;
+
+/** Privacy-safe scalar failure proxies exported in calibration contrib rows (SP-131). */
+export const P_SUCCESS_FAILURE_PROXY_FIELDS = [
+  'tool_failure_chain_count',
+  'stop_reason_invalid',
+  'reprompt_rate',
+  'edit_distance_proxy',
+] as const;
+
+export type PSuccessFailureProxyField = (typeof P_SUCCESS_FAILURE_PROXY_FIELDS)[number];
+
+export interface PSuccessFailureProxies {
+  readonly tool_failure_chain_count: number | null;
+  readonly stop_reason_invalid: boolean | null;
+  readonly reprompt_rate: number | null;
+  readonly edit_distance_proxy: number | null;
+}
+
+/** Minimum identical tool failures before labeling a tool-failure chain (loop escalation uses 3). */
+export const TOOL_FAILURE_CHAIN_LABEL_THRESHOLD = 2;
+
+/** Normalized re-prompt rate at or above this marks failure. */
+export const REPROMPT_RATE_FAILURE_THRESHOLD = 0.5;
+
+/** Normalized edit-distance proxy at or above this marks likely re-prompt / correction. */
+export const EDIT_DISTANCE_PROXY_FAILURE_THRESHOLD = 0.6;
+
+const PROMPT_LENGTH_NORM_FOR_EDIT_PROXY = 8_000;
+
+/** Provider stop reasons treated as invalid task completion for training labels. */
+export const INVALID_STOP_REASONS = new Set([
+  'length',
+  'max_tokens',
+  'content_filter',
+  'tool_calls',
+  'function_call',
+  'unknown',
+  'error',
+]);
 
 export const P_SUCCESS_FEATURE_NAMES = [
   'prompt_length_norm',
@@ -108,13 +175,18 @@ export interface LabeledTrainingSample {
   readonly request_id: string;
   readonly features: PSuccessFeatures;
   readonly success: boolean;
-  readonly outcome_signals: readonly OutcomeSignalType[];
+  readonly outcome_signals: readonly TrainingOutcomeSignal[];
+  readonly failure_proxies: PSuccessFailureProxies;
 }
 
 export interface DatasetExportJoinRow extends Record<string, unknown> {
   readonly request_id: string;
   readonly success_label: boolean | null;
-  readonly outcome_signals: readonly OutcomeSignalType[];
+  readonly outcome_signals: readonly TrainingOutcomeSignal[];
+  readonly tool_failure_chain_count: number | null;
+  readonly stop_reason_invalid: boolean | null;
+  readonly reprompt_rate: number | null;
+  readonly edit_distance_proxy: number | null;
 }
 
 const PROMPT_LENGTH_NORM = 8_000;
@@ -182,13 +254,164 @@ export function featuresToVector(features: PSuccessFeatures): number[] {
   return P_SUCCESS_FEATURE_NAMES.map((name) => features[name]);
 }
 
-/** Derive success label from outcome signals keyed to a request. */
+function isTrainingOutcomeSignal(value: string): value is TrainingOutcomeSignal {
+  return (
+    (BEHAVIORAL_FAILURE_OUTCOME_SIGNALS as readonly string[]).includes(value) ||
+    (VERIFIER_FAILURE_OUTCOME_SIGNALS as readonly string[]).includes(value) ||
+    (EXECUTION_FAILURE_OUTCOME_SIGNALS as readonly string[]).includes(value) ||
+    value === 'compaction_pin_break' ||
+    value === 'feedback_good'
+  );
+}
+
+function intOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : null;
+}
+
+function boolOrNull(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
+}
+
+function rateOrNull(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
+  }
+  return clamp01(value);
+}
+
+function normalizeStopReasonInvalid(record: Record<string, unknown>): boolean | null {
+  const explicit = boolOrNull(record.stop_reason_invalid);
+  if (explicit !== null) {
+    return explicit;
+  }
+
+  const stopReason = record.stop_reason;
+  if (typeof stopReason !== 'string' || stopReason.length === 0) {
+    return null;
+  }
+
+  return INVALID_STOP_REASONS.has(stopReason.toLowerCase());
+}
+
+function normalizeRepromptRate(record: Record<string, unknown>): number | null {
+  const explicit = rateOrNull(record.reprompt_rate);
+  if (explicit !== null) {
+    return explicit;
+  }
+
+  const repromptCount = intOrNull(record.reprompt_count);
+  if (repromptCount === null) {
+    return null;
+  }
+
+  const turnIndex = intOrNull(record.turn_index_in_session);
+  const denominator = turnIndex !== null && turnIndex > 0 ? turnIndex : repromptCount + 1;
+  return clamp01(repromptCount / denominator);
+}
+
+function normalizeEditDistanceProxy(record: Record<string, unknown>): number | null {
+  const explicit = rateOrNull(record.edit_distance_proxy);
+  if (explicit !== null) {
+    return explicit;
+  }
+
+  const delta = intOrNull(record.prompt_length_delta);
+  if (delta !== null) {
+    return clamp01(Math.abs(delta) / PROMPT_LENGTH_NORM_FOR_EDIT_PROXY);
+  }
+
+  const current = intOrNull(record.prompt_length_chars);
+  const prior = intOrNull(record.prior_prompt_length_chars);
+  if (current === null || prior === null) {
+    return null;
+  }
+
+  const maxLength = Math.max(current, prior, 1);
+  return clamp01(Math.abs(current - prior) / maxLength);
+}
+
+function normalizeToolFailureChainCount(record: Record<string, unknown>): number | null {
+  const explicit = intOrNull(record.tool_failure_chain_count);
+  if (explicit !== null) {
+    return explicit;
+  }
+
+  return intOrNull(record.consecutive_tool_failures);
+}
+
+/** Extract privacy-safe failure proxy scalars from a contrib or export row. */
+export function extractFailureProxies(record: Record<string, unknown>): PSuccessFailureProxies {
+  return {
+    tool_failure_chain_count: normalizeToolFailureChainCount(record),
+    stop_reason_invalid: normalizeStopReasonInvalid(record),
+    reprompt_rate: normalizeRepromptRate(record),
+    edit_distance_proxy: normalizeEditDistanceProxy(record),
+  };
+}
+
+/** Map failure proxy scalars to verifier-grade training outcome signals. */
+export function deriveVerifierFailureSignals(
+  proxies: PSuccessFailureProxies,
+): readonly VerifierFailureOutcomeSignal[] {
+  const signals: VerifierFailureOutcomeSignal[] = [];
+
+  if (
+    proxies.tool_failure_chain_count !== null &&
+    proxies.tool_failure_chain_count >= TOOL_FAILURE_CHAIN_LABEL_THRESHOLD
+  ) {
+    signals.push('tool_failure_chain');
+  }
+
+  if (proxies.stop_reason_invalid === true) {
+    signals.push('stop_reason_invalid');
+  }
+
+  if (
+    proxies.reprompt_rate !== null &&
+    proxies.reprompt_rate >= REPROMPT_RATE_FAILURE_THRESHOLD
+  ) {
+    signals.push('reprompt_detected');
+  }
+
+  if (
+    proxies.edit_distance_proxy !== null &&
+    proxies.edit_distance_proxy >= EDIT_DISTANCE_PROXY_FAILURE_THRESHOLD
+  ) {
+    signals.push('high_edit_distance');
+  }
+
+  return signals;
+}
+
+function mergeTrainingOutcomeSignals(
+  ...groups: ReadonlyArray<readonly TrainingOutcomeSignal[]>
+): readonly TrainingOutcomeSignal[] {
+  return [...new Set(groups.flat())];
+}
+
+function parseTrainingOutcomeSignals(raw: unknown): readonly TrainingOutcomeSignal[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw.filter(
+    (value): value is TrainingOutcomeSignal =>
+      typeof value === 'string' && isTrainingOutcomeSignal(value),
+  );
+}
+
+/** Derive success label from behavioral outcomes plus optional failure proxies. */
 export function deriveSuccessLabel(
   outcomes: readonly RoutingOutcomeRecord[],
-): { success: boolean | null; outcome_signals: readonly OutcomeSignalType[] } {
-  const signals = [...new Set(outcomes.map((entry) => entry.signal_type))];
+  options?: { readonly failureProxies?: PSuccessFailureProxies },
+): { success: boolean | null; outcome_signals: readonly TrainingOutcomeSignal[] } {
+  const behavioralSignals = [...new Set(outcomes.map((entry) => entry.signal_type))];
+  const verifierSignals = options?.failureProxies
+    ? deriveVerifierFailureSignals(options.failureProxies)
+    : [];
+  const signals = mergeTrainingOutcomeSignals(behavioralSignals, verifierSignals);
 
-  if (signals.some((signal) => FAILURE_OUTCOME_SIGNALS.includes(signal))) {
+  if (signals.some((signal) => (FAILURE_OUTCOME_SIGNALS as readonly string[]).includes(signal))) {
     return { success: false, outcome_signals: signals };
   }
 
@@ -202,6 +425,57 @@ export function deriveSuccessLabel(
 
   // compaction_pin_break and other neutral signals — treat as unlabeled success.
   return { success: true, outcome_signals: signals };
+}
+
+/** Derive training labels from a privacy-safe export/contrib row (no prompt text). */
+export function deriveSuccessLabelFromExportRow(
+  record: Record<string, unknown>,
+): {
+  success: boolean | null;
+  outcome_signals: readonly TrainingOutcomeSignal[];
+  failure_proxies: PSuccessFailureProxies;
+} {
+  const failure_proxies = extractFailureProxies(record);
+  const existingSignals = parseTrainingOutcomeSignals(record.outcome_signals);
+  const verifierSignals = deriveVerifierFailureSignals(failure_proxies);
+  const mergedSignals = mergeTrainingOutcomeSignals(existingSignals, verifierSignals);
+
+  if (mergedSignals.some((signal) => (FAILURE_OUTCOME_SIGNALS as readonly string[]).includes(signal))) {
+    return { success: false, outcome_signals: mergedSignals, failure_proxies };
+  }
+
+  if (mergedSignals.includes('feedback_good')) {
+    return { success: true, outcome_signals: mergedSignals, failure_proxies };
+  }
+
+  if (typeof record.success_label === 'boolean') {
+    return {
+      success: record.success_label,
+      outcome_signals: mergedSignals,
+      failure_proxies,
+    };
+  }
+
+  if (mergedSignals.length === 0) {
+    return { success: null, outcome_signals: mergedSignals, failure_proxies };
+  }
+
+  return { success: true, outcome_signals: mergedSignals, failure_proxies };
+}
+
+/** Attach normalized failure proxy fields for calibration export rows. */
+export function attachFailureProxiesToExport(
+  exportRecord: Record<string, unknown>,
+): Record<string, unknown> {
+  const proxies = extractFailureProxies(exportRecord);
+
+  return {
+    ...exportRecord,
+    tool_failure_chain_count: proxies.tool_failure_chain_count,
+    stop_reason_invalid: proxies.stop_reason_invalid,
+    reprompt_rate: proxies.reprompt_rate,
+    edit_distance_proxy: proxies.edit_distance_proxy,
+  };
 }
 
 /** Group outcomes by request_id for export joins. */
@@ -228,13 +502,15 @@ export function joinDatasetWithOutcomes(
 
   return datasetRecords.map((record) => {
     const linked = outcomesByRequest.get(record.request_id) ?? [];
-    const { success, outcome_signals } = deriveSuccessLabel(linked);
+    const failure_proxies = extractFailureProxies(record as unknown as Record<string, unknown>);
+    const { success, outcome_signals } = deriveSuccessLabel(linked, { failureProxies: failure_proxies });
 
     return {
       request_id: record.request_id,
       features: extractPSuccessFeatures(record),
       success: success ?? true,
       outcome_signals,
+      failure_proxies,
     };
   });
 }
@@ -244,13 +520,19 @@ export function attachOutcomeLabelsToExport(
   exportRecord: Record<string, unknown>,
   outcomes: readonly RoutingOutcomeRecord[],
 ): DatasetExportJoinRow {
-  const { success, outcome_signals } = deriveSuccessLabel(outcomes);
+  const withProxies = attachFailureProxiesToExport(exportRecord);
+  const failure_proxies = extractFailureProxies(withProxies);
+  const { success, outcome_signals } = deriveSuccessLabel(outcomes, { failureProxies: failure_proxies });
 
   return {
-    ...exportRecord,
+    ...withProxies,
     request_id: String(exportRecord.request_id ?? ''),
     success_label: success,
     outcome_signals,
+    tool_failure_chain_count: failure_proxies.tool_failure_chain_count,
+    stop_reason_invalid: failure_proxies.stop_reason_invalid,
+    reprompt_rate: failure_proxies.reprompt_rate,
+    edit_distance_proxy: failure_proxies.edit_distance_proxy,
   };
 }
 
@@ -325,24 +607,15 @@ export function parseTrainingExportLine(line: string): LabeledTrainingSample | n
     return null;
   }
 
-  const successLabel = parsed.success_label;
-  let success = true;
-  if (typeof successLabel === 'boolean') {
-    success = successLabel;
-  }
-
-  const rawSignals = parsed.outcome_signals;
-  const outcome_signals = Array.isArray(rawSignals)
-    ? rawSignals.filter((value): value is OutcomeSignalType => typeof value === 'string')
-    : [];
-
+  const labeled = deriveSuccessLabelFromExportRow(parsed);
   const record = parsed as unknown as RoutingDatasetRecord;
 
   return {
     request_id: requestId,
     features: extractPSuccessFeatures(record),
-    success: success === false ? false : true,
-    outcome_signals,
+    success: labeled.success === false ? false : true,
+    outcome_signals: labeled.outcome_signals,
+    failure_proxies: labeled.failure_proxies,
   };
 }
 

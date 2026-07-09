@@ -10,6 +10,7 @@
  * `specs/001-build-smart-router/contracts/routing-calibration.schema.json`
  * (`minimum_training_samples`) and `config/routing-calibration.json.example`.
  */
+import { P_SUCCESS_FAILURE_PROXY_FIELDS, type PSuccessFailureProxyField } from '../src/domain/routing/p-success-classifier.js';
 export declare const DEFAULT_CONTRIB_DIR = "data/contrib";
 /** Documented minimum labeled rows before each artifact deviates from defaults. */
 export declare const MINIMUM_TRAINING_SAMPLES: {
@@ -39,10 +40,17 @@ export interface CalibrationAggregateOptions {
     readonly stdin?: boolean;
     readonly quiet?: boolean;
 }
+/** Raw telemetry keys mapped into privacy-safe failure proxy fields (SP-131). */
+export declare const CALIBRATION_CONTRIB_STRIP_AFTER_PROXY_MAP: readonly string[];
+export { P_SUCCESS_FAILURE_PROXY_FIELDS };
+export type { PSuccessFailureProxyField };
 /** Fail closed when a contrib row contains forbidden or tainted keys. */
 export declare function assertContribRecordSafe(record: unknown, context?: string): asserts record is Record<string, unknown>;
 /** Strip install-local pepper fields from a validated contrib row. */
 export declare function sanitizeContribRecord(record: Record<string, unknown>): Record<string, unknown>;
+/** Map telemetry scalars to normalized failure proxies and refreshed training labels. */
+export declare function enrichContribRecordWithFailureLabels(record: Record<string, unknown>): Record<string, unknown>;
+export declare function enrichContribRecords(records: readonly Record<string, unknown>[]): Record<string, unknown>[];
 export declare function parseContribJsonl(text: string, source?: string): Record<string, unknown>[];
 export declare function parseContribJson(text: string, source?: string): Record<string, unknown>[];
 export declare function readContribFile(filePath: string): Record<string, unknown>[];

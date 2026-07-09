@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assertContribRecordSafe,
   collectContribFromDir,
+  enrichContribRecordWithFailureLabels,
   formatContribJsonl,
   MINIMUM_TRAINING_SAMPLES,
   parseContribJsonl,
@@ -119,5 +120,51 @@ describe('calibration aggregate (SP-116)', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it('maps telemetry scalars to privacy-safe failure proxies (SP-131)', () => {
+    const enriched = enrichContribRecordWithFailureLabels({
+      ...validContribRecord(),
+      consecutive_tool_failures: 2,
+      stop_reason: 'length',
+      reprompt_count: 2,
+      turn_index_in_session: 3,
+      prompt_length_delta: 4_800,
+    });
+
+    expect(enriched.tool_failure_chain_count).toBe(2);
+    expect(enriched.stop_reason_invalid).toBe(true);
+    expect(enriched.reprompt_rate).toBeCloseTo(2 / 3);
+    expect(enriched.edit_distance_proxy).toBeCloseTo(0.6);
+    expect(enriched.success_label).toBe(false);
+    expect(enriched.outcome_signals).toEqual(
+      expect.arrayContaining([
+        'tool_failure_chain',
+        'stop_reason_invalid',
+        'reprompt_detected',
+        'high_edit_distance',
+      ]),
+    );
+    expect(enriched).not.toHaveProperty('stop_reason');
+    expect(enriched).not.toHaveProperty('consecutive_tool_failures');
+    expect(enriched).not.toHaveProperty('prompt_text');
+  });
+
+  it('enriches JSONL rows during parse without raw prompt fields', () => {
+    const jsonl = formatContribJsonl([
+      {
+        ...validContribRecord(),
+        consecutive_tool_failures: 3,
+        stop_reason: 'max_tokens',
+      },
+    ]);
+
+    const parsed = parseContribJsonl(jsonl.trimEnd(), 'fixture');
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]?.tool_failure_chain_count).toBe(3);
+    expect(parsed[0]?.stop_reason_invalid).toBe(true);
+    expect(parsed[0]?.success_label).toBe(false);
+    expect(parsed[0]?.outcome_signals).toContain('tool_failure_chain');
+    expect(parsed[0]).not.toHaveProperty('stop_reason');
   });
 });
