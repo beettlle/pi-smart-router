@@ -137,8 +137,10 @@ export function hasGoogleReplayRiskFromContext(
  * cannot be detected reliably — defer to contextMessages in resolveEffectiveFleet.
  */
 export function hasGoogleReplayRisk(
-  _messages: readonly RoutingMessage[],
+  messages: readonly RoutingMessage[],
 ): boolean {
+  // Routing messages lack provider/api metadata; Google-origin detection uses contextMessages.
+  void messages;
   return false;
 }
 
