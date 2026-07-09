@@ -30,6 +30,10 @@ import {
   evaluateCacheEconomics,
   type CacheEconomicsConfig,
 } from './cache-economics.js';
+import {
+  evaluateCacheBreakevenForPrefix,
+  type CacheBreakevenResult,
+} from './cache-breakeven.js';
 import { SaarSessionStateTracker } from './saar-session-state.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -88,6 +92,68 @@ function isTierUpgrade(from: Tier, to: Tier): boolean {
 
 function isToolLoopTurn(turnType: RoutingRequest['turn_type']): boolean {
   return turnType === 'main_loop' || turnType === 'tool_result';
+}
+
+const TOKENS_PER_M = 1_000_000;
+
+/**
+ * Per-turn marginal savings from switching pinned → candidate on this request.
+ * Uses full estimated input (same basis as cache-economics per-turn savings).
+ */
+export function computeMarginalSwitchSavings(
+  pinnedModel: ModelProfile,
+  candidateModel: ModelProfile,
+  estimatedInputTokens: number,
+): number {
+  if (!Number.isFinite(estimatedInputTokens) || estimatedInputTokens < 0) {
+    return 0;
+  }
+
+  return (
+    ((pinnedModel.pricing.fallback_cost_per_1m -
+      candidateModel.pricing.fallback_cost_per_1m) *
+      estimatedInputTokens) /
+    TOKENS_PER_M
+  );
+}
+
+/**
+ * SAAR cache breakeven gate (#73) — shared by turn_envelope and session_pin.
+ * `warmPrefixTokens` is 0 on cold sessions (no pin); otherwise the warm prefix size.
+ */
+export function evaluateModelSwitchBreakeven(
+  pinnedModel: ModelProfile,
+  candidateModel: ModelProfile,
+  estimatedInputTokens: number,
+  warmPrefixTokens: number,
+  saarConfig?: SaarConfig,
+): CacheBreakevenResult {
+  if (pinnedModel.id === candidateModel.id) {
+    return {
+      shouldSwitch: true,
+      marginal_savings: 0,
+      future_cache_value: 0,
+      cache_reprime_cost: 0,
+      total_benefit: 0,
+      reason: 'breakeven_pass',
+    };
+  }
+
+  const marginal_savings = computeMarginalSwitchSavings(
+    pinnedModel,
+    candidateModel,
+    estimatedInputTokens,
+  );
+
+  return evaluateCacheBreakevenForPrefix(
+    marginal_savings,
+    warmPrefixTokens,
+    pinnedModel.pricing.fallback_cost_per_1m,
+    candidateModel.pricing.fallback_cost_per_1m,
+    saarConfig
+      ? { prefix_cache_weight: saarConfig.prefix_cache_weight }
+      : undefined,
+  );
 }
 
 // ─── SessionPinner ────────────────────────────────────────────────────────────
@@ -447,11 +513,22 @@ export class SessionPinner {
     );
 
     if (econ.shouldSwitch) {
+      const breakeven = evaluateModelSwitchBreakeven(
+        pinnedModel,
+        candidate,
+        tokenEstimate,
+        tokenEstimate,
+        this.saarConfig,
+      );
+      if (!breakeven.shouldSwitch) {
+        return null;
+      }
+
       this.breakPin(request.session_id);
       return { action: 'break', breakReason: 'cache_economics' };
     }
 
-    return { action: 'use_pin', pinnedModel };
+    return null;
   }
 
   private handleForceOverride(
@@ -527,6 +604,19 @@ export class SessionPinner {
     );
 
     if (!econModel) {
+      return null;
+    }
+
+    const tokenEstimate =
+      request.estimated_input_tokens ?? request.prompt_text.length;
+    const breakeven = evaluateModelSwitchBreakeven(
+      pinnedModel,
+      econModel,
+      tokenEstimate,
+      tokenEstimate,
+      this.saarConfig,
+    );
+    if (!breakeven.shouldSwitch) {
       return null;
     }
 

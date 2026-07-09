@@ -40,6 +40,7 @@ import {
   type ContextFitConfig,
 } from '../routing/context-fit.js';
 import type { SessionPinner } from '../pinning/session-pinner.js';
+import { evaluateModelSwitchBreakeven } from '../pinning/session-pinner.js';
 import { evaluateLoopEscalation } from '../pinning/loop-escalation.js';
 import type { LoopEscalationConfig } from '../pinning/loop-escalation.js';
 import { selectLowestCostModel } from '../pinning/sub-route-policy.js';
@@ -202,6 +203,8 @@ export class RouterPipeline {
   private currentContextFitViableCount = 0;
   private contextOverflowPreferredProvider: string | null = null;
   private contextOverflowTriggered = false;
+  /** Internal breakeven gate reason for SP-126 explain wiring. */
+  private currentBreakevenReason: string | null = null;
 
   constructor(fleet: readonly ModelProfile[], options?: PipelineOptions) {
     this.fleet = fleet;
@@ -247,6 +250,7 @@ export class RouterPipeline {
     this.currentContextFitViableCount = 0;
     this.contextOverflowPreferredProvider = null;
     this.contextOverflowTriggered = false;
+    this.currentBreakevenReason = null;
 
     let currentStage: NamedPipelineStage | undefined;
 
@@ -875,9 +879,6 @@ export class RouterPipeline {
     return { ...request, candidate_model_id: model.id };
   }
 
-  /**
-   * SP-123: after SAAR planning buffer, defer planning→frontier to session_pin hard-lock.
-   */
   private shouldDeferPlanningForSaar(request: RoutingRequest): boolean {
     const saarConfig = this.options.saarConfig;
     const pinner = this.options.sessionPinner;
@@ -893,6 +894,29 @@ export class RouterPipeline {
     const saarState = pinner.getSaarState(request.session_id);
     const turnIndex = saarState?.turn_index ?? 0;
     return turnIndex >= saarConfig.planning_turn_buffer;
+  }
+
+  /**
+   * SP-123: SAAR planning buffer explicitly allows frontier planning turns
+   * without breakeven gating (#73 composes with buffer, not replaces it).
+   */
+  private isSaarPlanningBufferActive(request: RoutingRequest): boolean {
+    const saarConfig = this.options.saarConfig;
+    const pinner = this.options.sessionPinner;
+    if (!saarConfig || !pinner) {
+      return false;
+    }
+
+    if (!pinner.getPin(request.session_id)) {
+      return false;
+    }
+
+    const saarState = pinner.getSaarState(request.session_id);
+    if (!saarState) {
+      return false;
+    }
+
+    return saarState.turn_index < saarConfig.planning_turn_buffer;
   }
 
   // ─── Turn envelope stage (Step 2b, <2ms budget) ─────────────────────────
@@ -924,6 +948,34 @@ export class RouterPipeline {
     const model = selectLowestCostModel(tierCandidates);
     if (!model) {
       return { decided: false, stage: 'turn_envelope' };
+    }
+
+    const pinner = this.options.sessionPinner;
+    const pin = pinner?.getPin(request.session_id) ?? null;
+    if (pin) {
+      const pinnedModel = this.activeFleet.find(
+        (m) => m.id === pin.pinned_model_id && m.healthy !== false,
+      );
+      if (pinnedModel && pinnedModel.id !== model.id) {
+        const skipBreakeven =
+          turnType === 'planning' && this.isSaarPlanningBufferActive(request);
+        if (!skipBreakeven) {
+          const tokenEstimate =
+            request.estimated_input_tokens ?? request.prompt_text.length;
+          const breakeven = evaluateModelSwitchBreakeven(
+            pinnedModel,
+            model,
+            tokenEstimate,
+            tokenEstimate,
+            this.options.saarConfig,
+          );
+          if (!breakeven.shouldSwitch) {
+            this.currentBreakevenReason = 'breakeven_blocked';
+            return { decided: false, stage: 'turn_envelope' };
+          }
+          this.currentBreakevenReason = 'breakeven_pass';
+        }
+      }
     }
 
     return {
