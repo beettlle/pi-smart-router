@@ -1,5 +1,5 @@
-**Current Step:** Step 2: README and provider copy
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-08
 **Review Level:** 1
 **Review Counter:** 0
@@ -18,45 +18,46 @@
 
 ## Step 2: README and provider copy
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] README: replay repair primary fix; narrowed guard fail-safe
 - [x] Update gemini-provider operator guidance and tests
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run npm run typecheck && npm test
-- [ ] Note optional npm run verify:ci for v0.2.0 release tag
+- [x] Run npm run typecheck && npm test
+- [x] Note optional npm run verify:ci for v0.2.0 release tag
 
 ---
 
 ## Completion Criteria
 
-- [ ] Multi-turn Gemini tool delegation passes extension tests
-- [ ] README documents repair-first troubleshooting
-- [ ] Provider error messages reference in-repo repair
-- [ ] #85 acceptance criteria met
-- [ ] Tests pass
+- [x] Multi-turn Gemini tool delegation passes extension tests
+- [x] README documents repair-first troubleshooting
+- [x] Provider error messages reference in-repo repair
+- [x] #85 acceptance criteria met
+- [x] Tests pass
 
 ## Reviews
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-08 | 1 | plan | skipped (engine post-.DONE) |
+| 2026-07-08 | 2 | plan | skipped (engine post-.DONE) |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-07-08 | SP-084 google-only repair case already covered by existing extension test | No expectation changes needed |
 
 ## Execution Log
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-08 | verification | npm run typecheck && npm test — 1178 tests pass; optional npm run verify:ci before v0.2.0 tag |
 
 ## Blockers
 
