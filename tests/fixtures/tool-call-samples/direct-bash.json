@@ -1,0 +1,6 @@
+{
+  "name": "bash",
+  "arguments": {
+    "command": "ls -la /var/log"
+  }
+}
