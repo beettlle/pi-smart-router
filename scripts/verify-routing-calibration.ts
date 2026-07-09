@@ -16,6 +16,10 @@ import { projectToRequirements } from '../src/domain/matching/hydra-matcher.js';
 import { predictPSuccessCheap } from '../src/domain/routing/p-success-classifier.js';
 import { extractPSuccessFeatures } from '../src/domain/routing/p-success-classifier.js';
 import {
+  applyIsotonicLookup,
+  validateIsotonicCalibratorArtifact,
+} from './lib/isotonic-calibrator.js';
+import {
   DEFAULT_ROUTING_CALIBRATION_PATH,
   resolveRoutingCalibrationBundle,
   unflattenHydraProjectionWeights,
@@ -148,7 +152,7 @@ export function assertBenchmark(
 export function verifyArtifactShapes(bundle: RoutingCalibrationBundle): BenchmarkAssertionResult[] {
   const results: BenchmarkAssertionResult[] = [];
 
-  if (bundle.version !== 1) {
+  if (bundle.version !== 2) {
     results.push({
       id: 'bundle_version',
       passed: false,
@@ -204,6 +208,26 @@ export function verifyArtifactShapes(bundle: RoutingCalibrationBundle): Benchmar
     passed: Number.isFinite(probability) && probability >= 0 && probability <= 1,
     message: `p_success=${probability.toFixed(3)}`,
   });
+
+  try {
+    validateIsotonicCalibratorArtifact(bundle.isotonic_calibrator);
+    const calibrated = applyIsotonicLookup(
+      probability,
+      bundle.isotonic_calibrator.x_knots,
+      bundle.isotonic_calibrator.y_knots,
+    );
+    results.push({
+      id: 'isotonic_calibrator',
+      passed: Number.isFinite(calibrated) && calibrated >= 0 && calibrated <= 1,
+      message: `isotonic knots=${bundle.isotonic_calibrator.x_knots.length}, calibrated=${calibrated.toFixed(3)}`,
+    });
+  } catch (err: unknown) {
+    results.push({
+      id: 'isotonic_calibrator',
+      passed: false,
+      message: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   results.push({
     id: 'routing_centroids',

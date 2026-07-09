@@ -29,6 +29,7 @@ export const MINIMUM_TRAINING_SAMPLES = {
   hydra_projection: 100,
   triage_thresholds: 50,
   p_success_weights: MIN_TRAINING_SAMPLES,
+  isotonic_calibrator: MIN_TRAINING_SAMPLES,
   routing_centroids: 10,
 } as const;
 
