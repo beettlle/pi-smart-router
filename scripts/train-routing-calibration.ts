@@ -8,6 +8,12 @@
  * - HyDRA 384×3 linear projection (when embedding vectors are present)
  * - Routing cluster centroids (from bootstrap artifact or defaults)
  *
+ * SP-139 recalibration: after SP-138 extends the HyDRA encoder to a seven-flag
+ * metadata prefix, operators must re-run this script on contrib rows whose
+ * `hydra_prefix_schema_version` is >= 2 (or seven-flag metadata scalars are present).
+ * Embeddings from the legacy four-flag prefix are excluded from projection training;
+ * runtime rejects hydra_projection artifacts below `HYDRA_PROJECTION_ARTIFACT_VERSION`.
+ *
  * Minimum sample sizes: `MINIMUM_TRAINING_SAMPLES` in calibration-aggregate.ts and
  * `config/routing-calibration.json.example`.
  */
@@ -43,6 +49,16 @@ import {
 } from '../src/domain/routing/p-success-classifier.js';
 
 export const ROUTING_CALIBRATION_BUNDLE_VERSION = 1 as const;
+
+/** SP-112 four-flag HyDRA prefix — legacy projection training rows. */
+export const LEGACY_HYDRA_PREFIX_SCHEMA_VERSION = 1 as const;
+/** SP-138 seven-flag HyDRA prefix — current encoder input schema. */
+export const HYDRA_PREFIX_SCHEMA_VERSION = 2 as const;
+export const HYDRA_PREFIX_FLAG_COUNT = 7 as const;
+/** Bumped when prefix schema changes invalidate prior learned projection weights. */
+export const HYDRA_PROJECTION_ARTIFACT_VERSION = 2 as const;
+export const LEGACY_HYDRA_PROJECTION_ARTIFACT_VERSION = 1 as const;
+
 export const DEFAULT_ROUTING_CALIBRATION_PATH = resolve('config', 'routing-calibration.json');
 export const ROUTING_CALIBRATION_SCHEMA_PATH = resolve(
   'specs/001-build-smart-router/contracts/routing-calibration.schema.json',
@@ -55,8 +71,10 @@ export interface TriageThresholdsArtifact {
 }
 
 export interface HydraProjectionBundleArtifact {
-  readonly version: 1;
+  readonly version: typeof HYDRA_PROJECTION_ARTIFACT_VERSION;
   readonly embedding_dim: typeof EMBEDDING_DIM;
+  readonly prefix_schema_version: typeof HYDRA_PREFIX_SCHEMA_VERSION;
+  readonly prefix_flag_count: typeof HYDRA_PREFIX_FLAG_COUNT;
   readonly weights: readonly number[];
   readonly bias: readonly number[];
   readonly trained_sample_count: number;
@@ -110,6 +128,68 @@ function readRequirementVector(record: Record<string, unknown>): [number, number
   return [reasoning, codeGen, toolUse];
 }
 
+/** Privacy-safe contrib scalars that align training rows with SP-138 seven-flag prefix. */
+const SEVEN_FLAG_CONTRIB_METADATA_KEYS = [
+  'compaction_flag',
+  'has_tool_context',
+  'estimated_input_tokens',
+  'turn_type',
+] as const;
+
+function hasSevenFlagContribMetadata(record: Record<string, unknown>): boolean {
+  return SEVEN_FLAG_CONTRIB_METADATA_KEYS.every((key) => key in record);
+}
+
+/** Resolve prefix schema version stamped on a contrib row (defaults legacy when absent). */
+export function readHydraPrefixSchemaVersion(record: Record<string, unknown>): number {
+  const explicit = numOrNull(record.hydra_prefix_schema_version);
+  if (explicit !== null) {
+    return explicit;
+  }
+
+  if (hasSevenFlagContribMetadata(record)) {
+    return HYDRA_PREFIX_SCHEMA_VERSION;
+  }
+
+  return LEGACY_HYDRA_PREFIX_SCHEMA_VERSION;
+}
+
+/** Whether a contrib row is eligible for seven-flag projection training. */
+export function isSevenFlagHydraProjectionSample(record: Record<string, unknown>): boolean {
+  if (readHydraPrefixSchemaVersion(record) < HYDRA_PREFIX_SCHEMA_VERSION) {
+    return false;
+  }
+
+  if (!hasSevenFlagContribMetadata(record)) {
+    return false;
+  }
+
+  return readEmbeddingVector(record) !== null && readRequirementVector(record) !== null;
+}
+
+/** Reject stale hydra_projection sub-artifacts from pre-SP-138 calibration bundles. */
+export function assertCompatibleHydraProjectionArtifact(
+  artifact: HydraProjectionBundleArtifact,
+): void {
+  if (artifact.version < HYDRA_PROJECTION_ARTIFACT_VERSION) {
+    throw new RoutingCalibrationError(
+      `Stale hydra_projection artifact version ${artifact.version}; expected >= ${HYDRA_PROJECTION_ARTIFACT_VERSION} (seven-flag prefix recalibration required)`,
+    );
+  }
+
+  if (artifact.prefix_schema_version < HYDRA_PREFIX_SCHEMA_VERSION) {
+    throw new RoutingCalibrationError(
+      `Stale hydra_projection prefix_schema_version ${artifact.prefix_schema_version}; expected ${HYDRA_PREFIX_SCHEMA_VERSION} (${HYDRA_PREFIX_FLAG_COUNT}-flag prefix)`,
+    );
+  }
+
+  if (artifact.prefix_flag_count !== HYDRA_PREFIX_FLAG_COUNT) {
+    throw new RoutingCalibrationError(
+      `Invalid hydra_projection.prefix_flag_count: expected ${HYDRA_PREFIX_FLAG_COUNT}, got ${artifact.prefix_flag_count}`,
+    );
+  }
+}
+
 /** Flatten 3×384 learned weights to the bundle row-major layout (1152 floats). */
 export function flattenHydraProjectionWeights(weights: HydraProjectionWeights): number[] {
   const flat: number[] = [];
@@ -126,6 +206,8 @@ export function flattenHydraProjectionWeights(weights: HydraProjectionWeights): 
 export function unflattenHydraProjectionWeights(
   artifact: HydraProjectionBundleArtifact,
 ): HydraProjectionWeights {
+  assertCompatibleHydraProjectionArtifact(artifact);
+
   if (artifact.embedding_dim !== EMBEDDING_DIM) {
     throw new RoutingCalibrationError(
       `Invalid embedding_dim: expected ${EMBEDDING_DIM}, got ${artifact.embedding_dim}`,
@@ -152,8 +234,10 @@ export function unflattenHydraProjectionWeights(
 
 export function createDefaultHydraProjectionArtifact(): HydraProjectionBundleArtifact {
   return {
-    version: 1,
+    version: HYDRA_PROJECTION_ARTIFACT_VERSION,
     embedding_dim: EMBEDDING_DIM,
+    prefix_schema_version: HYDRA_PREFIX_SCHEMA_VERSION,
+    prefix_flag_count: HYDRA_PREFIX_FLAG_COUNT,
     weights: Array.from({ length: EMBEDDING_DIM * HYDRA_PROJECTION_OUTPUT_DIM }, () => 0),
     bias: [0, 0, 0],
     trained_sample_count: 0,
@@ -219,8 +303,10 @@ const RoutingCalibrationBundleSchema = z.object({
     routing_centroids: z.number().int().min(1),
   }),
   hydra_projection: z.object({
-    version: z.literal(1),
+    version: z.literal(HYDRA_PROJECTION_ARTIFACT_VERSION),
     embedding_dim: z.literal(EMBEDDING_DIM),
+    prefix_schema_version: z.literal(HYDRA_PREFIX_SCHEMA_VERSION),
+    prefix_flag_count: z.literal(HYDRA_PREFIX_FLAG_COUNT),
     weights: z.array(z.number().finite()).length(EMBEDDING_DIM * HYDRA_PROJECTION_OUTPUT_DIM),
     bias: z.array(z.number().finite()).length(HYDRA_PROJECTION_OUTPUT_DIM),
     trained_sample_count: z.number().int().min(0),
@@ -374,11 +460,12 @@ function trainHydraProjection(
   const samples: Array<{ embedding: Float32Array; targets: [number, number, number] }> = [];
 
   for (const record of records) {
-    const embedding = readEmbeddingVector(record);
-    const targets = readRequirementVector(record);
-    if (!embedding || !targets) {
+    if (!isSevenFlagHydraProjectionSample(record)) {
       continue;
     }
+
+    const embedding = readEmbeddingVector(record)!;
+    const targets = readRequirementVector(record)!;
     samples.push({ embedding, targets });
   }
 
@@ -421,8 +508,10 @@ function trainHydraProjection(
   };
 
   return {
-    version: 1,
+    version: HYDRA_PROJECTION_ARTIFACT_VERSION,
     embedding_dim: EMBEDDING_DIM,
+    prefix_schema_version: HYDRA_PREFIX_SCHEMA_VERSION,
+    prefix_flag_count: HYDRA_PREFIX_FLAG_COUNT,
     weights: flattenHydraProjectionWeights(learned),
     bias,
     trained_sample_count: samples.length,
@@ -441,11 +530,17 @@ function trainPSuccessWeights(records: readonly Record<string, unknown>[]): PSuc
 export function trainRoutingCalibrationBundle(
   records: readonly Record<string, unknown>[],
 ): RoutingCalibrationBundle {
-  const hydraRows = records.filter(
-    (record) =>
-      record.reason_code === 'hydra_embedding_match' ||
-      readRequirementVector(record) !== null,
-  );
+  const hydraRows = records.filter((record) => {
+    if (record.reason_code !== 'hydra_embedding_match' && readRequirementVector(record) === null) {
+      return false;
+    }
+
+    if (readEmbeddingVector(record) !== null) {
+      return isSevenFlagHydraProjectionSample(record);
+    }
+
+    return readHydraPrefixSchemaVersion(record) >= HYDRA_PREFIX_SCHEMA_VERSION;
+  });
 
   return {
     version: ROUTING_CALIBRATION_BUNDLE_VERSION,
