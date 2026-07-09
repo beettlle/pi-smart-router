@@ -343,8 +343,33 @@ Cluster IDs are stable reason-code prefixes (`cluster_low_stakes_general`, `clus
 | `SMART_ROUTER_DATASET` | (unset) | Set to `1` to opt in to privacy-safe routing dataset capture (metadata and feature fields only; 30-day / 10k-row retention). Prompt text, messages, and tool arguments are never stored. Required for outcome labels and P(success) training export. See [#8](https://github.com/beettlle/pi-smart-router/issues/8). |
 | `SMART_ROUTER_DATASET_FINGERPRINT` | (unset) | Set to `1` (requires `SMART_ROUTER_DATASET=1`) to store an install-local HMAC-SHA256 fingerprint of each normalized prompt for duplicate detection within this install. The install pepper lives in `.pi-smart-router/.dataset-key` (gitignored) and is never exported. **Warning:** short or common prompts are vulnerable to offline rainbow-table guessing; use only when you accept that tradeoff. See [#10](https://github.com/beettlle/pi-smart-router/issues/10). |
 | `MODELS_YAML_PATH` | `./config/models.yaml` | Fleet catalog path (library API only) |
+| `SMART_ROUTER_PLANNING_TURN_BUFFER` | `2` | SAAR planning buffer: frontier planning turns allowed before hard-lock ([v0.2.0 Continuity](https://github.com/beettlle/pi-smart-router/issues/72)) |
+| `SMART_ROUTER_PREFIX_CACHE_WEIGHT` | `0.20` | SAAR weight on warm prefix value in cache breakeven math (0–1; [#73](https://github.com/beettlle/pi-smart-router/issues/73)) |
+| `SMART_ROUTER_IDLE_TIMEOUT_SECONDS` | `300` | SAAR idle seconds before pin reopens for full re-route |
+| `SMART_ROUTER_SWITCH_THRESHOLD` | `0.5` | SAAR switch score gate (0–1) for tier upgrades during hard-lock |
 | `ROUTER_SAFE_DEFAULT_TIER` | `economical-cloud` | Fallback tier on any routing failure |
 | `LITELLM_PRICING_URL` | — | LiteLLM pricing JSON source |
+
+### SAAR session pin and cache breakeven (v0.2.0 Continuity)
+
+v0.2.0 adds **Session-Aware Agentic Routing (SAAR)** pin knobs ([#72](https://github.com/beettlle/pi-smart-router/issues/72)) and a **cache breakeven gate** ([#73](https://github.com/beettlle/pi-smart-router/issues/73)) that blocks tier switches when `marginal_savings + future_cache_value <= cache_reprime_cost` — preventing cheap-turn savings from invalidating a warm prefix cache.
+
+| Knob | Env var | Default | Effect |
+|------|---------|---------|--------|
+| Planning buffer | `SMART_ROUTER_PLANNING_TURN_BUFFER` | `2` | First N turns may route planning to frontier while pin metadata stays economical |
+| Prefix cache weight | `SMART_ROUTER_PREFIX_CACHE_WEIGHT` | `0.20` | Discounted future cache credit in breakeven |
+| Idle reopen | `SMART_ROUTER_IDLE_TIMEOUT_SECONDS` | `300` | Seconds of inactivity before SAAR resets and pin reopens |
+| Hard-lock upgrade gate | `SMART_ROUTER_SWITCH_THRESHOLD` | `0.5` | Score threshold for tier upgrades after buffer exhaust |
+
+**Dogfood verification (multi-turn planning session)**
+
+1. Start pi with routing logs: `SMART_ROUTER_LOG_ROUTING=1 pi` (optional: tune SAAR env vars above).
+2. Run `/model smart-router/auto` and begin a multi-turn planning session (planning turns mixed with tool results).
+3. Inspect stderr JSON lines — confirm `saar_summary.buffer_active` / `saar_reason_code: saar_buffer_active` on early planning turns, then `hard_lock: true` / `saar_hard_lock` after the buffer exhausts.
+4. On a warm pinned session, trigger a `tool_result` sub-route — when breakeven fails, expect `breakeven_summary.decision: "blocked"` and `breakeven_reason_code: breakeven_blocked` while the pin holds.
+5. Use `pi router explain` (or `POST /v1/route/explain`) on the same session — `features.breakeven` and `features.saar` mirror telemetry fields for operator audit.
+
+See [routing-roadmap.md](docs/routing-roadmap.md) §2 P0 for design context.
 
 ### P(success) training export (baseline classifier)
 

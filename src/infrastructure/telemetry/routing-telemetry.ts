@@ -16,7 +16,11 @@ import {
 } from '../../domain/routing/context-fit.js';
 import { CLUSTER_REASON_CODE_PREFIX } from '../../config/routing-clusters-loader.js';
 import type { ClusterMatcher } from '../../domain/matching/cluster-matcher.js';
+import { evaluateModelSwitchBreakeven } from '../../domain/pinning/session-pinner.js';
+import { selectLowestCostModel } from '../../domain/pinning/sub-route-policy.js';
+import type { SessionPinner } from '../../domain/pinning/session-pinner.js';
 import type {
+  BreakevenObservability,
   ClusterMatchTableEntry,
   ContextFitObservability,
   ContextFitRejectedEntry,
@@ -27,6 +31,9 @@ import type {
   RoutingDecision,
   RoutingRequest,
   RoutingTelemetry,
+  SaarConfig,
+  SaarObservability,
+  Tier,
   TierFeatureSummary,
   TierSelectionObservability,
 } from '../../domain/types/index.js';
@@ -46,6 +53,26 @@ export const LOW_INTENSITY_STRUCTURAL = 'low_intensity_structural' as const;
 export const HIGH_INTENSITY_STRUCTURAL = 'high_intensity_structural' as const;
 export const P_SUCCESS_CHEAP = 'p_success_cheap' as const;
 export const P_SUCCESS_UNCERTAIN = 'p_success_uncertain' as const;
+
+export const BREAKEVEN_BLOCKED = 'breakeven_blocked' as const;
+export const BREAKEVEN_PASS = 'breakeven_pass' as const;
+export const SAAR_BUFFER_ACTIVE = 'saar_buffer_active' as const;
+export const SAAR_HARD_LOCK = 'saar_hard_lock' as const;
+
+const TURN_ENVELOPE_TIER_MAP: Readonly<Record<string, Tier | null>> = {
+  planning: 'frontier-cloud',
+  tool_result: 'economical-cloud',
+  subagent: 'economical-cloud',
+  main_loop: null,
+  unknown: null,
+};
+
+const SAAR_DECISION_REASON_CODES = new Set<string>([
+  SAAR_BUFFER_ACTIVE,
+  SAAR_HARD_LOCK,
+  'saar_tier_upgrade',
+  'saar_idle_reopen',
+]);
 
 const EXPECTED_COST_PREFIX = 'expected_cost_';
 const EXPECTED_COST_DEFER_CODES = new Set<string>([
@@ -88,6 +115,8 @@ export interface TelemetryEmitterOptions {
   readonly onRecord?: (record: RoutingTelemetry) => void;
   readonly fleet?: readonly ModelProfile[];
   readonly contextFitConfig?: ContextFitConfig;
+  readonly sessionPinner?: SessionPinner;
+  readonly saarConfig?: SaarConfig;
 }
 
 export interface ContextFitObservabilityInput {
@@ -467,6 +496,223 @@ export function buildTierSelectionObservability(
   };
 }
 
+export interface PinEconomicsObservabilityInput {
+  readonly request: RoutingRequest;
+  readonly decision: RoutingDecision;
+  readonly fleet?: readonly ModelProfile[] | undefined;
+  readonly sessionPinner?: SessionPinner | undefined;
+  readonly saarConfig?: SaarConfig | undefined;
+}
+
+function resolveTurnEnvelopeTargetTier(request: RoutingRequest): Tier | null {
+  const turnType = request.turn_type ?? 'unknown';
+  return TURN_ENVELOPE_TIER_MAP[turnType] ?? null;
+}
+
+function isSaarPlanningBufferActive(
+  request: RoutingRequest,
+  sessionPinner: SessionPinner | undefined,
+  saarConfig: SaarConfig | undefined,
+): boolean {
+  if (!saarConfig || !sessionPinner || request.turn_type !== 'planning') {
+    return false;
+  }
+
+  if (!sessionPinner.getPin(request.session_id)) {
+    return false;
+  }
+
+  const saarState = sessionPinner.getSaarState(request.session_id);
+  const turnIndex = saarState?.turn_index ?? 0;
+
+  return turnIndex < saarConfig.planning_turn_buffer;
+}
+
+function resolveSaarReasonCode(decision: RoutingDecision): string | null {
+  if (SAAR_DECISION_REASON_CODES.has(decision.reason_code)) {
+    return decision.reason_code;
+  }
+
+  return null;
+}
+
+/** Build privacy-safe SAAR pin state for explain and telemetry (SP-126). */
+export function buildSaarObservability(
+  input: PinEconomicsObservabilityInput,
+): SaarObservability | null {
+  const { request, decision, sessionPinner, saarConfig } = input;
+  if (!saarConfig) {
+    return null;
+  }
+
+  const saarState = sessionPinner?.getSaarState(request.session_id) ?? null;
+  const pin = sessionPinner?.getPin(request.session_id) ?? null;
+
+  if (!pin && !saarState && !resolveSaarReasonCode(decision)) {
+    return null;
+  }
+
+  const turnIndex = saarState?.turn_index ?? (pin ? 0 : null);
+
+  return {
+    buffer_active:
+      turnIndex !== null ? turnIndex < saarConfig.planning_turn_buffer : false,
+    hard_lock: saarState?.hard_lock ?? false,
+    turn_index_in_session: turnIndex,
+    planning_turn_buffer: saarConfig.planning_turn_buffer,
+    idle_timeout_seconds: saarConfig.idle_timeout_seconds,
+    saar_reason_code: resolveSaarReasonCode(decision),
+  };
+}
+
+/** Build cache breakeven breakdown when a pin would switch tiers (SP-126). */
+export function buildBreakevenObservability(
+  input: PinEconomicsObservabilityInput,
+): BreakevenObservability | null {
+  const { request, sessionPinner, saarConfig, fleet } = input;
+  if (!fleet || !sessionPinner) {
+    return null;
+  }
+
+  const pin = sessionPinner.getPin(request.session_id);
+  if (!pin) {
+    return null;
+  }
+
+  const targetTier = resolveTurnEnvelopeTargetTier(request);
+  if (!targetTier) {
+    return null;
+  }
+
+  if (isSaarPlanningBufferActive(request, sessionPinner, saarConfig)) {
+    return null;
+  }
+
+  const pinnedModel = fleet.find(
+    (model) => model.id === pin.pinned_model_id && model.healthy !== false,
+  );
+  const candidate = selectLowestCostModel(
+    fleet.filter((model) => model.tier === targetTier && model.healthy !== false),
+  );
+
+  if (!pinnedModel || !candidate || pinnedModel.id === candidate.id) {
+    return null;
+  }
+
+  const tokenEstimate =
+    request.estimated_input_tokens ?? request.prompt_text.length;
+  const breakeven = evaluateModelSwitchBreakeven(
+    pinnedModel,
+    candidate,
+    tokenEstimate,
+    tokenEstimate,
+    saarConfig,
+  );
+
+  return {
+    marginal_savings: breakeven.marginal_savings,
+    future_cache_value: breakeven.future_cache_value,
+    cache_reprime_cost: breakeven.cache_reprime_cost,
+    decision: breakeven.shouldSwitch ? 'pass' : 'blocked',
+    breakeven_reason_code: breakeven.shouldSwitch ? BREAKEVEN_PASS : BREAKEVEN_BLOCKED,
+  };
+}
+
+function defaultBreakevenTelemetry(): Pick<
+  RoutingTelemetry,
+  | 'marginal_savings'
+  | 'future_cache_value'
+  | 'cache_reprime_cost'
+  | 'breakeven_decision'
+  | 'breakeven_reason_code'
+> {
+  return {
+    marginal_savings: null,
+    future_cache_value: null,
+    cache_reprime_cost: null,
+    breakeven_decision: null,
+    breakeven_reason_code: null,
+  };
+}
+
+function defaultSaarTelemetry(): Pick<
+  RoutingTelemetry,
+  | 'saar_buffer_active'
+  | 'saar_hard_lock'
+  | 'turn_index_in_session'
+  | 'saar_reason_code'
+> {
+  return {
+    saar_buffer_active: false,
+    saar_hard_lock: false,
+    turn_index_in_session: null,
+    saar_reason_code: null,
+  };
+}
+
+/** Default breakeven telemetry scalars for tests and legacy store reads. */
+export const DEFAULT_BREAKEVEN_TELEMETRY_FIELDS = defaultBreakevenTelemetry();
+
+/** Default SAAR telemetry scalars for tests and legacy store reads. */
+export const DEFAULT_SAAR_TELEMETRY_FIELDS = defaultSaarTelemetry();
+
+function pinEconomicsTelemetryFromInput(
+  input: PinEconomicsObservabilityInput,
+): ReturnType<typeof defaultBreakevenTelemetry> &
+  ReturnType<typeof defaultSaarTelemetry> {
+  const breakeven = buildBreakevenObservability(input);
+  const saar = buildSaarObservability(input);
+
+  return {
+    ...(breakeven
+      ? {
+          marginal_savings: breakeven.marginal_savings,
+          future_cache_value: breakeven.future_cache_value,
+          cache_reprime_cost: breakeven.cache_reprime_cost,
+          breakeven_decision: breakeven.decision,
+          breakeven_reason_code: breakeven.breakeven_reason_code,
+        }
+      : defaultBreakevenTelemetry()),
+    saar_buffer_active: saar?.buffer_active ?? false,
+    saar_hard_lock: saar?.hard_lock ?? false,
+    turn_index_in_session: saar?.turn_index_in_session ?? null,
+    saar_reason_code: saar?.saar_reason_code ?? null,
+  };
+}
+
+/** Attach breakeven and SAAR observability to routing decision features (SP-126). */
+export function enrichRoutingDecisionWithPinEconomics(
+  request: RoutingRequest,
+  decision: RoutingDecision,
+  options?: Omit<PinEconomicsObservabilityInput, 'request' | 'decision'>,
+): RoutingDecision {
+  const input: PinEconomicsObservabilityInput = {
+    request,
+    decision,
+    ...(options?.fleet !== undefined ? { fleet: options.fleet } : {}),
+    ...(options?.sessionPinner !== undefined
+      ? { sessionPinner: options.sessionPinner }
+      : {}),
+    ...(options?.saarConfig !== undefined ? { saarConfig: options.saarConfig } : {}),
+  };
+
+  const breakeven = buildBreakevenObservability(input);
+  const saar = buildSaarObservability(input);
+
+  if (!breakeven && !saar) {
+    return decision;
+  }
+
+  return {
+    ...decision,
+    features: {
+      ...(decision.features ?? emptyFeatureSidecar()),
+      ...(breakeven ? { breakeven } : {}),
+      ...(saar ? { saar } : {}),
+    },
+  };
+}
+
 function emptyFeatureSidecar() {
   return {
     triage: null,
@@ -508,6 +754,8 @@ export interface ExplainEnrichmentOptions {
   readonly fleet?: readonly ModelProfile[];
   readonly contextFitConfig?: ContextFitConfig;
   readonly clusterMatcher?: ClusterMatcher;
+  readonly sessionPinner?: SessionPinner;
+  readonly saarConfig?: SaarConfig;
 }
 
 /** Attach context-fit and tier-selection observability for explain responses (SP-110, SP-113). */
@@ -532,7 +780,23 @@ export async function enrichRoutingDecisionForExplain(
     }
   }
 
-  return enrichRoutingDecisionWithTierSelection(withContextFit, clusterMatchTable);
+  return enrichRoutingDecisionWithPinEconomics(
+    request,
+    enrichRoutingDecisionWithTierSelection(withContextFit, clusterMatchTable),
+    pinEconomicsOptionsFromExplain(options),
+  );
+}
+
+function pinEconomicsOptionsFromExplain(
+  options?: ExplainEnrichmentOptions,
+): Omit<PinEconomicsObservabilityInput, 'request' | 'decision'> {
+  return {
+    ...(options?.fleet !== undefined ? { fleet: options.fleet } : {}),
+    ...(options?.sessionPinner !== undefined
+      ? { sessionPinner: options.sessionPinner }
+      : {}),
+    ...(options?.saarConfig !== undefined ? { saarConfig: options.saarConfig } : {}),
+  };
 }
 
 /** Attach context-fit observability to a routing decision features sidecar (SP-110). */
@@ -575,17 +839,32 @@ export function buildRoutingDecisionLogPayload(
   delegate?: RoutingDecisionLogDelegate,
   fleet?: readonly ModelProfile[],
   contextFitConfig?: ContextFitConfig,
+  pinEconomics?: Omit<PinEconomicsObservabilityInput, 'request' | 'decision' | 'fleet'>,
 ): Record<string, unknown> {
-  const enriched = enrichRoutingDecisionWithTierSelection(
-    enrichRoutingDecisionWithContextFit(
-      request,
-      decision,
-      fleet,
-      contextFitConfig,
+  const enriched = enrichRoutingDecisionWithPinEconomics(
+    request,
+    enrichRoutingDecisionWithTierSelection(
+      enrichRoutingDecisionWithContextFit(
+        request,
+        decision,
+        fleet,
+        contextFitConfig,
+      ),
     ),
+    {
+      ...(fleet !== undefined ? { fleet } : {}),
+      ...(pinEconomics?.sessionPinner !== undefined
+        ? { sessionPinner: pinEconomics.sessionPinner }
+        : {}),
+      ...(pinEconomics?.saarConfig !== undefined
+        ? { saarConfig: pinEconomics.saarConfig }
+        : {}),
+    },
   );
 
   const tierSelection = enriched.features?.tier_selection;
+  const breakeven = enriched.features?.breakeven;
+  const saar = enriched.features?.saar;
 
   return {
     request_id: enriched.request_id,
@@ -604,6 +883,25 @@ export function buildRoutingDecisionLogPayload(
           tier_selection_reason_code: tierSelection.tier_selection_reason_code,
           low_intensity_score: tierSelection.low_intensity_score,
           p_success_cheap: tierSelection.p_success_cheap,
+        }
+      : null,
+    breakeven_summary: breakeven
+      ? {
+          marginal_savings: breakeven.marginal_savings,
+          future_cache_value: breakeven.future_cache_value,
+          cache_reprime_cost: breakeven.cache_reprime_cost,
+          decision: breakeven.decision,
+          breakeven_reason_code: breakeven.breakeven_reason_code,
+        }
+      : null,
+    saar_summary: saar
+      ? {
+          buffer_active: saar.buffer_active,
+          hard_lock: saar.hard_lock,
+          turn_index_in_session: saar.turn_index_in_session,
+          planning_turn_buffer: saar.planning_turn_buffer,
+          idle_timeout_seconds: saar.idle_timeout_seconds,
+          saar_reason_code: saar.saar_reason_code,
         }
       : null,
     delegate,
@@ -728,6 +1026,8 @@ export class RoutingTelemetryEmitter {
   private readonly onRecord: ((record: RoutingTelemetry) => void) | undefined;
   private readonly fleet: readonly ModelProfile[] | undefined;
   private readonly contextFitConfig: ContextFitConfig | undefined;
+  private readonly sessionPinner: SessionPinner | undefined;
+  private readonly saarConfig: SaarConfig | undefined;
 
   constructor(options?: TelemetryEmitterOptions) {
     this.maxEntries = options?.maxEntries ?? TELEMETRY_MAX_ENTRIES;
@@ -736,6 +1036,8 @@ export class RoutingTelemetryEmitter {
     this.onRecord = options?.onRecord;
     this.fleet = options?.fleet;
     this.contextFitConfig = options?.contextFitConfig;
+    this.sessionPinner = options?.sessionPinner;
+    this.saarConfig = options?.saarConfig;
   }
 
   /**
@@ -778,6 +1080,15 @@ export class RoutingTelemetryEmitter {
     });
     const contextFitFields = contextFit ?? defaultContextFitTelemetry();
     const tierSelectionFields = tierSelectionTelemetryFromDecision(decision);
+    const pinEconomicsFields = pinEconomicsTelemetryFromInput({
+      request,
+      decision,
+      ...(this.fleet !== undefined ? { fleet: this.fleet } : {}),
+      ...(this.sessionPinner !== undefined
+        ? { sessionPinner: this.sessionPinner }
+        : {}),
+      ...(this.saarConfig !== undefined ? { saarConfig: this.saarConfig } : {}),
+    });
 
     const record: RoutingTelemetry = {
       timestamp: this.clock(),
@@ -804,6 +1115,15 @@ export class RoutingTelemetryEmitter {
       p_success_cheap: tierSelectionFields.p_success_cheap,
       local_eligible_reason: tierSelectionFields.local_eligible_reason,
       tier_selection_reason_code: tierSelectionFields.tier_selection_reason_code,
+      marginal_savings: pinEconomicsFields.marginal_savings,
+      future_cache_value: pinEconomicsFields.future_cache_value,
+      cache_reprime_cost: pinEconomicsFields.cache_reprime_cost,
+      breakeven_decision: pinEconomicsFields.breakeven_decision,
+      breakeven_reason_code: pinEconomicsFields.breakeven_reason_code,
+      saar_buffer_active: pinEconomicsFields.saar_buffer_active,
+      saar_hard_lock: pinEconomicsFields.saar_hard_lock,
+      turn_index_in_session: pinEconomicsFields.turn_index_in_session,
+      saar_reason_code: pinEconomicsFields.saar_reason_code,
     };
 
     this.entries.push(record);

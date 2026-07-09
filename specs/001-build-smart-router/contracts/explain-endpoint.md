@@ -104,4 +104,29 @@ When the low-intensity tier gate runs, `features.tier_selection` MAY be present 
 | `low_intensity_breakdown` | object \| null | Score, hint, P(success), and rejected expected-cost tiers |
 | `local_zero_skip_reasons` | string[] | Why local_zero did not dispatch when another stage won |
 
-`SMART_ROUTER_LOG_ROUTING=1` JSON lines include `cluster_summary` with cluster id, similarity, margin, tier hint, and tier-selection reason code.
+`SMART_ROUTER_LOG_ROUTING=1` JSON lines include `cluster_summary` with cluster id, similarity, margin, tier hint, and tier-selection reason code. When session pin economics apply, lines also include `breakeven_summary` (`marginal_savings`, `future_cache_value`, `cache_reprime_cost`, `decision`, `breakeven_reason_code`) and `saar_summary` (`buffer_active`, `hard_lock`, `turn_index_in_session`, `planning_turn_buffer`, `idle_timeout_seconds`, `saar_reason_code`).
+
+## Cache breakeven observability (SP-126)
+
+When a session pin would switch tiers, `features.breakeven` MAY be present:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `marginal_savings` | number \| null | Per-turn USD savings from pinned → candidate tier |
+| `future_cache_value` | number \| null | SAAR-weighted retained prefix cache value |
+| `cache_reprime_cost` | number \| null | USD to re-warm prefix on candidate provider |
+| `decision` | `pass` \| `blocked` \| null | Whether breakeven cleared the proposed switch |
+| `breakeven_reason_code` | string \| null | `breakeven_pass` or `breakeven_blocked` |
+
+## SAAR pin observability (SP-126)
+
+When SAAR policy is enabled, `features.saar` MAY be present:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `buffer_active` | boolean | Planning buffer window still open (`turn_index < planning_turn_buffer`) |
+| `hard_lock` | boolean | Post-buffer hard-lock engaged |
+| `turn_index_in_session` | number \| null | SAAR turn counter for the session |
+| `planning_turn_buffer` | number \| null | Configured buffer width (turns) |
+| `idle_timeout_seconds` | number \| null | Idle reopen timeout from operator config |
+| `saar_reason_code` | string \| null | `saar_buffer_active`, `saar_hard_lock`, or other SAAR routing codes |

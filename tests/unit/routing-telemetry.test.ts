@@ -7,21 +7,29 @@ import {
 } from '../../src/domain/routing/context-fit.js';
 import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../src/domain/types/index.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
+import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import {
+  BREAKEVEN_BLOCKED,
   CONTEXT_FIT_PASS,
   CONTEXT_OVERFLOW_PIN_BREAK,
   LOW_INTENSITY_STRUCTURAL,
   P_SUCCESS_CHEAP,
   P_SUCCESS_UNCERTAIN,
+  SAAR_BUFFER_ACTIVE,
+  SAAR_HARD_LOCK,
   RoutingTelemetryEmitter,
+  buildBreakevenObservability,
   buildContextFitObservability,
   buildLocalZeroSkipReasons,
   buildRoutingDecisionLogPayload,
+  buildSaarObservability,
   buildTierSelectionObservability,
   enrichRoutingDecisionWithContextFit,
+  enrichRoutingDecisionWithPinEconomics,
   enrichRoutingDecisionWithTierSelection,
   resolveTierSelectionReasonCode,
 } from '../../src/infrastructure/telemetry/routing-telemetry.js';
+import { DEFAULT_SAAR_CONFIG } from '../../src/domain/types/schemas.js';
 import { TELEMETRY_MAX_ENTRIES } from '../../src/infrastructure/telemetry/telemetry-limits.js';
 
 function makeModel(
@@ -103,6 +111,15 @@ describe('RoutingTelemetryEmitter', () => {
       p_success_cheap: null,
       local_eligible_reason: null,
       tier_selection_reason_code: null,
+      marginal_savings: null,
+      future_cache_value: null,
+      cache_reprime_cost: null,
+      breakeven_decision: null,
+      breakeven_reason_code: null,
+      saar_buffer_active: false,
+      saar_hard_lock: false,
+      turn_index_in_session: null,
+      saar_reason_code: null,
     });
   });
 
@@ -474,5 +491,139 @@ describe('tier-selection observability (SP-113)', () => {
     expect(enriched.features?.tier_selection?.local_zero_skip_reasons).toContain(
       'hardware_or_local_unavailable',
     );
+  });
+});
+
+describe('pin economics observability (SP-126)', () => {
+  const warmBreakevenFleet: ModelProfile[] = [
+    makeModel({
+      id: 'warm-frontier',
+      tier: 'frontier-cloud',
+      provider: 'anthropic',
+      pricing: { fallback_cost_per_1m: 30.0 },
+    }),
+    makeModel({
+      id: 'warm-econ',
+      tier: 'economical-cloud',
+      provider: 'anthropic',
+      pricing: { fallback_cost_per_1m: 30.0 },
+    }),
+  ];
+
+  it('emits breakeven_blocked telemetry when warm prefix blocks tool_result downgrade', async () => {
+    const saarConfig = DEFAULT_SAAR_CONFIG;
+    const pinner = new SessionPinner({ saarConfig });
+    pinner.recordPin('sess-1', 'warm-frontier', 'initial');
+    const onRecord = vi.fn();
+    const emitter = new RoutingTelemetryEmitter({
+      fleet: warmBreakevenFleet,
+      sessionPinner: pinner,
+      saarConfig,
+      onRecord,
+    });
+    const pipeline = new RouterPipeline(warmBreakevenFleet, {
+      sessionPinner: pinner,
+      saarConfig,
+      telemetryEmitter: emitter,
+    });
+
+    await pipeline.route(
+      makeRequest({
+        turn_type: 'tool_result',
+        estimated_input_tokens: 100_000,
+      }),
+    );
+
+    const record = onRecord.mock.calls[0]?.[0];
+    expect(record?.breakeven_reason_code).toBe(BREAKEVEN_BLOCKED);
+    expect(record?.breakeven_decision).toBe('blocked');
+    expect(record?.cache_reprime_cost).toBeGreaterThan(0);
+    expect(record?.future_cache_value).toBeGreaterThan(0);
+  });
+
+  it('builds SAAR observability for buffer and hard-lock reason codes', () => {
+    const saarConfig = DEFAULT_SAAR_CONFIG;
+    const pinner = new SessionPinner({ saarConfig });
+    pinner.recordPin('sess-1', 'warm-frontier', 'initial');
+    pinner.recordSaarTurn('sess-1');
+
+    const buffer = buildSaarObservability({
+      request: makeRequest({ turn_type: 'planning' }),
+      decision: makeDecision({ reason_code: SAAR_BUFFER_ACTIVE, stage: 'session_pin' }),
+      sessionPinner: pinner,
+      saarConfig,
+    });
+    expect(buffer?.buffer_active).toBe(true);
+    expect(buffer?.saar_reason_code).toBe(SAAR_BUFFER_ACTIVE);
+    expect(buffer?.planning_turn_buffer).toBe(2);
+
+    pinner.recordSaarTurn('sess-1');
+    const hardLock = buildSaarObservability({
+      request: makeRequest({ turn_type: 'main_loop' }),
+      decision: makeDecision({ reason_code: SAAR_HARD_LOCK, stage: 'session_pin' }),
+      sessionPinner: pinner,
+      saarConfig,
+    });
+    expect(hardLock?.hard_lock).toBe(true);
+    expect(hardLock?.saar_reason_code).toBe(SAAR_HARD_LOCK);
+  });
+
+  it('enriches explain features with breakeven breakdown', () => {
+    const saarConfig = DEFAULT_SAAR_CONFIG;
+    const pinner = new SessionPinner({ saarConfig });
+    pinner.recordPin('sess-1', 'warm-frontier', 'initial');
+
+    const enriched = enrichRoutingDecisionWithPinEconomics(
+      makeRequest({ turn_type: 'tool_result', estimated_input_tokens: 100_000 }),
+      makeDecision({
+        stage: 'session_pin',
+        reason_code: 'session_pinned',
+        selected_model_id: 'warm-frontier',
+      }),
+      { fleet: warmBreakevenFleet, sessionPinner: pinner, saarConfig },
+    );
+
+    expect(enriched.features?.breakeven?.breakeven_reason_code).toBe(BREAKEVEN_BLOCKED);
+    expect(enriched.features?.breakeven?.decision).toBe('blocked');
+    expect(enriched.features?.breakeven?.marginal_savings).toBe(0);
+  });
+
+  it('includes breakeven_summary and saar_summary in routing log payload', () => {
+    const saarConfig = DEFAULT_SAAR_CONFIG;
+    const pinner = new SessionPinner({ saarConfig });
+    pinner.recordPin('sess-1', 'warm-frontier', 'initial');
+
+    const payload = buildRoutingDecisionLogPayload(
+      makeRequest({ turn_type: 'tool_result', estimated_input_tokens: 100_000 }),
+      makeDecision({
+        stage: 'session_pin',
+        reason_code: 'session_pinned',
+        selected_model_id: 'warm-frontier',
+      }),
+      undefined,
+      warmBreakevenFleet,
+      undefined,
+      { sessionPinner: pinner, saarConfig },
+    );
+
+    expect(payload.breakeven_summary).toMatchObject({
+      breakeven_reason_code: BREAKEVEN_BLOCKED,
+      decision: 'blocked',
+    });
+    expect(payload.saar_summary).toMatchObject({
+      buffer_active: true,
+      planning_turn_buffer: 2,
+      idle_timeout_seconds: 300,
+    });
+  });
+
+  it('returns null breakeven observability without session pinner', () => {
+    expect(
+      buildBreakevenObservability({
+        request: makeRequest({ turn_type: 'tool_result' }),
+        decision: makeDecision(),
+        fleet: warmBreakevenFleet,
+      }),
+    ).toBeNull();
   });
 });

@@ -1,4 +1,5 @@
 export type {
+  BreakevenObservability,
   CandidateScore,
   ClusterMatchTableEntry,
   ContextFitObservability,
@@ -24,6 +25,7 @@ export type {
   RoutingRequest,
   RoutingTelemetry,
   SaarConfig,
+  SaarObservability,
   SaarSessionState,
   SessionPin,
   TierFeatureSummary,

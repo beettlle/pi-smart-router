@@ -5,14 +5,28 @@ import { join } from 'node:path';
 
 import Database from 'better-sqlite3';
 
-import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, SessionPin } from '../../src/domain/types/entities.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingTelemetry, SessionPin } from '../../src/domain/types/entities.js';
 import { SqliteStore, SqliteStoreError } from '../../src/infrastructure/persistence/sqlite-store.js';
 import {
   DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
   DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
   DEFAULT_TIER_SELECTION_DATASET_FIELDS,
   DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
+  DEFAULT_BREAKEVEN_TELEMETRY_FIELDS,
+  DEFAULT_SAAR_TELEMETRY_FIELDS,
 } from '../../src/infrastructure/telemetry/routing-telemetry.js';
+
+function baseTelemetryFields(): Pick<
+  RoutingTelemetry,
+  keyof typeof DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS | keyof typeof DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS | keyof typeof DEFAULT_BREAKEVEN_TELEMETRY_FIELDS | keyof typeof DEFAULT_SAAR_TELEMETRY_FIELDS
+> {
+  return {
+    ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
+    ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
+    ...DEFAULT_BREAKEVEN_TELEMETRY_FIELDS,
+    ...DEFAULT_SAAR_TELEMETRY_FIELDS,
+  };
+}
 
 const TEST_MODELS: readonly ModelProfile[] = [
   {
@@ -299,9 +313,7 @@ describe('SqliteStore', () => {
           estimated_cost_usd: 0.003,
           routing_latency_ms: 12,
           pin_reason: null,
-          ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
-        ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
-          ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
+          ...baseTelemetryFields(),
         }),
       ).not.toThrow();
     });
@@ -318,8 +330,7 @@ describe('SqliteStore', () => {
         estimated_cost_usd: 0,
         routing_latency_ms: 1,
         pin_reason: null,
-        ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
-        ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
+        ...baseTelemetryFields(),
       });
       store.appendTelemetry({
         timestamp: new Date().toISOString(),
@@ -332,8 +343,7 @@ describe('SqliteStore', () => {
         estimated_cost_usd: 0,
         routing_latency_ms: 4,
         pin_reason: null,
-        ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
-        ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
+        ...baseTelemetryFields(),
       });
 
       const rows = await store.listTelemetry({ limit: 10 });
@@ -355,9 +365,7 @@ describe('SqliteStore', () => {
           estimated_cost_usd: 0,
           routing_latency_ms: 1,
           pin_reason: null,
-          ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
-        ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
-          ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
+          ...baseTelemetryFields(),
         });
       }
 

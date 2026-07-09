@@ -5,7 +5,9 @@ import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import type { ClusterMatchResult } from '../../src/domain/matching/cluster-matcher.js';
 import type { ClusterMatcher } from '../../src/domain/matching/cluster-matcher.js';
 import type { ModelProfile } from '../../src/domain/types/index.js';
-import { CONTEXT_FIT_PASS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
+import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
+import { DEFAULT_SAAR_CONFIG } from '../../src/domain/types/schemas.js';
+import { BREAKEVEN_BLOCKED, CONTEXT_FIT_PASS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 import {
   CONTEXT_FIT_EXCEEDED,
   CONTEXT_OVERFLOW_FRONTIER_FALLBACK,
@@ -416,6 +418,48 @@ describe('routerExplain (T041)', () => {
 
       expect(result.body.features?.tier_selection?.low_intensity_breakdown?.score).not.toBeNull();
       expect(result.body.features?.tier_selection?.cluster_match_table).toBeNull();
+    });
+
+    it('includes breakeven and SAAR features when session pinner is wired', async () => {
+      const saarConfig = DEFAULT_SAAR_CONFIG;
+      const sessionPinner = new SessionPinner({ saarConfig });
+      sessionPinner.recordPin('sess-1', 'claude-opus', 'initial');
+      const warmFleet: ModelProfile[] = [
+        makeModel({
+          id: 'claude-opus',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 30.0 },
+        }),
+        makeModel({
+          id: 'claude-haiku',
+          tier: 'economical-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 30.0 },
+        }),
+      ];
+      const pipeline = new RouterPipeline(warmFleet, { sessionPinner, saarConfig });
+      const explain = createExplainHandler({
+        fleet: warmFleet,
+        pipeline,
+        sessionPinner,
+        saarConfig,
+      });
+
+      const result = await explain(
+        validRequestBody({
+          turn_type: 'tool_result',
+          estimated_input_tokens: 100_000,
+        }),
+      );
+
+      expect(result.status).toBe(200);
+      if (result.status !== 200) {
+        return;
+      }
+
+      expect(result.body.features?.breakeven?.breakeven_reason_code).toBe(BREAKEVEN_BLOCKED);
+      expect(result.body.features?.saar?.planning_turn_buffer).toBe(2);
     });
   });
 });

@@ -23,6 +23,10 @@ import {
   TELEMETRY_WINDOW_MS,
 } from '../telemetry/telemetry-limits.js';
 import {
+  DEFAULT_BREAKEVEN_TELEMETRY_FIELDS,
+  DEFAULT_SAAR_TELEMETRY_FIELDS,
+} from '../telemetry/routing-telemetry.js';
+import {
   DATASET_MAX_ENTRIES,
   DATASET_WINDOW_MS,
 } from '../telemetry/dataset-limits.js';
@@ -827,6 +831,8 @@ function telemetryRowToEntity(row: TelemetryRow): RoutingTelemetry {
     p_success_cheap: null,
     local_eligible_reason: null,
     tier_selection_reason_code: null,
+    ...DEFAULT_BREAKEVEN_TELEMETRY_FIELDS,
+    ...DEFAULT_SAAR_TELEMETRY_FIELDS,
   };
 }
 
