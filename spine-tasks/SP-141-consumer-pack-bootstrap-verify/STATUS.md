@@ -1,5 +1,5 @@
-**Current Step:** 1
-**Status:** In Progress
+**Current Step:** 2
+**Status:** Complete
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -15,14 +15,14 @@
 
 ## Step 2: Testing and verification
 
-- [ ] Run `npm run release:consumer-pack`
-- [ ] Run `npm run verify:ci`
+- [x] Run `npm run release:consumer-pack`
+- [x] Run `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] `verify-consumer-pack.sh` covers extension bootstrap from clean cwd
-- [ ] `npm run release:consumer-pack` passes
-- [ ] `npm run verify:ci` passes
+- [x] `verify-consumer-pack.sh` covers extension bootstrap from clean cwd
+- [x] `npm run release:consumer-pack` passes
+- [x] `npm run verify:ci` passes
 
 ## Reviews
 
