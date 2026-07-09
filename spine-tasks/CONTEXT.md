@@ -1,8 +1,8 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-07-07
+**Last Updated:** 2026-07-08
 **Status:** Active
-**Next Task ID:** SP-121
+**Next Task ID:** SP-131
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -284,6 +284,48 @@
 | D | SP-117 | Serial after SP-116 |
 | E | SP-118 | After SP-116 |
 | F | SP-119 | Integration — must be last |
+
+### Phase 34 — Release v0.2.0 Continuity (#72, #73)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-121 | SAAR types, schema, operator config | S | — | #72 |
+| SP-122 | SAAR pin state machine | S | SP-121 | #72 |
+| SP-123 | Turn envelope + session_pin SAAR wiring | S | SP-122 | #72 |
+| SP-124 | Cache breakeven formula module | S | — | #73 |
+| SP-125 | Cache breakeven pipeline gate | S | SP-123, SP-124 | #73 |
+| SP-126 | Breakeven explain, telemetry, README | S | SP-125 | #72, #73 |
+
+**Source:** v0.2.0 Continuity release plan (issues #72 SAAR pin, #73 cache breakeven gate). Decomposed from two M issues into six S tasks.
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-121 | Types/config foundation |
+| B | SP-122, SP-124 | Parallel — disjoint scopes (pinner vs breakeven math) |
+| C | SP-123 | SAAR pipeline wiring (serial on router-pipeline) |
+| D | SP-125 | Breakeven pipeline gate (serial on router-pipeline) |
+| E | SP-126 | Explain/telemetry/README (disjoint from pipeline) |
+
+### Phase 35 — Gemini Replay Repair (v0.2.0 dogfood unblock) (#85)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-127 | Gemini replay repair module | S | SP-075, SP-077 | #85 |
+| SP-128 | Wire replay repair in delegation path | S | SP-127 | #85 |
+| SP-129 | Narrow Gemini tool-history guard | M | SP-127 | #85, #38 |
+| SP-130 | Integration tests, operator docs | S | SP-128, SP-129 | #85 |
+
+**Source:** Gemini replay repair for cross-model delegation ([pi#6342](https://github.com/earendil-works/pi/issues/6342) workaround). Replaces blunt SP-077 exclusion with delegation-context repair + narrowed guard.
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-127 | Parallel with SP-121, SP-124 (disjoint scopes) |
+| B | SP-128, SP-129 | Parallel after SP-127; SP-129 also parallel with SP-122 |
+| C | SP-130 | After SP-128 + SP-129 |
 
 ---
 
