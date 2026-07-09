@@ -1,5 +1,5 @@
 **Current Step:** 3
-**Status:** In progress (addressing Step 3 REVISE — coverage on loader error paths)
+**Status:** Complete
 **Last Updated:** 2026-07-09
 **Review Level:** 2
 **Review Counter:** 0
@@ -34,6 +34,8 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
+| 2026-07-09 | 3 | plan | REVISE (coverage) — addressed in ac6ef0b |
+| 2026-07-09 | 3 | plan | skipped in-worker (SP-195; engine post-.DONE) |
 
 ## Discoveries
 
