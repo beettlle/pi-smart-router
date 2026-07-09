@@ -10,6 +10,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { loadEvalTraceFixture } from './fixture-schema.js';
+import { loadEvalFixtureDocument } from './twinrouterbench-adapter.js';
 import {
   aggregateHarnessMetrics,
   formatHarnessMetricsJson,
@@ -27,27 +28,39 @@ function defaultFixturesDir(): string {
   return resolve('tests/eval/fixtures');
 }
 
-/** Load and score every `.json` fixture in a directory. */
-export function runHarnessOnDir(dirPath: string): HarnessAggregateMetrics {
+function collectFixtureFiles(dirPath: string): string[] {
   const abs = resolve(dirPath);
-  const files = readdirSync(abs)
-    .filter((name) => name.endsWith('.json'))
-    .sort();
+  const entries = readdirSync(abs, { withFileTypes: true });
+  const files: string[] = [];
 
-  const results: FixtureHarnessResult[] = files.map((name) => {
-    const raw = JSON.parse(readFileSync(join(abs, name), 'utf8')) as unknown;
-    const fixture = loadEvalTraceFixture(raw);
-    return scoreFixtureHarness(fixture);
+  for (const entry of entries) {
+    const fullPath = join(abs, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...collectFixtureFiles(fullPath));
+    } else if (entry.isFile() && entry.name.endsWith('.json')) {
+      files.push(fullPath);
+    }
+  }
+
+  return files.sort();
+}
+
+/** Load and score every `.json` fixture in a directory (recursive). */
+export function runHarnessOnDir(dirPath: string): HarnessAggregateMetrics {
+  const files = collectFixtureFiles(dirPath);
+
+  const results: FixtureHarnessResult[] = files.flatMap((filePath) => {
+    const raw = JSON.parse(readFileSync(filePath, 'utf8')) as unknown;
+    return loadEvalFixtureDocument(raw).map((fixture) => scoreFixtureHarness(fixture));
   });
 
   return aggregateHarnessMetrics(results);
 }
 
 /** Load and score a single fixture file. */
-export function runHarnessOnFile(fixturePath: string): FixtureHarnessResult {
+export function runHarnessOnFile(fixturePath: string): FixtureHarnessResult[] {
   const raw = JSON.parse(readFileSync(fixturePath, 'utf8')) as unknown;
-  const fixture = loadEvalTraceFixture(raw);
-  return scoreFixtureHarness(fixture);
+  return loadEvalFixtureDocument(raw).map((fixture) => scoreFixtureHarness(fixture));
 }
 
 export function runHarness(options: RunHarnessOptions): HarnessAggregateMetrics {

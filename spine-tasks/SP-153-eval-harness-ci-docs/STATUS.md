@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 1: TwinRouterBench static track
+**Status:** In Progress
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,10 +10,10 @@
 
 ## Step 1: TwinRouterBench static track
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Adapter or fixture format compatible with TwinRouterBench static track
-- [ ] Sample static-track fixtures in repo
+- [x] Adapter or fixture format compatible with TwinRouterBench static track
+- [x] Sample static-track fixtures in repo
 
 ## Step 2: CI smoke and docs
 
