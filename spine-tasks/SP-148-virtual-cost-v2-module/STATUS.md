@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,25 +10,25 @@
 
 ## Step 1: Virtual cost v2 pure functions
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Implement `computeVirtualCostV2()` with quota_arbitrage_premium and kv_cache_savings
-- [ ] λ(remaining_window) decay for subscription quota position
-- [ ] Operator config knobs with Zod defaults
+- [x] Implement `computeVirtualCostV2()` with quota_arbitrage_premium and kv_cache_savings
+- [x] λ(remaining_window) decay for subscription quota position
+- [x] Operator config knobs with Zod defaults
 
 ## Step 2: Types and unit tests
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Extend pricing types if needed for window position
-- [ ] Unit tests: λ decay at window start vs near exhaustion
-- [ ] Unit tests: KV-cache savings credit reduces effective cost when pin active
+- [x] Extend pricing types if needed for window position
+- [x] Unit tests: λ decay at window start vs near exhaustion
+- [x] Unit tests: KV-cache savings credit reduces effective cost when pin active
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run verify:ci`
+- [x] Run `npm run verify:ci`
 
 ---
 
