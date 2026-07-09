@@ -241,6 +241,21 @@ export const RoutingClustersConfigSchema = z.object({
   config_path: z.string().min(1),
 });
 
+/** SAAR operator knobs (SP-121, #72). */
+export const SaarConfigSchema = z.object({
+  planning_turn_buffer: z.number().int().positive(),
+  prefix_cache_weight: z.number().min(0).max(1),
+  idle_timeout_seconds: z.number().int().positive(),
+  switch_threshold: z.number().min(0).max(1),
+});
+
+/** Per-session SAAR runtime state (SP-121 types; logic in SP-122). */
+export const SaarSessionStateSchema = z.object({
+  turn_index: z.number().int().nonnegative(),
+  hard_lock: z.boolean(),
+  last_activity_at: z.string().datetime(),
+});
+
 /** Stable snake_case cluster id — used as reason-code suffix (`cluster_${id}`). */
 export const RoutingClusterIdSchema = z
   .string()
@@ -280,6 +295,7 @@ export const OperatorConfigSchema = z.object({
   local: LocalConfigSchema,
   hydra: HydraConfigSchema,
   low_intensity: LowIntensityConfigSchema,
+  saar: SaarConfigSchema,
   routing_clusters: RoutingClustersConfigSchema.optional(),
 });
 
