@@ -1,4 +1,4 @@
-**Current Step:** 2
+**Current Step:** 3
 **Status:** In Progress
 **Last Updated:** 2026-07-09
 **Review Level:** 2
@@ -14,8 +14,8 @@
 
 ## Step 2: Verify and example bundle
 
-- [ ] Update verify benchmarks for new prefix behavior
-- [ ] Refresh `routing-calibration.json.example` if needed
+- [x] Update verify benchmarks for new prefix behavior
+- [x] Refresh `routing-calibration.json.example` if needed
 
 ## Step 3: Testing and verification
 

@@ -6,9 +6,14 @@ import { describe, expect, it } from 'vitest';
 
 import { MINIMUM_TRAINING_SAMPLES } from '../../scripts/calibration-aggregate.js';
 import {
+  assertCompatibleHydraProjectionArtifact,
   createDefaultRoutingCalibrationBundle,
   flattenHydraProjectionWeights,
+  HYDRA_PREFIX_SCHEMA_VERSION,
+  HYDRA_PROJECTION_ARTIFACT_VERSION,
+  isSevenFlagHydraProjectionSample,
   parseRoutingCalibrationBundleJson,
+  readHydraPrefixSchemaVersion,
   resolveRoutingCalibrationBundle,
   ROUTING_CALIBRATION_BUNDLE_VERSION,
   serializeRoutingCalibrationBundle,
@@ -51,6 +56,20 @@ function makeTrainingRecord(
   };
 }
 
+function makeEmbeddingVector(): number[] {
+  return Array.from({ length: EMBEDDING_DIM }, (_, index) => Math.sin(index * 0.01));
+}
+
+function makeSevenFlagTrainingRecord(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return makeTrainingRecord({
+    hydra_prefix_schema_version: HYDRA_PREFIX_SCHEMA_VERSION,
+    embedding: makeEmbeddingVector(),
+    ...overrides,
+  });
+}
+
 function makeBundleWithHydraWeights(): RoutingCalibrationBundle {
   const base = createDefaultRoutingCalibrationBundle();
   const weights = Array.from({ length: EMBEDDING_DIM * 3 }, (_, index) =>
@@ -59,8 +78,10 @@ function makeBundleWithHydraWeights(): RoutingCalibrationBundle {
   return {
     ...base,
     hydra_projection: {
-      version: 1,
+      version: HYDRA_PROJECTION_ARTIFACT_VERSION,
       embedding_dim: EMBEDDING_DIM,
+      prefix_schema_version: HYDRA_PREFIX_SCHEMA_VERSION,
+      prefix_flag_count: 7,
       weights,
       bias: [0.1, -0.1, 0.05],
       trained_sample_count: MINIMUM_TRAINING_SAMPLES.hydra_projection,
@@ -82,7 +103,9 @@ describe('train routing calibration (SP-117)', () => {
     ]);
 
     expect(bundle.version).toBe(ROUTING_CALIBRATION_BUNDLE_VERSION);
-    expect(bundle.hydra_projection.version).toBe(1);
+    expect(bundle.hydra_projection.version).toBe(HYDRA_PROJECTION_ARTIFACT_VERSION);
+    expect(bundle.hydra_projection.prefix_schema_version).toBe(HYDRA_PREFIX_SCHEMA_VERSION);
+    expect(bundle.hydra_projection.prefix_flag_count).toBe(7);
     expect(bundle.triage_thresholds.version).toBe(1);
     expect(bundle.p_success_weights.version).toBe(1);
     expect(bundle.routing_centroids.version).toBe(1);
@@ -104,6 +127,68 @@ describe('train routing calibration (SP-117)', () => {
     expect(() => parseRoutingCalibrationBundleJson(JSON.stringify(incompatible))).toThrow(
       /Unsupported routing calibration bundle version/,
     );
+  });
+
+  it('rejects stale hydra_projection artifact versions at parse time', () => {
+    const bundle = createDefaultRoutingCalibrationBundle();
+    const stale = {
+      ...bundle,
+      hydra_projection: {
+        ...bundle.hydra_projection,
+        version: 1,
+        prefix_schema_version: 1,
+        prefix_flag_count: 4,
+      },
+    };
+    expect(() => parseRoutingCalibrationBundleJson(JSON.stringify(stale))).toThrow(
+      /Invalid routing calibration bundle/,
+    );
+  });
+
+  it('rejects stale hydra_projection artifacts when unflattening weights', () => {
+    const bundle = makeBundleWithHydraWeights();
+    const stale = {
+      ...bundle.hydra_projection,
+      version: 1 as typeof bundle.hydra_projection.version,
+      prefix_schema_version: 1 as typeof bundle.hydra_projection.prefix_schema_version,
+      prefix_flag_count: 4 as typeof bundle.hydra_projection.prefix_flag_count,
+    };
+
+    expect(() => assertCompatibleHydraProjectionArtifact(stale)).toThrow(
+      /Stale hydra_projection artifact version/,
+    );
+    expect(() => unflattenHydraProjectionWeights(stale)).toThrow(
+      /Stale hydra_projection artifact version/,
+    );
+  });
+
+  it('infers seven-flag prefix schema from contrib metadata scalars', () => {
+    const legacy = makeTrainingRecord({ compaction_flag: undefined });
+    delete (legacy as Record<string, unknown>).compaction_flag;
+    expect(readHydraPrefixSchemaVersion(legacy)).toBe(1);
+
+    const modern = makeTrainingRecord();
+    expect(readHydraPrefixSchemaVersion(modern)).toBe(HYDRA_PREFIX_SCHEMA_VERSION);
+  });
+
+  it('excludes legacy-prefix embedding rows from projection training', () => {
+    const legacyEmbedding = makeTrainingRecord({
+      hydra_prefix_schema_version: 1,
+      embedding: makeEmbeddingVector(),
+    });
+    expect(isSevenFlagHydraProjectionSample(legacyEmbedding)).toBe(false);
+
+    const modernEmbedding = makeSevenFlagTrainingRecord();
+    expect(isSevenFlagHydraProjectionSample(modernEmbedding)).toBe(true);
+
+    const records = Array.from({ length: MINIMUM_TRAINING_SAMPLES.hydra_projection }, () =>
+      makeSevenFlagTrainingRecord(),
+    );
+    const bundle = trainRoutingCalibrationBundle(records);
+    expect(bundle.hydra_projection.trained_sample_count).toBe(
+      MINIMUM_TRAINING_SAMPLES.hydra_projection,
+    );
+    expect(bundle.hydra_projection.version).toBe(HYDRA_PROJECTION_ARTIFACT_VERSION);
   });
 
   it('round-trips flattened hydra projection weights', () => {
