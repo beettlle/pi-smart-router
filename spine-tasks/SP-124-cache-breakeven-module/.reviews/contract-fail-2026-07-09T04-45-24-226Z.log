@@ -1,0 +1,43 @@
+Contract testCommand failure log
+Command: node --test tests/unit/cache-breakeven.test.ts
+Exit code: 1
+Attempt: 1 of 2
+Timestamp: 2026-07-09T04:45:24.226Z
+Buffer overflow: no
+---
+node:internal/modules/esm/resolve:272
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T044252/lane-2/src/domain/pinning/cache-breakeven.js' imported from /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T044252/lane-2/tests/unit/cache-breakeven.test.ts
+    at finalizeResolution (node:internal/modules/esm/resolve:272:11)
+    at moduleResolve (node:internal/modules/esm/resolve:879:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1006:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:704:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:724:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:762:56)
+    at #resolve (node:internal/modules/esm/loader:686:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:606:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:164:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:261:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T044252/lane-2/src/domain/pinning/cache-breakeven.js'
+}
+
+Node.js v26.4.0
+✖ tests/unit/cache-breakeven.test.ts (89.962958ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94.49975
+
+✖ failing tests:
+
+test at tests/unit/cache-breakeven.test.ts:1:1
+✖ tests/unit/cache-breakeven.test.ts (89.962958ms)
+  'test failed'
+
