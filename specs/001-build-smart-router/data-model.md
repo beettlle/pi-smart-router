@@ -145,13 +145,33 @@ Audit record (append-only log or OTLP span).
 | `local.battery_threshold_pct` | number | 20 | Disable on battery |
 | `hydra.artifact_cache_path` | string | `.pi-smart-router/models/` | ONNX cache; not committed to git |
 
-### HyDRA encoder input (SP-112)
+### HyDRA encoder input (SP-112, SP-138)
 
-HyDRA embeds a **metadata-prefixed** string, not raw `prompt_text` alone:
+HyDRA embeds a **metadata-prefixed** string with the **latest user turn text only** — prior assistant responses are excluded from the encoder body (HyDRA reference, GitHub #76). Metadata is privacy-safe; no raw prompt in training export.
 
 ```
-[turns:N|tools:0|tokens:N|type:...] {prompt_text}
+[turns:N|tools:0|tokens:N|type:...|compact:0|loop:0|attach:0] {latest_user_text}
 ```
+
+#### SP-112 → SP-138 delta (4-flag vs HyDRA 7-flag)
+
+| # | Flag | SP-112 (4-flag) | SP-138 (7-flag) | HyDRA reference alignment |
+|---|------|-----------------|-----------------|---------------------------|
+| 1 | `turns` | ✓ | ✓ | Conversational turn count (message envelope length) |
+| 2 | `tools` | ✓ | ✓ | Tool-context indicator |
+| 3 | `tokens` | ✓ | ✓ | Estimated input size / context pressure |
+| 4 | `type` | ✓ | ✓ | Turn envelope class (`planning`, `tool_result`, …) |
+| 5 | `compact` | — | ✓ | Post-compaction turn (pin-break signal) |
+| 6 | `loop` | — | ✓ | Observational tool-failure pressure on current turn |
+| 7 | `attach` | — | ✓ | File/image attachment indicator in message envelope |
+
+**Extension rationale (SP-138):**
+
+- **`compact`** — `compaction_flag` on `RoutingRequest` signals history compaction; correlates with context pressure and pin-break re-routing without embedding raw history.
+- **`loop`** — `1` when the latest tool message in `messages` matches failure heuristics (same patterns as loop-escalation observability); encodes escalation pressure without session pin state.
+- **`attach`** — `1` when any message carries `tool_blocks` or user content suggests an attachment (e.g. `data:image`); HyDRA uses attachment indicators for requirement prediction.
+
+**Deferred vs full HyDRA paper:** K=4 capability heads, ModernBERT encoder, and assistant-response stripping at the pi envelope layer remain separate roadmap items (#81, #80). SP-138 closes the metadata-prefix gap on the existing MiniLM + SP-115 path.
 
 | Prefix field | Source | Notes |
 |--------------|--------|-------|
@@ -159,6 +179,11 @@ HyDRA embeds a **metadata-prefixed** string, not raw `prompt_text` alone:
 | `tools` | `1` when `turn_type === tool_result` or any message has `role: tool`; else `0` |
 | `tokens` | `estimated_input_tokens` | 0 when absent |
 | `type` | `turn_type` | `unknown` when absent |
+| `compact` | `compaction_flag` | `1` when true; else `0` |
+| `loop` | Latest `role: tool` message in `messages` | `1` when content matches failure heuristics; else `0` |
+| `attach` | `messages` scan | `1` when any message has `tool_blocks` or user content contains `data:image`; else `0` |
+
+**Encoder body:** latest non-empty `role: user` content from `messages`, falling back to `prompt_text`. Assistant and thinking blocks are never concatenated into the embed string.
 
 **Capability vs tier:** the metadata prefix affects HyDRA **capability** requirement vectors only. **Tier** selection uses the cluster/feature gate (low-intensity scoring, SP-103) independently — do not conflate the two decisions.
 

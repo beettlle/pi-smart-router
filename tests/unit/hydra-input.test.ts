@@ -12,12 +12,14 @@ function makeRequest(overrides: Partial<RoutingRequest> = {}): RoutingRequest {
   };
 }
 
+const DEFAULT_FLAGS = 'turns:0|tools:0|tokens:0|type:unknown|compact:0|loop:0|attach:0';
+
 describe('buildHydraInput', () => {
-  it('prefixes prompt with default metadata flags', () => {
+  it('prefixes prompt with default seven-flag metadata', () => {
     const input = buildHydraInput(makeRequest());
 
     expect(input).toBe(
-      '[turns:0|tools:0|tokens:0|type:unknown] Implement a binary search tree',
+      `[${DEFAULT_FLAGS}] Implement a binary search tree`,
     );
   });
 
@@ -67,7 +69,61 @@ describe('buildHydraInput', () => {
       makeRequest({ turn_type: 'planning' }),
     );
 
-    expect(input).toMatch(/\|type:planning\] /);
+    expect(input).toMatch(/\|type:planning\|compact:0\|loop:0\|attach:0\] /);
+  });
+
+  it('sets compact flag from compaction_flag', () => {
+    const input = buildHydraInput(
+      makeRequest({ compaction_flag: true }),
+    );
+
+    expect(input).toMatch(/\|compact:1\|loop:0\|attach:0\] /);
+  });
+
+  it('sets loop flag when latest tool message looks like failure', () => {
+    const input = buildHydraInput(
+      makeRequest({
+        messages: [
+          { role: 'user', content: 'run tests' },
+          { role: 'tool', content: 'Error: command failed with exit code 1' },
+        ],
+      }),
+    );
+
+    expect(input).toMatch(/\|loop:1\|attach:0\] /);
+  });
+
+  it('clears loop flag when latest tool message is successful', () => {
+    const input = buildHydraInput(
+      makeRequest({
+        messages: [
+          { role: 'user', content: 'run tests' },
+          { role: 'tool', content: '{"ok":true}' },
+        ],
+      }),
+    );
+
+    expect(input).toMatch(/\|loop:0\|attach:0\] /);
+  });
+
+  it('sets attach flag when user content includes image data URI', () => {
+    const input = buildHydraInput(
+      makeRequest({
+        messages: [{ role: 'user', content: 'see data:image/png;base64,abc' }],
+      }),
+    );
+
+    expect(input).toMatch(/\|attach:1\] /);
+  });
+
+  it('sets attach flag when message has tool_blocks', () => {
+    const input = buildHydraInput(
+      makeRequest({
+        messages: [{ role: 'user', content: 'review file', tool_blocks: [{}] }],
+      }),
+    );
+
+    expect(input).toMatch(/\|attach:1\] /);
   });
 
   it('produces different prefixes for different token counts on same prompt', () => {
@@ -82,6 +138,35 @@ describe('buildHydraInput', () => {
     expect(low).not.toBe(high);
     expect(low).toContain(prompt);
     expect(high).toContain(prompt);
+  });
+
+  it('produces different prefixes for different metadata on same prompt', () => {
+    const prompt = 'fix the bug';
+    const baseline = buildHydraInput(makeRequest({ prompt_text: prompt }));
+    const compacted = buildHydraInput(
+      makeRequest({ prompt_text: prompt, compaction_flag: true }),
+    );
+
+    expect(baseline).not.toBe(compacted);
+  });
+
+  it('uses latest user message and excludes prior assistant text', () => {
+    const input = buildHydraInput(
+      makeRequest({
+        prompt_text: 'stale prompt text',
+        messages: [
+          { role: 'user', content: 'first question' },
+          { role: 'assistant', content: 'long assistant answer should not embed' },
+          { role: 'user', content: 'follow-up question' },
+        ],
+      }),
+    );
+
+    expect(input).toBe(
+      `[turns:3|tools:0|tokens:0|type:unknown|compact:0|loop:0|attach:0] follow-up question`,
+    );
+    expect(input).not.toContain('assistant answer');
+    expect(input).not.toContain('stale prompt text');
   });
 
   it('accepts optional triage without changing output', () => {
@@ -102,6 +187,6 @@ describe('buildHydraInput', () => {
   it('preserves empty prompt text', () => {
     const input = buildHydraInput(makeRequest({ prompt_text: '' }));
 
-    expect(input).toBe('[turns:0|tools:0|tokens:0|type:unknown] ');
+    expect(input).toBe(`[${DEFAULT_FLAGS}] `);
   });
 });

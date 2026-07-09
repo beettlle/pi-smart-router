@@ -436,6 +436,23 @@ describe('HydraMatcher', () => {
 
       expect(lowTokens.requirements).not.toEqual(highTokens.requirements);
     });
+
+    it('produces different requirement vectors when compaction metadata differs', async () => {
+      const provider = makeInputSensitiveProvider();
+      const matcher = new HydraMatcher(provider, DEFAULT_CONFIG);
+      const prompt = 'what is 2+2 ?';
+
+      const normal = await matcher.match(
+        makeRequest({ prompt_text: prompt }),
+        [makeModel()],
+      );
+      const compacted = await matcher.match(
+        makeRequest({ prompt_text: prompt, compaction_flag: true }),
+        [makeModel()],
+      );
+
+      expect(normal.requirements).not.toEqual(compacted.requirements);
+    });
   });
 
   describe('result metadata', () => {
