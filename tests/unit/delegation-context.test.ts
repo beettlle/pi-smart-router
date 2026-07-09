@@ -356,6 +356,25 @@ describe('repairGeminiReplayContext', () => {
     expect(repaired.messages).toEqual(context.messages);
   });
 
+  it('repairs virtual-router tagged messages without prior normalizeDelegationContext', () => {
+    const context: Context = {
+      messages: [makeGeminiToolAssistant(undefined)],
+    };
+
+    const repaired = repairGeminiReplayContext(context, targetModel);
+    const assistant = repaired.messages[0];
+    if (assistant?.role === 'assistant') {
+      expect(assistant.provider).toBe('google');
+      expect(assistant.model).toBe('gemini-2.5-flash');
+      expect(assistant.api).toBe('google-generative-ai');
+
+      const toolCall = assistant.content[0];
+      if (toolCall?.type === 'toolCall') {
+        expect(toolCall.thoughtSignature).toBe(GEMINI_SKIP_THOUGHT_SIGNATURE_SENTINEL);
+      }
+    }
+  });
+
   it('no-ops for non-Google delegation targets', () => {
     const context: Context = {
       messages: [makeGeminiToolAssistant(undefined)],

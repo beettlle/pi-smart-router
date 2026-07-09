@@ -203,8 +203,12 @@ export function normalizeDelegationContext<TApi extends Api>(
 export function repairGeminiReplayContext<TApi extends Api>(
   context: Context,
   targetModel: Model<TApi>,
-  _sessionExecution?: ExecutionModel | null,
+  sessionExecution?: ExecutionModel | null,
 ): Context {
+  // Accepted for SP-128 call-site symmetry with normalizeDelegationContext; identity
+  // always aligns to the delegation target so pi-ai isSameModel matches targetModel.
+  void sessionExecution;
+
   if (!isGoogleDelegationTarget(targetModel)) {
     return context;
   }
