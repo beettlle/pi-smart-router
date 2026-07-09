@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,26 +10,36 @@
 
 ## Step 1: Fixture schema and sample traces
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Define JSON schema for step-level agent trace fixtures
-- [ ] Add sample fixtures under `tests/eval/fixtures/`
-- [ ] Document frozen model catalog + checkpoint date fields
+- [x] Define JSON schema for step-level agent trace fixtures
+- [x] Add sample fixtures under `tests/eval/fixtures/`
+- [x] Document frozen model catalog + checkpoint date fields
 
 ## Step 2: Counterfactual replay core
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Implement replay engine comparing actual vs counterfactual routing at each step
-- [ ] Compute cumulative regret vs hindsight-optimal routing on fixtures
-- [ ] Add `npm run routing:eval-replay` script entry
+- [x] Implement replay engine comparing actual vs counterfactual routing at each step
+- [x] Compute cumulative regret vs hindsight-optimal routing on fixtures
+- [x] Add `npm run routing:eval-replay` script entry
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Unit tests on fixture traces
-- [ ] Run `npm run verify:ci`
+- [x] Unit tests on fixture traces
+- [x] Run `npm run verify:ci`
+
+---
+
+## Completion Criteria
+
+- [x] Fixture trace format with step-level prefixes
+- [x] Counterfactual replay: cheap-at-step-k vs verified progression
+- [x] Frozen model catalog metadata in fixtures
+- [x] Unit tests on sample traces
+- [x] `npm run verify:ci` passes
 
 ---
 

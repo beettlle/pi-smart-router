@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0.0",
+  "fixture_id": "trivial-pin-session",
+  "frozen_catalog": {
+    "catalog_id": "pi-smart-router-v0.5.0-eval",
+    "checkpoint_date": "2026-07-01",
+    "models": [
+      {
+        "model_id": "ollama/llama3.2:3b",
+        "tier": "zero-tier",
+        "cost_per_1m_input_usd": 0,
+        "capability_score": 0.35
+      },
+      {
+        "model_id": "gpt-4o-mini",
+        "tier": "economical-cloud",
+        "cost_per_1m_input_usd": 0.15,
+        "capability_score": 0.72
+      },
+      {
+        "model_id": "claude-sonnet-4",
+        "tier": "frontier-cloud",
+        "cost_per_1m_input_usd": 3.0,
+        "capability_score": 0.95
+      }
+    ]
+  },
+  "session": {
+    "session_id_hash": "b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef12345678",
+    "steps": [
+      {
+        "step_index": 0,
+        "turn_type": "main_loop",
+        "prefix_hash": "prefix1001ffeeddcc",
+        "prefix_token_estimate": 800,
+        "actual": {
+          "tier": "economical-cloud",
+          "model_id": "gpt-4o-mini",
+          "cost_usd": 0.00012,
+          "reason_code": "p_success_cheap"
+        },
+        "step_outcome": {
+          "success": true,
+          "min_tier": "zero-tier",
+          "min_model_id": "ollama/llama3.2:3b",
+          "verified_tool_progression": false
+        }
+      },
+      {
+        "step_index": 1,
+        "turn_type": "main_loop",
+        "prefix_hash": "prefix1002ffeeddcc",
+        "prefix_token_estimate": 1600,
+        "actual": {
+          "tier": "economical-cloud",
+          "model_id": "gpt-4o-mini",
+          "cost_usd": 0.00024,
+          "reason_code": "session_pin"
+        },
+        "step_outcome": {
+          "success": true,
+          "min_tier": "economical-cloud",
+          "min_model_id": "gpt-4o-mini",
+          "verified_tool_progression": true
+        }
+      }
+    ]
+  },
+  "outcome": {
+    "task_success": true,
+    "final_turn_index": 1
+  }
+}

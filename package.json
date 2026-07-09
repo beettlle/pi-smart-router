@@ -63,6 +63,7 @@
     "routing:ingest-benchmarks": "tsx scripts/ingest-benchmark-profiles.ts",
     "routing:verify-benchmark-profiles": "vitest run tests/unit/ingest-benchmark-profiles.test.ts -t \"checked-in artifact matches fixture ingest\"",
     "routing:verify-calibration": "npm run build && node --experimental-strip-types scripts/verify-routing-calibration.ts",
+    "routing:eval-replay": "tsx scripts/eval/counterfactual-replay.ts",
     "routing:test-projection": "npm run build && node --experimental-strip-types scripts/test-hydra-projection.ts",
     "verify:ci": "npm run build && npm run typecheck && npm run lint && npm test && npm run coverage:check"
   },
