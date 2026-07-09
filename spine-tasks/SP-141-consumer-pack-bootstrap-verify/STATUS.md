@@ -1,5 +1,5 @@
 **Current Step:** 1
-**Status:** Ready
+**Status:** In Progress
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -9,9 +9,9 @@
 
 ## Step 1: Temp project bootstrap check
 
-- [ ] Create empty temp project dir outside packed tarball tree
-- [ ] Import pi-model-scope (or index bootstrap) from installed pack path
-- [ ] Assert resolveModelScope loads without repo dev deps
+- [x] Create empty temp project dir outside packed tarball tree
+- [x] Import pi-model-scope (or index bootstrap) from installed pack path
+- [x] Assert resolveModelScope loads without repo dev deps
 
 ## Step 2: Testing and verification
 
