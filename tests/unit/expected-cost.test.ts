@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   computeExpectedCost,
+  formatVirtualCostV2Explain,
   FRONTIER_P_SUCCESS,
   MIN_PRICE_DELTA_PER_1M,
   resolveTierCostPer1M,
+  resolveTierVirtualCost,
   selectTierByExpectedCost,
 } from '../../src/domain/routing/expected-cost.js';
 import type { ModelProfile, PriceCatalog, SessionPin } from '../../src/domain/types/index.js';
@@ -103,6 +105,7 @@ describe('computeExpectedCost', () => {
     expect(result.costPer1M).toBe(4.0);
     expect(result.pSuccess).toBe(FRONTIER_P_SUCCESS);
     expect(result.expectedCostUsd).toBe(4.0);
+    expect(result.virtualCostV2).toBeNull();
   });
 
   it('applies alpha risk penalty when alpha < 1', () => {
@@ -234,5 +237,128 @@ describe('selectTierByExpectedCost', () => {
 
     expect(result.tierCosts.some((entry) => entry.tier === 'zero-tier')).toBe(true);
     expect(result.tierHint).toBe('zero-tier');
+  });
+});
+
+describe('virtual cost v2 integration (SP-149)', () => {
+  const subscriptionFleet: ModelProfile[] = [
+    makeModel({
+      id: 'cursor-frontier',
+      tier: 'frontier-cloud',
+      provider: 'cursor',
+      pricing: { fallback_cost_per_1m: 0, quota_cost_per_1m: 4.0 },
+    }),
+    makeModel({
+      id: 'openai-econ',
+      tier: 'economical-cloud',
+      provider: 'openai',
+      pricing: { fallback_cost_per_1m: 0.5 },
+    }),
+  ];
+
+  it('raises frontier effective cost near quota window exhaustion', () => {
+    const estTokens = 1_000_000;
+    const atStart = resolveTierVirtualCost({
+      tier: 'frontier-cloud',
+      fleet: subscriptionFleet,
+      priceCatalog: makeCatalog(),
+      estTokens,
+      quotaWindowPosition: { remaining_window_fraction: 0.95 },
+    });
+    const nearExhaustion = resolveTierVirtualCost({
+      tier: 'frontier-cloud',
+      fleet: subscriptionFleet,
+      priceCatalog: makeCatalog(),
+      estTokens,
+      quotaWindowPosition: { remaining_window_fraction: 0.05 },
+    });
+
+    expect(nearExhaustion.directCostUsd).toBeGreaterThan(atStart.directCostUsd);
+    expect(nearExhaustion.virtualCostV2.exhaustionRiskPremium).toBeGreaterThan(0);
+    expect(nearExhaustion.virtualCostV2.quotaArbitragePremium).toBeGreaterThan(
+      atStart.virtualCostV2.quotaArbitragePremium,
+    );
+  });
+
+  it('credits KV-cache savings on pinned tier expected cost', () => {
+    const pinnedModel = subscriptionFleet[0]!;
+    const sessionPin = makePin({ pinned_model_id: pinnedModel.id });
+    const estTokens = 100_000;
+
+    const withoutPin = resolveTierVirtualCost({
+      tier: 'frontier-cloud',
+      fleet: subscriptionFleet,
+      priceCatalog: makeCatalog(),
+      estTokens,
+      quotaWindowPosition: { remaining_window_fraction: 0.8 },
+    });
+    const withPin = resolveTierVirtualCost({
+      tier: 'frontier-cloud',
+      fleet: subscriptionFleet,
+      priceCatalog: makeCatalog(),
+      estTokens,
+      quotaWindowPosition: { remaining_window_fraction: 0.8 },
+      sessionPin,
+      pinnedModel,
+    });
+
+    expect(withPin.virtualCostV2.kvCacheSavings).toBeLessThan(0);
+    expect(withPin.directCostUsd).toBeLessThan(withoutPin.directCostUsd);
+  });
+
+  it('documents v2 breakdown in tier selection rationale', () => {
+    const result = selectTierByExpectedCost({
+      fleet: subscriptionFleet,
+      priceCatalog: makeCatalog(),
+      estTokens: 1_000_000,
+      pSuccessCheap: 0.1,
+      alpha: 1,
+      localZeroReady: false,
+      quotaWindowPosition: { remaining_window_fraction: 0.1 },
+    });
+
+    expect(result.tierHint).toBe('frontier-cloud');
+    expect(result.rationale).toContain('v2');
+    expect(result.rationale).toContain('quota_premium=');
+    expect(formatVirtualCostV2Explain(result.tierCosts[0]?.virtualCostV2 ?? null)).toContain(
+      'exhaustion=',
+    );
+  });
+
+  it('increases frontier E[cost] more than economical when only frontier has subscription quota', () => {
+    const baseInput = {
+      fleet: subscriptionFleet,
+      priceCatalog: makeCatalog(),
+      estTokens: 1_000_000,
+      pSuccessCheap: 0.75,
+      alpha: 1,
+      localZeroReady: false,
+    };
+
+    const atStart = selectTierByExpectedCost({
+      ...baseInput,
+      quotaWindowPosition: { remaining_window_fraction: 1 },
+    });
+    const nearExhaustion = selectTierByExpectedCost({
+      ...baseInput,
+      quotaWindowPosition: { remaining_window_fraction: 0.02 },
+    });
+
+    const frontierAtStart = atStart.tierCosts.find((entry) => entry.tier === 'frontier-cloud')!;
+    const frontierNearExhaustion = nearExhaustion.tierCosts.find(
+      (entry) => entry.tier === 'frontier-cloud',
+    )!;
+    const econAtStart = atStart.tierCosts.find((entry) => entry.tier === 'economical-cloud')!;
+    const econNearExhaustion = nearExhaustion.tierCosts.find(
+      (entry) => entry.tier === 'economical-cloud',
+    )!;
+
+    const frontierDelta =
+      frontierNearExhaustion.adjustedExpectedCostUsd - frontierAtStart.adjustedExpectedCostUsd;
+    const econDelta =
+      econNearExhaustion.adjustedExpectedCostUsd - econAtStart.adjustedExpectedCostUsd;
+
+    expect(frontierDelta).toBeGreaterThan(econDelta);
+    expect(frontierNearExhaustion.virtualCostV2?.exhaustionRiskPremium).toBeGreaterThan(0);
   });
 });

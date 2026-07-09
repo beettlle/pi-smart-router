@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 3: Testing and verification
+**Status:** In Progress
 **Last Updated:** 2026-07-09
 **Review Level:** 2
 **Review Counter:** 0
@@ -10,25 +10,25 @@
 
 ## Step 1: Expected-cost integration
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Replace flat quota cost with v2 virtual cost in E[cost] computation
-- [ ] Late-window exhaustion risk increases effective tier cost
-- [ ] Explain output documents v2 cost breakdown
+- [x] Replace flat quota cost with v2 virtual cost in E[cost] computation
+- [x] Late-window exhaustion risk increases effective tier cost
+- [x] Explain output documents v2 cost breakdown
 
 ## Step 2: Breakeven and telemetry
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Compose KV-cache savings credit with breakeven gate decisions
-- [ ] Telemetry records quota premium and cache credit separately
+- [x] Compose KV-cache savings credit with breakeven gate decisions
+- [x] Telemetry records quota premium and cache credit separately
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Expected-cost integration tests with window position scenarios
-- [ ] Run `npm run verify:ci`
+- [x] Expected-cost integration tests with window position scenarios
+- [x] Run `npm run verify:ci`
 
 ---
 
@@ -42,13 +42,13 @@
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-07-09 | Breakeven v2 path activates only when quota window or v2 config is set; legacy path unchanged | Avoids double-counting KV credit with SAAR future_cache_value |
 
 ## Execution Log
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-09 | Step 1–3 | Wired computeVirtualCostV2 into expected-cost; breakeven v2 marginal savings + telemetry scalars |
 
 ## Blockers
 
