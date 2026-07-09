@@ -1,4 +1,4 @@
-**Current Step:** 1
+**Current Step:** 2
 **Status:** In Progress
 **Last Updated:** 2026-07-09
 **Review Level:** 2
@@ -12,10 +12,12 @@
 - [x] Implement `validateToolCallAst(snippet)` for common tool-call shapes
 - [x] Support JSON/tool-call object patterns used in agent traces
 
+**Status:** Complete
+
 ## Step 2: Ingest integration
 
-- [ ] Wire validator into SP-134 ingest for tool-use benchmark rows
-- [ ] Log skipped rows with reason codes
+- [x] Wire validator into SP-134 ingest for tool-use benchmark rows
+- [x] Log skipped rows with reason codes
 
 ## Step 3: Testing and verification
 
@@ -24,7 +26,7 @@
 
 ## Completion Criteria
 
-- [ ] AST validator module with tests
+- [x] AST validator module with tests
 - [ ] Ingest pipeline uses validation
 - [ ] Documented validation approach
 - [ ] `npm run verify:ci` passes
@@ -33,6 +35,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
+| 2026-07-09 | 1 | plan | skipped (engine post-.DONE) |
 
 ## Discoveries
 
