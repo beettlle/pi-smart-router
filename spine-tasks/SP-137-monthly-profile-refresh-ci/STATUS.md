@@ -9,7 +9,10 @@
 
 ## Completion Criteria
 
-- [ ] See PROMPT.md completion criteria
+- [x] Monthly refresh workflow exists
+- [x] Fixture smoke test in CI
+- [x] Provenance/catalog date in artifact
+- [x] `npm run verify:ci` passes
 
 ## Step 1: CI workflow
 
@@ -25,13 +28,6 @@
 
 - [x] Validate workflow YAML syntax
 - [x] Run `npm run verify:ci`
-
-## Completion Criteria
-
-- [x] Monthly refresh workflow exists
-- [x] Fixture smoke test in CI
-- [x] Provenance/catalog date in artifact
-- [x] `npm run verify:ci` passes
 
 ## Reviews
 
