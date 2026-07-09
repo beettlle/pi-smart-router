@@ -18,14 +18,21 @@
 import type {
   ModelProfile,
   PinReason,
+  PriceCatalog,
   RoutingRequest,
   SaarConfig,
   SaarSessionState,
   SessionPin,
   Tier,
 } from '../types/index.js';
-import { DEFAULT_SAAR_CONFIG } from '../types/schemas.js';
+import type { QuotaWindowPosition } from '../types/entities.js';
+import { DEFAULT_SAAR_CONFIG, type VirtualCostV2Config } from '../types/schemas.js';
 import type { StorePort } from '../types/store-port.js';
+import { resolveFrugalityCostPer1M } from '../../infrastructure/pricing/price-broker.js';
+import {
+  computeKvCacheSavings,
+  computeVirtualCostV2,
+} from '../pricing/virtual-cost-v2.js';
 import {
   evaluateCacheEconomics,
   type CacheEconomicsConfig,
@@ -96,30 +103,90 @@ function isToolLoopTurn(turnType: RoutingRequest['turn_type']): boolean {
 
 const TOKENS_PER_M = 1_000_000;
 
+/** Virtual cost v2 context for subscription-aware breakeven (SP-149). */
+export interface ModelSwitchBreakevenContext {
+  readonly priceCatalog?: PriceCatalog | null;
+  readonly quotaWindowPosition?: QuotaWindowPosition;
+  readonly virtualCostV2Config?: VirtualCostV2Config;
+}
+
+/** Breakeven result with v2 economics observability (SP-149). */
+export interface ModelSwitchBreakevenResult extends CacheBreakevenResult {
+  readonly quota_premium_usd: number;
+  readonly kv_cache_credit_usd: number;
+}
+
+function resolveEffectiveTurnCostUsd(
+  model: ModelProfile,
+  estimatedInputTokens: number,
+  context: ModelSwitchBreakevenContext | undefined,
+  pinActive: boolean,
+  warmPrefixTokens: number,
+): number {
+  const baseCostPer1M = resolveFrugalityCostPer1M(
+    model,
+    context?.priceCatalog ?? null,
+  );
+
+  return computeVirtualCostV2({
+    base_cost_per_1m: baseCostPer1M,
+    est_tokens: estimatedInputTokens,
+    pin_active: pinActive,
+    warm_prefix_tokens: warmPrefixTokens,
+    ...(context?.quotaWindowPosition !== undefined
+      ? { window_position: context.quotaWindowPosition }
+      : {}),
+    ...(context?.virtualCostV2Config !== undefined
+      ? { config: context.virtualCostV2Config }
+      : {}),
+  }).effective_cost_usd;
+}
+
 /**
  * Per-turn marginal savings from switching pinned → candidate on this request.
- * Uses full estimated input (same basis as cache-economics per-turn savings).
+ * Uses SP-148 virtual cost v2 when context is provided (SP-149).
  */
 export function computeMarginalSwitchSavings(
   pinnedModel: ModelProfile,
   candidateModel: ModelProfile,
   estimatedInputTokens: number,
+  context?: ModelSwitchBreakevenContext,
 ): number {
   if (!Number.isFinite(estimatedInputTokens) || estimatedInputTokens < 0) {
     return 0;
   }
 
-  return (
-    ((pinnedModel.pricing.fallback_cost_per_1m -
-      candidateModel.pricing.fallback_cost_per_1m) *
-      estimatedInputTokens) /
-    TOKENS_PER_M
+  if (!context) {
+    return (
+      ((pinnedModel.pricing.fallback_cost_per_1m -
+        candidateModel.pricing.fallback_cost_per_1m) *
+        estimatedInputTokens) /
+      TOKENS_PER_M
+    );
+  }
+
+  const pinnedCost = resolveEffectiveTurnCostUsd(
+    pinnedModel,
+    estimatedInputTokens,
+    context,
+    true,
+    estimatedInputTokens,
   );
+  const candidateCost = resolveEffectiveTurnCostUsd(
+    candidateModel,
+    estimatedInputTokens,
+    context,
+    false,
+    0,
+  );
+
+  return pinnedCost - candidateCost;
 }
 
 /**
  * SAAR cache breakeven gate (#73) — shared by turn_envelope and session_pin.
  * `warmPrefixTokens` is 0 on cold sessions (no pin); otherwise the warm prefix size.
+ * Composes KV-cache savings credit into total benefit when v2 context is set (SP-149).
  */
 export function evaluateModelSwitchBreakeven(
   pinnedModel: ModelProfile,
@@ -127,7 +194,8 @@ export function evaluateModelSwitchBreakeven(
   estimatedInputTokens: number,
   warmPrefixTokens: number,
   saarConfig?: SaarConfig,
-): CacheBreakevenResult {
+  breakevenContext?: ModelSwitchBreakevenContext,
+): ModelSwitchBreakevenResult {
   if (pinnedModel.id === candidateModel.id) {
     return {
       shouldSwitch: true,
@@ -136,6 +204,32 @@ export function evaluateModelSwitchBreakeven(
       cache_reprime_cost: 0,
       total_benefit: 0,
       reason: 'breakeven_pass',
+      quota_premium_usd: 0,
+      kv_cache_credit_usd: 0,
+    };
+  }
+
+  if (!breakevenContext) {
+    const marginal_savings = computeMarginalSwitchSavings(
+      pinnedModel,
+      candidateModel,
+      estimatedInputTokens,
+    );
+
+    const prefixResult = evaluateCacheBreakevenForPrefix(
+      marginal_savings,
+      warmPrefixTokens,
+      pinnedModel.pricing.fallback_cost_per_1m,
+      candidateModel.pricing.fallback_cost_per_1m,
+      saarConfig
+        ? { prefix_cache_weight: saarConfig.prefix_cache_weight }
+        : undefined,
+    );
+
+    return {
+      ...prefixResult,
+      quota_premium_usd: 0,
+      kv_cache_credit_usd: 0,
     };
   }
 
@@ -143,17 +237,60 @@ export function evaluateModelSwitchBreakeven(
     pinnedModel,
     candidateModel,
     estimatedInputTokens,
+    breakevenContext,
   );
 
-  return evaluateCacheBreakevenForPrefix(
+  const pinnedCostPer1M = resolveFrugalityCostPer1M(
+    pinnedModel,
+    breakevenContext.priceCatalog ?? null,
+  );
+  const candidateCostPer1M = resolveFrugalityCostPer1M(
+    candidateModel,
+    breakevenContext.priceCatalog ?? null,
+  );
+
+  const pinnedV2 = computeVirtualCostV2({
+    base_cost_per_1m: pinnedCostPer1M,
+    est_tokens: estimatedInputTokens,
+    pin_active: warmPrefixTokens > 0,
+    warm_prefix_tokens: warmPrefixTokens,
+    ...(breakevenContext.quotaWindowPosition !== undefined
+      ? { window_position: breakevenContext.quotaWindowPosition }
+      : {}),
+    ...(breakevenContext.virtualCostV2Config !== undefined
+      ? { config: breakevenContext.virtualCostV2Config }
+      : {}),
+  });
+
+  const quota_premium_usd =
+    pinnedV2.quota_arbitrage_premium + pinnedV2.exhaustion_risk_premium;
+  const kv_cache_credit_usd =
+    warmPrefixTokens > 0
+      ? breakevenContext.virtualCostV2Config !== undefined
+        ? -computeKvCacheSavings(
+            warmPrefixTokens,
+            pinnedCostPer1M,
+            true,
+            breakevenContext.virtualCostV2Config,
+          )
+        : -computeKvCacheSavings(warmPrefixTokens, pinnedCostPer1M, true)
+      : 0;
+
+  const prefixResult = evaluateCacheBreakevenForPrefix(
     marginal_savings,
     warmPrefixTokens,
-    pinnedModel.pricing.fallback_cost_per_1m,
-    candidateModel.pricing.fallback_cost_per_1m,
+    pinnedCostPer1M,
+    candidateCostPer1M,
     saarConfig
       ? { prefix_cache_weight: saarConfig.prefix_cache_weight }
       : undefined,
   );
+
+  return {
+    ...prefixResult,
+    quota_premium_usd,
+    kv_cache_credit_usd,
+  };
 }
 
 // ─── SessionPinner ────────────────────────────────────────────────────────────
