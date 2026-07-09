@@ -1,4 +1,4 @@
-**Current Step:** Step 1: End-to-end extension test
+**Current Step:** Step 2: README and provider copy
 **Status:** In Progress
 **Last Updated:** 2026-07-08
 **Review Level:** 1
@@ -10,7 +10,7 @@
 
 ## Step 1: End-to-end extension test
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Multi-turn Gemini tool session (gemini-flash turn 1, continuation turn 2)
 - [x] Assert no thought_signature terminal error path
@@ -18,10 +18,10 @@
 
 ## Step 2: README and provider copy
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] README: replay repair primary fix; narrowed guard fail-safe
-- [ ] Update gemini-provider operator guidance and tests
+- [x] README: replay repair primary fix; narrowed guard fail-safe
+- [x] Update gemini-provider operator guidance and tests
 
 ## Step 3: Testing and verification
 
