@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Ready
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-07-08
 **Review Level:** 2
 **Review Counter:** 0
@@ -10,24 +10,24 @@
 
 ## Step 1: Turn envelope breakeven gate
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Call evaluateCacheBreakeven before tier override
-- [ ] Block/allow with reason codes
+- [x] Call evaluateCacheBreakeven before tier override
+- [x] Block/allow with reason codes
 
 ## Step 2: Pin-break breakeven gate
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Gate pin-break and tool_result sub-route
-- [ ] Preserve qualified break events
+- [x] Gate pin-break and tool_result sub-route
+- [x] Preserve qualified break events
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Integration tests for blocked/allowed sub-routes
-- [ ] Run targeted test command
+- [x] Integration tests for blocked/allowed sub-routes
+- [x] Run targeted test command
 
 ---
 
@@ -35,8 +35,10 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-08 | 1 | plan | skipped (engine) |
+| 2026-07-08 | 2 | plan | skipped (engine) |
+| 2026-07-08 | 3 | plan | skipped (engine) |
 
 ## Discoveries
 
-(none yet)
+- `evaluateCacheEconomicsBreak` must return `null` (not `use_pin`) when economics reject a switch so SAAR hard-lock can run on enriched `candidate_model_id` requests.

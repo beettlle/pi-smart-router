@@ -64,11 +64,13 @@ const anthropicFrontier = makeModel({
   tier: 'frontier-cloud',
   provider: 'anthropic',
   performance: { cache_friendly: true },
+  pricing: { fallback_cost_per_1m: 15.0 },
 });
 const anthropicEcon = makeModel({
   id: 'claude-haiku',
   tier: 'economical-cloud',
   provider: 'anthropic',
+  pricing: { fallback_cost_per_1m: 1.0 },
 });
 const openaiEcon = makeModel({
   id: 'gpt-4o-mini',
@@ -80,6 +82,7 @@ const openaiFrontier = makeModel({
   tier: 'frontier-cloud',
   provider: 'openai',
   performance: { cache_friendly: true },
+  pricing: { fallback_cost_per_1m: 20.0 },
 });
 
 const fleet: ModelProfile[] = [
@@ -196,7 +199,7 @@ describe('Session pinning integration', () => {
       }
     });
 
-    it('turn envelope overrides pin for planning and subagent turns (SP-064)', async () => {
+    it('turn envelope overrides pin for subagent; planning blocked without SAAR buffer (SP-125)', async () => {
       const pinner = new SessionPinner();
       pinner.recordPin('session-pin-int', 'claude-haiku', 'initial');
       const pipeline = new RouterPipeline(fleet, { sessionPinner: pinner });
@@ -204,10 +207,9 @@ describe('Session pinning integration', () => {
       const planning = await pipeline.route(
         makeRequest({ request_id: 'planning-override', turn_type: 'planning' }),
       );
-      expect(planning.stage).toBe('turn_envelope');
-      expect(planning.reason_code).toBe('turn_planning');
-      expect(planning.tier).toBe('frontier-cloud');
-      expect(planning.selected_model_id).toBe('claude-opus');
+      expect(planning.stage).toBe('session_pin');
+      expect(planning.reason_code).toBe('session_pinned');
+      expect(planning.selected_model_id).toBe('claude-haiku');
       expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-haiku');
 
       const subagent = await pipeline.route(
@@ -595,6 +597,146 @@ describe('Session pinning integration', () => {
       expect(overflow.reason_code).toBe('context_overflow_same_provider_fallback');
       expect(overflow.selected_model_id).toBe('large-frontier');
       expect(pinner.getPin('overflow-sess')!.pinned_model_id).toBe('large-frontier');
+    });
+  });
+
+  describe('SP-125: cache breakeven pipeline gate', () => {
+    const warmBreakevenFleet: ModelProfile[] = [
+      makeModel({
+        id: 'warm-frontier',
+        tier: 'frontier-cloud',
+        provider: 'anthropic',
+        pricing: { fallback_cost_per_1m: 30.0 },
+      }),
+      makeModel({
+        id: 'warm-econ',
+        tier: 'economical-cloud',
+        provider: 'anthropic',
+        pricing: { fallback_cost_per_1m: 30.0 },
+      }),
+    ];
+
+    it('blocks turn_envelope tool_result downgrade when breakeven fails on warm prefix', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('session-pin-int', 'warm-frontier', 'initial');
+      const pipeline = new RouterPipeline(warmBreakevenFleet, { sessionPinner: pinner });
+
+      const decision = await pipeline.route(
+        makeRequest({
+          request_id: 'breakeven-blocked',
+          turn_type: 'tool_result',
+          estimated_input_tokens: 100_000,
+        }),
+      );
+
+      expect(decision.stage).toBe('session_pin');
+      expect(decision.reason_code).toBe('session_pinned');
+      expect(decision.selected_model_id).toBe('warm-frontier');
+      expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('warm-frontier');
+    });
+
+    it('allows turn_envelope tool_result downgrade when breakeven passes', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('session-pin-int', 'claude-opus', 'initial');
+      const pipeline = new RouterPipeline(fleet, { sessionPinner: pinner });
+
+      const decision = await pipeline.route(
+        makeRequest({
+          request_id: 'breakeven-pass',
+          turn_type: 'tool_result',
+          estimated_input_tokens: 100,
+        }),
+      );
+
+      expect(decision.stage).toBe('turn_envelope');
+      expect(decision.reason_code).toBe('turn_tool_result');
+      expect(decision.selected_model_id).toBe('claude-haiku');
+      expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-opus');
+    });
+
+    it('session_pin sub_route blocked when turn_envelope skipped and breakeven fails', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('session-pin-int', 'warm-frontier', 'initial');
+      const pipeline = new RouterPipeline(warmBreakevenFleet, { sessionPinner: pinner });
+
+      const decision = await pipeline.route(
+        makeRequest({
+          request_id: 'sub-route-blocked',
+          turn_type: 'tool_result',
+          estimated_input_tokens: 100_000,
+          prompt_text: 'x',
+        }),
+      );
+
+      expect(decision.reason_code).not.toBe('tool_result_sub_route');
+      expect(decision.selected_model_id).toBe('warm-frontier');
+    });
+
+    it('regression: loop escalation still breaks pin after breakeven gate', async () => {
+      const saarConfig = { ...DEFAULT_SAAR_CONFIG, planning_turn_buffer: 2 };
+      const pinner = new SessionPinner({ saarConfig });
+      const pipeline = new RouterPipeline(fleet, {
+        sessionPinner: pinner,
+        saarConfig,
+        loopEscalationConfig: { threshold: 3 },
+      });
+
+      const failureContent = 'Error: ENOENT file not found';
+      const failureRequest = makeRequest({
+        turn_type: 'tool_result',
+        messages: [{ role: 'tool', content: failureContent }],
+      });
+
+      await pipeline.route(makeRequest({ request_id: 'loop-0', turn_type: 'main_loop' }));
+      await pipeline.route(makeRequest({ request_id: 'loop-1', turn_type: 'planning' }));
+
+      const initialPin = pinner.getPin('session-pin-int')!;
+      pinner.loadPin({
+        ...initialPin,
+        consecutive_tool_failures: 2,
+        last_tool_failure_signature: extractToolFailureSignature(failureRequest)!,
+        updated_at: new Date().toISOString(),
+      });
+
+      await pipeline.route({ ...failureRequest, request_id: 'loop-fail-3' });
+
+      expect(pinner.getPin('session-pin-int')!.pin_reason).toBe('loop_escalation');
+      expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-opus');
+    });
+
+    it('regression: cross-provider cache economics break still gated by breakeven', async () => {
+      const pinner = new SessionPinner({
+        cacheEconomicsConfig: { projectedRemainingTurns: 10 },
+      });
+      pinner.recordPin('session-pin-int', 'claude-opus', 'initial');
+
+      const marginalFleet = [
+        makeModel({
+          id: 'claude-opus',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 15.0 },
+        }),
+        makeModel({
+          id: 'marginal',
+          tier: 'economical-cloud',
+          provider: 'other',
+          pricing: { fallback_cost_per_1m: 14.5 },
+        }),
+      ];
+      const pipeline = new RouterPipeline(marginalFleet, { sessionPinner: pinner });
+
+      const decision = await pipeline.route(
+        makeRequest({
+          request_id: 'cache-econ-hold',
+          candidate_model_id: 'marginal',
+          estimated_input_tokens: 1_000,
+        }),
+      );
+
+      expect(decision.stage).toBe('session_pin');
+      expect(decision.reason_code).toBe('session_pinned');
+      expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-opus');
     });
   });
 
