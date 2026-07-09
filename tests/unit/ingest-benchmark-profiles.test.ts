@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -104,6 +104,17 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
       expect(row.capabilities.code_gen).toBeLessThanOrEqual(1);
       expect(row.capabilities.tool_use).toBeLessThanOrEqual(1);
     }
+  });
+
+  it('checked-in artifact matches fixture ingest', () => {
+    const checkedIn = readFileSync(join('config', 'benchmark-profiles.json'), 'utf8');
+    const parsed = parseBenchmarkProfilesArtifact(JSON.parse(checkedIn));
+    const artifact = ingestBenchmarkProfilesFromDir(DEFAULT_BENCHMARK_FIXTURES_DIR, {
+      catalogFreezeDate: parsed.provenance.catalog_freeze_date,
+      scrapeDate: parsed.provenance.scrape_date,
+    });
+
+    expect(serializeBenchmarkProfilesArtifact(artifact)).toBe(checkedIn);
   });
 
   it('validates required capability dimensions and rejects duplicate benchmark rows', () => {
