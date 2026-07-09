@@ -10,7 +10,6 @@ import {
   parseTwinRouterBenchStaticTrack,
   TWINROUTERBENCH_STATIC_SCHEMA_VERSION,
 } from '../../scripts/eval/twinrouterbench-adapter.js';
-import { loadEvalTraceFixture } from '../../scripts/eval/fixture-schema.js';
 import { scoreFixtureHarness } from '../../scripts/eval/harness-tracks.js';
 
 const TRB_FIXTURES_DIR = join('tests', 'eval', 'fixtures', 'twinrouterbench');
@@ -21,7 +20,6 @@ function loadTrbFixture(name: string): unknown {
 
 describe('TwinRouterBench static track adapter (SP-153)', () => {
   it('detects TwinRouterBench static track documents', () => {
-    const raw = loadTrbFixture('swe-bench-trivial-prefix.json');
     expect(isTwinRouterBenchStaticTrack(loadTrbFixture('swe-bench-trivial-prefix.json'))).toBe(true);
     expect(
       isTwinRouterBenchStaticTrack(

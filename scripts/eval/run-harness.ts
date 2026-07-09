@@ -9,7 +9,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { loadEvalTraceFixture } from './fixture-schema.js';
 import { loadEvalFixtureDocument } from './twinrouterbench-adapter.js';
 import {
   aggregateHarnessMetrics,

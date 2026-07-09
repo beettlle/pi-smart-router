@@ -1,5 +1,5 @@
-**Current Step:** Step 2: CI smoke and docs
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -17,17 +17,17 @@
 
 ## Step 2: CI smoke and docs
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Add CI workflow running harness on fixtures (smoke, no network)
 - [x] Document `npm run routing:eval-harness` in README
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Adapter unit tests
-- [ ] Run `npm run verify:ci`
+- [x] Adapter unit tests
+- [x] Run `npm run verify:ci`
 
 ---
 
