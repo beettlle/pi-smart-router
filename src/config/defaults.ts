@@ -3,8 +3,24 @@
  * Values sourced from specs/001-build-smart-router/data-model.md § Configuration (Operator).
  */
 
-import type { OperatorConfig } from '../domain/types/schemas.js';
+import {
+  DEFAULT_SAAR_CONFIG,
+  resolveSaarConfigFromEnv,
+  type OperatorConfig,
+} from '../domain/types/schemas.js';
 import { DEFAULT_LOW_INTENSITY_WEIGHTS } from '../domain/routing/tier-features.js';
+
+export { DEFAULT_SAAR_CONFIG, resolveSaarConfigFromEnv } from '../domain/types/schemas.js';
+
+/** Merge operator env overrides onto defaults (SAAR section only today). */
+export function resolveOperatorConfigFromEnv(
+  base: OperatorConfig = DEFAULT_OPERATOR_CONFIG,
+): OperatorConfig {
+  return {
+    ...base,
+    saar: resolveSaarConfigFromEnv(base.saar),
+  };
+}
 
 export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
   frugality: {
@@ -32,4 +48,5 @@ export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
     low_threshold: 0.35,
     p_success_alpha: 0.5,
   },
+  saar: DEFAULT_SAAR_CONFIG,
 } as const;

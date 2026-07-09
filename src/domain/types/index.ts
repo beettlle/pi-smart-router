@@ -23,6 +23,8 @@ export type {
   RoutingOutcomeRecord,
   RoutingRequest,
   RoutingTelemetry,
+  SaarConfig,
+  SaarSessionState,
   SessionPin,
   TierFeatureSummary,
   TierSelectionObservability,
