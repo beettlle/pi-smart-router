@@ -1,5 +1,5 @@
-**Current Step:** Step 3: Testing and verification
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -26,10 +26,20 @@
 
 ## Step 3: Testing and verification
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Unit test: synthetic centroid shift with known positive/negative sets
 - [x] Run `npm run verify:ci`
+
+---
+
+## Completion Criteria
+
+- [x] OATS interpolation step in calibration train pipeline
+- [x] Versioned centroid artifact in calibration bundle
+- [x] α/β hyperparameters and minimum sample sizes documented
+- [x] Unit test on synthetic centroid shift
+- [x] `npm run verify:ci` passes
 
 ---
 
