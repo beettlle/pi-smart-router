@@ -54,6 +54,27 @@ export interface RoutingRequest {
   readonly estimated_input_tokens?: number;
 }
 
+// ─── SAAR (Session-Aware Agentic Routing, SP-121 / #72) ─────────────────────
+
+/** Operator knobs for SAAR pin policy (config surface; behavior in SP-122+). */
+export interface SaarConfig {
+  /** Turns 0..(buffer-1) may reach frontier without permanent pin overwrite. */
+  readonly planning_turn_buffer: number;
+  /** Weight applied to prefix-cache value when gating model switches (0–1). */
+  readonly prefix_cache_weight: number;
+  /** Idle seconds before SAAR reopens the routing decision. */
+  readonly idle_timeout_seconds: number;
+  /** Minimum routing score delta required to break a warm pin (0–1). */
+  readonly switch_threshold: number;
+}
+
+/** Per-session SAAR runtime state (types only; state machine in SP-122). */
+export interface SaarSessionState {
+  readonly turn_index: number;
+  readonly hard_lock: boolean;
+  readonly last_activity_at: string;
+}
+
 // ─── SessionPin ──────────────────────────────────────────────────────────────
 
 export interface SessionPin {
