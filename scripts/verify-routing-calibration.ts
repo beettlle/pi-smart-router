@@ -14,12 +14,20 @@ import { pathToFileURL } from 'node:url';
 import { cyclomaticScan, sanitize } from '../src/domain/triage/triage-engine.js';
 import { buildHydraInput } from '../src/domain/matching/hydra-input.js';
 import { projectToRequirements } from '../src/domain/matching/hydra-matcher.js';
+import {
+  assignClusterByCentroids,
+  type RoutingCentroidsArtifact,
+} from '../src/domain/matching/cluster-matcher.js';
 import { predictPSuccessCheap } from '../src/domain/routing/p-success-classifier.js';
 import { extractPSuccessFeatures } from '../src/domain/routing/p-success-classifier.js';
 import {
   applyIsotonicLookup,
   validateIsotonicCalibratorArtifact,
 } from './lib/isotonic-calibrator.js';
+import {
+  OATS_REFINEMENT_ARTIFACT_VERSION,
+  type RefinedRoutingCentroidsArtifact,
+} from './lib/oats-centroid-refinement.js';
 import {
   assertCompatibleHydraProjectionArtifact,
   DEFAULT_ROUTING_CALIBRATION_PATH,
@@ -77,6 +85,175 @@ export const CALIBRATION_BENCHMARKS: readonly CalibrationBenchmark[] = [
     expect: { triage_verdict: 'complex', min_cyclomatic: 5 },
   },
 ] as const;
+
+export interface ClusterCalibrationBenchmark {
+  readonly id: string;
+  readonly prompt: string;
+  readonly expect_cluster_id: string;
+  /** Optional fixed embedding for offline cluster assignment (no ONNX). */
+  readonly embedding?: readonly number[];
+}
+
+export const CLUSTER_CALIBRATION_BENCHMARKS: readonly ClusterCalibrationBenchmark[] = [
+  {
+    id: 'cluster_trivial_general',
+    prompt: 'what is 2+2',
+    expect_cluster_id: 'low_stakes_general',
+  },
+  {
+    id: 'cluster_trivial_definition',
+    prompt: 'define polymorphism in one sentence',
+    expect_cluster_id: 'low_stakes_general',
+  },
+  {
+    id: 'cluster_frontier_architecture',
+    prompt: 'design a microservices migration for a monolith with strict SLAs',
+    expect_cluster_id: 'architecture',
+  },
+] as const;
+
+const L2_NORM_TOLERANCE = 0.02;
+
+function centroidL2Norm(centroid: readonly number[]): number {
+  let magnitude = 0;
+  for (const value of centroid) {
+    magnitude += value * value;
+  }
+  return Math.sqrt(magnitude);
+}
+
+/** Validate routing_centroids artifact shape and optional OATS refinement metadata (SP-147). */
+export function validateOatsCentroidArtifact(
+  centroids: RefinedRoutingCentroidsArtifact,
+): BenchmarkAssertionResult[] {
+  const results: BenchmarkAssertionResult[] = [];
+
+  const clusterIds = new Set<string>();
+  for (const cluster of centroids.clusters) {
+    if (clusterIds.has(cluster.cluster_id)) {
+      results.push({
+        id: 'oats_centroids_unique_ids',
+        passed: false,
+        message: `duplicate cluster_id '${cluster.cluster_id}'`,
+      });
+      return results;
+    }
+    clusterIds.add(cluster.cluster_id);
+
+    const finite = cluster.centroid.every((value) => Number.isFinite(value));
+    if (!finite) {
+      results.push({
+        id: `oats_centroid_finite_${cluster.cluster_id}`,
+        passed: false,
+        message: `non-finite centroid values for ${cluster.cluster_id}`,
+      });
+      continue;
+    }
+
+    const norm = centroidL2Norm(cluster.centroid);
+    if (norm === 0) {
+      results.push({
+        id: `oats_centroid_norm_${cluster.cluster_id}`,
+        passed: false,
+        message: `zero-magnitude centroid for ${cluster.cluster_id}`,
+      });
+    }
+  }
+
+  results.push({
+    id: 'oats_centroids_shape',
+    passed:
+      centroids.version === 1 &&
+      centroids.embedding_dim > 0 &&
+      centroids.clusters.length > 0 &&
+      results.every((entry) => entry.passed),
+    message: `clusters=${centroids.clusters.length}, dim=${centroids.embedding_dim}`,
+  });
+
+  const oats = centroids.oats_refinement;
+  if (oats === undefined) {
+    results.push({
+      id: 'oats_refinement',
+      passed: true,
+      message: 'bootstrap centroids (no OATS metadata)',
+    });
+    return results;
+  }
+
+  const oatsValid =
+    oats.version === OATS_REFINEMENT_ARTIFACT_VERSION &&
+    oats.alpha >= 0 &&
+    oats.alpha <= 1 &&
+    oats.beta >= 0 &&
+    oats.beta <= 1 &&
+    oats.beta < oats.alpha &&
+    oats.positive_sample_count >= 0 &&
+    oats.negative_sample_count >= 0 &&
+    oats.clusters_refined >= 0 &&
+    oats.clusters_skipped >= 0 &&
+    oats.clusters_refined + oats.clusters_skipped <= centroids.clusters.length;
+
+  results.push({
+    id: 'oats_refinement',
+    passed: oatsValid,
+    message: oatsValid
+      ? `refined=${oats.clusters_refined}, skipped=${oats.clusters_skipped}, pos=${oats.positive_sample_count}, neg=${oats.negative_sample_count}`
+      : `invalid OATS metadata (alpha=${oats.alpha}, beta=${oats.beta})`,
+  });
+
+  if (oats.clusters_refined > 0) {
+    const normalizedCount = centroids.clusters.filter((cluster) => {
+      const norm = centroidL2Norm(cluster.centroid);
+      return Math.abs(norm - 1) <= L2_NORM_TOLERANCE;
+    }).length;
+    results.push({
+      id: 'oats_centroids_normalized',
+      passed: normalizedCount >= oats.clusters_refined,
+      message: `normalized=${normalizedCount}, refined=${oats.clusters_refined}`,
+    });
+  }
+
+  return results;
+}
+
+export function assertClusterBenchmark(
+  benchmark: ClusterCalibrationBenchmark,
+  centroids: RoutingCentroidsArtifact,
+  embedding?: Float32Array,
+): BenchmarkAssertionResult {
+  const clusterIds = new Set(centroids.clusters.map((cluster) => cluster.cluster_id));
+  if (!clusterIds.has(benchmark.expect_cluster_id)) {
+    return {
+      id: benchmark.id,
+      passed: false,
+      message: `expected cluster '${benchmark.expect_cluster_id}' missing from bundle`,
+    };
+  }
+
+  let vector = embedding;
+  if (vector === undefined && benchmark.embedding !== undefined) {
+    vector = new Float32Array(benchmark.embedding);
+  }
+
+  if (vector === undefined) {
+    return {
+      id: benchmark.id,
+      passed: true,
+      message: `skipped cluster assignment (no embedding for '${benchmark.prompt.slice(0, 40)}')`,
+    };
+  }
+
+  const assignment = assignClusterByCentroids(centroids, vector);
+  const passed = assignment.cluster_id === benchmark.expect_cluster_id;
+
+  return {
+    id: benchmark.id,
+    passed,
+    message: passed
+      ? `cluster=${assignment.cluster_id}, sim=${assignment.similarity.toFixed(3)}`
+      : `expected ${benchmark.expect_cluster_id}, got ${assignment.cluster_id} (sim=${assignment.similarity.toFixed(3)})`,
+  };
+}
 
 export interface BenchmarkAssertionResult {
   readonly id: string;
@@ -261,11 +438,26 @@ export function verifyArtifactShapes(bundle: RoutingCalibrationBundle): Benchmar
     message: `clusters=${bundle.routing_centroids.clusters.length}`,
   });
 
+  results.push(...validateOatsCentroidArtifact(bundle.routing_centroids));
+
   return results;
+}
+
+export function verifyClusterBenchmarks(
+  bundle: RoutingCalibrationBundle,
+  embeddingsByBenchmarkId?: ReadonlyMap<string, Float32Array>,
+): BenchmarkAssertionResult[] {
+  return CLUSTER_CALIBRATION_BENCHMARKS.map((benchmark) => {
+    const embedding = embeddingsByBenchmarkId?.get(benchmark.id);
+    return assertClusterBenchmark(benchmark, bundle.routing_centroids, embedding);
+  });
 }
 
 export function verifyRoutingCalibration(
   bundlePath: string = DEFAULT_ROUTING_CALIBRATION_PATH,
+  options?: {
+    readonly embeddingsByBenchmarkId?: ReadonlyMap<string, Float32Array>;
+  },
 ): VerifyCalibrationResult {
   const resolvedPath = resolve(bundlePath);
   const bundle = existsSync(resolvedPath)
@@ -275,6 +467,7 @@ export function verifyRoutingCalibration(
   const assertions = [
     ...verifyArtifactShapes(bundle),
     ...CALIBRATION_BENCHMARKS.map((benchmark) => assertBenchmark(benchmark, bundle)),
+    ...verifyClusterBenchmarks(bundle, options?.embeddingsByBenchmarkId),
   ];
 
   const failed = assertions.filter((entry) => !entry.passed).length;
