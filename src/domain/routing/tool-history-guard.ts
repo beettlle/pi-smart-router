@@ -1,13 +1,17 @@
 /**
- * Gemini tool-history guard — SP-077.
+ * Gemini tool-history guard — SP-077, narrowed SP-129.
  *
- * Excludes Google/Gemini fleet entries when session history contains prior
- * tool calls, avoiding thought_signature 400s until pi preserves replay
- * signatures upstream (earendil-works/pi#6342).
+ * Excludes Google/Gemini fleet entries only when session history contains
+ * Google-origin assistant tool calls with replay state SP-128 repair cannot fix.
+ * OpenAI-only tool sessions may route to economical Gemini; repairable Google
+ * tool history relies on delegation replay repair instead of a blunt ban.
  */
 
 import type { Message as PiMessage } from '@earendil-works/pi-ai/compat';
 
+import {
+  isGoogleOriginAssistantMessage,
+} from '../delegation/delegation-context.js';
 import type { Message as RoutingMessage, ModelProfile, RoutingRequest } from '../types/index.js';
 
 export const GEMINI_TOOL_HISTORY_EXCLUDED = 'gemini_tool_history_excluded' as const;
@@ -105,23 +109,109 @@ export function hasToolCallHistory(
   return false;
 }
 
-function sessionHasToolCallHistory(
-  request: RoutingRequest,
-  contextMessages?: readonly PiMessage[],
+/** Google-origin assistant toolCall blocks in pi-ai context (SP-127 detector). */
+export function hasGoogleReplayRiskFromContext(
+  messages: readonly PiMessage[],
 ): boolean {
-  if (contextMessages !== undefined && contextMessages.length > 0) {
-    return hasToolCallHistoryFromContext(contextMessages);
-  }
+  for (const message of messages) {
+    if (message.role !== 'assistant') {
+      continue;
+    }
 
-  if (request.messages !== undefined && request.messages.length > 0) {
-    return hasToolCallHistory(request.messages);
+    if (!isGoogleOriginAssistantMessage(message)) {
+      continue;
+    }
+
+    for (const block of message.content) {
+      if (block.type === 'toolCall') {
+        return true;
+      }
+    }
   }
 
   return false;
 }
 
 /**
- * Apply Gemini exclusion when tool history is present.
+ * Routing messages lack provider/api metadata, so Google-origin replay risk
+ * cannot be detected reliably — defer to contextMessages in resolveEffectiveFleet.
+ */
+export function hasGoogleReplayRisk(
+  messages: readonly RoutingMessage[],
+): boolean {
+  // Routing messages lack provider/api metadata; Google-origin detection uses contextMessages.
+  void messages;
+  return false;
+}
+
+/**
+ * Replay-sensitive state on Google-origin turns that SP-128 repair does not rewrite
+ * (redacted thinking, thinking signatures, text signatures).
+ */
+export function hasUnrepairableGoogleReplayStateFromContext(
+  messages: readonly PiMessage[],
+): boolean {
+  for (const message of messages) {
+    if (message.role !== 'assistant') {
+      continue;
+    }
+
+    if (!isGoogleOriginAssistantMessage(message)) {
+      continue;
+    }
+
+    for (const block of message.content) {
+      if (block.type === 'thinking') {
+        if (block.redacted) {
+          return true;
+        }
+        if (block.thinkingSignature && block.thinkingSignature.length > 0) {
+          return true;
+        }
+      }
+
+      if (block.type === 'text' && block.textSignature && block.textSignature.length > 0) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+export function hasUnrepairableGoogleReplayRiskFromContext(
+  messages: readonly PiMessage[],
+): boolean {
+  return (
+    hasGoogleReplayRiskFromContext(messages) &&
+    hasUnrepairableGoogleReplayStateFromContext(messages)
+  );
+}
+
+function sessionHasGoogleReplayRisk(
+  request: RoutingRequest,
+  contextMessages?: readonly PiMessage[],
+): boolean {
+  if (contextMessages !== undefined && contextMessages.length > 0) {
+    return hasGoogleReplayRiskFromContext(contextMessages);
+  }
+
+  return hasGoogleReplayRisk(request.messages ?? []);
+}
+
+function sessionHasUnrepairableGoogleReplayRisk(
+  request: RoutingRequest,
+  contextMessages?: readonly PiMessage[],
+): boolean {
+  if (contextMessages !== undefined && contextMessages.length > 0) {
+    return hasUnrepairableGoogleReplayRiskFromContext(contextMessages);
+  }
+
+  return false;
+}
+
+/**
+ * Apply Gemini exclusion when unrepairable Google replay risk is present.
  * Honors `force_model_id` by returning the unfiltered fleet.
  */
 export function resolveEffectiveFleet(
@@ -133,7 +223,7 @@ export function resolveEffectiveFleet(
     return { effectiveFleet: fleet, excluded: false };
   }
 
-  if (!sessionHasToolCallHistory(request, contextMessages)) {
+  if (!sessionHasUnrepairableGoogleReplayRisk(request, contextMessages)) {
     return { effectiveFleet: fleet, excluded: false };
   }
 
@@ -156,4 +246,12 @@ export function resolveEffectiveFleet(
     excluded: true,
     reasonCode: GEMINI_TOOL_HISTORY_EXCLUDED,
   };
+}
+
+/** Shared SP-129 detector for SP-080 fleet deprioritization. */
+export function sessionHasGoogleReplayRiskForDeprioritize(
+  request: RoutingRequest,
+  contextMessages?: readonly PiMessage[],
+): boolean {
+  return sessionHasGoogleReplayRisk(request, contextMessages);
 }

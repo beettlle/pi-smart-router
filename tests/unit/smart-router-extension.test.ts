@@ -1492,20 +1492,35 @@ describe('smart-router unpin command (SP-076)', () => {
   });
 });
 
-describe('gemini tool history guard (SP-077)', () => {
+describe('gemini tool history guard (SP-077, narrowed SP-129)', () => {
   beforeEach(() => {
     mockDelegateStreamSimple.mockClear();
   });
 
-  it('routes tool-history sessions to non-google models via stream delegation', async () => {
-    const router = createRouterFromFleet(fleet);
+  it('routes OpenAI tool-history sessions to economical gemini when cheapest', async () => {
+    const geminiFirstFleet = [
+      makeProfile({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
+      makeProfile({ id: 'gpt-4o-mini', tier: 'economical-cloud', provider: 'openai' }),
+      makeProfile({ id: 'claude-opus', tier: 'frontier-cloud', provider: 'anthropic' }),
+    ];
+    const router = createRouterFromFleet(geminiFirstFleet);
     const decisions: RoutingDecision[] = [];
-    const target = registryModels[0]!;
+    const target = makeRegistryModel({
+      provider: 'google',
+      id: 'gemini-flash',
+      api: 'google-generative-ai',
+    });
     mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
 
     const streamSimple = createStreamSimple(
       makeStreamDeps({
         router,
+        fleet: geminiFirstFleet,
+        modelRegistry: createMockRegistry([
+          target,
+          makeRegistryModel({ provider: 'openai', id: 'gpt-4o-mini', api: 'openai-responses' }),
+          makeRegistryModel({ provider: 'anthropic', id: 'claude-opus', api: 'anthropic-messages' }),
+        ]),
         onRoutingDecision: (decision) => decisions.push(decision),
       }),
     );
@@ -1526,8 +1541,8 @@ describe('gemini tool history guard (SP-077)', () => {
               },
             ],
             api: 'openai-responses',
-            provider: 'smart-router',
-            model: 'auto',
+            provider: 'openai',
+            model: 'gpt-4o-mini',
             usage: {
               input: 0,
               output: 0,
@@ -1545,9 +1560,9 @@ describe('gemini tool history guard (SP-077)', () => {
       ),
     );
 
-    expect(decisions[0]?.selected_model_id).toBe('gpt-4o-mini');
+    expect(decisions[0]?.selected_model_id).toBe('gemini-flash');
     expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
-    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]?.provider).toBe('openai');
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]?.provider).toBe('google');
   });
 
   it('leaves fleet unchanged for sessions without tool history', () => {
@@ -1561,7 +1576,7 @@ describe('gemini tool history guard (SP-077)', () => {
     expect(result.effectiveFleet).toEqual(fleet);
   });
 
-  it('emits gemini_tool_history_excluded when filtering applies', () => {
+  it('does not emit gemini_tool_history_excluded for OpenAI tool history', () => {
     const request = buildRoutingRequest(
       makeContext([
         userMessage('search'),
@@ -1626,6 +1641,49 @@ describe('gemini tool history guard (SP-077)', () => {
         toolResultMessage('ok'),
       ]).messages,
     );
+    expect(result.excluded).toBe(false);
+    expect(result.reasonCode).toBeUndefined();
+  });
+
+  it('emits gemini_tool_history_excluded for unrepairable Google replay risk', () => {
+    const googleUnrepairableContext = makeContext([
+      userMessage('search'),
+      {
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: '', redacted: true },
+          {
+            type: 'toolCall',
+            id: 'call-1',
+            name: 'read',
+            arguments: {},
+          },
+        ],
+        api: 'google-generative-ai',
+        provider: 'google',
+        model: 'gemini-flash',
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: 'toolUse',
+        timestamp: 2,
+      },
+      toolResultMessage('ok'),
+    ]);
+    const request = buildRoutingRequest(googleUnrepairableContext, {
+      sessionId: 'guard-unrepairable',
+    });
+
+    const result = resolveEffectiveFleet(
+      fleet,
+      request,
+      googleUnrepairableContext.messages,
+    );
     expect(result.reasonCode).toBe(GEMINI_TOOL_HISTORY_EXCLUDED);
   });
 });
@@ -1635,7 +1693,7 @@ describe('gemini empty-fleet fail-safe (SP-084)', () => {
     mockDelegateStreamSimple.mockClear();
   });
 
-  it('throws actionable error for google-only fleet with tool history', async () => {
+  it('throws actionable error for google-only fleet with unrepairable replay risk', async () => {
     const googleOnlyFleet = [
       makeProfile({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
     ];
@@ -1651,7 +1709,35 @@ describe('gemini empty-fleet fail-safe (SP-084)', () => {
 
     await expect(
       routeAndDelegate(
-        makeContext([userMessage('search'), toolResultMessage('ok')]),
+        makeContext([
+          userMessage('search'),
+          {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: '', redacted: true },
+              {
+                type: 'toolCall',
+                id: 'call-1',
+                name: 'read',
+                arguments: {},
+              },
+            ],
+            api: 'google-generative-ai',
+            provider: 'google',
+            model: 'gemini-flash',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: 'toolUse',
+            timestamp: 2,
+          },
+          toolResultMessage('ok'),
+        ]),
         { sessionId: 'empty-fleet-sess' },
         deps,
         outer,
@@ -1661,7 +1747,68 @@ describe('gemini empty-fleet fail-safe (SP-084)', () => {
     expect(mockDelegateStreamSimple).not.toHaveBeenCalled();
   });
 
-  it('routes tool-history sessions to cursor/auto without unknown delegation', async () => {
+  it('routes repairable Google tool history to gemini without empty-fleet error', async () => {
+    const googleOnlyFleet = [
+      makeProfile({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
+    ];
+    const googleModel = makeRegistryModel({
+      provider: 'google',
+      id: 'gemini-flash',
+      api: 'google-generative-ai',
+    });
+    const router = createRouterFromFleet(googleOnlyFleet);
+    const decisions: RoutingDecision[] = [];
+    mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(googleModel));
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router,
+        fleet: googleOnlyFleet,
+        modelRegistry: createMockRegistry([googleModel]),
+        onRoutingDecision: (decision) => decisions.push(decision),
+      }),
+    );
+
+    await collectEvents(
+      streamSimple(
+        makeAutoModel(),
+        makeContext([
+          userMessage('search'),
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'toolCall',
+                id: 'call-1',
+                name: 'read',
+                arguments: {},
+              },
+            ],
+            api: 'google-generative-ai',
+            provider: 'google',
+            model: 'gemini-flash',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: 'toolUse',
+            timestamp: 2,
+          },
+          toolResultMessage('ok'),
+        ]),
+        { sessionId: 'repairable-google-sess' },
+      ),
+    );
+
+    expect(decisions[0]?.selected_model_id).toBe('gemini-flash');
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+  });
+
+  it('routes unrepairable risk to cursor/auto without unknown delegation', async () => {
     const cursorFleet = [
       makeProfile({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
       makeProfile({ id: 'cursor/auto', tier: 'economical-cloud', provider: 'cursor' }),
@@ -1694,7 +1841,35 @@ describe('gemini empty-fleet fail-safe (SP-084)', () => {
     await collectEvents(
       streamSimple(
         makeAutoModel(),
-        makeContext([userMessage('search'), toolResultMessage('ok')]),
+        makeContext([
+          userMessage('search'),
+          {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: '', redacted: true },
+              {
+                type: 'toolCall',
+                id: 'call-1',
+                name: 'read',
+                arguments: {},
+              },
+            ],
+            api: 'google-generative-ai',
+            provider: 'google',
+            model: 'gemini-flash',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: 'toolUse',
+            timestamp: 2,
+          },
+          toolResultMessage('ok'),
+        ]),
         { sessionId: 'cursor-auto-sess' },
       ),
     );
@@ -1821,7 +1996,7 @@ describe('cursor model delegation (SP-086)', () => {
     await collectEvents(
       streamSimple(
         makeAutoModel(),
-        makeContext([userMessage('search'), toolResultMessage('ok')]),
+        makeContext([userMessage('design the search architecture')]),
         { sessionId: 'mapped-cursor-auto' },
       ),
     );

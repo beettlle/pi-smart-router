@@ -20,8 +20,8 @@ import type { TriageResult, TriageVerdict } from '../triage/triage-engine.js';
 import { classifyTurnEnvelope } from '../triage/turn-envelope.js';
 import { safeCloudDefault } from './safe-default.js';
 import {
-  hasToolCallHistory,
   isGoogleGeminiProfile,
+  sessionHasGoogleReplayRiskForDeprioritize,
 } from '../routing/tool-history-guard.js';
 import {
   filterFleetByContextFit,
@@ -280,7 +280,11 @@ export class RouterPipeline {
     }
 
     const messages = request.messages;
-    if (!messages || messages.length === 0 || !hasToolCallHistory(messages)) {
+    if (
+      !messages ||
+      messages.length === 0 ||
+      !sessionHasGoogleReplayRiskForDeprioritize(request)
+    ) {
       return fleet;
     }
 
