@@ -388,6 +388,8 @@ function buildLowIntensityBreakdown(
     tier_hint_reason_code: features.tier_hint_reason_code,
     tier_selection_reason_code: resolveTierSelectionReasonCode(features),
     p_success_cheap: features.p_success_cheap,
+    p_success_raw: features.p_success_raw,
+    p_success_calibrated: features.p_success_calibrated,
     p_success_alpha: features.p_success_alpha,
     rejected_tiers: extractRejectedTiers(features.candidates),
   };
@@ -722,6 +724,8 @@ function emptyFeatureSidecar() {
     tier_hint_reason_code: null,
     low_intensity_score: null,
     p_success_cheap: null,
+    p_success_raw: null,
+    p_success_calibrated: null,
     p_success_alpha: null,
     local_eligible_reason: null,
   };

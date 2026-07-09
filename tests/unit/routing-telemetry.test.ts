@@ -214,6 +214,8 @@ describe('buildContextFitObservability', () => {
           tier_hint_reason_code: null,
           low_intensity_score: null,
           p_success_cheap: null,
+      p_success_raw: null,
+      p_success_calibrated: null,
           p_success_alpha: null,
           local_eligible_reason: null,
         },
@@ -256,6 +258,8 @@ describe('buildContextFitObservability', () => {
           tier_hint_reason_code: null,
           low_intensity_score: null,
           p_success_cheap: null,
+      p_success_raw: null,
+      p_success_calibrated: null,
           p_success_alpha: null,
           local_eligible_reason: null,
         },
@@ -288,6 +292,8 @@ describe('buildRoutingDecisionLogPayload', () => {
         tier_hint_reason_code: null,
         low_intensity_score: null,
         p_success_cheap: null,
+      p_success_raw: null,
+      p_success_calibrated: null,
         p_success_alpha: null,
         local_eligible_reason: null,
       },
@@ -330,6 +336,8 @@ describe('enrichRoutingDecisionWithContextFit', () => {
         tier_hint_reason_code: null,
         low_intensity_score: null,
         p_success_cheap: null,
+      p_success_raw: null,
+      p_success_calibrated: null,
         p_success_alpha: null,
         local_eligible_reason: null,
       },
@@ -369,6 +377,8 @@ describe('tier-selection observability (SP-113)', () => {
       tier_hint_reason_code: 'expected_cost_economical_cloud',
       low_intensity_score: 0.72,
       p_success_cheap: 0.82,
+      p_success_raw: 0.82,
+      p_success_calibrated: 0.82,
       p_success_alpha: 0.5,
       local_eligible_reason: 'cluster_low_stakes_general',
       ...overrides,
@@ -445,6 +455,8 @@ describe('tier-selection observability (SP-113)', () => {
       local_eligible_reason: 'cluster_low_stakes_general',
       tier_selection_reason_code: P_SUCCESS_CHEAP,
     });
+    expect(observability?.low_intensity_breakdown?.p_success_raw).toBe(0.82);
+    expect(observability?.low_intensity_breakdown?.p_success_calibrated).toBe(0.82);
     expect(observability?.cluster_match_table).toHaveLength(2);
     expect(observability?.low_intensity_breakdown?.rejected_tiers).toHaveLength(2);
     expect(buildLocalZeroSkipReasons(decision, decision.features)).toContain(

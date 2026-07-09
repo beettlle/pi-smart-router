@@ -19,6 +19,7 @@ import {
   P_SUCCESS_FEATURE_NAMES,
   type PSuccessWeights,
 } from '../../src/domain/routing/p-success-classifier.js';
+import type { IsotonicCalibratorArtifact } from '../../src/domain/routing/isotonic-calibrator.js';
 
 function makeModel(
   overrides: Partial<ModelProfile> & { id: string; tier: ModelProfile['tier'] },
@@ -1490,6 +1491,90 @@ describe('RouterPipeline', () => {
       expect(decision.features?.p_success_cheap).toBe(0.5);
       expect(decision.features?.tier_hint).toBeNull();
       expect(decision.features?.tier_hint_reason_code).toBeNull();
+    });
+  });
+
+  describe('isotonic P(success) calibration (SP-133)', () => {
+    const pricedFleet: ModelProfile[] = [
+      makeModel({
+        id: 'econ-priced',
+        tier: 'economical-cloud',
+        pricing: { fallback_cost_per_1m: 0.5 },
+      }),
+      makeModel({
+        id: 'frontier-priced',
+        tier: 'frontier-cloud',
+        pricing: { fallback_cost_per_1m: 3.0 },
+      }),
+    ];
+
+    function makeLowPWeights(): PSuccessWeights {
+      return {
+        version: 1,
+        min_training_samples: 30,
+        feature_names: P_SUCCESS_FEATURE_NAMES,
+        intercept: -6,
+        coefficients: P_SUCCESS_FEATURE_NAMES.map(() => 0),
+        trained_sample_count: 50,
+      };
+    }
+
+    function makeBoostingCalibrator(): IsotonicCalibratorArtifact {
+      return {
+        version: 1,
+        min_training_samples: 30,
+        x_knots: [0, 0.5, 1],
+        y_knots: [0.99, 0.99, 0.99],
+        trained_sample_count: 40,
+        holdout_ece_raw: 0.1,
+        holdout_ece_calibrated: 0.05,
+      };
+    }
+
+    it('uses calibrated score for gate thresholding and exposes raw + calibrated telemetry', async () => {
+      const pipeline = new RouterPipeline(pricedFleet, {
+        pSuccessWeights: makeLowPWeights(),
+        isotonicCalibrator: makeBoostingCalibrator(),
+        lowIntensityConfig: {
+          ...DEFAULT_OPERATOR_CONFIG.low_intensity,
+          high_threshold: 0.1,
+          low_threshold: 0.05,
+          p_success_alpha: 0.5,
+        },
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Hello, how are you today?' }),
+      );
+
+      expect(decision.features?.p_success_raw).toBeLessThan(0.5);
+      expect(decision.features?.p_success_calibrated).toBeGreaterThanOrEqual(0.5);
+      expect(decision.features?.p_success_cheap).toBe(decision.features?.p_success_calibrated);
+      expect(decision.features?.tier_hint).toBe('economical-cloud');
+      expect(decision.features?.tier_hint_reason_code).toBe('expected_cost_economical_cloud');
+    });
+
+    it('falls back to raw logistic when calibrator artifact is missing', async () => {
+      const pipeline = new RouterPipeline(pricedFleet, {
+        pSuccessWeights: makeLowPWeights(),
+        isotonicCalibrator: null,
+        routingCalibrationPath: '/nonexistent/routing-calibration.json',
+        lowIntensityConfig: {
+          ...DEFAULT_OPERATOR_CONFIG.low_intensity,
+          high_threshold: 0.1,
+          low_threshold: 0.05,
+          p_success_alpha: 0.5,
+        },
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Hello, how are you today?' }),
+      );
+
+      expect(decision.features?.p_success_raw).toBeLessThan(0.5);
+      expect(decision.features?.p_success_calibrated).toBe(decision.features?.p_success_raw);
+      expect(decision.features?.p_success_cheap).toBe(decision.features?.p_success_raw);
+      expect(decision.features?.tier_hint).toBe('frontier-cloud');
     });
   });
 

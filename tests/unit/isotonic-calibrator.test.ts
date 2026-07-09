@@ -1,3 +1,7 @@
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -9,6 +13,12 @@ import {
   splitLabeledSamplesForIsotonic,
   validateIsotonicCalibratorArtifact,
 } from '../../scripts/lib/isotonic-calibrator.js';
+import {
+  applyIsotonicCalibrator,
+  applyIsotonicCalibratorTimed,
+  loadIsotonicCalibrator,
+  parseIsotonicCalibratorFromBundle,
+} from '../../src/domain/routing/isotonic-calibrator.js';
 import {
   createDefaultPSuccessWeights,
   extractPSuccessFeatures,
@@ -133,5 +143,67 @@ describe('isotonic calibrator (SP-132)', () => {
       y_knots: [0, 0.5, 0.75, 1],
     };
     expect(() => validateIsotonicCalibratorArtifact(invalid)).toThrow(/non-decreasing/);
+  });
+});
+
+describe('isotonic calibrator runtime lookup (SP-133)', () => {
+  it('loads isotonic knots from routing-calibration bundle JSON', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'isotonic-runtime-'));
+    const bundlePath = join(dir, 'routing-calibration.json');
+    const bundle = {
+      version: 2,
+      isotonic_calibrator: {
+        version: 1,
+        min_training_samples: 30,
+        x_knots: [0, 0.4, 1],
+        y_knots: [0.1, 0.8, 0.8],
+        trained_sample_count: 40,
+        holdout_ece_raw: 0.12,
+        holdout_ece_calibrated: 0.05,
+      },
+    };
+    await writeFile(bundlePath, JSON.stringify(bundle), 'utf8');
+
+    const artifact = loadIsotonicCalibrator({ filePath: bundlePath });
+    expect(artifact).not.toBeNull();
+    expect(parseIsotonicCalibratorFromBundle(JSON.parse(await readFile(bundlePath, 'utf8')))).toEqual(
+      artifact,
+    );
+
+    expect(applyIsotonicCalibrator(0.2, artifact)).toBeCloseTo(0.1);
+    expect(applyIsotonicCalibrator(0.5, artifact)).toBeCloseTo(0.8);
+
+    const timed = applyIsotonicCalibratorTimed(0.5, artifact);
+    expect(timed.calibrated).toBeCloseTo(0.8);
+    expect(timed.calibration_applied).toBe(true);
+    expect(timed.within_budget).toBe(true);
+  });
+
+  it('falls back to raw logistic when bundle artifact is missing or under-trained', () => {
+    expect(loadIsotonicCalibrator({ filePath: '/nonexistent/routing-calibration.json' })).toBeNull();
+    expect(applyIsotonicCalibrator(0.42, null)).toBeCloseTo(0.42);
+
+    const untrained = {
+      ...createDefaultIsotonicCalibratorArtifact(),
+      trained_sample_count: 5,
+    };
+    expect(applyIsotonicCalibrator(0.42, untrained)).toBeCloseTo(0.42);
+  });
+
+  it('keeps monotonic lookup under the online latency budget', () => {
+    const artifact = {
+      version: 1 as const,
+      min_training_samples: 30,
+      x_knots: Array.from({ length: 256 }, (_, index) => index / 255),
+      y_knots: Array.from({ length: 256 }, (_, index) => index / 255),
+      trained_sample_count: 100,
+      holdout_ece_raw: null,
+      holdout_ece_calibrated: null,
+    };
+
+    for (let index = 0; index < 1_000; index++) {
+      const result = applyIsotonicCalibratorTimed(index / 1_000, artifact);
+      expect(result.within_budget).toBe(true);
+    }
   });
 });

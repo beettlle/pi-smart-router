@@ -192,6 +192,8 @@ export interface LowIntensityBreakdown {
   readonly tier_hint_reason_code: string | null;
   readonly tier_selection_reason_code: string | null;
   readonly p_success_cheap: number | null;
+  readonly p_success_raw: number | null;
+  readonly p_success_calibrated: number | null;
   readonly p_success_alpha: number | null;
   readonly rejected_tiers: readonly RejectedTierEntry[];
 }
@@ -259,6 +261,10 @@ export interface RoutingFeatureSidecar {
   readonly low_intensity_score: number | null;
   /** P(success) cheap-tier probability from low_intensity gate (SP-105). */
   readonly p_success_cheap: number | null;
+  /** Raw logistic P(success) before isotonic calibration (SP-133). */
+  readonly p_success_raw: number | null;
+  /** Isotonic-calibrated P(success) used for gate thresholding (SP-133). */
+  readonly p_success_calibrated: number | null;
   /** Operator alpha threshold used for P(success) routing (SP-105). */
   readonly p_success_alpha: number | null;
   /** Context-fit gate observability (SP-110). */

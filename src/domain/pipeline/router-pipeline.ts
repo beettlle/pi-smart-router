@@ -59,6 +59,11 @@ import {
   scoreLowIntensity,
 } from '../routing/tier-features.js';
 import {
+  applyIsotonicCalibratorTimed,
+  resolveIsotonicCalibrator,
+  type IsotonicCalibratorArtifact,
+} from '../routing/isotonic-calibrator.js';
+import {
   predictPSuccessCheapTimed,
   resolvePSuccessWeights,
   tierFeaturesToPSuccessFeatures,
@@ -168,6 +173,9 @@ export interface PipelineOptions {
   /** Preloaded P(success) weights for tests; lazy-loads artifact when omitted (SP-105). */
   readonly pSuccessWeights?: PSuccessWeights;
   readonly pSuccessWeightsPath?: string;
+  /** Preloaded isotonic calibrator for tests; lazy-loads bundle when omitted (SP-133). */
+  readonly isotonicCalibrator?: IsotonicCalibratorArtifact | null;
+  readonly routingCalibrationPath?: string;
   /** SAAR pin policy (SP-123). Must match sessionPinner.saarConfig when enabled. */
   readonly saarConfig?: SaarConfig;
 }
@@ -194,11 +202,15 @@ export class RouterPipeline {
   private currentTierHintReasonCode: string | null = null;
   private currentLowIntensityScore: number | null = null;
   private currentPSuccessCheap: number | null = null;
+  private currentPSuccessRaw: number | null = null;
+  private currentPSuccessCalibrated: number | null = null;
   private currentPSuccessAlpha: number | null = null;
   private currentExpectedCostByTier: ExpectedCostBreakdown[] | null = null;
   private currentLocalEligibleReason: string | null = null;
   private pSuccessWeightsLoaded = false;
   private cachedPSuccessWeights: PSuccessWeights | null = null;
+  private isotonicCalibratorLoaded = false;
+  private cachedIsotonicCalibrator: IsotonicCalibratorArtifact | null = null;
   private currentContextFitRejected: readonly CandidateScore[] = [];
   private currentContextFitViableCount = 0;
   private contextOverflowPreferredProvider: string | null = null;
@@ -243,6 +255,8 @@ export class RouterPipeline {
     this.currentTierHintReasonCode = null;
     this.currentLowIntensityScore = null;
     this.currentPSuccessCheap = null;
+    this.currentPSuccessRaw = null;
+    this.currentPSuccessCalibrated = null;
     this.currentPSuccessAlpha = null;
     this.currentExpectedCostByTier = null;
     this.currentLocalEligibleReason = null;
@@ -341,6 +355,8 @@ export class RouterPipeline {
       tier_hint_reason_code: this.currentTierHintReasonCode,
       low_intensity_score: this.currentLowIntensityScore,
       p_success_cheap: this.currentPSuccessCheap,
+      p_success_raw: this.currentPSuccessRaw,
+      p_success_calibrated: this.currentPSuccessCalibrated,
       p_success_alpha: this.currentPSuccessAlpha,
       local_eligible_reason: this.currentLocalEligibleReason,
     };
@@ -1027,7 +1043,13 @@ export class RouterPipeline {
     const weights = this.resolvePSuccessWeights();
     const pFeatures = tierFeaturesToPSuccessFeatures(tierFeatures);
     const pResult = predictPSuccessCheapTimed(pFeatures, weights);
-    this.currentPSuccessCheap = pResult.probability;
+    const calibrator = this.resolveIsotonicCalibrator();
+    const calibratedResult = applyIsotonicCalibratorTimed(pResult.probability, calibrator);
+    const pSuccessForGate = calibratedResult.calibrated;
+
+    this.currentPSuccessRaw = pResult.probability;
+    this.currentPSuccessCalibrated = pSuccessForGate;
+    this.currentPSuccessCheap = pSuccessForGate;
 
     const structuralHint = this.resolveTierHint(
       score,
@@ -1041,10 +1063,14 @@ export class RouterPipeline {
       ? (() => {
           const selection = this.selectExpectedCostTierHint(
             request,
-            pResult.probability,
+            pSuccessForGate,
             alpha,
           );
-          this.logExpectedCostExplain(pResult.probability, alpha, selection);
+          this.logExpectedCostExplain(pSuccessForGate, alpha, selection, {
+            p_success_raw: pResult.probability,
+            p_success_calibrated: pSuccessForGate,
+            calibration_applied: calibratedResult.calibration_applied,
+          });
           return {
             tierHint: selection.tierHint,
             reasonCode: selection.reasonCode,
@@ -1106,10 +1132,18 @@ export class RouterPipeline {
       tierCosts: readonly ExpectedCostBreakdown[];
       rationale: string;
     },
+    calibration?: {
+      readonly p_success_raw: number;
+      readonly p_success_calibrated: number;
+      readonly calibration_applied: boolean;
+    },
   ): void {
     console.info('Expected-cost tier gate', {
       reason: selection.reasonCode,
       p_success_cheap: pSuccessCheap,
+      p_success_raw: calibration?.p_success_raw ?? pSuccessCheap,
+      p_success_calibrated: calibration?.p_success_calibrated ?? pSuccessCheap,
+      calibration_applied: calibration?.calibration_applied ?? false,
       alpha,
       chosen_tier: selection.tierHint,
       rationale: selection.rationale,
@@ -1138,6 +1172,23 @@ export class RouterPipeline {
     }
 
     return this.cachedPSuccessWeights!;
+  }
+
+  private resolveIsotonicCalibrator(): IsotonicCalibratorArtifact | null {
+    if (this.options.isotonicCalibrator !== undefined) {
+      return this.options.isotonicCalibrator;
+    }
+
+    if (!this.isotonicCalibratorLoaded) {
+      this.cachedIsotonicCalibrator = resolveIsotonicCalibrator({
+        ...(this.options.routingCalibrationPath !== undefined
+          ? { filePath: this.options.routingCalibrationPath }
+          : {}),
+      });
+      this.isotonicCalibratorLoaded = true;
+    }
+
+    return this.cachedIsotonicCalibrator;
   }
 
   private resolveTierHint(
