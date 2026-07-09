@@ -441,6 +441,39 @@ This writes schema-valid JSON to `.pi-smart-router/exports/telemetry-contrib-<ti
 
 See the synthetic reference file at [`data/contrib/example.json`](data/contrib/example.json).
 
+### OATS cluster centroid refinement (offline calibration)
+
+**OATS** (outcome-aware cluster centroid refinement) shifts semantic cluster centroids during offline calibration toward cheap-tier **success** embeddings and away from loop-escalation **failure** embeddings. Refinement runs in Phase 3 of the calibration train path (`npm run routing:train-calibration`); it adds zero serving latency because refined centroids ship inside `config/routing-calibration.json`.
+
+**Regeneration workflow**
+
+1. Opt in to dataset capture (`SMART_ROUTER_DATASET=1`) and export contrib rows (`/smart-router export telemetry-contrib`).
+2. Aggregate community rows: `npm run routing:calibration-aggregate -- --contrib-dir data/contrib`.
+3. Train the bundle (includes OATS when enough labeled embeddings exist): `npm run routing:train-calibration -- --input <aggregated.jsonl>`.
+4. Copy the output to `config/routing-calibration.json` (or your operator config path).
+5. Verify artifact shapes and benchmark gates: `npm run routing:verify-calibration -- config/routing-calibration.json`.
+
+At runtime, `ClusterMatcher` prefers `routing_centroids` from the calibration bundle when `config/routing-calibration.json` is present; otherwise it falls back to `config/routing-centroids.json` (bootstrap via `npm run routing:bootstrap-centroids`).
+
+**Hyperparameters** (tunable in `scripts/lib/oats-centroid-refinement.ts` before train):
+
+| Parameter | Default | Effect |
+|-----------|---------|--------|
+| `alpha` (α) | 0.15 | Attraction toward cheap-tier success embeddings |
+| `beta` (β) | 0.08 | Repulsion from loop-escalation failures (keep β < α) |
+
+**Minimum sample guidance**
+
+| Guard | Default | Meaning |
+|-------|---------|---------|
+| Global `routing_centroids` | 10 rows | Labeled contrib rows with embeddings required before any OATS shift |
+| `min_positive_samples` | 3 per cluster | Cheap-tier successes assigned to the cluster |
+| `min_negative_samples` | 2 per cluster | Loop-escalation failures before repulsion term applies |
+
+Below these thresholds the train path returns bootstrap centroids unchanged. The verify script reports `oats_refinement` metadata when refinement ran.
+
+See [routing-roadmap.md](docs/routing-roadmap.md) §2 P2 OATS and GitHub [#77](https://github.com/beettlle/pi-smart-router/issues/77).
+
 ### Operator tuning (frugality slider)
 
 The multi-objective scoring weights control the cost-vs-quality tradeoff:

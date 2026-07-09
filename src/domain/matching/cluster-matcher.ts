@@ -9,7 +9,7 @@
  * otherwise they are computed inline from reference prompts (SP-114).
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import {
@@ -157,6 +157,91 @@ function parseRoutingCentroidsArtifact(parsed: unknown): RoutingCentroidsArtifac
   };
 }
 
+export const DEFAULT_ROUTING_CALIBRATION_PATH = resolve('config', 'routing-calibration.json');
+
+export interface LoadRoutingCentroidsFromBundleOptions {
+  readonly filePath?: string;
+}
+
+/** Extract routing_centroids from a routing-calibration bundle object (SP-147). */
+export function parseRoutingCentroidsFromBundle(parsed: unknown): RoutingCentroidsArtifact {
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new RoutingCentroidsError('Routing calibration bundle must be a JSON object');
+  }
+
+  const centroids = (parsed as Record<string, unknown>).routing_centroids;
+  if (centroids === undefined) {
+    throw new RoutingCentroidsError('Routing calibration bundle missing routing_centroids');
+  }
+
+  return parseRoutingCentroidsArtifact(centroids);
+}
+
+/**
+ * Load cluster centroids from routing-calibration.json (OATS-refined when present).
+ * Returns null when the bundle file is missing.
+ */
+export function loadRoutingCentroidsFromCalibrationBundle(
+  options?: LoadRoutingCentroidsFromBundleOptions,
+): RoutingCentroidsArtifact | null {
+  const filePath = options?.filePath ?? DEFAULT_ROUTING_CALIBRATION_PATH;
+
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  let raw: string;
+  try {
+    raw = readFileSync(filePath, 'utf8');
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new RoutingCentroidsError(`Failed to read routing calibration file: ${message}`, {
+      cause: err,
+    });
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new RoutingCentroidsError(`Failed to parse routing calibration JSON: ${message}`, {
+      cause: err,
+    });
+  }
+
+  return parseRoutingCentroidsFromBundle(parsed);
+}
+
+/** Resolve centroids for serve time — calibration bundle preferred, then standalone file. */
+export function resolveRoutingCentroidsArtifact(options?: {
+  readonly routingCalibrationPath?: string;
+  readonly centroidsFilePath?: string;
+}): RoutingCentroidsArtifact | null {
+  const calibrationPath = options?.routingCalibrationPath ?? DEFAULT_ROUTING_CALIBRATION_PATH;
+  const centroidsPath = options?.centroidsFilePath ?? resolve(DEFAULT_ROUTING_CENTROIDS_PATH);
+
+  try {
+    const fromBundle = loadRoutingCentroidsFromCalibrationBundle({ filePath: calibrationPath });
+    if (fromBundle !== null) {
+      return fromBundle;
+    }
+  } catch (err: unknown) {
+    console.warn('Routing calibration centroids invalid; falling back to standalone artifact', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  try {
+    return loadRoutingCentroidsArtifact(centroidsPath);
+  } catch (err: unknown) {
+    if (isMissingCentroidsFileError(err)) {
+      return null;
+    }
+    throw err;
+  }
+}
+
 export function loadRoutingCentroidsArtifact(
   filePath: string = resolve(DEFAULT_ROUTING_CENTROIDS_PATH),
 ): RoutingCentroidsArtifact {
@@ -278,6 +363,8 @@ export function serializeRoutingCentroidsArtifact(
 export interface CreateClusterMatcherOptions {
   readonly clustersFilePath?: string;
   readonly centroidsFilePath?: string;
+  /** When set, loads OATS-refined centroids from routing-calibration.json (SP-147). */
+  readonly routingCalibrationPath?: string;
   readonly embedder: TextEmbedder;
 }
 
@@ -305,18 +392,21 @@ export async function loadClusterMatcherCatalog(
   const raw = readFileSync(clustersFilePath, 'utf8');
   const catalogClusters = parseRoutingClustersYaml(raw);
 
-  try {
-    const artifact = loadRoutingCentroidsArtifact(centroidsFilePath);
+  const artifact = resolveRoutingCentroidsArtifact({
+    ...(options.routingCalibrationPath !== undefined
+      ? { routingCalibrationPath: options.routingCalibrationPath }
+      : {}),
+    centroidsFilePath,
+  });
+
+  if (artifact !== null) {
     return { clusters: applyPrecomputedCentroids(catalogClusters, artifact) };
-  } catch (err: unknown) {
-    if (isMissingCentroidsFileError(err)) {
-      return loadRoutingClusters({
-        filePath: clustersFilePath,
-        embedder: options.embedder,
-      });
-    }
-    throw err;
   }
+
+  return loadRoutingClusters({
+    filePath: clustersFilePath,
+    embedder: options.embedder,
+  });
 }
 
 export async function createClusterMatcher(
@@ -345,6 +435,25 @@ export interface ClusterMatchResult {
 interface RankedCluster {
   readonly cluster: LoadedRoutingCluster;
   readonly similarity: number;
+}
+
+/** Assign an embedding to the nearest cluster centroid by cosine similarity. */
+export function assignClusterByCentroids(
+  artifact: RoutingCentroidsArtifact,
+  embedding: Float32Array,
+): { readonly cluster_id: string; readonly similarity: number } {
+  let bestId = artifact.clusters[0]!.cluster_id;
+  let bestSimilarity = Number.NEGATIVE_INFINITY;
+
+  for (const cluster of artifact.clusters) {
+    const similarity = cosineSimilarity(embedding, new Float32Array(cluster.centroid));
+    if (similarity > bestSimilarity) {
+      bestSimilarity = similarity;
+      bestId = cluster.cluster_id;
+    }
+  }
+
+  return { cluster_id: bestId, similarity: bestSimilarity };
 }
 
 export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
