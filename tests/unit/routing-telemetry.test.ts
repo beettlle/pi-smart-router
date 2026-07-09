@@ -17,19 +17,24 @@ import {
   P_SUCCESS_UNCERTAIN,
   SAAR_BUFFER_ACTIVE,
   SAAR_HARD_LOCK,
+  PLANNING_DELEGATE,
+  PLANNING_DIRECT_FRONTIER,
   RoutingTelemetryEmitter,
   buildBreakevenObservability,
   buildContextFitObservability,
   buildLocalZeroSkipReasons,
+  buildPlanningDelegateObservability,
   buildRoutingDecisionLogPayload,
   buildSaarObservability,
   buildTierSelectionObservability,
+  createPlanningDelegateObservability,
   enrichRoutingDecisionWithContextFit,
   enrichRoutingDecisionWithPinEconomics,
+  enrichRoutingDecisionWithPlanningDelegate,
   enrichRoutingDecisionWithTierSelection,
   resolveTierSelectionReasonCode,
 } from '../../src/infrastructure/telemetry/routing-telemetry.js';
-import { DEFAULT_SAAR_CONFIG } from '../../src/domain/types/schemas.js';
+import { DEFAULT_PLANNING_DELEGATE_CONFIG, DEFAULT_SAAR_CONFIG } from '../../src/domain/types/schemas.js';
 import { TELEMETRY_MAX_ENTRIES } from '../../src/infrastructure/telemetry/telemetry-limits.js';
 
 function makeModel(
@@ -637,5 +642,111 @@ describe('pin economics observability (SP-126)', () => {
         fleet: warmBreakevenFleet,
       }),
     ).toBeNull();
+  });
+});
+
+describe('planning delegate observability (SP-142)', () => {
+  const compressedContext = DEFAULT_PLANNING_DELEGATE_CONFIG.compressed_context;
+
+  function makeDelegateFeatures() {
+    return createPlanningDelegateObservability({
+      path: 'delegate',
+      primary_model_id: 'warm-econ',
+      delegate_model_id: 'warm-frontier',
+      compressed_context: compressedContext,
+      planning_delegate_reason_code: PLANNING_DELEGATE,
+    });
+  }
+
+  it('serializes delegate path telemetry from decision features', () => {
+    const onRecord = vi.fn();
+    const emitter = new RoutingTelemetryEmitter({ onRecord });
+    const decision = enrichRoutingDecisionWithPlanningDelegate(
+      makeDecision({
+        stage: 'turn_envelope',
+        reason_code: PLANNING_DELEGATE,
+        selected_model_id: 'warm-econ',
+        tier: 'economical-cloud',
+      }),
+      makeDelegateFeatures(),
+    );
+
+    emitter.emit(makeRequest({ turn_type: 'planning' }), decision);
+
+    expect(onRecord.mock.calls[0]?.[0]).toMatchObject({
+      turn_type: 'planning',
+      planning_delegate_path: 'delegate',
+      planning_delegate_primary_model_id: 'warm-econ',
+      planning_delegate_model_id: 'warm-frontier',
+      planning_delegate_reason_code: PLANNING_DELEGATE,
+      planning_delegate_max_messages: 12,
+      planning_delegate_max_tokens: 16_384,
+      planning_delegate_exclude_execution_history: true,
+    });
+  });
+
+  it('serializes direct frontier fallback telemetry', () => {
+    const onRecord = vi.fn();
+    const emitter = new RoutingTelemetryEmitter({ onRecord });
+    const decision = enrichRoutingDecisionWithPlanningDelegate(
+      makeDecision({
+        stage: 'turn_envelope',
+        reason_code: PLANNING_DIRECT_FRONTIER,
+        selected_model_id: 'warm-frontier',
+        tier: 'frontier-cloud',
+      }),
+      createPlanningDelegateObservability({
+        path: 'direct',
+        delegate_model_id: 'warm-frontier',
+        planning_delegate_reason_code: PLANNING_DIRECT_FRONTIER,
+        fallback_reason: 'planning_delegate_disabled',
+      }),
+    );
+
+    emitter.emit(makeRequest({ turn_type: 'planning' }), decision);
+
+    expect(onRecord.mock.calls[0]?.[0]).toMatchObject({
+      planning_delegate_path: 'direct',
+      planning_delegate_model_id: 'warm-frontier',
+      planning_delegate_reason_code: PLANNING_DIRECT_FRONTIER,
+      planning_delegate_fallback_reason: 'planning_delegate_disabled',
+      planning_delegate_max_messages: null,
+    });
+  });
+
+  it('includes planning_delegate_summary in routing log payload', () => {
+    const decision = enrichRoutingDecisionWithPlanningDelegate(
+      makeDecision({
+        stage: 'turn_envelope',
+        reason_code: PLANNING_DELEGATE,
+        selected_model_id: 'warm-econ',
+      }),
+      makeDelegateFeatures(),
+    );
+
+    const payload = buildRoutingDecisionLogPayload(
+      makeRequest({ turn_type: 'planning' }),
+      decision,
+    );
+
+    expect(payload.planning_delegate_summary).toMatchObject({
+      path: 'delegate',
+      primary_model_id: 'warm-econ',
+      delegate_model_id: 'warm-frontier',
+      planning_delegate_reason_code: PLANNING_DELEGATE,
+      compressed_context: compressedContext,
+    });
+  });
+
+  it('reads planning delegate observability from decision features', () => {
+    const decision = enrichRoutingDecisionWithPlanningDelegate(
+      makeDecision(),
+      makeDelegateFeatures(),
+    );
+
+    expect(buildPlanningDelegateObservability(decision)).toMatchObject({
+      path: 'delegate',
+      primary_model_id: 'warm-econ',
+    });
   });
 });

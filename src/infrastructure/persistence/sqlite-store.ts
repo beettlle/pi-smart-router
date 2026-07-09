@@ -24,6 +24,7 @@ import {
 } from '../telemetry/telemetry-limits.js';
 import {
   DEFAULT_BREAKEVEN_TELEMETRY_FIELDS,
+  DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS,
   DEFAULT_SAAR_TELEMETRY_FIELDS,
 } from '../telemetry/routing-telemetry.js';
 import {
@@ -833,6 +834,7 @@ function telemetryRowToEntity(row: TelemetryRow): RoutingTelemetry {
     tier_selection_reason_code: null,
     ...DEFAULT_BREAKEVEN_TELEMETRY_FIELDS,
     ...DEFAULT_SAAR_TELEMETRY_FIELDS,
+    ...DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS,
   };
 }
 

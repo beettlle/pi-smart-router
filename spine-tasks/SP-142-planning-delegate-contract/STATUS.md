@@ -1,4 +1,4 @@
-**Current Step:** 1
+**Current Step:** 2
 **Status:** In Progress
 **Last Updated:** 2026-07-09
 **Review Level:** 1
@@ -13,10 +13,12 @@
 - [x] Add operator config knobs (enable, compressed context limits) with Zod defaults
 - [x] Extend routing explain/telemetry payload types
 
+**Status:** Complete
+
 ## Step 2: Explain contract documentation
 
-- [ ] Document delegate vs direct route in explain serializer
-- [ ] Add unit tests for schema validation and telemetry fields
+- [x] Document delegate vs direct route in explain serializer
+- [x] Add unit tests for schema validation and telemetry fields
 
 ## Step 3: Testing and verification
 
