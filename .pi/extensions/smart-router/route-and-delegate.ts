@@ -34,6 +34,10 @@ import {
 } from './delegation-runtime.js';
 import { buildRoutingRequest } from './routing-context.js';
 import { capturePreRouteOutcomes, updateSessionRoutingSnapshot } from './routing-outcomes.js';
+import {
+  isPlanningDelegateActive,
+  resolvePlanningDelegatePath,
+} from './planning-delegate.js';
 import type { StreamDelegationDeps } from './types.js';
 
 function isRoutingLogEnabled(): boolean {
@@ -287,6 +291,22 @@ export async function routeAndDelegate(
   deps.datasetRecorder?.record(request, decision);
   updateSessionRoutingSnapshot(deps, sessionId, request, decision);
 
+  let delegationContext: Context = context;
+
+  if (isPlanningDelegateActive(decision)) {
+    const planningResolution = await resolvePlanningDelegatePath(
+      context,
+      decision,
+      options,
+      deps,
+    );
+    delegationContext = planningResolution.context;
+    decision = planningResolution.decision;
+    if (!planningResolution.usedDelegatePath) {
+      deps.onRoutingDecision?.(decision);
+    }
+  }
+
   let targetModel = resolveTargetModel(deps, decision);
   if (!targetModel) {
     console.warn(
@@ -374,7 +394,7 @@ export async function routeAndDelegate(
 
       const result = await delegateWithOutcome(
         targetModel,
-        context,
+        delegationContext,
         deps,
         options,
         sessionId,

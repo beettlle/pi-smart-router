@@ -23,6 +23,7 @@ import {
   setupSessionHooks,
 } from '../../.pi/extensions/smart-router/session-lifecycle.js';
 import type { SmartRouterRuntime } from '../../.pi/extensions/smart-router/types.js';
+import type { StreamDelegationDeps } from '../../.pi/extensions/smart-router/types.js';
 import {
   buildRoutingRequest,
   deriveTurnType,
@@ -40,6 +41,12 @@ import {
   resolveDelegationOptions,
 } from '../../.pi/extensions/smart-router/stream-delegation.js';
 import { routeAndDelegate } from '../../.pi/extensions/smart-router/route-and-delegate.js';
+import {
+  buildCompressedDelegateContext,
+  injectPlanningDelegateObservation,
+  PLANNING_DELEGATE_OBSERVATION_PREFIX,
+  type PlanningDelegateSpawnFn,
+} from '../../.pi/extensions/smart-router/planning-delegate.js';
 import { resolveRegistryModel } from '../../.pi/extensions/smart-router/delegation-runtime.js';
 import type { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import { createRouterFromFleet } from '../../src/index.js';
@@ -54,6 +61,7 @@ import {
   type RequirementVector,
 } from '../../src/domain/matching/hydra-matcher.js';
 import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../src/domain/types/index.js';
+import { enrichRoutingDecisionWithPlanningDelegate } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 import type { RouterHandle } from '../../src/index.js';
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
 
@@ -142,6 +150,32 @@ function makeDecision(overrides?: Partial<RoutingDecision>): RoutingDecision {
   };
 }
 
+function makePlanningDelegateDecision(
+  overrides?: Partial<RoutingDecision>,
+): RoutingDecision {
+  return enrichRoutingDecisionWithPlanningDelegate(
+    makeDecision({
+      selected_model_id: 'gpt-4o-mini',
+      tier: 'economical-cloud',
+      stage: 'turn_envelope',
+      reason_code: 'planning_delegate',
+      ...overrides,
+    }),
+    {
+      path: 'delegate',
+      primary_model_id: 'gpt-4o-mini',
+      delegate_model_id: 'claude-opus',
+      compressed_context: {
+        max_messages: 12,
+        max_tokens: 16_384,
+        exclude_execution_history: true,
+      },
+      planning_delegate_reason_code: 'planning_delegate',
+      fallback_reason: null,
+    },
+  );
+}
+
 function createMockRouter(
   dispatch: GatewayDispatch['dispatch'],
   fleetOverride: ModelProfile[] = fleet,
@@ -153,17 +187,7 @@ function createMockRouter(
   return router;
 }
 
-function makeStreamDeps(
-  overrides: Partial<{
-    router: RouterHandle;
-    modelRegistry: ModelRegistry;
-    fleet: ModelProfile[];
-    executionLedger: ExecutionLedger;
-    ensureFleetFresh: () => Promise<void>;
-    onRoutingDecision: (decision: RoutingDecision) => void;
-    onDelegatedModel: (model: { provider: string; id: string }) => void;
-  }> = {},
-) {
+function makeStreamDeps(overrides: Partial<StreamDelegationDeps> = {}) {
   return {
     router: overrides.router ?? createMockRouter(vi.fn(async () => makeDecision())),
     modelRegistry: overrides.modelRegistry ?? createMockRegistry(registryModels),
@@ -1228,6 +1252,215 @@ describe('createStreamSimple', () => {
     }
   });
 
+});
+
+describe('planning delegate wiring (SP-144)', () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    mockDelegateStreamSimple.mockReset();
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('buildCompressedDelegateContext excludes tool execution history', () => {
+    const compressed = buildCompressedDelegateContext(
+      makeContext([
+        userMessage('design the API'),
+        assistantMessage('initial plan'),
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'toolCall',
+              id: 'call-1',
+              name: 'read',
+              arguments: { path: '/tmp/spec' },
+            },
+          ],
+          api: 'openai-responses',
+          provider: 'openai',
+          model: 'gpt-4o-mini',
+          usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 0,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+          },
+          stopReason: 'toolUse',
+          timestamp: 4,
+        },
+        toolResultMessage('file contents'),
+        userMessage('refine the plan'),
+      ]),
+      {
+        max_messages: 12,
+        max_tokens: 16_384,
+        exclude_execution_history: true,
+      },
+    );
+
+    expect(compressed.messages).toHaveLength(3);
+    expect(compressed.messages.every((message) => message.role !== 'toolResult')).toBe(true);
+    expect(compressed.messages[0]?.role).toBe('user');
+    expect(compressed.messages[1]?.role).toBe('assistant');
+  });
+
+  it('injects frontier sub-call output as an observation user message', () => {
+    const injected = injectPlanningDelegateObservation(
+      makeContext([userMessage('plan this')]),
+      'Use a modular service layout.',
+    );
+
+    const last = injected.messages.at(-1);
+    expect(last?.role).toBe('user');
+    expect(typeof last?.content).toBe('string');
+    if (typeof last?.content === 'string') {
+      expect(last.content).toContain(PLANNING_DELEGATE_OBSERVATION_PREFIX);
+      expect(last.content).toContain('Use a modular service layout.');
+    }
+  });
+
+  it('runs planning delegate sub-call then primary on pinned economical model', async () => {
+    const economical = registryModels[0]!;
+    const spawnPlanningDelegate = vi.fn<PlanningDelegateSpawnFn>(async () => ({
+      ok: true as const,
+      observationText: 'Frontier planning analysis.',
+    }));
+
+    mockDelegateStreamSimple.mockImplementation((model) => makeSuccessStream(model));
+
+    const decisions: RoutingDecision[] = [];
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router: createMockRouter(
+          vi.fn(async () => makePlanningDelegateDecision()),
+        ),
+        spawnPlanningDelegate,
+        onRoutingDecision: (decision) => decisions.push(decision),
+      }),
+    );
+
+    await collectEvents(
+      streamSimple(
+        makeAutoModel(),
+        makeContext([
+          userMessage('design the architecture'),
+          toolResultMessage('prior tool output'),
+        ]),
+        { sessionId: 'planning-delegate-happy' },
+      ),
+    );
+
+    expect(spawnPlanningDelegate).toHaveBeenCalledOnce();
+    const compressedArg = spawnPlanningDelegate.mock.calls[0]?.[1] as Context | undefined;
+    expect(compressedArg?.messages.every((message) => message.role !== 'toolResult')).toBe(true);
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]).toEqual(economical);
+
+    const primaryContext = mockDelegateStreamSimple.mock.calls[0]?.[1] as Context;
+    const observation = primaryContext.messages.at(-1);
+    expect(typeof observation?.content).toBe('string');
+    if (typeof observation?.content === 'string') {
+      expect(observation.content).toContain('Frontier planning analysis.');
+    }
+
+    expect(decisions[0]?.reason_code).toBe('planning_delegate');
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[smart-router] planning delegate sub-call completed',
+      expect.stringContaining('claude-opus'),
+    );
+  });
+
+  it('falls back to direct frontier route when sub-agent spawn fails', async () => {
+    const frontier = registryModels[2]!;
+    const spawnPlanningDelegate = vi.fn<PlanningDelegateSpawnFn>(async () => ({
+      ok: false as const,
+      reason: 'spawn unavailable',
+    }));
+
+    mockDelegateStreamSimple.mockImplementation((model) => makeSuccessStream(model));
+
+    const decisions: RoutingDecision[] = [];
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router: createMockRouter(
+          vi.fn(async () => makePlanningDelegateDecision()),
+        ),
+        spawnPlanningDelegate,
+        onRoutingDecision: (decision) => decisions.push(decision),
+      }),
+    );
+
+    await collectEvents(
+      streamSimple(
+        makeAutoModel(),
+        makeContext([userMessage('design the architecture')]),
+        { sessionId: 'planning-delegate-fallback' },
+      ),
+    );
+
+    expect(spawnPlanningDelegate).toHaveBeenCalledOnce();
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]).toEqual(frontier);
+
+    const fallbackDecision = decisions.at(-1);
+    expect(fallbackDecision?.selected_model_id).toBe('claude-opus');
+    expect(fallbackDecision?.reason_code).toBe('planning_direct_frontier');
+    expect(fallbackDecision?.features?.planning_delegate).toMatchObject({
+      path: 'direct',
+      fallback_reason: 'planning_delegate_unavailable',
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[smart-router] planning delegate sub-call failed, falling back to direct frontier route',
+      'spawn unavailable',
+    );
+  });
+
+  it('falls back when delegate model is missing from registry', async () => {
+    const spawnPlanningDelegate = vi.fn<PlanningDelegateSpawnFn>();
+    const economicalOnlyRegistry = createMockRegistry([registryModels[0]!]);
+
+    mockDelegateStreamSimple.mockImplementation((model) => makeSuccessStream(model));
+
+    const decisions: RoutingDecision[] = [];
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router: createMockRouter(
+          vi.fn(async () => makePlanningDelegateDecision()),
+        ),
+        modelRegistry: economicalOnlyRegistry,
+        spawnPlanningDelegate,
+        onRoutingDecision: (decision) => decisions.push(decision),
+      }),
+    );
+
+    await collectEvents(
+      streamSimple(
+        makeAutoModel(),
+        makeContext([userMessage('design the architecture')]),
+      ),
+    );
+
+    expect(spawnPlanningDelegate).not.toHaveBeenCalled();
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0].id).toBe('gpt-4o-mini');
+
+    expect(decisions.at(-1)?.features?.planning_delegate?.fallback_reason).toBe(
+      'planning_delegate_unavailable',
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[smart-router] planning delegate unavailable: frontier model missing from registry',
+      'claude-opus',
+    );
+  });
 });
 
 describe('logRoutingDecision', () => {
