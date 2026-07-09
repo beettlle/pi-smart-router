@@ -19,22 +19,35 @@ import type {
   ModelProfile,
   PinReason,
   RoutingRequest,
+  SaarConfig,
+  SaarSessionState,
   SessionPin,
+  Tier,
 } from '../types/index.js';
+import { DEFAULT_SAAR_CONFIG } from '../types/schemas.js';
 import type { StorePort } from '../types/store-port.js';
 import {
   evaluateCacheEconomics,
   type CacheEconomicsConfig,
 } from './cache-economics.js';
+import { SaarSessionStateTracker } from './saar-session-state.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type PinAction = 'use_pin' | 'sub_route' | 'break' | 'no_pin';
+export type PinAction = 'use_pin' | 'sub_route' | 'saar_route' | 'break' | 'no_pin';
+
+export type PinSaarReason =
+  | 'saar_buffer_active'
+  | 'saar_hard_lock'
+  | 'saar_idle_reopen'
+  | 'saar_tier_upgrade';
 
 export interface PinLookupResult {
   readonly action: PinAction;
   readonly pinnedModel?: ModelProfile;
   readonly subRouteModel?: ModelProfile;
+  readonly saarRouteModel?: ModelProfile;
+  readonly saarReason?: PinSaarReason;
   readonly breakReason?: PinReason;
 }
 
@@ -43,8 +56,14 @@ export interface SessionPinnerConfig {
   readonly toolResultSizeThreshold?: number;
   /** Optional persistence — pins survive process restart when set. */
   readonly store?: StorePort;
-  /** FR-008 rule #4: cache-warmup economics thresholds. */
+  /**
+   * FR-008 rule #4: cache-warmup economics thresholds.
+   */
   readonly cacheEconomicsConfig?: CacheEconomicsConfig;
+  /** SAAR pin policy (SP-122). When omitted, SAAR behavior is disabled. */
+  readonly saarConfig?: SaarConfig;
+  /** Injectable clock for SAAR idle-timeout tests. */
+  readonly saarClock?: () => number;
   /**
    * Break pin when estimated input tokens exceed the pinned model's
    * max_input_tokens multiplied by this margin. Default 0.90.
@@ -57,13 +76,30 @@ export interface SessionPinnerConfig {
 const DEFAULT_TOOL_RESULT_SIZE_THRESHOLD = 2048;
 const DEFAULT_CONTEXT_OVERFLOW_SAFETY_MARGIN = 0.9;
 
+const TIER_RANK: Readonly<Record<Tier, number>> = {
+  'zero-tier': 0,
+  'economical-cloud': 1,
+  'frontier-cloud': 2,
+};
+
+function isTierUpgrade(from: Tier, to: Tier): boolean {
+  return TIER_RANK[to] > TIER_RANK[from];
+}
+
+function isToolLoopTurn(turnType: RoutingRequest['turn_type']): boolean {
+  return turnType === 'main_loop' || turnType === 'tool_result';
+}
+
 // ─── SessionPinner ────────────────────────────────────────────────────────────
 
 export class SessionPinner {
   private readonly pins = new Map<string, SessionPin>();
+  private readonly saarTrackers = new Map<string, SaarSessionStateTracker>();
   private readonly toolResultSizeThreshold: number;
   private readonly store: StorePort | undefined;
   private readonly cacheEconomicsConfig: CacheEconomicsConfig | undefined;
+  private readonly saarConfig: SaarConfig | undefined;
+  private readonly saarClock: (() => number) | undefined;
   private readonly contextOverflowSafetyMargin: number;
 
   constructor(config?: SessionPinnerConfig) {
@@ -71,6 +107,8 @@ export class SessionPinner {
       config?.toolResultSizeThreshold ?? DEFAULT_TOOL_RESULT_SIZE_THRESHOLD;
     this.store = config?.store;
     this.cacheEconomicsConfig = config?.cacheEconomicsConfig;
+    this.saarConfig = config?.saarConfig;
+    this.saarClock = config?.saarClock;
     this.contextOverflowSafetyMargin =
       config?.contextOverflowSafetyMargin ?? DEFAULT_CONTEXT_OVERFLOW_SAFETY_MARGIN;
   }
@@ -109,6 +147,13 @@ export class SessionPinner {
     const breakResult = this.evaluateBreakRules(request, pin, fleet);
     if (breakResult) {
       return breakResult;
+    }
+
+    // ── SAAR policy (SP-122) ────────────────────────────────────────────────
+
+    const saarResult = this.evaluateSaarPolicy(request, pin, fleet);
+    if (saarResult) {
+      return saarResult;
     }
 
     // ── Sub-routing (FR-024) ────────────────────────────────────────────────
@@ -167,7 +212,26 @@ export class SessionPinner {
    */
   breakPin(sessionId: string): void {
     this.pins.delete(sessionId);
+    this.saarTrackers.delete(sessionId);
     this.deletePersistedPin(sessionId);
+  }
+
+  /**
+   * Record a completed turn for SAAR turn-index and hard-lock tracking.
+   * Pipeline callers invoke after routing (SP-123).
+   */
+  recordSaarTurn(sessionId: string): SaarSessionState | null {
+    if (!this.saarConfig) {
+      return null;
+    }
+
+    const tracker = this.getOrCreateSaarTracker(sessionId);
+    return tracker.recordTurn();
+  }
+
+  /** Read-only SAAR runtime state for telemetry (SP-126). */
+  getSaarState(sessionId: string): SaarSessionState | null {
+    return this.saarTrackers.get(sessionId)?.getState() ?? null;
   }
 
   /**
@@ -183,6 +247,93 @@ export class SessionPinner {
    */
   getPin(sessionId: string): SessionPin | null {
     return this.pins.get(sessionId) ?? null;
+  }
+
+  // ─── SAAR policy (SP-122) ─────────────────────────────────────────────────
+
+  private getOrCreateSaarTracker(sessionId: string): SaarSessionStateTracker {
+    let tracker = this.saarTrackers.get(sessionId);
+    if (!tracker) {
+      const options: { config: SaarConfig; now?: () => number } = {
+        config: this.saarConfig ?? DEFAULT_SAAR_CONFIG,
+      };
+      if (this.saarClock) {
+        options.now = this.saarClock;
+      }
+      tracker = new SaarSessionStateTracker(options);
+      this.saarTrackers.set(sessionId, tracker);
+    }
+    return tracker;
+  }
+
+  private evaluateSaarPolicy(
+    request: RoutingRequest,
+    pin: SessionPin,
+    fleet: readonly ModelProfile[],
+  ): PinLookupResult | null {
+    if (!this.saarConfig) {
+      return null;
+    }
+
+    const tracker = this.getOrCreateSaarTracker(request.session_id);
+
+    if (tracker.isIdleExpired()) {
+      tracker.resetForIdleReopen();
+      this.breakPin(request.session_id);
+      return { action: 'no_pin', saarReason: 'saar_idle_reopen' };
+    }
+
+    tracker.touchActivity();
+
+    const pinnedModel = fleet.find(
+      (m) => m.id === pin.pinned_model_id && m.healthy !== false,
+    );
+    if (!pinnedModel) {
+      return null;
+    }
+
+    const candidate = request.candidate_model_id
+      ? fleet.find(
+          (m) => m.id === request.candidate_model_id && m.healthy !== false,
+        )
+      : undefined;
+
+    if (tracker.isInBufferWindow() && candidate) {
+      if (isTierUpgrade(pinnedModel.tier, candidate.tier)) {
+        return {
+          action: 'saar_route',
+          pinnedModel,
+          saarRouteModel: candidate,
+          saarReason: 'saar_buffer_active',
+        };
+      }
+    }
+
+    if (tracker.shouldHardLock()) {
+      if (
+        isToolLoopTurn(request.turn_type) &&
+        candidate &&
+        isTierUpgrade(pinnedModel.tier, candidate.tier)
+      ) {
+        this.recordPin(request.session_id, candidate.id, pin.pin_reason);
+        const upgraded = fleet.find((m) => m.id === candidate.id)!;
+        return {
+          action: 'use_pin',
+          pinnedModel: upgraded,
+          saarReason: 'saar_tier_upgrade',
+        };
+      }
+
+      if (candidate && candidate.id !== pin.pinned_model_id) {
+        return {
+          action: 'use_pin',
+          pinnedModel,
+          saarReason: 'saar_hard_lock',
+        };
+      }
+    }
+
+    return null;
   }
 
   // ─── Break rules (FR-008) ───────────────────────────────────────────────────
