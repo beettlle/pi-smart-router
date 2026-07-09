@@ -12,11 +12,15 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { cyclomaticScan, sanitize } from '../src/domain/triage/triage-engine.js';
+import { buildHydraInput } from '../src/domain/matching/hydra-input.js';
 import { projectToRequirements } from '../src/domain/matching/hydra-matcher.js';
 import { predictPSuccessCheap } from '../src/domain/routing/p-success-classifier.js';
 import { extractPSuccessFeatures } from '../src/domain/routing/p-success-classifier.js';
 import {
+  assertCompatibleHydraProjectionArtifact,
   DEFAULT_ROUTING_CALIBRATION_PATH,
+  HYDRA_PREFIX_FLAG_COUNT,
+  HYDRA_PREFIX_SCHEMA_VERSION,
   resolveRoutingCalibrationBundle,
   unflattenHydraProjectionWeights,
   type RoutingCalibrationBundle,
@@ -164,6 +168,7 @@ export function verifyArtifactShapes(bundle: RoutingCalibrationBundle): Benchmar
   });
 
   try {
+    assertCompatibleHydraProjectionArtifact(bundle.hydra_projection);
     const hydra = unflattenHydraProjectionWeights(bundle.hydra_projection);
     const embedding = new Float32Array(bundle.hydra_projection.embedding_dim);
     for (let i = 0; i < embedding.length; i++) {
@@ -185,6 +190,24 @@ export function verifyArtifactShapes(bundle: RoutingCalibrationBundle): Benchmar
       message: err instanceof Error ? err.message : String(err),
     });
   }
+
+  const hydraPrefix = buildHydraInput({
+    request_id: 'verify-benchmark',
+    session_id: 'verify-benchmark',
+    prompt_text: 'benchmark prompt',
+    estimated_input_tokens: 120,
+    turn_type: 'main_loop',
+    compaction_flag: false,
+  });
+  const prefixFlagCount = (hydraPrefix.match(/\|/g) ?? []).length + 1;
+  results.push({
+    id: 'hydra_prefix_schema',
+    passed:
+      bundle.hydra_projection.prefix_schema_version === HYDRA_PREFIX_SCHEMA_VERSION &&
+      bundle.hydra_projection.prefix_flag_count === HYDRA_PREFIX_FLAG_COUNT &&
+      prefixFlagCount === HYDRA_PREFIX_FLAG_COUNT,
+    message: `prefix_schema=v${bundle.hydra_projection.prefix_schema_version}, flags=${bundle.hydra_projection.prefix_flag_count}, encoder_flags=${prefixFlagCount}`,
+  });
 
   const pSuccessFeatures = extractPSuccessFeatures({
     prompt_length_chars: 120,
