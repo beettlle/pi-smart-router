@@ -1,0 +1,460 @@
+Contract testCommand failure log
+Command: npm run verify:ci
+Exit code: 1
+Attempt: 1 of 2
+Timestamp: 2026-07-09T19:00:33.286Z
+Buffer overflow: no
+---
+
+> pi-smart-router@0.2.0 verify:ci
+> npm run build && npm run typecheck && npm run lint && npm test && npm run coverage:check
+
+
+> pi-smart-router@0.2.0 build
+> tsc --project tsconfig.build.json
+
+
+> pi-smart-router@0.2.0 typecheck
+> tsc --noEmit
+
+
+> pi-smart-router@0.2.0 lint
+> eslint . --ext .ts && node --input-type=module -e "import { readFileSync } from 'node:fs'; import { parse } from 'yaml'; const doc = parse(readFileSync('config/models.yaml.example', 'utf8')); if (!Array.isArray(doc.models) || doc.models.length < 3) throw new Error('models.yaml.example must list at least one model per tier'); const tiers = new Set(doc.models.map((m) => m.tier)); for (const tier of ['zero-tier', 'economical-cloud', 'frontier-cloud']) { if (!tiers.has(tier)) throw new Error('missing tier: ' + tier); } console.log('models.yaml.example: valid');"
+
+models.yaml.example: valid
+
+> pi-smart-router@0.2.0 test
+> vitest run
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1
+
+ ✓ tests/unit/litellm-fetch.test.ts (14 tests) 8ms
+ ✓ tests/unit/circuit-breaker.test.ts (22 tests) 67ms
+ ✓ tests/unit/saar-session-state.test.ts (8 tests) 4ms
+ ✓ tests/unit/routing-clusters-loader.test.ts (11 tests) 19ms
+ ✓ tests/unit/models-loader.test.ts (8 tests) 19ms
+ ✓ tests/unit/isotonic-calibrator.test.ts (17 tests) 32ms
+ ✓ tests/contract/routing-schemas.test.ts (32 tests) 145ms
+ ✓ tests/unit/memory-store.test.ts (5 tests) 23ms
+ ✓ tests/unit/session-pinner.test.ts (68 tests) 33ms
+stdout | tests/unit/router-pipeline.test.ts > RouterPipeline > P(success) online inference (SP-105) > records P_success when trained weights are available
+Expected-cost tier gate {
+  reason: 'expected_cost_frontier_cloud',
+  p_success_cheap: 0.9975273768433653,
+  p_success_raw: 0.9975273768433653,
+  p_success_calibrated: 0.9975273768433653,
+  calibration_applied: false,
+  alpha: 0.5,
+  chosen_tier: 'frontier-cloud',
+  rationale: 'Frontier minimizes E[cost]=0.000025 with P(success)=1.000',
+  expected_cost_by_tier: [
+    {
+      tier: 'economical-cloud',
+      p_success: 0.9975273768433653,
+      cost_per_1m: 1,
+      expected_cost_usd: 0.000025061815578915868,
+      adjusted_expected_cost_usd: 0.000025123631157831734
+    },
+    {
+      tier: 'frontier-cloud',
+      p_success: 1,
+      cost_per_1m: 1,
+      expected_cost_usd: 0.000025,
+      adjusted_expected_cost_usd: 0.000025
+    }
+  ]
+}
+
+stdout | tests/unit/router-pipeline.test.ts > RouterPipeline > P(success) online inference (SP-105) > routes frontier when P_success is below alpha and structural score is low
+Expected-cost tier gate {
+  reason: 'expected_cost_frontier_cloud',
+  p_success_cheap: 0.0024726231566347748,
+  p_success_raw: 0.0024726231566347748,
+  p_success_calibrated: 0.0024726231566347748,
+  calibration_applied: false,
+  alpha: 0.5,
+  chosen_tier: 'frontier-cloud',
+  rationale: 'Frontier minimizes E[cost]=0.000079 with P(success)=1.000',
+  expected_cost_by_tier: [
+    {
+      tier: 'economical-cloud',
+      p_success: 0.0024726231566347748,
+      cost_per_1m: 1,
+      expected_cost_usd: 0.00015780466277062584,
+      adjusted_expected_cost_usd: 0.00023660932554125168
+    },
+    {
+      tier: 'frontier-cloud',
+      p_success: 1,
+      cost_per_1m: 1,
+      expected_cost_usd: 0.000079,
+      adjusted_expected_cost_usd: 0.000079
+    }
+  ]
+}
+
+stdout | tests/unit/router-pipeline.test.ts > RouterPipeline > P(success) online inference (SP-105) > biases frontier when P_success is low and expected cost favors frontier
+Expected-cost tier gate {
+  reason: 'expected_cost_frontier_cloud',
+  p_success_cheap: 0.0024726231566347748,
+  p_success_raw: 0.0024726231566347748,
+  p_success_calibrated: 0.0024726231566347748,
+  calibration_applied: false,
+  alpha: 0.5,
+  chosen_tier: 'frontier-cloud',
+  rationale: 'Frontier minimizes E[cost]=0.000025 with P(success)=1.000',
+  expected_cost_by_tier: [
+    {
+      tier: 'economical-cloud',
+      p_success: 0.0024726231566347748,
+      cost_per_1m: 1,
+      expected_cost_usd: 0.00004993818442108413,
+      adjusted_expected_cost_usd: 0.00007487636884216827
+    },
+    {
+      tier: 'frontier-cloud',
+      p_success: 1,
+      cost_per_1m: 1,
+      expected_cost_usd: 0.000025,
+      adjusted_expected_cost_usd: 0.000025
+    }
+  ]
+}
+
+stdout | tests/unit/router-pipeline.test.ts > RouterPipeline > isotonic P(success) calibration (SP-133) > uses calibrated score for gate thresholding and exposes raw + calibrated telemetry
+Expected-cost tier gate {
+  reason: 'expected_cost_economical_cloud',
+  p_success_cheap: 0.99,
+  p_success_raw: 0.0024726231566347748,
+  p_success_calibrated: 0.99,
+  calibration_applied: true,
+  alpha: 0.5,
+  chosen_tier: 'economical-cloud',
+  rationale: 'Economical tier minimizes E[cost]=0.000014 with P(success)=0.990',
+  expected_cost_by_tier: [
+    {
+      tier: 'economical-cloud',
+      p_success: 0.99,
+      cost_per_1m: 0.5,
+      expected_cost_usd: 0.000013250000000000002,
+      adjusted_expected_cost_usd: 0.000013687500000000002
+    },
+    {
+      tier: 'frontier-cloud',
+      p_success: 1,
+      cost_per_1m: 3,
+      expected_cost_usd: 0.00007500000000000001,
+      adjusted_expected_cost_usd: 0.00007500000000000001
+    }
+  ]
+}
+
+stdout | tests/unit/router-pipeline.test.ts > RouterPipeline > isotonic P(success) calibration (SP-133) > falls back to raw logistic when calibrator artifact is missing
+Expected-cost tier gate {
+  reason: 'expected_cost_frontier_cloud',
+  p_success_cheap: 0.0024726231566347748,
+  p_success_raw: 0.0024726231566347748,
+  p_success_calibrated: 0.0024726231566347748,
+  calibration_applied: false,
+  alpha: 0.5,
+  chosen_tier: 'frontier-cloud',
+  rationale: 'Frontier minimizes E[cost]=0.000075 with P(success)=1.000',
+  expected_cost_by_tier: [
+    {
+      tier: 'economical-cloud',
+      p_success: 0.0024726231566347748,
+      cost_per_1m: 0.5,
+      expected_cost_usd: 0.0000873145532632524,
+      adjusted_expected_cost_usd: 0.00013095637600014963
+    },
+    {
+      tier: 'frontier-cloud',
+      p_success: 1,
+      cost_per_1m: 3,
+      expected_cost_usd: 0.00007500000000000001,
+      adjusted_expected_cost_usd: 0.00007500000000000001
+    }
+  ]
+}
+
+stdout | tests/unit/router-pipeline.test.ts > RouterPipeline > expected-cost tier selection (SP-106) > selects economical tier when P is high and price delta is significant
+Expected-cost tier gate {
+  reason: 'expected_cost_economical_cloud',
+  p_success_cheap: 0.9975273768433653,
+  p_success_raw: 0.9975273768433653,
+  p_success_calibrated: 0.9975273768433653,
+  calibration_applied: false,
+  alpha: 0.5,
+  chosen_tier: 'economical-cloud',
+  rationale: 'Economical tier minimizes E[cost]=0.000013 with P(success)=0.998',
+  expected_cost_by_tier: [
+    {
+      tier: 'economical-cloud',
+      p_success: 0.9975273768433653,
+      cost_per_1m: 0.5,
+      expected_cost_usd: 0.0000126854467367476,
+      adjusted_expected_cost_usd: 0.000012793623999850366
+    },
+    {
+      tier: 'frontier-cloud',
+      p_success: 1,
+      cost_per_1m: 3,
+      expected_cost_usd: 0.00007500000000000001,
+      adjusted_expected_cost_usd: 0.00007500000000000001
+    }
+  ]
+}
+
+stdout | tests/unit/router-pipeline.test.ts > RouterPipeline > expected-cost tier selection (SP-106) > selects frontier when P is low even if economical per-token cost is lower
+Expected-cost tier gate {
+  reason: 'expected_cost_frontier_cloud',
+  p_success_cheap: 0.0024726231566347748,
+  p_success_raw: 0.0024726231566347748,
+  p_success_calibrated: 0.0024726231566347748,
+  calibration_applied: false,
+  alpha: 0.5,
+  chosen_tier: 'frontier-cloud',
+  rationale: 'Frontier minimizes E[cost]=0.000075 with P(success)=1.000',
+  expected_cost_by_tier: [
+    {
+      tier: 'economical-cloud',
+      p_success: 0.0024726231566347748,
+      cost_per_1m: 0.5,
+      expected_cost_usd: 0.0000873145532632524,
+      adjusted_expected_cost_usd: 0.00013095637600014963
+    },
+    {
+      tier: 'frontier-cloud',
+      p_success: 1,
+      cost_per_1m: 3,
+      expected_cost_usd: 0.00007500000000000001,
+      adjusted_expected_cost_usd: 0.00007500000000000001
+    }
+  ]
+}
+
+ ✓ tests/unit/router-pipeline.test.ts (66 tests) 31ms
+ ✓ tests/unit/create-router.test.ts (7 tests) 24ms
+ ✓ tests/unit/smart-router-cli.test.ts (13 tests) 93ms
+ ✓ tests/integration/cost-baseline.test.ts (10 tests) 10ms
+ ✓ tests/unit/resilience.test.ts (26 tests) 77ms
+ ✓ tests/unit/pi-model-mapper.test.ts (31 tests) 30ms
+ ✓ tests/unit/tool-history-guard.test.ts (25 tests) 4ms
+ ✓ tests/unit/cluster-matcher.test.ts (17 tests) 28ms
+ ✓ tests/unit/router-explain.test.ts (27 tests) 14ms
+ ✓ tests/unit/hydra-matcher.test.ts (44 tests) 24ms
+ ✓ tests/unit/sqlite-store-fallback.test.ts (11 tests) 34ms
+ ✓ tests/unit/turn-envelope.test.ts (51 tests) 17ms
+ ✓ tests/unit/ingest-benchmark-profiles.test.ts (13 tests) 26ms
+ ✓ tests/integration/full-pipeline.test.ts (22 tests) 23ms
+ ✓ tests/integration/explain-parity.test.ts (8 tests) 11ms
+ ✓ tests/unit/sqlite-store.test.ts (34 tests) 499ms
+   ✓ SqliteStore > dataset > evicts oldest rows beyond max entry count  416ms
+ ✓ tests/unit/calibration-aggregate.test.ts (7 tests) 7ms
+ ✓ tests/integration/routing-latency.test.ts (7 tests) 14ms
+ ✓ tests/unit/schemas.test.ts (9 tests) 8ms
+ ✓ tests/unit/local-zero-tier.test.ts (27 tests) 533ms
+   ✓ pingLocalServices (T045, FR-012, FR-013) > timeout behavior > aborts and returns unavailable when ping exceeds timeout  502ms
+ ✓ tests/unit/train-routing-calibration.test.ts (16 tests) 613ms
+   ✓ train routing calibration (SP-117) > excludes legacy-prefix embedding rows from projection training  591ms
+ ✓ tests/unit/loop-escalation.test.ts (29 tests) 9ms
+ ✓ tests/unit/dataset-recorder.test.ts (15 tests) 9ms
+ ✓ tests/unit/price-broker.test.ts (23 tests) 9ms
+ ✓ tests/unit/dataset-limits.test.ts (3 tests) 32ms
+ ✓ tests/unit/embedding-provider.test.ts (5 tests) 10ms
+ ✓ tests/unit/routing-telemetry.test.ts (22 tests) 12ms
+ ✓ tests/unit/delegation-context.test.ts (13 tests) 3ms
+ ✓ tests/unit/hydra-input.test.ts (16 tests) 5ms
+ ✓ tests/contract/explain-endpoint.test.ts (20 tests) 12ms
+ ✓ tests/unit/p-success-classifier.test.ts (23 tests) 9ms
+ ❯ tests/unit/triage-engine.test.ts (63 tests | 1 failed) 31ms
+   ✓ sanitize (T026) > strips base64-encoded blocks 1ms
+   ✓ sanitize (T026) > strips long hex strings 0ms
+   ✓ sanitize (T026) > strips HTML tags 0ms
+   ✓ sanitize (T026) > strips HTML comments 0ms
+   ✓ sanitize (T026) > removes URL-encoded sequences 0ms
+   ✓ sanitize (T026) > collapses repeated characters 0ms
+   ✓ sanitize (T026) > normalizes horizontal whitespace without destroying newlines 0ms
+   ✓ sanitize (T026) > leaves clean text substantially unchanged 0ms
+   ✓ sanitize (T026) > handles empty string 0ms
+   ✓ triage keyword scan (T025) > trivial prompts > classifies "Format this JSON file" as trivial (keyword_economical) 0ms
+   ✓ triage keyword scan (T025) > trivial prompts > classifies "Lint the codebase" as trivial (keyword_economical) 0ms
+   ✓ triage keyword scan (T025) > trivial prompts > classifies "Rename the variable from foo to bar" as trivial (keyword_economical) 0ms
+   ✓ triage keyword scan (T025) > trivial prompts > classifies "Fix the typo in the README" as trivial (keyword_economical) 0ms
+   ✓ triage keyword scan (T025) > trivial prompts > classifies "Sort imports in the module" as trivial (keyword_economical) 0ms
+   ✓ triage keyword scan (T025) > trivial prompts > classifies "Add export for the helper function" as trivial (keyword_economical) 1ms
+   ✓ triage keyword scan (T025) > trivial prompts > classifies "Fix whitespace in the config" as trivial (keyword_economical) 0ms
+   ✓ triage keyword scan (T025) > trivial prompts > classifies "Remove unused import" as trivial (keyword_economical) 0ms
+   ✓ triage keyword scan (T025) > complex prompts > classifies "Debug the memory leak in the WebSocket handler" as complex (keyword_frontier) 0ms
+   ✓ triage keyword scan (T025) > complex prompts > classifies "Architect a distributed caching system" as complex (keyword_frontier) 0ms
+   ✓ triage keyword scan (T025) > complex prompts > classifies "Refactor the authentication module" as complex (keyword_frontier) 0ms
+   ✓ triage keyword scan (T025) > complex prompts > classifies "Fix the race condition in the worker pool" as complex (keyword_frontier) 0ms
+   ✓ triage keyword scan (T025) > complex prompts > classifies "Design a state machine for the checkout flow" as complex (keyword_frontier) 0ms
+   ✓ triage keyword scan (T025) > complex prompts > classifies "Investigate the deadlock in concurrent writes" as complex (keyword_frontier) 0ms
+   ✓ triage keyword scan (T025) > complex prompts > classifies "Optimize the algorithm for large datasets" as complex (keyword_frontier) 0ms
+   ✓ triage keyword scan (T025) > ambiguous prompts > classifies generic prompt as ambiguous 0ms
+   ✓ triage keyword scan (T025) > ambiguous prompts > classifies empty prompt as ambiguous 0ms
+   ✓ triage keyword scan (T025) > ambiguous prompts > classifies whitespace-only prompt as ambiguous 0ms
+   ✓ triage keyword scan (T025) > word boundary enforcement > does not match "format" inside "information" 0ms
+   ✓ triage keyword scan (T025) > word boundary enforcement > does not match "lint" inside "splinter" 0ms
+   ✓ triage keyword scan (T025) > word boundary enforcement > does not match "debug" inside "debugger" when "debugging" is present 0ms
+   ✓ triage keyword scan (T025) > mixed signals > resolves to dominant set when complex > trivial 0ms
+   ✓ triage keyword scan (T025) > mixed signals > resolves to dominant set when trivial > complex 0ms
+   ✓ cyclomaticScan (T025b) > returns baseline 1 for text without code 0ms
+   ✓ cyclomaticScan (T025b) > counts decision points in fenced code blocks 0ms
+   ✓ cyclomaticScan (T025b) > counts logical operators as decision points 0ms
+   ✓ cyclomaticScan (T025b) > detects high cyclomatic complexity above threshold 0ms
+   ✓ cyclomaticScan (T025b) > falls back to indented blocks when no fences 0ms
+   ✓ cyclomaticScan (T025b) > counts Python-style elif 0ms
+   ✓ cyclomaticScan (T025b) > counts switch/case statements 0ms
+   ✓ cyclomaticScan (T025b) > counts catch blocks 0ms
+   ✓ cyclomaticScan (T025b) > counts nullish coalescing 0ms
+   ✓ triage with cyclomatic override > classifies high-cyclomatic code as complex regardless of keywords 0ms
+   ✓ obfuscated prompt classification > classifies trivial prompt with base64 padding correctly 0ms
+   ✓ obfuscated prompt classification > classifies complex prompt with HTML noise correctly 0ms
+   ✓ obfuscated prompt classification > classifies trivial prompt with repeated char inflation correctly 0ms
+   ✓ obfuscated prompt classification > classifies complex prompt hidden in HTML comments correctly 0ms
+   ✓ obfuscated prompt classification > handles prompt with long hex and actual keywords 0ms
+   ✓ TriageResult contract > returns all required fields 0ms
+   ✓ TriageResult contract > returns non-negative numeric fields 0ms
+   ✓ Pipeline triage stage (T027, T028) > early exit on trivial prompt > routes trivial prompt to economical-cloud model 2ms
+   ✓ Pipeline triage stage (T027, T028) > early exit on trivial prompt > routes lint request to economical-cloud 0ms
+   ✓ Pipeline triage stage (T027, T028) > early exit on complex prompt > routes complex prompt to frontier-cloud model 0ms
+   ✓ Pipeline triage stage (T027, T028) > early exit on complex prompt > routes architecture request to frontier-cloud 0ms
+   ✓ Pipeline triage stage (T027, T028) > pass-through on ambiguous prompt > falls through to later stages for ambiguous prompt 0ms
+   ✓ Pipeline triage stage (T027, T028) > pass-through on ambiguous prompt > falls through for empty prompt 0ms
+   ✓ Pipeline triage stage (T027, T028) > fallback when target tier unavailable > passes through when no economical model in fleet for trivial prompt 0ms
+   ✓ Pipeline triage stage (T027, T028) > fallback when target tier unavailable > passes through when no frontier model in fleet for complex prompt 0ms
+   ✓ Pipeline triage stage (T027, T028) > fallback when target tier unavailable > skips unhealthy target-tier models 0ms
+   ✓ Pipeline triage stage (T027, T028) > SC-004 latency budget (<5ms) > completes triage routing within 5ms 0ms
+   ✓ Pipeline triage stage (T027, T028) > SC-004 latency budget (<5ms) > completes complex triage within 5ms 0ms
+   × Pipeline triage stage (T027, T028) > SC-004 latency budget (<5ms) > completes ambiguous pass-through within 5ms 20ms
+     → expected 16.268500000000017 to be less than 5
+   ✓ Pipeline triage stage (T027, T028) > preserves request context > preserves request_id in triage decision 0ms
+   ✓ Pipeline triage stage (T027, T028) > preserves request context > sets pin_reason to null for triage decisions 0ms
+ ✓ tests/unit/provider-error.test.ts (11 tests) 16ms
+ ✓ tests/unit/gateway-dispatch.test.ts (31 tests) 9ms
+ ✓ tests/unit/multi-objective.test.ts (19 tests) 4ms
+ ✓ tests/integration/pipeline-mvp.test.ts (12 tests) 8ms
+ ✓ tests/unit/safe-default.test.ts (20 tests) 9ms
+ ✓ tests/unit/defaults.test.ts (4 tests) 3ms
+ ✓ tests/unit/refactor-guardrails.test.ts (6 tests) 4ms
+ ✓ tests/unit/outcome-recorder.test.ts (5 tests) 4ms
+ ✓ tests/unit/fleet-factory.test.ts (5 tests) 7ms
+ ✓ tests/unit/context-fit.test.ts (9 tests) 4ms
+ ✓ tests/unit/tier-features.test.ts (10 tests) 5ms
+ ✓ tests/unit/pi-router-middleware.test.ts (6 tests) 3ms
+ ✓ tests/unit/telemetry-export.test.ts (7 tests) 4ms
+ ✓ tests/unit/hardware-probe.test.ts (27 tests) 3ms
+ ✓ tests/unit/cache-breakeven.test.ts (13 tests) 3ms
+ ✓ tests/unit/ast-tool-validation.test.ts (11 tests) 3ms
+ ✓ tests/unit/memory-store-telemetry.test.ts (2 tests) 4ms
+ ✓ tests/unit/pricing-monitor.test.ts (10 tests) 4ms
+ ✓ tests/unit/expected-cost.test.ts (8 tests) 3ms
+ ✓ tests/unit/gemini-provider.test.ts (5 tests) 2ms
+ ✓ tests/unit/delegation-headroom.test.ts (5 tests) 2ms
+ ✓ tests/unit/execution-ledger.test.ts (3 tests) 2ms
+ ✓ tests/unit/package.test.ts (1 test) 1ms
+ ✓ tests/integration/pi-extension.test.ts (22 tests) 111ms
+ ✓ tests/unit/smart-router-extension.test.ts (64 tests) 29ms
+ ✓ tests/unit/smart-router-pricing.test.ts (34 tests) 17ms
+ ✓ tests/integration/session-pinning.test.ts (30 tests) 201ms
+
+ Test Files  1 failed | 67 passed (68)
+      Tests  1 failed | 1267 passed (1268)
+   Start at  12:00:30
+   Duration  2.46s (transform 3.22s, setup 0ms, collect 19.10s, tests 3.08s, environment 10ms, prepare 4.74s)
+
+
+Sourcemap for "/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/scripts/calibration-aggregate.js" points to missing source files
+stderr | tests/unit/router-pipeline.test.ts > RouterPipeline > pipeline error telemetry (SP-053) > never propagates stage exceptions to the caller
+Router pipeline stage failed; degrading to safe default {
+  stage: 'hardware_probe',
+  request_id: '00000000-0000-0000-0000-000000000001',
+  session_id: 'sess-1',
+  error: 'hardware probe unavailable'
+}
+
+stderr | tests/unit/router-pipeline.test.ts > RouterPipeline > pipeline error telemetry (SP-053) > reports triage_cloud_fallback (not triage) when cloud fallback stage throws (SP-071)
+Router pipeline stage failed; degrading to safe default {
+  stage: 'triage_cloud_fallback',
+  request_id: '00000000-0000-0000-0000-000000000001',
+  session_id: 'sess-1',
+  error: 'cloud fallback failed'
+}
+
+stderr | tests/unit/hydra-matcher.test.ts > HyDRA projection weights loader > falls back to placeholder when artifact is invalid
+HyDRA projection weights artifact invalid; using placeholder projection {
+  error: 'Invalid HyDRA projection weights artifact:\n' +
+    'version: Invalid input: expected 1\n' +
+    'embedding_dim: Invalid input: expected 384\n' +
+    'weights: Invalid input: expected array, received undefined\n' +
+    'bias: Invalid input: expected array, received undefined'
+}
+
+stderr | tests/unit/sqlite-store-fallback.test.ts > createResilientStore > recreates the database when the file is corrupt
+SQLite store open failed; attempting corrupt-DB recovery SqliteError: file is not a database
+    at Database.pragma (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/node_modules/better-sqlite3/lib/methods/pragma.js:10:27)
+    at SqliteStore.initialize (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/src/infrastructure/persistence/sqlite-store.ts:633:13)
+    at new SqliteStore (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/src/infrastructure/persistence/sqlite-store.ts:243:10)
+    at createResilientStore (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/src/infrastructure/persistence/sqlite-store.ts:212:21)
+    at /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/tests/unit/sqlite-store-fallback.test.ts:44:33
+    at file:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
+    at file:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
+    at file:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/node_modules/@vitest/runner/dist/chunk-hooks.js:1863:10) {
+  code: 'SQLITE_NOTADB'
+}
+
+stderr | tests/unit/sqlite-store-fallback.test.ts > createResilientStore > falls back to MemoryStore when recreation also fails
+SQLite store open failed; attempting corrupt-DB recovery SqliteError: unable to open database file
+    at new Database (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/node_modules/better-sqlite3/lib/database.js:69:26)
+    at new SqliteStore (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/src/infrastructure/persistence/sqlite-store.ts:241:15)
+    at createResilientStore (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/src/infrastructure/persistence/sqlite-store.ts:212:21)
+    at /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/tests/unit/sqlite-store-fallback.test.ts:60:33
+    at file:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
+    at file:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
+    at file:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/node_modules/@vitest/runner/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260709T185421/lane-1/node_modules/@vitest/runner/dist/chunk-hooks.js:1574:12) {
+  code: 'SQLITE_CANTOPEN'
+}
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > skips malformed tool_call_snippet rows on tool-use benchmarks with reason codes
+ingest-benchmark-profiles: skipped 1 tool-use row(s) after AST validation
+  skip terminal_bench/model-a: invalid_arguments_json (Tool-call arguments string is not valid JSON)
+  note: AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+stderr | tests/unit/train-routing-calibration.test.ts > train routing calibration (SP-117) > falls back to defaults for invalid bundle version on disk
+Routing calibration bundle invalid; using baked-in defaults { error: 'Unsupported routing calibration bundle version: 99' }
+
+stderr | tests/unit/p-success-classifier.test.ts > predictPSuccessCheapTimed (SP-105) > flags predictions that exceed the latency budget
+P(success) inference exceeded latency budget { elapsed_ms: 6, budget_ms: 5 }
+
+stderr | tests/unit/smart-router-extension.test.ts > gemini empty-fleet fail-safe (SP-084) > routes unrepairable risk to cursor/auto without unknown delegation
+[smart-router] gemini tool history guard applied {"reason_code":"gemini_tool_history_excluded","session_id":"cursor-auto-sess","excluded_providers":["google","gemini"]}
+
+stderr | tests/unit/smart-router-extension.test.ts > delegation output headroom guard (SP-108) > escalates to larger-fit model without calling undersized provider
+[smart-router] output headroom exceeded, escalating to larger model gemini-pro
+
+stderr | tests/unit/smart-router-extension.test.ts > delegation output headroom guard (SP-108) > retries larger model after zero-output length stop from provider
+[smart-router] zero-output length stop, escalating to larger model gemini-pro
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/triage-engine.test.ts > Pipeline triage stage (T027, T028) > SC-004 latency budget (<5ms) > completes ambiguous pass-through within 5ms
+AssertionError: expected 16.268500000000017 to be less than 5
+ ❯ tests/unit/triage-engine.test.ts:538:23
+    536| 
+    537|       const elapsed = performance.now() - start;
+    538|       expect(elapsed).toBeLessThan(5);
+       |                       ^
+    539|     });
+    540|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
