@@ -1,5 +1,5 @@
-**Current Step:** Step 3
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-08
 **Review Level:** 2
 **Review Counter:** 0
@@ -25,7 +25,7 @@
 
 ## Step 3: Testing and verification
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Unit tests for buffer, hard-lock, idle timeout
 - [x] Run targeted test command
@@ -36,7 +36,14 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| 2026-07-08 | 2 | plan | skipped (engine post-.DONE) |
+| 2026-07-08 | 3 | plan | skipped (engine post-.DONE) |
+
+## Completion Criteria
+
+- [x] SAAR state machine unit-tested in isolation
+- [x] SessionPinner exposes SAAR-aware pin actions
+- [x] No changes to `router-pipeline.ts`
+- [x] Targeted unit tests pass
 
 ## Discoveries
 
