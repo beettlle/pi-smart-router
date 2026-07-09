@@ -634,6 +634,29 @@ describe('pin economics observability (SP-126)', () => {
     });
   });
 
+  it('records quota premium and cache credit separately in breakeven observability (SP-149)', () => {
+    const saarConfig = DEFAULT_SAAR_CONFIG;
+    const pinner = new SessionPinner({ saarConfig });
+    pinner.recordPin('sess-1', 'warm-frontier', 'initial');
+
+    const observability = buildBreakevenObservability({
+      request: makeRequest({ turn_type: 'tool_result', estimated_input_tokens: 100_000 }),
+      decision: makeDecision({
+        stage: 'session_pin',
+        reason_code: 'session_pinned',
+        selected_model_id: 'warm-frontier',
+      }),
+      fleet: warmBreakevenFleet,
+      sessionPinner: pinner,
+      saarConfig,
+      quotaWindowPosition: { remaining_window_fraction: 0.05 },
+    });
+
+    expect(observability?.quota_premium_usd).not.toBeNull();
+    expect(observability?.kv_cache_credit_usd).toBeGreaterThan(0);
+    expect(observability?.quota_premium_usd).toBeGreaterThan(0);
+  });
+
   it('returns null breakeven observability without session pinner', () => {
     expect(
       buildBreakevenObservability({

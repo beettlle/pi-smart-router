@@ -39,6 +39,8 @@ import type {
   TierFeatureSummary,
   TierSelectionObservability,
 } from '../../domain/types/index.js';
+import type { QuotaWindowPosition } from '../../domain/types/entities.js';
+import type { VirtualCostV2Config } from '../../domain/types/schemas.js';
 import { resolveFrugalityCostPer1M } from '../pricing/price-broker.js';
 import {
   TELEMETRY_MAX_ENTRIES,
@@ -55,6 +57,12 @@ export const LOW_INTENSITY_STRUCTURAL = 'low_intensity_structural' as const;
 export const HIGH_INTENSITY_STRUCTURAL = 'high_intensity_structural' as const;
 export const P_SUCCESS_CHEAP = 'p_success_cheap' as const;
 export const P_SUCCESS_UNCERTAIN = 'p_success_uncertain' as const;
+
+/** Cache breakeven gate observability with virtual cost v2 scalars (SP-149). */
+export interface BreakevenObservabilityV2 extends BreakevenObservability {
+  readonly quota_premium_usd: number | null;
+  readonly kv_cache_credit_usd: number | null;
+}
 
 export const BREAKEVEN_BLOCKED = 'breakeven_blocked' as const;
 export const BREAKEVEN_PASS = 'breakeven_pass' as const;
@@ -124,6 +132,9 @@ export interface TelemetryEmitterOptions {
   readonly contextFitConfig?: ContextFitConfig;
   readonly sessionPinner?: SessionPinner;
   readonly saarConfig?: SaarConfig;
+  readonly priceCatalog?: PriceCatalog | null;
+  readonly quotaWindowPosition?: QuotaWindowPosition;
+  readonly virtualCostV2Config?: VirtualCostV2Config;
 }
 
 export interface ContextFitObservabilityInput {
@@ -511,6 +522,9 @@ export interface PinEconomicsObservabilityInput {
   readonly fleet?: readonly ModelProfile[] | undefined;
   readonly sessionPinner?: SessionPinner | undefined;
   readonly saarConfig?: SaarConfig | undefined;
+  readonly priceCatalog?: PriceCatalog | null;
+  readonly quotaWindowPosition?: QuotaWindowPosition;
+  readonly virtualCostV2Config?: VirtualCostV2Config;
 }
 
 function resolveTurnEnvelopeTargetTier(request: RoutingRequest): Tier | null {
@@ -619,11 +633,19 @@ export function buildSaarObservability(
   };
 }
 
-/** Build cache breakeven breakdown when a pin would switch tiers (SP-126). */
+/** Build cache breakeven breakdown when a pin would switch tiers (SP-126, SP-149). */
 export function buildBreakevenObservability(
   input: PinEconomicsObservabilityInput,
-): BreakevenObservability | null {
-  const { request, sessionPinner, saarConfig, fleet } = input;
+): BreakevenObservabilityV2 | null {
+  const {
+    request,
+    sessionPinner,
+    saarConfig,
+    fleet,
+    priceCatalog = null,
+    quotaWindowPosition,
+    virtualCostV2Config,
+  } = input;
   if (!fleet || !sessionPinner) {
     return null;
   }
@@ -655,12 +677,21 @@ export function buildBreakevenObservability(
 
   const tokenEstimate =
     request.estimated_input_tokens ?? request.prompt_text.length;
+  const breakevenContext =
+    quotaWindowPosition !== undefined || virtualCostV2Config !== undefined
+      ? {
+          priceCatalog,
+          ...(quotaWindowPosition !== undefined ? { quotaWindowPosition } : {}),
+          ...(virtualCostV2Config !== undefined ? { virtualCostV2Config } : {}),
+        }
+      : undefined;
   const breakeven = evaluateModelSwitchBreakeven(
     pinnedModel,
     candidate,
     tokenEstimate,
     tokenEstimate,
     saarConfig,
+    breakevenContext,
   );
 
   return {
@@ -669,6 +700,8 @@ export function buildBreakevenObservability(
     cache_reprime_cost: breakeven.cache_reprime_cost,
     decision: breakeven.shouldSwitch ? 'pass' : 'blocked',
     breakeven_reason_code: breakeven.shouldSwitch ? BREAKEVEN_PASS : BREAKEVEN_BLOCKED,
+    quota_premium_usd: breakeven.quota_premium_usd,
+    kv_cache_credit_usd: breakeven.kv_cache_credit_usd,
   };
 }
 
@@ -859,6 +892,9 @@ export interface ExplainEnrichmentOptions {
   readonly clusterMatcher?: ClusterMatcher;
   readonly sessionPinner?: SessionPinner;
   readonly saarConfig?: SaarConfig;
+  readonly priceCatalog?: PriceCatalog | null;
+  readonly quotaWindowPosition?: QuotaWindowPosition;
+  readonly virtualCostV2Config?: VirtualCostV2Config;
 }
 
 /** Attach context-fit and tier-selection observability for explain responses (SP-110, SP-113). */
@@ -901,6 +937,13 @@ function pinEconomicsOptionsFromExplain(
       ? { sessionPinner: options.sessionPinner }
       : {}),
     ...(options?.saarConfig !== undefined ? { saarConfig: options.saarConfig } : {}),
+    ...(options?.priceCatalog !== undefined ? { priceCatalog: options.priceCatalog } : {}),
+    ...(options?.quotaWindowPosition !== undefined
+      ? { quotaWindowPosition: options.quotaWindowPosition }
+      : {}),
+    ...(options?.virtualCostV2Config !== undefined
+      ? { virtualCostV2Config: options.virtualCostV2Config }
+      : {}),
   };
 }
 
@@ -970,7 +1013,7 @@ export function buildRoutingDecisionLogPayload(
   );
 
   const tierSelection = enriched.features?.tier_selection;
-  const breakeven = enriched.features?.breakeven;
+  const breakeven = enriched.features?.breakeven as BreakevenObservabilityV2 | undefined;
   const saar = enriched.features?.saar;
   const planningDelegate = enriched.features?.planning_delegate;
 
@@ -1000,6 +1043,8 @@ export function buildRoutingDecisionLogPayload(
           cache_reprime_cost: breakeven.cache_reprime_cost,
           decision: breakeven.decision,
           breakeven_reason_code: breakeven.breakeven_reason_code,
+          quota_premium_usd: breakeven.quota_premium_usd,
+          kv_cache_credit_usd: breakeven.kv_cache_credit_usd,
         }
       : null,
     saar_summary: saar
@@ -1146,6 +1191,9 @@ export class RoutingTelemetryEmitter {
   private readonly contextFitConfig: ContextFitConfig | undefined;
   private readonly sessionPinner: SessionPinner | undefined;
   private readonly saarConfig: SaarConfig | undefined;
+  private readonly priceCatalog: PriceCatalog | null | undefined;
+  private readonly quotaWindowPosition: QuotaWindowPosition | undefined;
+  private readonly virtualCostV2Config: VirtualCostV2Config | undefined;
 
   constructor(options?: TelemetryEmitterOptions) {
     this.maxEntries = options?.maxEntries ?? TELEMETRY_MAX_ENTRIES;
@@ -1156,6 +1204,9 @@ export class RoutingTelemetryEmitter {
     this.contextFitConfig = options?.contextFitConfig;
     this.sessionPinner = options?.sessionPinner;
     this.saarConfig = options?.saarConfig;
+    this.priceCatalog = options?.priceCatalog;
+    this.quotaWindowPosition = options?.quotaWindowPosition;
+    this.virtualCostV2Config = options?.virtualCostV2Config;
   }
 
   /**
@@ -1206,6 +1257,13 @@ export class RoutingTelemetryEmitter {
         ? { sessionPinner: this.sessionPinner }
         : {}),
       ...(this.saarConfig !== undefined ? { saarConfig: this.saarConfig } : {}),
+      ...(this.priceCatalog !== undefined ? { priceCatalog: this.priceCatalog } : {}),
+      ...(this.quotaWindowPosition !== undefined
+        ? { quotaWindowPosition: this.quotaWindowPosition }
+        : {}),
+      ...(this.virtualCostV2Config !== undefined
+        ? { virtualCostV2Config: this.virtualCostV2Config }
+        : {}),
     });
     const planningDelegateFields = planningDelegateTelemetryFromDecision(decision);
 

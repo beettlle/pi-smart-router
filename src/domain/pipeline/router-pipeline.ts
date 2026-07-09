@@ -21,7 +21,8 @@ import type {
   Tier,
   CandidateScore,
 } from '../types/index.js';
-import type { LowIntensityConfig } from '../types/schemas.js';
+import type { QuotaWindowPosition } from '../types/entities.js';
+import type { LowIntensityConfig, VirtualCostV2Config } from '../types/schemas.js';
 import type { HardwareProbeConfig, HardwareProbeResult, SystemInfo } from '../../infrastructure/hardware/hardware-probe.js';
 import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
 import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
@@ -42,7 +43,10 @@ import {
   type ContextFitConfig,
 } from '../routing/context-fit.js';
 import type { SessionPinner } from '../pinning/session-pinner.js';
-import { evaluateModelSwitchBreakeven } from '../pinning/session-pinner.js';
+import {
+  evaluateModelSwitchBreakeven,
+  type ModelSwitchBreakevenContext,
+} from '../pinning/session-pinner.js';
 import { evaluateLoopEscalation } from '../pinning/loop-escalation.js';
 import type { LoopEscalationConfig } from '../pinning/loop-escalation.js';
 import { selectLowestCostModel } from '../pinning/sub-route-policy.js';
@@ -186,6 +190,10 @@ export interface PipelineOptions {
   readonly saarConfig?: SaarConfig;
   /** Planning delegate operator knobs (SP-143, #71). Defaults to operator config. */
   readonly planningDelegateConfig?: PlanningDelegateConfig;
+  /** Rolling subscription quota position for virtual cost v2 (SP-149). */
+  readonly quotaWindowPosition?: QuotaWindowPosition;
+  /** Virtual cost v2 operator knobs (SP-149). */
+  readonly virtualCostV2Config?: VirtualCostV2Config;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -1018,6 +1026,7 @@ export class RouterPipeline {
           tokenEstimate,
           tokenEstimate,
           this.options.saarConfig,
+          this.resolveBreakevenContext(),
         );
         if (!breakeven.shouldSwitch) {
           this.currentBreakevenReason = 'breakeven_blocked';
@@ -1226,6 +1235,12 @@ export class RouterPipeline {
       localZeroReady: this.isLocalZeroTierReady(),
       ...(pinnedModel !== undefined ? { pinnedModel } : {}),
       ...(sessionPin !== undefined ? { sessionPin } : {}),
+      ...(this.options.quotaWindowPosition !== undefined
+        ? { quotaWindowPosition: this.options.quotaWindowPosition }
+        : {}),
+      ...(this.options.virtualCostV2Config !== undefined
+        ? { virtualCostV2Config: this.options.virtualCostV2Config }
+        : {}),
     });
 
     this.currentExpectedCostByTier = [...selection.tierCosts];
@@ -1268,8 +1283,36 @@ export class RouterPipeline {
         cost_per_1m: entry.costPer1M,
         expected_cost_usd: entry.expectedCostUsd,
         adjusted_expected_cost_usd: entry.adjustedExpectedCostUsd,
+        virtual_cost_v2: entry.virtualCostV2
+          ? {
+              quota_decay_lambda: entry.virtualCostV2.quotaDecayLambda,
+              quota_arbitrage_premium: entry.virtualCostV2.quotaArbitragePremium,
+              exhaustion_risk_premium: entry.virtualCostV2.exhaustionRiskPremium,
+              kv_cache_savings: entry.virtualCostV2.kvCacheSavings,
+              effective_cost_usd: entry.virtualCostV2.effectiveCostUsd,
+            }
+          : null,
       })),
     });
+  }
+
+  private resolveBreakevenContext(): ModelSwitchBreakevenContext | undefined {
+    if (
+      this.options.quotaWindowPosition === undefined &&
+      this.options.virtualCostV2Config === undefined
+    ) {
+      return undefined;
+    }
+
+    return {
+      priceCatalog: this.options.priceCatalog ?? null,
+      ...(this.options.quotaWindowPosition !== undefined
+        ? { quotaWindowPosition: this.options.quotaWindowPosition }
+        : {}),
+      ...(this.options.virtualCostV2Config !== undefined
+        ? { virtualCostV2Config: this.options.virtualCostV2Config }
+        : {}),
+    };
   }
 
   private resolvePSuccessWeights(): PSuccessWeights {

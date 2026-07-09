@@ -1,19 +1,26 @@
 /**
- * Expected-cost tier selection — SP-106, #68.
+ * Expected-cost tier selection — SP-106, #68; virtual cost v2 — SP-149, #78.
  *
  * E[cost_T] = P(success | T) × directCost(T)
  *           + (1 - P(success | T)) × E[cost_escalation]
  *
+ * directCost uses SP-148 virtual cost v2 (λ decay, quota premiums, KV credit).
  * Selects the tier minimizing adjusted expected cost subject to context-fit,
  * local readiness, and pin/cache economics (FR-008).
  */
 
+import {
+  computeVirtualCostV2,
+  type VirtualCostV2Breakdown,
+} from '../pricing/virtual-cost-v2.js';
 import type {
   ModelProfile,
   PriceCatalog,
   SessionPin,
   Tier,
 } from '../types/index.js';
+import type { QuotaWindowPosition } from '../types/entities.js';
+import type { VirtualCostV2Config } from '../types/schemas.js';
 import { resolveFrugalityCostPer1M } from '../../infrastructure/pricing/price-broker.js';
 import {
   evaluateCacheEconomics,
@@ -27,6 +34,17 @@ export const FRONTIER_P_SUCCESS = 1;
 /** Minimum per-1M-token spread required before economical tiers compete. */
 export const MIN_PRICE_DELTA_PER_1M = 0.25;
 
+/** V2 virtual-cost breakdown attached to expected-cost explain (SP-149). */
+export interface ExpectedCostVirtualCostV2 {
+  readonly baseCostUsd: number;
+  readonly quotaDecayLambda: number;
+  readonly quotaArbitragePremium: number;
+  readonly exhaustionRiskPremium: number;
+  readonly kvCacheSavings: number;
+  readonly effectiveCostUsd: number;
+  readonly effectiveCostPer1M: number;
+}
+
 export interface ExpectedCostBreakdown {
   readonly tier: Tier;
   readonly pSuccess: number;
@@ -35,6 +53,7 @@ export interface ExpectedCostBreakdown {
   readonly escalationCostUsd: number;
   readonly expectedCostUsd: number;
   readonly adjustedExpectedCostUsd: number;
+  readonly virtualCostV2: ExpectedCostVirtualCostV2 | null;
 }
 
 export interface SelectTierByExpectedCostInput {
@@ -48,6 +67,9 @@ export interface SelectTierByExpectedCostInput {
   readonly pinnedModel?: ModelProfile;
   readonly sessionPin?: SessionPin;
   readonly cacheEconomicsConfig?: CacheEconomicsConfig;
+  /** Rolling subscription quota position for v2 λ and premiums (SP-149). */
+  readonly quotaWindowPosition?: QuotaWindowPosition;
+  readonly virtualCostV2Config?: VirtualCostV2Config;
 }
 
 export interface SelectTierByExpectedCostResult {
@@ -64,8 +86,18 @@ function clamp01(value: number): number {
   return value;
 }
 
-function directCostUsd(costPer1M: number, estTokens: number): number {
-  return (estTokens / 1_000_000) * costPer1M;
+function mapVirtualCostV2Breakdown(
+  breakdown: VirtualCostV2Breakdown,
+): ExpectedCostVirtualCostV2 {
+  return {
+    baseCostUsd: breakdown.base_cost_usd,
+    quotaDecayLambda: breakdown.quota_decay_lambda,
+    quotaArbitragePremium: breakdown.quota_arbitrage_premium,
+    exhaustionRiskPremium: breakdown.exhaustion_risk_premium,
+    kvCacheSavings: breakdown.kv_cache_savings,
+    effectiveCostUsd: breakdown.effective_cost_usd,
+    effectiveCostPer1M: breakdown.effective_cost_per_1m,
+  };
 }
 
 function resolveCheapestModelForTier(
@@ -90,6 +122,59 @@ export function resolveTierCostPer1M(
   return resolveFrugalityCostPer1M(model, priceCatalog);
 }
 
+export interface ResolveTierVirtualCostInput {
+  readonly tier: Tier;
+  readonly fleet: readonly ModelProfile[];
+  readonly priceCatalog: PriceCatalog | null;
+  readonly estTokens: number;
+  readonly quotaWindowPosition?: QuotaWindowPosition;
+  readonly virtualCostV2Config?: VirtualCostV2Config;
+  readonly sessionPin?: SessionPin;
+  readonly pinnedModel?: ModelProfile;
+}
+
+/**
+ * Resolve SP-148 virtual cost v2 for a tier representative model (SP-149).
+ */
+export function resolveTierVirtualCost(
+  input: ResolveTierVirtualCostInput,
+): {
+  readonly costPer1M: number;
+  readonly directCostUsd: number;
+  readonly virtualCostV2: ExpectedCostVirtualCostV2;
+} {
+  const baseCostPer1M = resolveTierCostPer1M(
+    input.tier,
+    input.fleet,
+    input.priceCatalog,
+  );
+  const pinActive =
+    input.sessionPin !== undefined &&
+    input.pinnedModel !== undefined &&
+    input.pinnedModel.tier === input.tier;
+  const warmPrefixTokens =
+    pinActive && input.estTokens > 0 ? input.estTokens : 0;
+
+  const breakdown = computeVirtualCostV2({
+    base_cost_per_1m: baseCostPer1M,
+    est_tokens: input.estTokens,
+    pin_active: pinActive,
+    warm_prefix_tokens: warmPrefixTokens,
+    ...(input.quotaWindowPosition !== undefined
+      ? { window_position: input.quotaWindowPosition }
+      : {}),
+    ...(input.virtualCostV2Config !== undefined
+      ? { config: input.virtualCostV2Config }
+      : {}),
+  });
+
+  return {
+    costPer1M: breakdown.effective_cost_per_1m,
+    directCostUsd: breakdown.effective_cost_usd,
+    virtualCostV2: mapVirtualCostV2Breakdown(breakdown),
+  };
+}
+
 function resolvePSuccessForTier(tier: Tier, pSuccessCheap: number): number {
   if (tier === 'frontier-cloud') {
     return FRONTIER_P_SUCCESS;
@@ -108,10 +193,27 @@ function applyCostQualityAlpha(
 }
 
 /**
+ * Format v2 cost breakdown for operator explain output (SP-149).
+ */
+export function formatVirtualCostV2Explain(
+  virtualCostV2: ExpectedCostVirtualCostV2 | null,
+): string {
+  if (!virtualCostV2) {
+    return '';
+  }
+
+  return (
+    `v2 λ=${virtualCostV2.quotaDecayLambda.toFixed(3)}` +
+    ` quota_premium=${virtualCostV2.quotaArbitragePremium.toFixed(6)}` +
+    ` exhaustion=${virtualCostV2.exhaustionRiskPremium.toFixed(6)}` +
+    ` cache_credit=${virtualCostV2.kvCacheSavings.toFixed(6)}`
+  );
+}
+
+/**
  * Compute per-tier expected routing cost under uncertainty.
  *
- * `priceCatalog` drives subscription virtual cost resolution; pass `costPer1M`
- * via options when the caller already resolved tier pricing.
+ * Tier direct cost uses SP-148 virtual cost v2 when resolved via fleet/catalog.
  */
 export function computeExpectedCost(
   tier: Tier,
@@ -122,14 +224,45 @@ export function computeExpectedCost(
   options?: {
     readonly alpha?: number;
     readonly costPer1M?: number;
+    readonly directCostUsd?: number;
     readonly fleet?: readonly ModelProfile[];
+    readonly virtualCostV2?: ExpectedCostVirtualCostV2 | null;
+    readonly quotaWindowPosition?: QuotaWindowPosition;
+    readonly virtualCostV2Config?: VirtualCostV2Config;
+    readonly sessionPin?: SessionPin;
+    readonly pinnedModel?: ModelProfile;
   },
 ): ExpectedCostBreakdown {
   const alpha = options?.alpha ?? 1;
   const fleet = options?.fleet ?? [];
-  const costPer1M =
-    options?.costPer1M ?? resolveTierCostPer1M(tier, fleet, priceCatalog);
-  const direct = directCostUsd(costPer1M, estTokens);
+
+  let costPer1M: number;
+  let direct: number;
+  let virtualCostV2 = options?.virtualCostV2 ?? null;
+
+  if (options?.costPer1M !== undefined) {
+    costPer1M = options.costPer1M;
+    direct = options.directCostUsd ?? (estTokens / 1_000_000) * costPer1M;
+  } else {
+    const resolved = resolveTierVirtualCost({
+      tier,
+      fleet,
+      priceCatalog,
+      estTokens,
+      ...(options?.quotaWindowPosition !== undefined
+        ? { quotaWindowPosition: options.quotaWindowPosition }
+        : {}),
+      ...(options?.virtualCostV2Config !== undefined
+        ? { virtualCostV2Config: options.virtualCostV2Config }
+        : {}),
+      ...(options?.sessionPin !== undefined ? { sessionPin: options.sessionPin } : {}),
+      ...(options?.pinnedModel !== undefined ? { pinnedModel: options.pinnedModel } : {}),
+    });
+    costPer1M = resolved.costPer1M;
+    direct = resolved.directCostUsd;
+    virtualCostV2 = resolved.virtualCostV2;
+  }
+
   const boundedPSuccess = resolvePSuccessForTier(tier, pSuccess);
   const expectedCostUsd =
     boundedPSuccess * direct + (1 - boundedPSuccess) * escalationCostUsd;
@@ -148,6 +281,7 @@ export function computeExpectedCost(
     escalationCostUsd,
     expectedCostUsd,
     adjustedExpectedCostUsd,
+    virtualCostV2,
   };
 }
 
@@ -221,6 +355,16 @@ function shouldKeepPinnedTier(
   return !economics.shouldSwitch;
 }
 
+function buildTierRationale(
+  tier: Tier,
+  breakdown: ExpectedCostBreakdown,
+): string {
+  const v2Explain = formatVirtualCostV2Explain(breakdown.virtualCostV2);
+  const tierLabel = tier === 'frontier-cloud' ? 'Frontier' : 'Economical tier';
+  const base = `${tierLabel} minimizes E[cost]=${breakdown.adjustedExpectedCostUsd.toFixed(6)} with P(success)=${breakdown.pSuccess.toFixed(3)}`;
+  return v2Explain ? `${base} (${v2Explain})` : base;
+}
+
 /**
  * Compare expected cost across context-fit-viable tiers and return argmin tier hint.
  */
@@ -228,25 +372,63 @@ export function selectTierByExpectedCost(
   input: SelectTierByExpectedCostInput,
 ): SelectTierByExpectedCostResult {
   const viableTiers = listViableTiers(input.fleet, input.localZeroReady);
-  const frontierCostPer1M = resolveTierCostPer1M(
-    'frontier-cloud',
-    input.fleet,
-    input.priceCatalog,
-  );
+  const virtualCostOptions = {
+    ...(input.quotaWindowPosition !== undefined
+      ? { quotaWindowPosition: input.quotaWindowPosition }
+      : {}),
+    ...(input.virtualCostV2Config !== undefined
+      ? { virtualCostV2Config: input.virtualCostV2Config }
+      : {}),
+    ...(input.sessionPin !== undefined ? { sessionPin: input.sessionPin } : {}),
+    ...(input.pinnedModel !== undefined ? { pinnedModel: input.pinnedModel } : {}),
+  };
+
+  const frontierResolved = resolveTierVirtualCost({
+    tier: 'frontier-cloud',
+    fleet: input.fleet,
+    priceCatalog: input.priceCatalog,
+    estTokens: input.estTokens,
+    ...virtualCostOptions,
+  });
+  const economicalResolved = resolveTierVirtualCost({
+    tier: 'economical-cloud',
+    fleet: input.fleet,
+    priceCatalog: input.priceCatalog,
+    estTokens: input.estTokens,
+    ...virtualCostOptions,
+  });
+  const zeroResolved = resolveTierVirtualCost({
+    tier: 'zero-tier',
+    fleet: input.fleet,
+    priceCatalog: input.priceCatalog,
+    estTokens: input.estTokens,
+    ...virtualCostOptions,
+  });
+
+  const frontierCostPer1M = frontierResolved.costPer1M;
   const economicalCostPer1M = Math.min(
-    resolveTierCostPer1M('economical-cloud', input.fleet, input.priceCatalog),
-    resolveTierCostPer1M('zero-tier', input.fleet, input.priceCatalog) || Infinity,
+    economicalResolved.costPer1M,
+    zeroResolved.costPer1M || Infinity,
   );
-  const frontierDirectUsd = directCostUsd(frontierCostPer1M, input.estTokens);
+  const frontierDirectUsd = frontierResolved.directCostUsd;
   const priceDeltaSignificant = hasSignificantPriceDelta(
     economicalCostPer1M,
     frontierCostPer1M,
   );
 
   const tierCosts = viableTiers.map((tier) => {
-    const costPer1M = resolveTierCostPer1M(tier, input.fleet, input.priceCatalog);
-    const direct = directCostUsd(costPer1M, input.estTokens);
-    const escalationCostUsd = buildEscalationCostUsd(tier, direct, frontierDirectUsd);
+    const resolved = resolveTierVirtualCost({
+      tier,
+      fleet: input.fleet,
+      priceCatalog: input.priceCatalog,
+      estTokens: input.estTokens,
+      ...virtualCostOptions,
+    });
+    const escalationCostUsd = buildEscalationCostUsd(
+      tier,
+      resolved.directCostUsd,
+      frontierDirectUsd,
+    );
 
     return computeExpectedCost(
       tier,
@@ -256,8 +438,11 @@ export function selectTierByExpectedCost(
       escalationCostUsd,
       {
         alpha: input.alpha,
-        costPer1M,
+        costPer1M: resolved.costPer1M,
+        directCostUsd: resolved.directCostUsd,
+        virtualCostV2: resolved.virtualCostV2,
         fleet: input.fleet,
+        ...virtualCostOptions,
       },
     );
   });
@@ -305,16 +490,11 @@ export function selectTierByExpectedCost(
     };
   }
 
-  const rationale =
-    best.tier === 'frontier-cloud'
-      ? `Frontier minimizes E[cost]=${best.adjustedExpectedCostUsd.toFixed(6)} with P(success)=${best.pSuccess.toFixed(3)}`
-      : `Economical tier minimizes E[cost]=${best.adjustedExpectedCostUsd.toFixed(6)} with P(success)=${best.pSuccess.toFixed(3)}`;
-
   return {
     tierHint: best.tier,
     reasonCode: `expected_cost_${best.tier.replace('-', '_')}`,
     tierCosts,
-    rationale,
+    rationale: buildTierRationale(best.tier, best),
     blockedByPinEconomics: false,
   };
 }
