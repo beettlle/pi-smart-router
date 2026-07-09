@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Ready
+**Status:** In Progress
 **Last Updated:** 2026-07-08
 **Review Level:** 2
 **Review Counter:** 0
@@ -10,10 +10,10 @@
 
 ## Step 1: SAAR state helper
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Add SAAR state tracking module
-- [ ] Implement buffer, hard-lock, idle-timeout helpers
+- [x] Add SAAR state tracking module
+- [x] Implement buffer, hard-lock, idle-timeout helpers
 
 ## Step 2: SessionPinner SAAR integration
 
