@@ -28,7 +28,16 @@ import {
   verifyArtifactShapes,
   verifyRoutingCalibration,
 } from '../../scripts/verify-routing-calibration.js';
+import {
+  DEFAULT_OATS_ALPHA,
+  DEFAULT_OATS_BETA,
+  interpolateOatsCentroid,
+  isCheapTierSuccess,
+  isLoopEscalationFailure,
+  refineRoutingCentroidsWithOats,
+} from '../../scripts/lib/oats-centroid-refinement.js';
 import { EMBEDDING_DIM } from '../../src/domain/matching/embedding-provider.js';
+import { cosineSimilarity } from '../../src/domain/matching/cluster-matcher.js';
 import { CYCLOMATIC_THRESHOLD } from '../../src/domain/triage/triage-engine.js';
 
 function makeTrainingRecord(
@@ -293,5 +302,107 @@ describe('verify routing calibration (SP-117)', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('OATS centroid refinement (SP-146)', () => {
+  it('classifies cheap-tier successes and loop-escalation failures', () => {
+    expect(
+      isCheapTierSuccess(
+        makeTrainingRecord({ tier: 'economical-cloud', success_label: true }),
+      ),
+    ).toBe(true);
+    expect(
+      isCheapTierSuccess(
+        makeTrainingRecord({ tier: 'frontier-cloud', success_label: true }),
+      ),
+    ).toBe(false);
+    expect(
+      isLoopEscalationFailure(
+        makeTrainingRecord({ pin_reason: 'loop_escalation' }),
+      ),
+    ).toBe(true);
+    expect(
+      isLoopEscalationFailure(
+        makeTrainingRecord({ tool_failure_chain_count: 2 }),
+      ),
+    ).toBe(true);
+  });
+
+  it('shifts centroid toward positives and away from negatives on synthetic sets', () => {
+    const dim = 8;
+    const bootstrap = new Float32Array(dim);
+    bootstrap[0] = 1;
+
+    const positive = new Float32Array(dim);
+    positive[1] = 1;
+
+    const negative = new Float32Array(dim);
+    negative[2] = 1;
+
+    const refined = interpolateOatsCentroid(
+      Array.from(bootstrap),
+      [positive, positive, positive],
+      [negative, negative],
+      {
+        alpha: 0.5,
+        beta: 0.25,
+        min_positive_samples: 3,
+        min_negative_samples: 2,
+      },
+    );
+
+    const refinedTowardPositive = cosineSimilarity(refined, positive);
+    const bootstrapTowardPositive = cosineSimilarity(bootstrap, positive);
+    const refinedTowardNegative = cosineSimilarity(refined, negative);
+    const bootstrapTowardNegative = cosineSimilarity(bootstrap, negative);
+
+    expect(refinedTowardPositive).toBeGreaterThan(bootstrapTowardPositive);
+    expect(refinedTowardNegative).toBeLessThan(bootstrapTowardNegative);
+    expect(DEFAULT_OATS_BETA).toBeLessThan(DEFAULT_OATS_ALPHA);
+  });
+
+  it('refines routing centroids in calibration train when enough labeled embeddings exist', () => {
+    const bootstrap = createDefaultRoutingCalibrationBundle().routing_centroids;
+    const clusterId = bootstrap.clusters[0]!.cluster_id;
+    const positiveEmbedding = makeEmbeddingVector();
+    const negativeEmbedding = makeEmbeddingVector().map((value, index) => value + index * 0.01);
+
+    const records = [
+      ...Array.from({ length: 10 }, (_, index) =>
+        makeSevenFlagTrainingRecord({
+          request_id: `pos-${index}`,
+          cluster_id: clusterId,
+          tier: 'economical-cloud',
+          success_label: true,
+          embedding: positiveEmbedding,
+        }),
+      ),
+      ...Array.from({ length: 4 }, (_, index) =>
+        makeSevenFlagTrainingRecord({
+          request_id: `neg-${index}`,
+          cluster_id: clusterId,
+          tier: 'economical-cloud',
+          success_label: false,
+          tool_failure_chain_count: 2,
+          embedding: negativeEmbedding,
+        }),
+      ),
+    ];
+
+    const refined = refineRoutingCentroidsWithOats(bootstrap, records);
+    expect(refined.oats_refinement).toBeDefined();
+    expect(refined.oats_refinement!.clusters_refined).toBeGreaterThan(0);
+    expect(refined.oats_refinement!.alpha).toBe(DEFAULT_OATS_ALPHA);
+    expect(refined.oats_refinement!.beta).toBe(DEFAULT_OATS_BETA);
+
+    const original = new Float32Array(bootstrap.clusters[0]!.centroid);
+    const updated = new Float32Array(refined.clusters[0]!.centroid);
+    expect(cosineSimilarity(updated, original)).toBeLessThan(0.9999);
+
+    const bundle = trainRoutingCalibrationBundle(records);
+    expect(bundle.routing_centroids.oats_refinement?.positive_sample_count).toBe(10);
+    expect(bundle.routing_centroids.oats_refinement?.negative_sample_count).toBe(4);
+    parseRoutingCalibrationBundleJson(serializeRoutingCalibrationBundle(bundle));
   });
 });

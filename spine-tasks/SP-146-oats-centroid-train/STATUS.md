@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 3: Testing and verification
+**Status:** In Progress
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,26 +10,26 @@
 
 ## Step 1: OATS refinement module
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Implement `oats-centroid-refinement.ts` with interpolation toward success / away from failure embeddings
-- [ ] Define positive set (cheap-tier successes) and negative set (loop-escalation failures) from calibration features
-- [ ] Document α/β hyperparameters and minimum sample size guards
+- [x] Implement `oats-centroid-refinement.ts` with interpolation toward success / away from failure embeddings
+- [x] Define positive set (cheap-tier successes) and negative set (loop-escalation failures) from calibration features
+- [x] Document α/β hyperparameters and minimum sample size guards
 
 ## Step 2: Train pipeline integration
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Wire OATS step into `train-routing-calibration.ts` after centroid bootstrap
-- [ ] Serialize refined centroids in versioned calibration bundle
-- [ ] Extend schema if new artifact fields required
+- [x] Wire OATS step into `train-routing-calibration.ts` after centroid bootstrap
+- [x] Serialize refined centroids in versioned calibration bundle
+- [x] Extend schema if new artifact fields required
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Unit test: synthetic centroid shift with known positive/negative sets
-- [ ] Run `npm run verify:ci`
+- [x] Unit test: synthetic centroid shift with known positive/negative sets
+- [x] Run `npm run verify:ci`
 
 ---
 
