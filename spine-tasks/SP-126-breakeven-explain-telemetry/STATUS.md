@@ -1,6 +1,6 @@
-**Current Step:** Step 1
-**Status:** Ready
-**Last Updated:** 2026-07-08
+**Current Step:** Complete
+**Status:** Complete
+**Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
 **Iteration:** 0
@@ -10,34 +10,34 @@
 
 ## Step 1: Telemetry and decision records
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Breakeven component fields in telemetry
-- [ ] SAAR state fields in telemetry
-- [ ] Reason codes
+- [x] Breakeven component fields in telemetry
+- [x] SAAR state fields in telemetry
+- [x] Reason codes
 
 ## Step 2: Explain and routing logs
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Explain serializer extensions
-- [ ] SMART_ROUTER_LOG_ROUTING JSON log line
-- [ ] Explain contract doc if needed
+- [x] Explain serializer extensions
+- [x] SMART_ROUTER_LOG_ROUTING JSON log line
+- [x] Explain contract doc if needed
 
 ## Step 3: README operator section
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] SAAR config documentation
-- [ ] Breakeven dogfood verification steps
-- [ ] v0.2.0 scope note
+- [x] SAAR config documentation
+- [x] Breakeven dogfood verification steps
+- [x] v0.2.0 scope note
 
 ## Step 4: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Telemetry and explain unit tests
-- [ ] Run targeted tests then verify:ci
+- [x] Telemetry and explain unit tests
+- [x] Run targeted tests then verify:ci
 
 ---
 
@@ -49,4 +49,11 @@
 
 ## Discoveries
 
-(none yet)
+(none)
+
+## Completion Criteria
+
+- [x] Explain output shows breakeven decision and component values
+- [x] Telemetry rows include SAAR and breakeven metadata on gated decisions
+- [x] README operator section documents v0.2.0 config knobs
+- [x] Unit tests pass; `npm run verify:ci` passes

@@ -13,11 +13,12 @@
  *   - MUST emit no RoutingTelemetry with upstream cost (routing_latency_ms only)
  */
 
-import type { ModelProfile, RoutingDecision, RoutingRequest, Message } from '../../domain/types/index.js';
+import type { ModelProfile, RoutingDecision, RoutingRequest, Message, SaarConfig } from '../../domain/types/index.js';
 import { RoutingRequestSchema } from '../../domain/types/schemas.js';
 import { RouterPipeline } from '../../domain/pipeline/router-pipeline.js';
 import { safeCloudDefault } from '../../domain/pipeline/safe-default.js';
 import type { ClusterMatcher } from '../../domain/matching/cluster-matcher.js';
+import type { SessionPinner } from '../../domain/pinning/session-pinner.js';
 import { enrichRoutingDecisionForExplain } from '../../infrastructure/telemetry/routing-telemetry.js';
 
 // ─── Result types ─────────────────────────────────────────────────────────────
@@ -50,6 +51,8 @@ export interface ExplainHandlerDeps {
   readonly fleet: readonly ModelProfile[];
   readonly pipeline: RouterPipeline;
   readonly clusterMatcher?: ClusterMatcher;
+  readonly sessionPinner?: SessionPinner;
+  readonly saarConfig?: SaarConfig;
 }
 
 // ─── Handler factory ──────────────────────────────────────────────────────────
@@ -61,7 +64,14 @@ export interface ExplainHandlerDeps {
  * session pin state and stage ordering are identical.
  */
 export function createExplainHandler(deps: ExplainHandlerDeps) {
-  const { fleet, pipeline, clusterMatcher } = deps;
+  const { fleet, pipeline, clusterMatcher, sessionPinner, saarConfig } = deps;
+
+  const explainEnrichmentOptions = {
+    fleet,
+    ...(clusterMatcher !== undefined ? { clusterMatcher } : {}),
+    ...(sessionPinner !== undefined ? { sessionPinner } : {}),
+    ...(saarConfig !== undefined ? { saarConfig } : {}),
+  };
 
   return async function explain(rawBody: unknown): Promise<ExplainResult> {
     const parsed = RoutingRequestSchema.safeParse(rawBody);
@@ -85,10 +95,7 @@ export function createExplainHandler(deps: ExplainHandlerDeps) {
       const decision = await pipeline.route(request);
       return {
         status: 200,
-        body: await enrichRoutingDecisionForExplain(request, decision, {
-          fleet,
-          ...(clusterMatcher !== undefined ? { clusterMatcher } : {}),
-        }),
+        body: await enrichRoutingDecisionForExplain(request, decision, explainEnrichmentOptions),
       };
     } catch {
       const fallbackModel = safeCloudDefault(fleet);
@@ -103,10 +110,7 @@ export function createExplainHandler(deps: ExplainHandlerDeps) {
       };
       return {
         status: 503,
-        body: await enrichRoutingDecisionForExplain(request, decision, {
-          fleet,
-          ...(clusterMatcher !== undefined ? { clusterMatcher } : {}),
-        }),
+        body: await enrichRoutingDecisionForExplain(request, decision, explainEnrichmentOptions),
       };
     }
   };

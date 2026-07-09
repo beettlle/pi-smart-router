@@ -196,6 +196,26 @@ export interface LowIntensityBreakdown {
   readonly rejected_tiers: readonly RejectedTierEntry[];
 }
 
+/** Cache breakeven gate observability (SP-126, #73). */
+export interface BreakevenObservability {
+  readonly marginal_savings: number | null;
+  readonly future_cache_value: number | null;
+  readonly cache_reprime_cost: number | null;
+  /** `pass` when switch clears breakeven; `blocked` when gate denies. */
+  readonly decision: 'pass' | 'blocked' | null;
+  readonly breakeven_reason_code: string | null;
+}
+
+/** SAAR pin policy observability (SP-126, #72). */
+export interface SaarObservability {
+  readonly buffer_active: boolean;
+  readonly hard_lock: boolean;
+  readonly turn_index_in_session: number | null;
+  readonly planning_turn_buffer: number | null;
+  readonly idle_timeout_seconds: number | null;
+  readonly saar_reason_code: string | null;
+}
+
 /** Tier/cluster selection observability (SP-113, #62). */
 export interface TierSelectionObservability {
   readonly cluster_id: string | null;
@@ -245,6 +265,10 @@ export interface RoutingFeatureSidecar {
   readonly context_fit?: ContextFitObservability;
   /** Tier/cluster selection observability (SP-113, #62). */
   readonly tier_selection?: TierSelectionObservability;
+  /** Cache breakeven gate breakdown (SP-126, #73). */
+  readonly breakeven?: BreakevenObservability;
+  /** SAAR pin state summary (SP-126, #72). */
+  readonly saar?: SaarObservability;
   /** Why local_zero eligibility passed (SP-111, #59). */
   readonly local_eligible_reason: string | null;
 }
@@ -402,4 +426,13 @@ export interface RoutingTelemetry {
   readonly p_success_cheap: number | null;
   readonly local_eligible_reason: string | null;
   readonly tier_selection_reason_code: string | null;
+  readonly marginal_savings: number | null;
+  readonly future_cache_value: number | null;
+  readonly cache_reprime_cost: number | null;
+  readonly breakeven_decision: string | null;
+  readonly breakeven_reason_code: string | null;
+  readonly saar_buffer_active: boolean;
+  readonly saar_hard_lock: boolean;
+  readonly turn_index_in_session: number | null;
+  readonly saar_reason_code: string | null;
 }
