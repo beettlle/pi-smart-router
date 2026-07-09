@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Wire repair in buildDelegationContext
-**Status:** Ready
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-08
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,32 +10,32 @@
 
 ## Step 1: Wire repair in buildDelegationContext
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Import SP-127 helpers
-- [ ] Apply repair after normalizeDelegationContext for Google targets only
+- [x] Import SP-127 helpers
+- [x] Apply repair after normalizeDelegationContext for Google targets only
 
 ## Step 2: Extension unit test
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Multi-turn Gemini tool history with cross-model delegation
-- [ ] Assert delegateStream context has aligned provider/model and thoughtSignature/sentinel
+- [x] Multi-turn Gemini tool history with cross-model delegation
+- [x] Assert delegateStream context has aligned provider/model and thoughtSignature/sentinel
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run npm run typecheck && npm test
+- [x] Run npm run typecheck && npm test
 
 ---
 
 ## Completion Criteria
 
-- [ ] Repair runs on every Google-target delegation
-- [ ] Non-Google delegation path unchanged
-- [ ] Extension test covers cross-model Gemini replay
-- [ ] Tests pass
+- [x] Repair runs on every Google-target delegation
+- [x] Non-Google delegation path unchanged
+- [x] Extension test covers cross-model Gemini replay
+- [x] Tests pass
 
 ## Reviews
 
@@ -53,7 +53,9 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-08 | Step 1 complete | Wired repairGeminiReplayContext in buildDelegationContext for Google targets |
+| 2026-07-08 | Step 2 complete | Added cross-model Gemini replay extension test |
+| 2026-07-08 | Step 3 complete | npm run typecheck && npm test — 1153 tests passed |
 
 ## Blockers
 
@@ -63,4 +65,4 @@
 
 ## Notes
 
-GitHub #85. Blocked on SP-127.
+GitHub #85. Depends on SP-127 (landed).
