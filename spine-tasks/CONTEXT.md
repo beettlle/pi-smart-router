@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-09
 **Status:** Active
-**Next Task ID:** SP-146
+**Next Task ID:** SP-154
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -373,6 +373,31 @@
 | B | SP-141, SP-143 | SP-141 after SP-140; SP-143 after SP-142 |
 | C | SP-144 | After SP-143 (extension consumes pipeline signal) |
 | D | SP-145 | After SP-143 + SP-144 |
+
+### Phase 38 — Release v0.5.0 Economics & Eval (#77, #78, #79)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-146 | OATS centroid interpolation in calibration train | M | SP-114, SP-117 | #77 (part 1) |
+| SP-147 | OATS artifact verify and operator docs | S | SP-146 | #77 (part 2) |
+| SP-148 | Virtual cost v2 formula module | M | SP-096, SP-106 | #78 (part 1) |
+| SP-149 | Virtual cost v2 expected-cost and breakeven wiring | M | SP-148, SP-125 | #78 (part 2) |
+| SP-150 | Virtual cost v2 operator docs and regression tests | S | SP-149 | #78 (part 3) |
+| SP-151 | Eval harness fixture format and counterfactual replay | M | SP-116 | #79 (part 1) |
+| SP-152 | Three-track eval harness (capability, cost, continuity) | M | SP-151 | #79 (part 2) |
+| SP-153 | TwinRouterBench track, CI smoke, and local run docs | S | SP-152 | #79 (part 3) |
+
+**Source:** v0.5.0 Economics & Eval release plan (issues #77 OATS, #78 virtual cost v2, #79 eval harness). Decomposed from three P2 issues into eight S/M tasks.
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-146, SP-148, SP-151 | Parallel — disjoint scopes |
+| B | SP-147, SP-149, SP-152 | After respective part 1s |
+| C | SP-150, SP-153 | Parallel — docs/CI disjoint |
+
+**Excluded:** #80–#84 (v0.6.0), #1/#25/#26 (hardware).
 
 ---
 
