@@ -1,8 +1,8 @@
-**Current Step:** 3
-**Status:** In Progress
+**Current Step:** (complete)
+**Status:** Complete
 **Last Updated:** 2026-07-09
 **Review Level:** 2
-**Review Counter:** 0
+**Review Counter:** 3
 **Iteration:** 0
 
 ---
@@ -19,20 +19,23 @@
 
 ## Step 3: Testing and verification
 
-- [ ] Unit tests for version mismatch rejection
-- [ ] Run `npm run routing:verify-calibration` and `npm run verify:ci`
+- [x] Unit tests for version mismatch rejection
+- [x] Run `npm run routing:verify-calibration` and `npm run verify:ci`
 
 ## Completion Criteria
 
-- [ ] Projection recalibration path works with 7-flag prefix
-- [ ] Verify script passes
-- [ ] Stale bundle version rejected at runtime
-- [ ] `npm run verify:ci` passes
+- [x] Projection recalibration path works with 7-flag prefix
+- [x] Verify script passes
+- [x] Stale bundle version rejected at runtime
+- [x] `npm run verify:ci` passes
 
 ## Reviews
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
+| 2026-07-09 | 1 | plan | skipped (engine post-.DONE) |
+| 2026-07-09 | 2 | plan | skipped (engine post-.DONE) |
+| 2026-07-09 | 3 | plan | skipped (engine post-.DONE) |
 
 ## Discoveries
 
