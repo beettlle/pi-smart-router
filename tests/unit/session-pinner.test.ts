@@ -34,8 +34,18 @@ function makeRequest(overrides?: Partial<RoutingRequest>): RoutingRequest {
   };
 }
 
-const frontier = makeModel({ id: 'claude-opus', tier: 'frontier-cloud', provider: 'anthropic' });
-const econAnthro = makeModel({ id: 'claude-haiku', tier: 'economical-cloud', provider: 'anthropic' });
+const frontier = makeModel({
+  id: 'claude-opus',
+  tier: 'frontier-cloud',
+  provider: 'anthropic',
+  pricing: { fallback_cost_per_1m: 15.0 },
+});
+const econAnthro = makeModel({
+  id: 'claude-haiku',
+  tier: 'economical-cloud',
+  provider: 'anthropic',
+  pricing: { fallback_cost_per_1m: 1.0 },
+});
 const econOpenai = makeModel({ id: 'gpt-4o-mini', tier: 'economical-cloud', provider: 'openai' });
 const frontierOpenai = makeModel({ id: 'gpt-4o', tier: 'frontier-cloud', provider: 'openai' });
 
@@ -476,6 +486,53 @@ describe('SessionPinner', () => {
         fleet,
       );
       expect(aboveThreshold.action).toBe('use_pin');
+    });
+
+    it('blocks sub-route when cache breakeven fails on warm prefix (SP-125)', () => {
+      const pinner = new SessionPinner();
+      const warmFleet = [
+        makeModel({
+          id: 'claude-opus',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 30.0 },
+        }),
+        makeModel({
+          id: 'claude-haiku',
+          tier: 'economical-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 30.0 },
+        }),
+      ];
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const result = pinner.lookupPin(
+        makeRequest({
+          turn_type: 'tool_result',
+          estimated_input_tokens: 100_000,
+        }),
+        warmFleet,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.pinnedModel?.id).toBe('claude-opus');
+      expect(result.subRouteModel).toBeUndefined();
+    });
+
+    it('allows sub-route when cache breakeven passes on cold prefix (SP-125)', () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const result = pinner.lookupPin(
+        makeRequest({
+          turn_type: 'tool_result',
+          estimated_input_tokens: 100,
+        }),
+        fleet,
+      );
+
+      expect(result.action).toBe('sub_route');
+      expect(result.subRouteModel?.id).toBe('claude-haiku');
     });
   });
 
