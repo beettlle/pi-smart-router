@@ -1,0 +1,8 @@
+{
+  "id": "call-read-1",
+  "type": "function",
+  "function": {
+    "name": "read",
+    "arguments": "{\"path\": \"/tmp/example.txt\"}"
+  }
+}

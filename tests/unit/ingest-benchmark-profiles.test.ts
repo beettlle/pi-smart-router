@@ -10,11 +10,13 @@ import {
   BenchmarkIngestError,
   DEFAULT_BENCHMARK_FIXTURES_DIR,
   ingestBenchmarkProfilesFromDir,
+  isToolUseBenchmark,
   normalizeBenchmarkScore,
   parseBenchmarkLeaderboardFixture,
   parseBenchmarkProfilesArtifact,
   serializeBenchmarkProfilesArtifact,
   type BenchmarkLeaderboardFixture,
+  type SkippedToolCallEntry,
 } from '../../scripts/ingest-benchmark-profiles.js';
 
 function fixture(
@@ -148,5 +150,86 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
 
   it('wraps parse failures as BenchmarkIngestError', () => {
     expect(() => parseBenchmarkLeaderboardFixture('{', 'bad.json')).toThrow(BenchmarkIngestError);
+  });
+
+  it('identifies tool-use benchmarks for AST validation', () => {
+    expect(isToolUseBenchmark('terminal_bench')).toBe(true);
+    expect(isToolUseBenchmark('bfcl')).toBe(true);
+    expect(isToolUseBenchmark('swebench_verified')).toBe(false);
+  });
+
+  it('skips malformed tool_call_snippet rows on tool-use benchmarks with reason codes', () => {
+    const skipped: SkippedToolCallEntry[] = [];
+    const fixtures: BenchmarkLeaderboardFixture[] = [
+      fixture('swebench_verified', [
+        { model_id: 'model-a', score: 80 },
+        { model_id: 'model-b', score: 78 },
+      ]),
+      fixture('livecodebench', [
+        { model_id: 'model-a', score: 75 },
+        { model_id: 'model-b', score: 73 },
+      ]),
+      fixture('terminal_bench', [
+        {
+          model_id: 'model-a',
+          score: 70,
+          tool_call_snippet: JSON.stringify({
+            name: 'bash',
+            arguments: '{not-json',
+          }),
+        },
+        { model_id: 'model-b', score: 72 },
+      ]),
+      fixture('bfcl', [
+        {
+          model_id: 'model-a',
+          score: 85,
+          tool_call_snippet: JSON.stringify({
+            name: 'grep',
+            arguments: { pattern: 'error', path: 'src/' },
+          }),
+        },
+        { model_id: 'model-b', score: 88 },
+      ]),
+    ];
+
+    const artifact = aggregateBenchmarkProfiles(fixtures, {
+      catalogFreezeDate: '2026-07-09',
+      onSkippedToolCallEntry: (entry) => skipped.push(entry),
+    });
+
+    expect(skipped).toHaveLength(1);
+    expect(skipped[0]).toMatchObject({
+      benchmark: 'terminal_bench',
+      model_id: 'model-a',
+      reasonCode: 'invalid_arguments_json',
+    });
+    expect(artifact.models.find((row) => row.model_id === 'model-a')).toBeDefined();
+    expect(artifact.models.find((row) => row.model_id === 'model-b')).toBeDefined();
+    const modelA = artifact.models.find((row) => row.model_id === 'model-a');
+    expect(modelA?.benchmark_sources.terminal_bench).toBeUndefined();
+    expect(modelA?.benchmark_sources.bfcl).toBeDefined();
+  });
+
+  it('accepts optional valid tool_call_snippet on tool-use benchmark rows', () => {
+    const fixtures: BenchmarkLeaderboardFixture[] = [
+      fixture('swebench_verified', [{ model_id: 'solo', score: 80 }]),
+      fixture('terminal_bench', [
+        {
+          model_id: 'solo',
+          score: 70,
+          tool_call_snippet: JSON.stringify({
+            type: 'function',
+            function: { name: 'bash', arguments: '{"command":"ls"}' },
+          }),
+        },
+      ]),
+      fixture('livecodebench', [{ model_id: 'solo', score: 75 }]),
+      fixture('bfcl', [{ model_id: 'solo', score: 85 }]),
+    ];
+
+    expect(() =>
+      aggregateBenchmarkProfiles(fixtures, { catalogFreezeDate: '2026-07-09' }),
+    ).not.toThrow();
   });
 });

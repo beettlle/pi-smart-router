@@ -16,6 +16,12 @@ import { pathToFileURL } from 'node:url';
 
 import { z } from 'zod';
 
+import {
+  AST_VALIDATION_FALSE_NEGATIVE_NOTE,
+  validateToolCallAst,
+  type ToolCallValidationReasonCode,
+} from './lib/ast-tool-validation.js';
+
 export const BENCHMARK_PROFILES_VERSION = 1 as const;
 
 export const BENCHMARK_IDS = [
@@ -26,6 +32,11 @@ export const BENCHMARK_IDS = [
 ] as const;
 
 export type BenchmarkId = (typeof BENCHMARK_IDS)[number];
+
+/** Benchmarks whose rows may carry representative tool-call snippets (SP-135). */
+export const TOOL_USE_BENCHMARK_IDS = ['terminal_bench', 'bfcl'] as const satisfies readonly BenchmarkId[];
+
+export type ToolUseBenchmarkId = (typeof TOOL_USE_BENCHMARK_IDS)[number];
 
 export const DEFAULT_BENCHMARK_FIXTURES_DIR = resolve(
   'tests',
@@ -63,6 +74,7 @@ const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const leaderboardEntrySchema = z.object({
   model_id: z.string().min(1),
   score: z.number().finite(),
+  tool_call_snippet: z.string().min(1).optional(),
 });
 
 const leaderboardFixtureSchema = z.object({
@@ -86,7 +98,11 @@ const benchmarkSourceSchema = z.object({
 const modelProfileSchema = z.object({
   model_id: z.string().min(1),
   capabilities: capabilitiesSchema,
-  benchmark_sources: z.record(z.enum(BENCHMARK_IDS), benchmarkSourceSchema),
+  benchmark_sources: z
+    .partialRecord(z.enum(BENCHMARK_IDS), benchmarkSourceSchema)
+    .refine((sources) => Object.keys(sources).length > 0, {
+      message: 'benchmark_sources must include at least one benchmark',
+    }),
 });
 
 const provenanceSchema = z.object({
@@ -121,6 +137,18 @@ export interface IngestBenchmarkProfilesOptions {
   readonly fixturesDir?: string;
   readonly catalogFreezeDate?: string;
   readonly scrapeDate?: string;
+  readonly onSkippedToolCallEntry?: (entry: SkippedToolCallEntry) => void;
+}
+
+export interface SkippedToolCallEntry {
+  readonly benchmark: BenchmarkId;
+  readonly model_id: string;
+  readonly reasonCode: ToolCallValidationReasonCode;
+  readonly detail?: string;
+}
+
+export function isToolUseBenchmark(benchmark: BenchmarkId): benchmark is ToolUseBenchmarkId {
+  return (TOOL_USE_BENCHMARK_IDS as readonly BenchmarkId[]).includes(benchmark);
 }
 
 function assertIsoDate(value: string, label: string): void {
@@ -228,6 +256,7 @@ export function aggregateBenchmarkProfiles(
   assertIsoDate(scrapeDate, 'scrape_date');
 
   const byModel = new Map<string, MutableModelAccumulator>();
+  const skippedToolCallEntries: SkippedToolCallEntry[] = [];
 
   for (const fixture of fixtures) {
     const weights = BENCHMARK_CAPABILITY_WEIGHTS[fixture.benchmark];
@@ -239,6 +268,21 @@ export function aggregateBenchmarkProfiles(
       const modelId = entry.model_id.trim();
       if (modelId.length === 0) {
         throw new BenchmarkIngestError(`Empty model_id in ${fixture.benchmark} fixture`);
+      }
+
+      if (isToolUseBenchmark(fixture.benchmark) && entry.tool_call_snippet !== undefined) {
+        const validation = validateToolCallAst(entry.tool_call_snippet);
+        if (!validation.valid) {
+          const skipped: SkippedToolCallEntry = {
+            benchmark: fixture.benchmark,
+            model_id: modelId,
+            reasonCode: validation.reasonCode,
+            ...(validation.detail !== undefined ? { detail: validation.detail } : {}),
+          };
+          skippedToolCallEntries.push(skipped);
+          options.onSkippedToolCallEntry?.(skipped);
+          continue;
+        }
       }
 
       const normalized = normalizeBenchmarkScore(entry.score);
@@ -296,12 +340,25 @@ export function aggregateBenchmarkProfiles(
     models.push({
       model_id: modelId,
       capabilities: parsedCapabilities,
-      benchmark_sources: benchmarkSources as Record<BenchmarkId, BenchmarkSourceScore>,
+      benchmark_sources: benchmarkSources,
     });
   }
 
   if (models.length === 0) {
     throw new BenchmarkIngestError('No model profiles produced from fixtures');
+  }
+
+  if (skippedToolCallEntries.length > 0) {
+    console.error(
+      `ingest-benchmark-profiles: skipped ${skippedToolCallEntries.length} tool-use row(s) after AST validation`,
+    );
+    for (const skipped of skippedToolCallEntries) {
+      const detail = skipped.detail !== undefined ? ` (${skipped.detail})` : '';
+      console.error(
+        `  skip ${skipped.benchmark}/${skipped.model_id}: ${skipped.reasonCode}${detail}`,
+      );
+    }
+    console.error(`  note: ${AST_VALIDATION_FALSE_NEGATIVE_NOTE}`);
   }
 
   const artifact: BenchmarkProfilesArtifact = {
@@ -417,6 +474,10 @@ async function main(): Promise<void> {
   console.error(
     `  catalog_freeze_date=${artifact.provenance.catalog_freeze_date}, scrape_date=${artifact.provenance.scrape_date}`,
   );
+  console.error(
+    '  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows',
+  );
+  console.error(`  ${AST_VALIDATION_FALSE_NEGATIVE_NOTE}`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

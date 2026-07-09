@@ -1,0 +1,14 @@
+{
+  "role": "assistant",
+  "content": "",
+  "tool_calls": [
+    {
+      "id": "call-grep-1",
+      "type": "function",
+      "function": {
+        "name": "grep",
+        "arguments": "{\"pattern\": \"error\", \"path\": \"src/\"}"
+      }
+    }
+  ]
+}
