@@ -9,7 +9,16 @@
  * Any stage failure falls back to safeCloudDefault(); never throws to host.
  */
 
-import type { ModelProfile, PriceCatalog, RoutingDecision, RoutingFeatureSidecar, RoutingRequest, Tier, CandidateScore } from '../types/index.js';
+import type {
+  ModelProfile,
+  PriceCatalog,
+  RoutingDecision,
+  RoutingFeatureSidecar,
+  RoutingRequest,
+  SaarConfig,
+  Tier,
+  CandidateScore,
+} from '../types/index.js';
 import type { LowIntensityConfig } from '../types/schemas.js';
 import type { HardwareProbeConfig, HardwareProbeResult, SystemInfo } from '../../infrastructure/hardware/hardware-probe.js';
 import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
@@ -158,6 +167,8 @@ export interface PipelineOptions {
   /** Preloaded P(success) weights for tests; lazy-loads artifact when omitted (SP-105). */
   readonly pSuccessWeights?: PSuccessWeights;
   readonly pSuccessWeightsPath?: string;
+  /** SAAR pin policy (SP-123). Must match sessionPinner.saarConfig when enabled. */
+  readonly saarConfig?: SaarConfig;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -244,7 +255,7 @@ export class RouterPipeline {
         currentStage = stage;
         const result = await stage.run(request);
         if (result.decided && result.decision) {
-          this.persistPinIfNeeded(request, result.decision);
+          this.finalizeRoute(request, result.decision);
           this.emitTelemetry(request, result.decision);
           return this.attachFeatures(request, result.decision);
         }
@@ -257,11 +268,12 @@ export class RouterPipeline {
       this.logPipelineError(request, failedStage, error);
       this.emitPipelineErrorTelemetry(request, failedStage, fallback);
       this.persistPinIfNeeded(request, fallback);
+      this.recordSaarTurnIfNeeded(request);
       return this.attachFeatures(request, fallback);
     }
 
     const fallback = this.buildFallbackDecision(request, Date.now() - start);
-    this.persistPinIfNeeded(request, fallback);
+    this.finalizeRoute(request, fallback);
     this.emitTelemetry(request, fallback);
     return this.attachFeatures(request, fallback);
   }
@@ -723,11 +735,36 @@ export class RouterPipeline {
     }
 
     const existingPin = pinner.getPin(request.session_id);
-    const result = pinner.lookupPin(request, this.activeFleet);
+    const saarRequest = this.enrichRequestWithSaarCandidate(request);
+    const result = pinner.lookupPin(saarRequest, this.activeFleet);
 
     switch (result.action) {
       case 'use_pin': {
         const model = result.pinnedModel!;
+        const pin = pinner.getPin(request.session_id);
+        const reasonCode =
+          result.saarReason === 'saar_hard_lock'
+            ? 'saar_hard_lock'
+            : result.saarReason === 'saar_tier_upgrade'
+              ? 'saar_tier_upgrade'
+              : 'session_pinned';
+        return {
+          decided: true,
+          stage: 'session_pin',
+          decision: this.withEstimatedCost(request, model, {
+            request_id: request.request_id,
+            selected_model_id: model.id,
+            tier: model.tier,
+            stage: 'session_pin',
+            reason_code: reasonCode,
+            routing_latency_ms: 0,
+            pin_reason: pin?.pin_reason ?? null,
+          }),
+        };
+      }
+
+      case 'saar_route': {
+        const model = result.saarRouteModel!;
         const pin = pinner.getPin(request.session_id);
         return {
           decided: true,
@@ -737,7 +774,7 @@ export class RouterPipeline {
             selected_model_id: model.id,
             tier: model.tier,
             stage: 'session_pin',
-            reason_code: 'session_pinned',
+            reason_code: result.saarReason ?? 'saar_buffer_active',
             routing_latency_ms: 0,
             pin_reason: pin?.pin_reason ?? null,
           }),
@@ -797,11 +834,65 @@ export class RouterPipeline {
 
     if (decision.reason_code === 'tool_result_sub_route') return;
     if (decision.reason_code === 'session_pinned') return;
+    if (decision.reason_code === 'saar_buffer_active') return;
+    if (decision.reason_code === 'saar_hard_lock') return;
 
     // Turn envelope is a per-turn tier bias — do not overwrite an existing pin (SP-064).
     if (decision.stage === 'turn_envelope' && pinner.getPin(request.session_id)) return;
 
     pinner.recordPin(request.session_id, decision.selected_model_id, 'initial');
+  }
+
+  /** Persist pin updates and advance SAAR turn index after each routed turn (SP-123). */
+  private finalizeRoute(request: RoutingRequest, decision: RoutingDecision): void {
+    this.persistPinIfNeeded(request, decision);
+    this.recordSaarTurnIfNeeded(request);
+  }
+
+  private recordSaarTurnIfNeeded(request: RoutingRequest): void {
+    this.options.sessionPinner?.recordSaarTurn(request.session_id);
+  }
+
+  private enrichRequestWithSaarCandidate(request: RoutingRequest): RoutingRequest {
+    if (request.candidate_model_id) {
+      return request;
+    }
+
+    const turnType = request.turn_type ?? classifyTurnEnvelope(request.messages);
+    const targetTier = RouterPipeline.TURN_TIER_MAP[turnType] ?? null;
+    if (!targetTier) {
+      return request;
+    }
+
+    const tierCandidates = this.activeFleet.filter(
+      (m) => m.tier === targetTier && m.healthy !== false,
+    );
+    const model = selectLowestCostModel(tierCandidates);
+    if (!model) {
+      return request;
+    }
+
+    return { ...request, candidate_model_id: model.id };
+  }
+
+  /**
+   * SP-123: after SAAR planning buffer, defer planning→frontier to session_pin hard-lock.
+   */
+  private shouldDeferPlanningForSaar(request: RoutingRequest): boolean {
+    const saarConfig = this.options.saarConfig;
+    const pinner = this.options.sessionPinner;
+    if (!saarConfig || !pinner) {
+      return false;
+    }
+
+    const pin = pinner.getPin(request.session_id);
+    if (!pin) {
+      return false;
+    }
+
+    const saarState = pinner.getSaarState(request.session_id);
+    const turnIndex = saarState?.turn_index ?? 0;
+    return turnIndex >= saarConfig.planning_turn_buffer;
   }
 
   // ─── Turn envelope stage (Step 2b, <2ms budget) ─────────────────────────
@@ -819,6 +910,11 @@ export class RouterPipeline {
     const targetTier = RouterPipeline.TURN_TIER_MAP[turnType] ?? null;
 
     if (!targetTier) {
+      return { decided: false, stage: 'turn_envelope' };
+    }
+
+    // SP-123: post-buffer planning defers to session_pin SAAR hard-lock.
+    if (turnType === 'planning' && this.shouldDeferPlanningForSaar(request)) {
       return { decided: false, stage: 'turn_envelope' };
     }
 
