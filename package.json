@@ -60,6 +60,7 @@
     "routing:bootstrap-centroids": "node --experimental-strip-types scripts/bootstrap-routing-centroids.ts",
     "routing:calibration-aggregate": "node --experimental-strip-types scripts/calibration-aggregate.ts",
     "routing:train-calibration": "node --experimental-strip-types scripts/train-routing-calibration.ts",
+    "routing:ingest-benchmarks": "node --experimental-strip-types scripts/ingest-benchmark-profiles.ts",
     "routing:verify-calibration": "npm run build && node --experimental-strip-types scripts/verify-routing-calibration.ts",
     "routing:test-projection": "npm run build && node --experimental-strip-types scripts/test-hydra-projection.ts",
     "verify:ci": "npm run build && npm run typecheck && npm run lint && npm test && npm run coverage:check"
