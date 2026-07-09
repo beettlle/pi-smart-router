@@ -5,8 +5,11 @@ import {
   GEMINI_TOOL_HISTORY_EXCLUDED,
   GEMINI_TOOL_HISTORY_EMPTY_FLEET,
   GeminiToolHistoryEmptyFleetError,
+  hasGoogleReplayRisk,
+  hasGoogleReplayRiskFromContext,
   hasToolCallHistory,
   hasToolCallHistoryFromContext,
+  hasUnrepairableGoogleReplayRiskFromContext,
   isGoogleGeminiProfile,
   resolveEffectiveFleet,
 } from '../../src/domain/routing/tool-history-guard.js';
@@ -39,6 +42,68 @@ const fleet: ModelProfile[] = [
   makeProfile({ id: 'claude-opus', tier: 'frontier-cloud', provider: 'anthropic' }),
 ];
 
+const openAiToolCallAssistant = {
+  role: 'assistant' as const,
+  content: [
+    {
+      type: 'toolCall' as const,
+      id: 'call-1',
+      name: 'read',
+      arguments: {},
+    },
+  ],
+  api: 'openai-responses' as const,
+  provider: 'openai' as const,
+  model: 'gpt-4o-mini',
+  usage: {
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: 0,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+  },
+  stopReason: 'toolUse' as const,
+  timestamp: 2,
+};
+
+const googleToolCallAssistant = {
+  role: 'assistant' as const,
+  content: [
+    {
+      type: 'toolCall' as const,
+      id: 'call-1',
+      name: 'read',
+      arguments: {},
+    },
+  ],
+  api: 'google-generative-ai' as const,
+  provider: 'google' as const,
+  model: 'gemini-flash',
+  usage: {
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: 0,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+  },
+  stopReason: 'toolUse' as const,
+  timestamp: 2,
+};
+
+const googleUnrepairableAssistant = {
+  ...googleToolCallAssistant,
+  content: [
+    {
+      type: 'thinking' as const,
+      thinking: '',
+      redacted: true,
+    },
+    googleToolCallAssistant.content[0]!,
+  ],
+};
+
 describe('hasToolCallHistoryFromContext', () => {
   it('returns false for user-only history', () => {
     expect(
@@ -50,32 +115,7 @@ describe('hasToolCallHistoryFromContext', () => {
 
   it('returns true when assistant emitted toolCall blocks', () => {
     expect(
-      hasToolCallHistoryFromContext([
-        {
-          role: 'assistant',
-          content: [
-            {
-              type: 'toolCall',
-              id: 'call-1',
-              name: 'read',
-              arguments: {},
-            },
-          ],
-          api: 'openai-responses',
-          provider: 'openai',
-          model: 'gpt-4o-mini',
-          usage: {
-            input: 0,
-            output: 0,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 0,
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-          },
-          stopReason: 'toolUse',
-          timestamp: 2,
-        },
-      ]),
+      hasToolCallHistoryFromContext([openAiToolCallAssistant]),
     ).toBe(true);
   });
 
@@ -92,6 +132,59 @@ describe('hasToolCallHistoryFromContext', () => {
         },
       ]),
     ).toBe(true);
+  });
+});
+
+describe('hasGoogleReplayRiskFromContext', () => {
+  it('returns false for OpenAI-origin assistant tool calls', () => {
+    expect(hasGoogleReplayRiskFromContext([openAiToolCallAssistant])).toBe(false);
+  });
+
+  it('returns true for Google-origin assistant tool calls', () => {
+    expect(hasGoogleReplayRiskFromContext([googleToolCallAssistant])).toBe(true);
+  });
+
+  it('returns false for toolResult-only history', () => {
+    expect(
+      hasGoogleReplayRiskFromContext([
+        {
+          role: 'toolResult',
+          toolCallId: 'call-1',
+          toolName: 'read',
+          content: [{ type: 'text', text: 'ok' }],
+          isError: false,
+          timestamp: 3,
+        },
+      ]),
+    ).toBe(false);
+  });
+});
+
+describe('hasUnrepairableGoogleReplayRiskFromContext', () => {
+  it('returns false for repairable Google tool calls without signatures', () => {
+    expect(hasUnrepairableGoogleReplayRiskFromContext([googleToolCallAssistant])).toBe(
+      false,
+    );
+  });
+
+  it('returns true when Google-origin history has redacted thinking', () => {
+    expect(
+      hasUnrepairableGoogleReplayRiskFromContext([googleUnrepairableAssistant]),
+    ).toBe(true);
+  });
+});
+
+describe('hasGoogleReplayRisk', () => {
+  it('returns false for mapped routing messages without provider metadata', () => {
+    const messages: Message[] = [
+      { role: 'tool', content: 'ok', tool_blocks: [] },
+      {
+        role: 'assistant',
+        content: '',
+        tool_blocks: [{ id: 'call-1' }],
+      },
+    ];
+    expect(hasGoogleReplayRisk(messages)).toBe(false);
   });
 });
 
@@ -157,12 +250,52 @@ describe('resolveEffectiveFleet', () => {
     expect(result.effectiveFleet).toEqual(fleet);
   });
 
-  it('excludes google/gemini profiles when tool history is present', () => {
+  it('does not exclude gemini for OpenAI tool history', () => {
     const request = makeRequest({
       messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
     });
 
-    const result = resolveEffectiveFleet(fleet, request);
+    const result = resolveEffectiveFleet(fleet, request, [
+      openAiToolCallAssistant,
+      {
+        role: 'toolResult',
+        toolCallId: 'call-1',
+        toolName: 'read',
+        content: [{ type: 'text', text: 'ok' }],
+        isError: false,
+        timestamp: 3,
+      },
+    ]);
+    expect(result.excluded).toBe(false);
+    expect(result.effectiveFleet).toEqual(fleet);
+  });
+
+  it('does not exclude gemini for repairable Google-origin tool history', () => {
+    const request = makeRequest({
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(fleet, request, [
+      googleToolCallAssistant,
+      {
+        role: 'toolResult',
+        toolCallId: 'call-1',
+        toolName: 'read',
+        content: [{ type: 'text', text: 'ok' }],
+        isError: false,
+        timestamp: 3,
+      },
+    ]);
+    expect(result.excluded).toBe(false);
+    expect(result.effectiveFleet).toEqual(fleet);
+  });
+
+  it('excludes google/gemini profiles for unrepairable Google replay risk', () => {
+    const request = makeRequest({
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(fleet, request, [googleUnrepairableAssistant]);
     expect(result.excluded).toBe(true);
     expect(result.reasonCode).toBe(GEMINI_TOOL_HISTORY_EXCLUDED);
     expect(result.effectiveFleet.map((profile) => profile.id)).toEqual([
@@ -177,32 +310,9 @@ describe('resolveEffectiveFleet', () => {
       messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
     });
 
-    const result = resolveEffectiveFleet(fleet, request);
+    const result = resolveEffectiveFleet(fleet, request, [googleUnrepairableAssistant]);
     expect(result.excluded).toBe(false);
     expect(result.effectiveFleet).toEqual(fleet);
-  });
-
-  it('prefers raw context messages when provided', () => {
-    const request = makeRequest({
-      messages: [{ role: 'user', content: 'hello' }],
-    });
-
-    const result = resolveEffectiveFleet(fleet, request, [
-      {
-        role: 'toolResult',
-        toolCallId: 'call-1',
-        toolName: 'read',
-        content: [{ type: 'text', text: 'ok' }],
-        isError: false,
-        timestamp: 1,
-      },
-    ]);
-
-    expect(result.excluded).toBe(true);
-    expect(result.effectiveFleet.map((profile) => profile.id)).toEqual([
-      'gpt-4o-mini',
-      'claude-opus',
-    ]);
   });
 });
 
@@ -216,23 +326,38 @@ const googleOnlyFleet: ModelProfile[] = [
 ];
 
 describe('empty fleet after gemini exclusion (SP-084)', () => {
-  it('flags fleetEmptyAfterFilter for google-only fleet with tool history', () => {
+  it('flags fleetEmptyAfterFilter for google-only fleet with unrepairable replay risk', () => {
     const request = makeRequest({
       messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
     });
 
-    const result = resolveEffectiveFleet(googleOnlyFleet, request);
+    const result = resolveEffectiveFleet(googleOnlyFleet, request, [
+      googleUnrepairableAssistant,
+    ]);
     expect(result.fleetEmptyAfterFilter).toBe(true);
     expect(result.excluded).toBe(true);
     expect(result.reasonCode).toBe(GEMINI_TOOL_HISTORY_EXCLUDED);
     expect(result.effectiveFleet).toEqual([]);
   });
 
+  it('does not empty fleet for repairable Google tool history alone', () => {
+    const request = makeRequest({
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(googleOnlyFleet, request, [googleToolCallAssistant]);
+    expect(result.fleetEmptyAfterFilter).toBeUndefined();
+    expect(result.excluded).toBe(false);
+    expect(result.effectiveFleet).toEqual(googleOnlyFleet);
+  });
+
   it('throws actionable error when no routable model remains', () => {
     const request = makeRequest({
       messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
     });
-    const result = resolveEffectiveFleet(googleOnlyFleet, request);
+    const result = resolveEffectiveFleet(googleOnlyFleet, request, [
+      googleUnrepairableAssistant,
+    ]);
 
     expect(() => assertRoutableFleetAfterGeminiToolHistoryGuard(result)).toThrow(
       GeminiToolHistoryEmptyFleetError,
@@ -251,19 +376,21 @@ describe('empty fleet after gemini exclusion (SP-084)', () => {
     }
   });
 
-  it('honors force_model_id for google-only fleet with tool history', () => {
+  it('honors force_model_id for google-only fleet with unrepairable replay risk', () => {
     const request = makeRequest({
       force_model_id: 'gemini-flash',
       messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
     });
 
-    const result = resolveEffectiveFleet(googleOnlyFleet, request);
+    const result = resolveEffectiveFleet(googleOnlyFleet, request, [
+      googleUnrepairableAssistant,
+    ]);
     expect(result.fleetEmptyAfterFilter).toBeUndefined();
     expect(result.excluded).toBe(false);
     expect(result.effectiveFleet).toEqual(googleOnlyFleet);
   });
 
-  it('keeps cursor/auto when present alongside google models', () => {
+  it('keeps cursor/auto when present alongside google models for unrepairable risk', () => {
     const fleetWithCursor = [
       ...googleOnlyFleet,
       makeProfile({ id: 'cursor/auto', tier: 'economical-cloud', provider: 'cursor' }),
@@ -272,7 +399,9 @@ describe('empty fleet after gemini exclusion (SP-084)', () => {
       messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
     });
 
-    const result = resolveEffectiveFleet(fleetWithCursor, request);
+    const result = resolveEffectiveFleet(fleetWithCursor, request, [
+      googleUnrepairableAssistant,
+    ]);
     expect(result.fleetEmptyAfterFilter).toBeUndefined();
     expect(result.effectiveFleet.map((profile) => profile.id)).toEqual(['cursor/auto']);
   });

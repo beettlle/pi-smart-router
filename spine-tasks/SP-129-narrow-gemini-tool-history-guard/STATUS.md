@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Narrow replay-risk detector
-**Status:** Ready
+**Current Step:** Step 4: Testing and verification
+**Status:** In Progress
 **Last Updated:** 2026-07-08
 **Review Level:** 2
 **Review Counter:** 0
@@ -10,41 +10,41 @@
 
 ## Step 1: Narrow replay-risk detector
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Add hasGoogleReplayRisk using SP-127 Google-origin helpers
-- [ ] Replace hasToolCallHistory usage in resolveEffectiveFleet
-- [ ] Remove hard Gemini exclusion when repair path applies
+- [x] Add hasGoogleReplayRisk using SP-127 Google-origin helpers
+- [x] Replace hasToolCallHistory usage in resolveEffectiveFleet
+- [x] Remove hard Gemini exclusion when repair path applies
 
 ## Step 2: Align SP-080 deprioritize
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Update prioritizeFleetForToolHistory to use same detector
-- [ ] Keep deprioritize semantics for residual Google replay risk if any
+- [x] Update prioritizeFleetForToolHistory to use same detector
+- [x] Keep deprioritize semantics for residual Google replay risk if any
 
 ## Step 3: Tests
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] OpenAI tool history + Gemini in fleet — Gemini not excluded
-- [ ] Update extension tests that assumed SP-077 blunt exclusion
-- [ ] SP-084 empty-fleet behavior still correct for edge cases
+- [x] OpenAI tool history + Gemini in fleet — Gemini not excluded
+- [x] Update extension tests that assumed SP-077 blunt exclusion
+- [x] SP-084 empty-fleet behavior still correct for edge cases
 
 ## Step 4: Testing and verification
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Run npm run typecheck && npm test
+- [x] Run npm run typecheck && npm test
 
 ---
 
 ## Completion Criteria
 
-- [ ] OpenAI-only tool sessions can route to economical Gemini
-- [ ] Google tool sessions rely on SP-128 repair, not blunt ban
-- [ ] Telemetry reason code preserved where exclusion still applies
-- [ ] Tests pass
+- [x] OpenAI-only tool sessions can route to economical Gemini
+- [x] Google tool sessions rely on SP-128 repair, not blunt ban
+- [x] Telemetry reason code preserved where exclusion still applies
+- [x] Tests pass
 
 ## Reviews
 
@@ -62,7 +62,7 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-08 | Implementation | Narrowed guard uses hasGoogleReplayRisk + unrepairable state for exclusion only |
 
 ## Blockers
 

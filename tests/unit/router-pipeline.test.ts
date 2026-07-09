@@ -566,7 +566,7 @@ describe('RouterPipeline', () => {
     });
   });
 
-  describe('gemini deprioritization (SP-080)', () => {
+  describe('gemini deprioritization (SP-080, narrowed SP-129)', () => {
     const geminiFirstFleet: ModelProfile[] = [
       makeModel({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
       makeModel({ id: 'gpt-4o-mini', tier: 'economical-cloud', provider: 'openai' }),
@@ -582,13 +582,13 @@ describe('RouterPipeline', () => {
       { role: 'user' as const, content: 'continue' },
     ];
 
-    it('prefers non-gemini economical model when tool history exists', async () => {
+    it('does not deprioritize gemini for routing messages without Google-origin metadata', async () => {
       const pipeline = new RouterPipeline(geminiFirstFleet);
       const decision = await pipeline.route(
         makeRequest({ messages: toolHistoryMessages }),
       );
 
-      expect(decision.selected_model_id).toBe('gpt-4o-mini');
+      expect(decision.selected_model_id).toBe('gemini-flash');
       expect(decision.stage).toBe('fallback');
     });
 
