@@ -362,3 +362,60 @@ describe('virtual cost v2 integration (SP-149)', () => {
     expect(frontierNearExhaustion.virtualCostV2?.exhaustionRiskPremium).toBeGreaterThan(0);
   });
 });
+
+describe('virtual cost v2 regression (SP-150)', () => {
+  const composerFleet: ModelProfile[] = [
+    makeModel({
+      id: 'composer-latest',
+      tier: 'frontier-cloud',
+      provider: 'cursor',
+      pricing: { fallback_cost_per_1m: 0, quota_cost_per_1m: 4.0 },
+    }),
+    makeModel({
+      id: 'openai-econ',
+      tier: 'economical-cloud',
+      provider: 'openai',
+      pricing: { fallback_cost_per_1m: 0.5 },
+    }),
+  ];
+
+  it('regression: late-window routing prefers economical over composer when quota is low', () => {
+    const baseInput = {
+      fleet: composerFleet,
+      priceCatalog: makeCatalog(),
+      estTokens: 1_000_000,
+      pSuccessCheap: 0.5,
+      alpha: 1,
+      localZeroReady: false,
+    };
+
+    const atFullWindow = selectTierByExpectedCost({
+      ...baseInput,
+      quotaWindowPosition: { remaining_window_fraction: 1 },
+    });
+    const lateWindow = selectTierByExpectedCost({
+      ...baseInput,
+      quotaWindowPosition: { remaining_window_fraction: 0.02 },
+    });
+
+    const frontierAtFull = atFullWindow.tierCosts.find(
+      (entry) => entry.tier === 'frontier-cloud',
+    )!;
+    const frontierLate = lateWindow.tierCosts.find(
+      (entry) => entry.tier === 'frontier-cloud',
+    )!;
+    const economicalLate = lateWindow.tierCosts.find(
+      (entry) => entry.tier === 'economical-cloud',
+    )!;
+
+    expect(atFullWindow.tierHint).toBe('economical-cloud');
+    expect(lateWindow.tierHint).toBe('economical-cloud');
+    expect(frontierLate.adjustedExpectedCostUsd).toBeGreaterThan(
+      frontierAtFull.adjustedExpectedCostUsd,
+    );
+    expect(frontierLate.adjustedExpectedCostUsd).toBeGreaterThan(
+      economicalLate.adjustedExpectedCostUsd,
+    );
+    expect(frontierLate.virtualCostV2?.exhaustionRiskPremium).toBeGreaterThan(0);
+  });
+});

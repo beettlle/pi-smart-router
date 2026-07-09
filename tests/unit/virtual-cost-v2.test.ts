@@ -8,7 +8,12 @@ import {
   computeExhaustionRiskPremium,
   deriveRemainingWindowFraction,
 } from '../../src/domain/pricing/virtual-cost-v2.js';
-import { DEFAULT_VIRTUAL_COST_V2_CONFIG } from '../../src/domain/types/schemas.js';
+import { evaluateModelSwitchBreakeven } from '../../src/domain/pinning/session-pinner.js';
+import {
+  DEFAULT_SAAR_CONFIG,
+  DEFAULT_VIRTUAL_COST_V2_CONFIG,
+} from '../../src/domain/types/schemas.js';
+import type { ModelProfile } from '../../src/domain/types/index.js';
 
 const BASE_COST_PER_1M = 3.0;
 const ONE_M_TOKENS = 1_000_000;
@@ -136,5 +141,60 @@ describe('deriveRemainingWindowFraction', () => {
     expect(deriveRemainingWindowFraction(0, 1)).toBe(0);
     expect(deriveRemainingWindowFraction(duration * 0.5, 0.25)).toBeCloseTo(0.5, 6);
     expect(deriveRemainingWindowFraction(duration * 0.1, 0.9)).toBeCloseTo(0.1, 6);
+  });
+});
+
+describe('virtual cost v2 regression (SP-150)', () => {
+  function makeModel(
+    overrides: Partial<ModelProfile> & { id: string; tier: ModelProfile['tier'] },
+  ): ModelProfile {
+    return {
+      provider: 'test',
+      capabilities: { reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 },
+      pricing: { fallback_cost_per_1m: 1.0 },
+      ...overrides,
+    };
+  }
+
+  it('regression: cache credit preserves pin when savings do not exceed reprime', () => {
+    const pinned = makeModel({
+      id: 'composer-latest',
+      tier: 'frontier-cloud',
+      provider: 'cursor',
+      pricing: { fallback_cost_per_1m: 0, quota_cost_per_1m: 4.0 },
+    });
+    const candidate = makeModel({
+      id: 'openai-econ',
+      tier: 'economical-cloud',
+      provider: 'openai',
+      pricing: { fallback_cost_per_1m: 3.2 },
+    });
+    const warmTokens = 100_000;
+    const breakevenContext = {
+      quotaWindowPosition: { remaining_window_fraction: 0.8 },
+      virtualCostV2Config: DEFAULT_VIRTUAL_COST_V2_CONFIG,
+    };
+
+    const coldSession = evaluateModelSwitchBreakeven(
+      pinned,
+      candidate,
+      warmTokens,
+      0,
+      DEFAULT_SAAR_CONFIG,
+      breakevenContext,
+    );
+    const warmPin = evaluateModelSwitchBreakeven(
+      pinned,
+      candidate,
+      warmTokens,
+      warmTokens,
+      DEFAULT_SAAR_CONFIG,
+      breakevenContext,
+    );
+
+    expect(coldSession.shouldSwitch).toBe(true);
+    expect(warmPin.shouldSwitch).toBe(false);
+    expect(warmPin.kv_cache_credit_usd).toBeGreaterThan(0);
+    expect(warmPin.reason).toBe('breakeven_not_met');
   });
 });
