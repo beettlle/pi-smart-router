@@ -268,6 +268,45 @@ export const PlanningDelegateConfigSchema = z.object({
 
 export type PlanningDelegateConfig = z.infer<typeof PlanningDelegateConfigSchema>;
 
+/** Virtual cost v2 operator knobs (SP-148, #78). */
+export const VirtualCostV2ConfigSchema = z.object({
+  /** Cursor-style rolling window duration in seconds (default 5h). */
+  window_duration_seconds: z.number().int().positive(),
+  /** Exponent for λ decay as remaining window shrinks. */
+  lambda_decay_exponent: z.number().positive(),
+  /** Maximum λ at window exhaustion (λ = 1 when window is full). */
+  lambda_max_multiplier: z.number().min(1),
+  /** Weight on quota arbitrage premium at late-window positions. */
+  quota_arbitrage_weight: z.number().min(0),
+  /** Weight on exhaustion risk premium below threshold. */
+  exhaustion_risk_weight: z.number().min(0),
+  /** Remaining-window fraction below which exhaustion risk premium applies. */
+  exhaustion_risk_threshold: z.number().min(0).max(1),
+  /** Prefix cache discount for KV savings credit (aligned with SAAR / SP-125). */
+  prefix_cache_discount: z.number().min(0).max(1),
+  /** Prefix cache weight for KV savings credit (aligned with SAAR / SP-125). */
+  prefix_cache_weight: z.number().min(0).max(1),
+});
+
+export type VirtualCostV2Config = z.infer<typeof VirtualCostV2ConfigSchema>;
+
+/** Virtual cost v2 defaults per routing-roadmap.md §2 P2 (SP-148). */
+export const DEFAULT_VIRTUAL_COST_V2_CONFIG: Readonly<VirtualCostV2Config> = {
+  window_duration_seconds: 5 * 60 * 60,
+  lambda_decay_exponent: 2,
+  lambda_max_multiplier: 3,
+  quota_arbitrage_weight: 0.5,
+  exhaustion_risk_weight: 1,
+  exhaustion_risk_threshold: 0.2,
+  prefix_cache_discount: 0.9,
+  prefix_cache_weight: 0.2,
+} as const;
+
+export const QuotaWindowPositionSchema = z.object({
+  remaining_window_fraction: z.number().min(0).max(1),
+  elapsed_window_seconds: z.number().nonnegative().optional(),
+});
+
 /** SAAR defaults per routing-roadmap.md §2 P0 (SP-121). */
 export const DEFAULT_SAAR_CONFIG: Readonly<SaarConfig> = {
   planning_turn_buffer: 2,

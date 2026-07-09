@@ -114,6 +114,17 @@ export interface ModelPricing {
   readonly quota_cost_per_1m?: number | undefined;
 }
 
+/** Rolling subscription quota window position (SP-148, #78). */
+export interface QuotaWindowPosition {
+  /**
+   * Fraction of rolling window budget remaining, in [0, 1].
+   * 1 = full window; 0 = exhausted (Cursor-style 5h limits).
+   */
+  readonly remaining_window_fraction: number;
+  /** Elapsed seconds in the current rolling window (optional telemetry). */
+  readonly elapsed_window_seconds?: number | undefined;
+}
+
 export interface ModelLimits {
   readonly max_input_tokens?: number | undefined;
   readonly max_output_tokens?: number | undefined;
