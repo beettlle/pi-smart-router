@@ -1,8 +1,8 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-07-08
+**Last Updated:** 2026-07-09
 **Status:** Active
-**Next Task ID:** SP-131
+**Next Task ID:** SP-140
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -326,6 +326,31 @@
 | A | SP-127 | Parallel with SP-121, SP-124 (disjoint scopes) |
 | B | SP-128, SP-129 | Parallel after SP-127; SP-129 also parallel with SP-122 |
 | C | SP-130 | After SP-128 + SP-129 |
+
+### Phase 36 — Release v0.3.0 Calibration (#74, #75, #76)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-131 | Richer P(success) training labels | S | SP-117 | #74 (part 1) |
+| SP-132 | Isotonic calibrator offline fit and bundle schema | M | SP-131 | #74 (part 2) |
+| SP-133 | Online isotonic P(success) lookup in low_intensity gate | S | SP-132 | #74 (part 3) |
+| SP-134 | Benchmark score ingest script | M | SP-117 | #75 (part 1) |
+| SP-135 | AST tool-call validation for profile ingestion | M | SP-134 | #75 (part 2) |
+| SP-136 | Grounded capability profiles in mapper | M | SP-135 | #75 (part 3) |
+| SP-137 | Monthly CI profile refresh workflow | S | SP-136 | #75 (part 4) |
+| SP-138 | HyDRA seven-flag metadata prefix extension | M | SP-112 | #76 (part 1) |
+| SP-139 | Recalibrate projection head after prefix change | S | SP-138 | #76 (part 2) |
+
+**Source:** v0.3.0 Calibration release plan (issues #74 isotonic P(success), #75 benchmark profiles, #76 HyDRA 7-flag prefix). Decomposed from three M issues into nine S/M tasks.
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-131, SP-134, SP-138 | Parallel — disjoint scopes |
+| B | SP-132, SP-135, SP-139 | SP-139 after SP-138; SP-132 after SP-131 |
+| C | SP-133, SP-136 | SP-133 after SP-132; SP-136 after SP-135 |
+| D | SP-137 | After SP-136 |
 
 ---
 
