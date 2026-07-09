@@ -251,6 +251,23 @@ export const SaarConfigSchema = z.object({
 
 export type SaarConfig = z.infer<typeof SaarConfigSchema>;
 
+/** Compressed context limits for planning delegate sub-calls (SP-142, #71). */
+export const CompressedContextSpecSchema = z.object({
+  max_messages: z.number().int().positive(),
+  max_tokens: z.number().int().positive(),
+  exclude_execution_history: z.boolean(),
+});
+
+export type CompressedContextSpec = z.infer<typeof CompressedContextSpecSchema>;
+
+/** Planning delegate operator knobs (SP-142, #71). */
+export const PlanningDelegateConfigSchema = z.object({
+  enabled: z.boolean(),
+  compressed_context: CompressedContextSpecSchema,
+});
+
+export type PlanningDelegateConfig = z.infer<typeof PlanningDelegateConfigSchema>;
+
 /** SAAR defaults per routing-roadmap.md §2 P0 (SP-121). */
 export const DEFAULT_SAAR_CONFIG: Readonly<SaarConfig> = {
   planning_turn_buffer: 2,
@@ -258,6 +275,61 @@ export const DEFAULT_SAAR_CONFIG: Readonly<SaarConfig> = {
   idle_timeout_seconds: 300,
   switch_threshold: 0.5,
 } as const;
+
+/** Planning delegate defaults per routing-roadmap.md §2 P0 / #71 (SP-142). */
+export const DEFAULT_PLANNING_DELEGATE_CONFIG: Readonly<PlanningDelegateConfig> = {
+  enabled: true,
+  compressed_context: {
+    max_messages: 12,
+    max_tokens: 16_384,
+    exclude_execution_history: true,
+  },
+} as const;
+
+/** Env: SMART_ROUTER_PLANNING_DELEGATE_ENABLED — enable delegate path (default true). */
+const ENV_PLANNING_DELEGATE_ENABLED = 'SMART_ROUTER_PLANNING_DELEGATE_ENABLED';
+/** Env: SMART_ROUTER_PLANNING_DELEGATE_MAX_MESSAGES — compressed context message cap (default 12). */
+const ENV_PLANNING_DELEGATE_MAX_MESSAGES = 'SMART_ROUTER_PLANNING_DELEGATE_MAX_MESSAGES';
+/** Env: SMART_ROUTER_PLANNING_DELEGATE_MAX_TOKENS — compressed context token cap (default 16384). */
+const ENV_PLANNING_DELEGATE_MAX_TOKENS = 'SMART_ROUTER_PLANNING_DELEGATE_MAX_TOKENS';
+/** Env: SMART_ROUTER_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY — exclude tool traces (default true). */
+const ENV_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY =
+  'SMART_ROUTER_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY';
+
+function readBooleanEnv(name: string): boolean | undefined {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') {
+    return undefined;
+  }
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === '1' || normalized === 'true' || normalized === 'yes') {
+    return true;
+  }
+  if (normalized === '0' || normalized === 'false' || normalized === 'no') {
+    return false;
+  }
+  return undefined;
+}
+
+/** Merge planning delegate env overrides onto defaults (invalid env values are ignored). */
+export function resolvePlanningDelegateConfigFromEnv(
+  base: PlanningDelegateConfig = DEFAULT_PLANNING_DELEGATE_CONFIG,
+): PlanningDelegateConfig {
+  return {
+    enabled: readBooleanEnv(ENV_PLANNING_DELEGATE_ENABLED) ?? base.enabled,
+    compressed_context: {
+      max_messages:
+        readPositiveIntEnv(ENV_PLANNING_DELEGATE_MAX_MESSAGES) ??
+        base.compressed_context.max_messages,
+      max_tokens:
+        readPositiveIntEnv(ENV_PLANNING_DELEGATE_MAX_TOKENS) ??
+        base.compressed_context.max_tokens,
+      exclude_execution_history:
+        readBooleanEnv(ENV_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY) ??
+        base.compressed_context.exclude_execution_history,
+    },
+  };
+}
 
 /** Env: SMART_ROUTER_PLANNING_TURN_BUFFER — SAAR planning buffer turns (default 2). */
 const ENV_PLANNING_TURN_BUFFER = 'SMART_ROUTER_PLANNING_TURN_BUFFER';
@@ -349,6 +421,7 @@ export const OperatorConfigSchema = z.object({
   hydra: HydraConfigSchema,
   low_intensity: LowIntensityConfigSchema,
   saar: SaarConfigSchema,
+  planning_delegate: PlanningDelegateConfigSchema,
   routing_clusters: RoutingClustersConfigSchema.optional(),
 });
 
