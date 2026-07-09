@@ -18,5 +18,5 @@
 
 ## Discoveries
 
-(none)
+**2026-07-09:** Pre-land redirect — ingest script on main from SP-134; AST validator is new primary deliverable.
 

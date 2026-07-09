@@ -32,8 +32,8 @@ Add AST-based tool-call validation helper used during benchmark profile ingestio
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `scripts/lib/ast-tool-validation.ts`, `scripts/ingest-benchmark-profiles.ts` |
-| May change | `tests/unit/ast-tool-validation.test.ts`, `tests/fixtures/tool-call-samples/` |
+| Must change | `scripts/lib/ast-tool-validation.ts` |
+| May change | `scripts/ingest-benchmark-profiles.ts`, `tests/unit/ast-tool-validation.test.ts`, `tests/fixtures/tool-call-samples/` |
 | Must NOT change | `src/domain/pipeline/router-pipeline.ts` |
 
 ## Contract
@@ -41,7 +41,7 @@ Add AST-based tool-call validation helper used during benchmark profile ingestio
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run verify:ci` |
-| fileScopeMustChange | `scripts/lib/ast-tool-validation.ts`, `scripts/ingest-benchmark-profiles.ts` |
+| fileScopeMustChange | `scripts/lib/ast-tool-validation.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | AST validator rejects malformed tool calls; ingest uses validator; positive/negative fixture tests; document false-negative tradeoff in script output. |
 
@@ -77,5 +77,9 @@ Add AST-based tool-call validation helper used during benchmark profile ingestio
 
 - Change runtime mapper (SP-136)
 - Add online serving changes
+
+## Amendments (Added During Execution)
+
+**2026-07-09 — Pre-land redirect after SP-134 wave 0:** `scripts/ingest-benchmark-profiles.ts` landed on `main`. AST validator is new module; ingest wiring moves to May change only.
 
 ---

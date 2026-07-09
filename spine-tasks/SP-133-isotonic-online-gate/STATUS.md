@@ -18,5 +18,5 @@
 
 ## Discoveries
 
-(none)
+**2026-07-09:** Pre-land redirect — `p-success-classifier.ts` on main from SP-131; new `isotonic-calibrator.ts` module owns runtime lookup.
 

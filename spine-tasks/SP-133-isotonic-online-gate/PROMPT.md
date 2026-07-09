@@ -33,8 +33,8 @@ Load `isotonic_calibrator` from routing-calibration bundle at runtime. Apply cal
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `src/domain/routing/p-success-classifier.ts`, `src/domain/pipeline/router-pipeline.ts` |
-| May change | `src/infrastructure/telemetry/routing-telemetry.ts`, `src/api/explain/router-explain.ts`, `tests/unit/p-success-classifier.test.ts`, `tests/integration/router-pipeline.test.ts` |
+| Must change | `src/domain/routing/isotonic-calibrator.ts`, `src/domain/pipeline/router-pipeline.ts` |
+| May change | `src/domain/routing/p-success-classifier.ts`, `src/infrastructure/telemetry/routing-telemetry.ts`, `src/api/explain/router-explain.ts`, `tests/unit/p-success-classifier.test.ts`, `tests/unit/isotonic-calibrator.test.ts`, `tests/integration/router-pipeline.test.ts` |
 | Must NOT change | `.pi/extensions/smart-router/index.ts` |
 
 ## Contract
@@ -42,7 +42,7 @@ Load `isotonic_calibrator` from routing-calibration bundle at runtime. Apply cal
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run verify:ci` |
-| fileScopeMustChange | `src/domain/routing/p-success-classifier.ts`, `src/domain/pipeline/router-pipeline.ts` |
+| fileScopeMustChange | `src/domain/routing/isotonic-calibrator.ts`, `src/domain/pipeline/router-pipeline.ts` |
 | fileScopeMustNotChange | `.pi/extensions/smart-router/index.ts` |
 | completionCriteria | Calibrated P(success) used in gate; telemetry shows raw + calibrated; fallback when missing; tests pass. |
 
@@ -79,5 +79,9 @@ Load `isotonic_calibrator` from routing-calibration bundle at runtime. Apply cal
 
 - Change isotonic train script (SP-132)
 - Modify benchmark profile ingest (SP-134+)
+
+## Amendments (Added During Execution)
+
+**2026-07-09 — Pre-land redirect after SP-131 wave 0:** `p-success-classifier.ts` already changed on `main` for richer labels. Extract runtime isotonic lookup into new `src/domain/routing/isotonic-calibrator.ts`; wire from classifier/pipeline via May change paths.
 
 ---

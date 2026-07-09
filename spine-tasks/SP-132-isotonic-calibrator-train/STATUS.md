@@ -18,5 +18,5 @@
 
 ## Discoveries
 
-(none)
+**2026-07-09:** Pre-land redirect — schema already on main from SP-131; contract targets new `scripts/lib/isotonic-calibrator.ts`.
 

@@ -33,8 +33,8 @@ Add offline isotonic regression calibrator (UCCI-style) on top of SP-105 logisti
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `scripts/train-routing-calibration.ts`, `specs/001-build-smart-router/contracts/routing-calibration.schema.json` |
-| May change | `scripts/verify-routing-calibration.ts`, `config/routing-calibration.json.example`, `tests/unit/train-routing-calibration.test.ts`, `package.json` |
+| Must change | `scripts/train-routing-calibration.ts`, `scripts/lib/isotonic-calibrator.ts` |
+| May change | `specs/001-build-smart-router/contracts/routing-calibration.schema.json`, `scripts/verify-routing-calibration.ts`, `config/routing-calibration.json.example`, `tests/unit/train-routing-calibration.test.ts`, `package.json` |
 | Must NOT change | `src/domain/pipeline/router-pipeline.ts` |
 
 ## Contract
@@ -42,7 +42,7 @@ Add offline isotonic regression calibrator (UCCI-style) on top of SP-105 logisti
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run verify:ci` |
-| fileScopeMustChange | `scripts/train-routing-calibration.ts`, `specs/001-build-smart-router/contracts/routing-calibration.schema.json` |
+| fileScopeMustChange | `scripts/train-routing-calibration.ts`, `scripts/lib/isotonic-calibrator.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | Train emits isotonic artifact; schema version bumped; verify script checks artifact; holdout ECE logged; runtime version check unchanged or extended. |
 
@@ -84,5 +84,9 @@ Add offline isotonic regression calibrator (UCCI-style) on top of SP-105 logisti
 ## Do NOT
 
 - Wire online lookup in pipeline (SP-133)
+
+## Amendments (Added During Execution)
+
+**2026-07-09 — Pre-land redirect after SP-131 wave 0:** `routing-calibration.schema.json` already extended on `main` for richer labels. Redirect `fileScopeMustChange` to new `scripts/lib/isotonic-calibrator.ts` plus train script; schema edits remain in May change.
 
 ---
