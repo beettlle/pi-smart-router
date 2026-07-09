@@ -110,7 +110,7 @@
     },
     "p_success_weights": {
       "type": "object",
-      "description": "Logistic regression weights for economical-tier P(success).",
+      "description": "Logistic regression weights for economical-tier P(success). Trained from privacy-safe contrib rows with behavioral and verifier failure-proxy labels (SP-131: tool_failure_chain_count, stop_reason_invalid, reprompt_rate, edit_distance_proxy).",
       "required": [
         "version",
         "min_training_samples",

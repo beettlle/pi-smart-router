@@ -12,7 +12,7 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { MIN_TRAINING_SAMPLES } from '../src/domain/routing/p-success-classifier.js';
+import { MIN_TRAINING_SAMPLES, attachFailureProxiesToExport, deriveSuccessLabelFromExportRow, P_SUCCESS_FAILURE_PROXY_FIELDS, } from '../src/domain/routing/p-success-classifier.js';
 export const DEFAULT_CONTRIB_DIR = 'data/contrib';
 /** Documented minimum labeled rows before each artifact deviates from defaults. */
 export const MINIMUM_TRAINING_SAMPLES = {
@@ -47,6 +47,16 @@ export class CalibrationContribError extends Error {
         super(message, options);
     }
 }
+/** Raw telemetry keys mapped into privacy-safe failure proxy fields (SP-131). */
+export const CALIBRATION_CONTRIB_STRIP_AFTER_PROXY_MAP = [
+    'stop_reason',
+    'consecutive_tool_failures',
+    'reprompt_count',
+    'turn_index_in_session',
+    'prompt_length_delta',
+    'prior_prompt_length_chars',
+];
+export { P_SUCCESS_FAILURE_PROXY_FIELDS };
 function isPlainObject(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -90,6 +100,27 @@ export function sanitizeContribRecord(record) {
     }
     return sanitized;
 }
+/** Map telemetry scalars to normalized failure proxies and refreshed training labels. */
+export function enrichContribRecordWithFailureLabels(record) {
+    const withProxies = attachFailureProxiesToExport(record);
+    const labeled = deriveSuccessLabelFromExportRow(withProxies);
+    const enriched = {
+        ...withProxies,
+        success_label: labeled.success,
+        outcome_signals: labeled.outcome_signals,
+        tool_failure_chain_count: labeled.failure_proxies.tool_failure_chain_count,
+        stop_reason_invalid: labeled.failure_proxies.stop_reason_invalid,
+        reprompt_rate: labeled.failure_proxies.reprompt_rate,
+        edit_distance_proxy: labeled.failure_proxies.edit_distance_proxy,
+    };
+    for (const key of CALIBRATION_CONTRIB_STRIP_AFTER_PROXY_MAP) {
+        delete enriched[key];
+    }
+    return enriched;
+}
+export function enrichContribRecords(records) {
+    return records.map((record) => enrichContribRecordWithFailureLabels(record));
+}
 export function parseContribJsonl(text, source = 'input') {
     const lines = text.split(/\r?\n/);
     const records = [];
@@ -107,7 +138,7 @@ export function parseContribJsonl(text, source = 'input') {
             throw new CalibrationContribError(`Invalid JSONL at ${source}:${i + 1}: ${message}`);
         }
         assertContribRecordSafe(parsed, `${source}:${i + 1}`);
-        records.push(sanitizeContribRecord(parsed));
+        records.push(enrichContribRecordWithFailureLabels(sanitizeContribRecord(parsed)));
     }
     return records;
 }
@@ -124,12 +155,12 @@ export function parseContribJson(text, source = 'input') {
         const records = [];
         for (let i = 0; i < parsed.length; i++) {
             assertContribRecordSafe(parsed[i], `${source}[${i}]`);
-            records.push(sanitizeContribRecord(parsed[i]));
+            records.push(enrichContribRecordWithFailureLabels(sanitizeContribRecord(parsed[i])));
         }
         return records;
     }
     assertContribRecordSafe(parsed, source);
-    return [sanitizeContribRecord(parsed)];
+    return [enrichContribRecordWithFailureLabels(sanitizeContribRecord(parsed))];
 }
 function listContribFiles(contribDir) {
     let entries;

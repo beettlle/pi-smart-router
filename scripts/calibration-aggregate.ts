@@ -14,7 +14,13 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
-import { MIN_TRAINING_SAMPLES } from '../src/domain/routing/p-success-classifier.js';
+import {
+  MIN_TRAINING_SAMPLES,
+  attachFailureProxiesToExport,
+  deriveSuccessLabelFromExportRow,
+  P_SUCCESS_FAILURE_PROXY_FIELDS,
+  type PSuccessFailureProxyField,
+} from '../src/domain/routing/p-success-classifier.js';
 
 export const DEFAULT_CONTRIB_DIR = 'data/contrib';
 
@@ -70,6 +76,19 @@ export interface CalibrationAggregateOptions {
   readonly stdin?: boolean;
   readonly quiet?: boolean;
 }
+
+/** Raw telemetry keys mapped into privacy-safe failure proxy fields (SP-131). */
+export const CALIBRATION_CONTRIB_STRIP_AFTER_PROXY_MAP: readonly string[] = [
+  'stop_reason',
+  'consecutive_tool_failures',
+  'reprompt_count',
+  'turn_index_in_session',
+  'prompt_length_delta',
+  'prior_prompt_length_chars',
+] as const;
+
+export { P_SUCCESS_FAILURE_PROXY_FIELDS };
+export type { PSuccessFailureProxyField };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -137,6 +156,36 @@ export function sanitizeContribRecord(
   return sanitized;
 }
 
+/** Map telemetry scalars to normalized failure proxies and refreshed training labels. */
+export function enrichContribRecordWithFailureLabels(
+  record: Record<string, unknown>,
+): Record<string, unknown> {
+  const withProxies = attachFailureProxiesToExport(record);
+  const labeled = deriveSuccessLabelFromExportRow(withProxies);
+
+  const enriched: Record<string, unknown> = {
+    ...withProxies,
+    success_label: labeled.success,
+    outcome_signals: labeled.outcome_signals,
+    tool_failure_chain_count: labeled.failure_proxies.tool_failure_chain_count,
+    stop_reason_invalid: labeled.failure_proxies.stop_reason_invalid,
+    reprompt_rate: labeled.failure_proxies.reprompt_rate,
+    edit_distance_proxy: labeled.failure_proxies.edit_distance_proxy,
+  };
+
+  for (const key of CALIBRATION_CONTRIB_STRIP_AFTER_PROXY_MAP) {
+    delete enriched[key];
+  }
+
+  return enriched;
+}
+
+export function enrichContribRecords(
+  records: readonly Record<string, unknown>[],
+): Record<string, unknown>[] {
+  return records.map((record) => enrichContribRecordWithFailureLabels(record));
+}
+
 export function parseContribJsonl(
   text: string,
   source = 'input',
@@ -161,7 +210,7 @@ export function parseContribJsonl(
     }
 
     assertContribRecordSafe(parsed, `${source}:${i + 1}`);
-    records.push(sanitizeContribRecord(parsed));
+    records.push(enrichContribRecordWithFailureLabels(sanitizeContribRecord(parsed)));
   }
 
   return records;
@@ -183,13 +232,17 @@ export function parseContribJson(
     const records: Record<string, unknown>[] = [];
     for (let i = 0; i < parsed.length; i++) {
       assertContribRecordSafe(parsed[i], `${source}[${i}]`);
-      records.push(sanitizeContribRecord(parsed[i] as Record<string, unknown>));
+      records.push(
+        enrichContribRecordWithFailureLabels(
+          sanitizeContribRecord(parsed[i] as Record<string, unknown>),
+        ),
+      );
     }
     return records;
   }
 
   assertContribRecordSafe(parsed, source);
-  return [sanitizeContribRecord(parsed)];
+  return [enrichContribRecordWithFailureLabels(sanitizeContribRecord(parsed))];
 }
 
 function listContribFiles(contribDir: string): string[] {
