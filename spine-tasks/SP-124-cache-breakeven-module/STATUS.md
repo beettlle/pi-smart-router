@@ -40,4 +40,5 @@
 
 ## Discoveries
 
-(none yet)
+- Contract `node --test` requires `.ts` import specifiers on Node 26; vitest shim gated on `process.env.VITEST`.
+- Pre-existing flaky failure in `tests/unit/sqlite-store.test.ts` (telemetry list) unrelated to SP-124; contract test passes.
