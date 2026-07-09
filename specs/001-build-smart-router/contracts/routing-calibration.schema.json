@@ -192,7 +192,7 @@
     },
     "routing_centroids": {
       "type": "object",
-      "description": "Precomputed semantic cluster centroids (SP-114).",
+      "description": "Precomputed semantic cluster centroids (SP-114) with optional OATS refinement metadata (SP-146).",
       "required": ["version", "embedding_dim", "clusters"],
       "additionalProperties": false,
       "properties": {
@@ -219,6 +219,51 @@
               },
               "reference_count": { "type": "integer", "minimum": 0 }
             }
+          }
+        },
+        "oats_refinement": {
+          "type": "object",
+          "description": "OATS offline centroid shift metadata (SP-146). Present when refinement ran on sufficient labeled embeddings.",
+          "required": [
+            "version",
+            "alpha",
+            "beta",
+            "min_positive_samples",
+            "min_negative_samples",
+            "positive_sample_count",
+            "negative_sample_count",
+            "clusters_refined",
+            "clusters_skipped"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "version": { "type": "integer", "const": 1 },
+            "alpha": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Attraction strength toward cheap-tier success embeddings."
+            },
+            "beta": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Repulsion strength from loop-escalation failure embeddings (typically beta < alpha)."
+            },
+            "min_positive_samples": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Per-cluster minimum cheap-tier successes before centroid shift."
+            },
+            "min_negative_samples": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Per-cluster minimum loop-escalation failures before repulsion term applies."
+            },
+            "positive_sample_count": { "type": "integer", "minimum": 0 },
+            "negative_sample_count": { "type": "integer", "minimum": 0 },
+            "clusters_refined": { "type": "integer", "minimum": 0 },
+            "clusters_skipped": { "type": "integer", "minimum": 0 }
           }
         }
       }
