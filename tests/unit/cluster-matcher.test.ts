@@ -13,6 +13,7 @@ import {
   createClusterMatcher,
   loadClusterMatcherCatalog,
   loadRoutingCentroidsArtifact,
+  parseRoutingCentroidsFromBundle,
   serializeRoutingCentroidsArtifact,
   validateCentroidClusterIds,
   type ClusterMatcherConfig,
@@ -306,6 +307,22 @@ describe('routing centroid bootstrap', () => {
       });
       expect(artifact.clusters[0]!.centroid).toHaveLength(EMBEDDING_DIM);
       expect(artifact).toMatchSnapshot();
+    });
+  });
+
+  describe('loadRoutingCentroidsFromCalibrationBundle', () => {
+    it('loads centroids embedded in a routing-calibration bundle', () => {
+      const artifact = loadRoutingCentroidsArtifact(
+        join(process.cwd(), 'config/routing-centroids.json.example'),
+      );
+      const bundle = {
+        version: 2,
+        routing_centroids: artifact,
+      };
+
+      const parsed = parseRoutingCentroidsFromBundle(bundle);
+      expect(parsed.clusters).toHaveLength(artifact.clusters.length);
+      expect(parsed.clusters[0]!.cluster_id).toBe(artifact.clusters[0]!.cluster_id);
     });
   });
 

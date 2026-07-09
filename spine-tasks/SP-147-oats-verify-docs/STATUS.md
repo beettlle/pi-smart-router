@@ -1,4 +1,4 @@
-**Current Step:** Step 2: Runtime and docs
+**Current Step:** Step 3: Testing and verification
 **Status:** In Progress
 **Last Updated:** 2026-07-09
 **Review Level:** 1
@@ -17,17 +17,17 @@
 
 ## Step 2: Runtime and docs
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Confirm cluster matcher loads OATS-refined centroids from bundle
 - [x] Document OATS regeneration in README operator section
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Calibration pipeline integration test
-- [ ] Run `npm run verify:ci`
+- [x] Calibration pipeline integration test
+- [x] Run `npm run verify:ci`
 
 ---
 
@@ -35,7 +35,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-09 | 1 | plan | skipped (engine) |
 
 ## Discoveries
 
@@ -48,6 +48,8 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-09 | Step 1 | Extended verify script with OATS validation and cluster benchmarks |
+| 2026-07-09 | Step 2 | Cluster matcher loads calibration bundle centroids; README OATS section |
+| 2026-07-09 | Step 3 | Integration tests and verify:ci passed |
 
 ## Blockers
 
@@ -56,3 +58,10 @@
 | | | |
 
 ## Notes
+
+## Completion Criteria
+
+- [x] Verify script asserts OATS centroid artifacts
+- [x] Calibration pipeline integration test passes
+- [x] README operator section documents OATS workflow
+- [x] `npm run verify:ci` passes
