@@ -11,6 +11,8 @@
 
 import type {
   ModelProfile,
+  PlanningDelegateConfig,
+  PlanningDelegateObservability,
   PriceCatalog,
   RoutingDecision,
   RoutingFeatureSidecar,
@@ -49,6 +51,10 @@ import {
   estimateRoutingCost,
   enrichRoutingDecisionWithContextFit,
   enrichRoutingDecisionWithTierSelection,
+  createPlanningDelegateObservability,
+  PLANNING_DELEGATE,
+  PLANNING_DELEGATE_DISABLED,
+  PLANNING_DIRECT_FRONTIER,
 } from '../../infrastructure/telemetry/routing-telemetry.js';
 import type { HydraMatcher as HydraMatcherType, MatchResult } from '../matching/hydra-matcher.js';
 import type { ClusterMatcher, ClusterMatchResult } from '../matching/cluster-matcher.js';
@@ -178,6 +184,8 @@ export interface PipelineOptions {
   readonly routingCalibrationPath?: string;
   /** SAAR pin policy (SP-123). Must match sessionPinner.saarConfig when enabled. */
   readonly saarConfig?: SaarConfig;
+  /** Planning delegate operator knobs (SP-143, #71). Defaults to operator config. */
+  readonly planningDelegateConfig?: PlanningDelegateConfig;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -217,6 +225,8 @@ export class RouterPipeline {
   private contextOverflowTriggered = false;
   /** Internal breakeven gate reason for SP-126 explain wiring. */
   private currentBreakevenReason: string | null = null;
+  /** Planning delegate observability for SP-143 explain/telemetry wiring. */
+  private currentPlanningDelegate: PlanningDelegateObservability | null = null;
 
   constructor(fleet: readonly ModelProfile[], options?: PipelineOptions) {
     this.fleet = fleet;
@@ -265,6 +275,7 @@ export class RouterPipeline {
     this.contextOverflowPreferredProvider = null;
     this.contextOverflowTriggered = false;
     this.currentBreakevenReason = null;
+    this.currentPlanningDelegate = null;
 
     let currentStage: NamedPipelineStage | undefined;
 
@@ -359,6 +370,9 @@ export class RouterPipeline {
       p_success_calibrated: this.currentPSuccessCalibrated,
       p_success_alpha: this.currentPSuccessAlpha,
       local_eligible_reason: this.currentLocalEligibleReason,
+      ...(this.currentPlanningDelegate
+        ? { planning_delegate: this.currentPlanningDelegate }
+        : {}),
     };
 
     const withBaseFeatures = { ...decision, features };
@@ -961,52 +975,153 @@ export class RouterPipeline {
     const tierCandidates = this.activeFleet.filter(
       (m) => m.tier === targetTier && m.healthy !== false,
     );
-    const model = selectLowestCostModel(tierCandidates);
-    if (!model) {
+    const targetModel = selectLowestCostModel(tierCandidates);
+    if (!targetModel) {
       return { decided: false, stage: 'turn_envelope' };
     }
 
     const pinner = this.options.sessionPinner;
     const pin = pinner?.getPin(request.session_id) ?? null;
-    if (pin) {
-      const pinnedModel = this.activeFleet.find(
-        (m) => m.id === pin.pinned_model_id && m.healthy !== false,
+    const pinnedModel =
+      pin !== null
+        ? this.activeFleet.find(
+            (m) => m.id === pin.pinned_model_id && m.healthy !== false,
+          )
+        : undefined;
+
+    // SP-143: cache-preserving planning delegate when warm economical pin would switch to frontier.
+    if (
+      turnType === 'planning' &&
+      pinnedModel &&
+      pinnedModel.tier === 'economical-cloud' &&
+      pinnedModel.id !== targetModel.id
+    ) {
+      const delegateDecision = this.tryPlanningDelegateDecision(
+        request,
+        pinnedModel,
+        targetModel,
       );
-      if (pinnedModel && pinnedModel.id !== model.id) {
-        const skipBreakeven =
-          turnType === 'planning' && this.isSaarPlanningBufferActive(request);
-        if (!skipBreakeven) {
-          const tokenEstimate =
-            request.estimated_input_tokens ?? request.prompt_text.length;
-          const breakeven = evaluateModelSwitchBreakeven(
-            pinnedModel,
-            model,
-            tokenEstimate,
-            tokenEstimate,
-            this.options.saarConfig,
-          );
-          if (!breakeven.shouldSwitch) {
-            this.currentBreakevenReason = 'breakeven_blocked';
-            return { decided: false, stage: 'turn_envelope' };
-          }
-          this.currentBreakevenReason = 'breakeven_pass';
-        }
+      if (delegateDecision) {
+        return delegateDecision;
       }
+    }
+
+    if (pinnedModel && pinnedModel.id !== targetModel.id) {
+      const skipBreakeven =
+        turnType === 'planning' && this.isSaarPlanningBufferActive(request);
+      if (!skipBreakeven) {
+        const tokenEstimate =
+          request.estimated_input_tokens ?? request.prompt_text.length;
+        const breakeven = evaluateModelSwitchBreakeven(
+          pinnedModel,
+          targetModel,
+          tokenEstimate,
+          tokenEstimate,
+          this.options.saarConfig,
+        );
+        if (!breakeven.shouldSwitch) {
+          this.currentBreakevenReason = 'breakeven_blocked';
+          return { decided: false, stage: 'turn_envelope' };
+        }
+        this.currentBreakevenReason = 'breakeven_pass';
+      }
+    }
+
+    const directReasonCode = `turn_${turnType}`;
+    let planningDirectFallback: string | null = null;
+
+    if (
+      turnType === 'planning' &&
+      pinnedModel &&
+      pinnedModel.tier === 'economical-cloud' &&
+      pinnedModel.id !== targetModel.id
+    ) {
+      planningDirectFallback = this.resolvePlanningDirectFallbackReason();
+    }
+
+    if (planningDirectFallback) {
+      this.setPlanningDelegateDirectFallback(targetModel.id, planningDirectFallback);
     }
 
     return {
       decided: true,
       stage: 'turn_envelope',
-      decision: this.withEstimatedCost(request, model, {
+      decision: this.withEstimatedCost(request, targetModel, {
         request_id: request.request_id,
-        selected_model_id: model.id,
+        selected_model_id: targetModel.id,
         tier: targetTier,
         stage: 'turn_envelope',
-        reason_code: `turn_${turnType}`,
+        reason_code: planningDirectFallback
+          ? PLANNING_DIRECT_FRONTIER
+          : directReasonCode,
         routing_latency_ms: 0,
         pin_reason: null,
       }),
     };
+  }
+
+  private resolvePlanningDirectFallbackReason(): string | null {
+    const config = this.resolvePlanningDelegateConfig();
+    if (!config.enabled) {
+      return PLANNING_DELEGATE_DISABLED;
+    }
+    return null;
+  }
+
+  private resolvePlanningDelegateConfig(): PlanningDelegateConfig {
+    return (
+      this.options.planningDelegateConfig ??
+      DEFAULT_OPERATOR_CONFIG.planning_delegate
+    );
+  }
+
+  /**
+   * SP-143: emit planning_delegate when enabled; otherwise record direct fallback
+   * observability and return null so breakeven-gated direct frontier can proceed.
+   */
+  private tryPlanningDelegateDecision(
+    request: RoutingRequest,
+    pinnedModel: ModelProfile,
+    frontierModel: ModelProfile,
+  ): StageResult | null {
+    const config = this.resolvePlanningDelegateConfig();
+    if (!config.enabled) {
+      return null;
+    }
+
+    this.currentPlanningDelegate = createPlanningDelegateObservability({
+      path: 'delegate',
+      primary_model_id: pinnedModel.id,
+      delegate_model_id: frontierModel.id,
+      compressed_context: config.compressed_context,
+      planning_delegate_reason_code: PLANNING_DELEGATE,
+    });
+
+    return {
+      decided: true,
+      stage: 'turn_envelope',
+      decision: this.withEstimatedCost(request, pinnedModel, {
+        request_id: request.request_id,
+        selected_model_id: pinnedModel.id,
+        tier: pinnedModel.tier,
+        stage: 'turn_envelope',
+        reason_code: PLANNING_DELEGATE,
+        routing_latency_ms: 0,
+        pin_reason: null,
+      }),
+    };
+  }
+
+  private setPlanningDelegateDirectFallback(
+    delegateModelId: string | null,
+    fallbackReason: string,
+  ): void {
+    this.currentPlanningDelegate = createPlanningDelegateObservability({
+      path: 'direct',
+      delegate_model_id: delegateModelId,
+      planning_delegate_reason_code: PLANNING_DIRECT_FRONTIER,
+      fallback_reason: fallbackReason,
+    });
   }
 
   // ─── Low-intensity tier gate (SP-103, #58) ───────────────────────────────
