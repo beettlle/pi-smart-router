@@ -30,6 +30,7 @@ function makeTrainingRecord(
   overrides: Record<string, unknown> = {},
 ): Record<string, unknown> {
   return {
+    request_id: 'req-default',
     timestamp: '2026-07-07T12:00:00.000Z',
     session_id_hash: 'a'.repeat(64),
     turn_type: 'main_loop',
@@ -65,6 +66,10 @@ function makeBundleWithHydraWeights(): RoutingCalibrationBundle {
       bias: [0.1, -0.1, 0.05],
       trained_sample_count: MINIMUM_TRAINING_SAMPLES.hydra_projection,
     },
+    isotonic_calibrator: {
+      ...base.isotonic_calibrator,
+      trained_sample_count: MINIMUM_TRAINING_SAMPLES.isotonic_calibrator,
+    },
   };
 }
 
@@ -75,7 +80,7 @@ describe('train routing calibration (SP-117)', () => {
     expect(MINIMUM_TRAINING_SAMPLES.triage_thresholds).toBeGreaterThanOrEqual(50);
   });
 
-  it('produces a versioned bundle with all four artifact types', () => {
+  it('produces a versioned bundle with all five artifact types', () => {
     const bundle = trainRoutingCalibrationBundle([
       makeTrainingRecord(),
       makeTrainingRecord({ selected_model_id: 'gpt-4o', success_label: false }),
@@ -85,16 +90,18 @@ describe('train routing calibration (SP-117)', () => {
     expect(bundle.hydra_projection.version).toBe(1);
     expect(bundle.triage_thresholds.version).toBe(1);
     expect(bundle.p_success_weights.version).toBe(1);
+    expect(bundle.isotonic_calibrator.version).toBe(1);
     expect(bundle.routing_centroids.version).toBe(1);
     expect(bundle.hydra_projection.weights).toHaveLength(EMBEDDING_DIM * 3);
     expect(bundle.minimum_training_samples).toEqual(MINIMUM_TRAINING_SAMPLES);
+    expect(bundle.isotonic_calibrator.x_knots.length).toBeGreaterThanOrEqual(2);
   });
 
   it('serializes and parses bundle JSON with schema validation', () => {
     const bundle = makeBundleWithHydraWeights();
     const raw = serializeRoutingCalibrationBundle(bundle);
     const parsed = parseRoutingCalibrationBundleJson(raw);
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
     expect(parsed.hydra_projection.bias).toEqual(bundle.hydra_projection.bias);
   });
 
@@ -127,12 +134,28 @@ describe('train routing calibration (SP-117)', () => {
     expect(bundle.triage_thresholds.cyclomatic_threshold).toBeLessThanOrEqual(30);
   });
 
+  it('fits isotonic calibrator and reports holdout ECE with enough labeled rows', () => {
+    const records = Array.from({ length: 40 }, (_, index) =>
+      makeTrainingRecord({
+        request_id: `req-${index}`,
+        success_label: index % 3 !== 0,
+        triage_cyclomatic_score: index / 40,
+      }),
+    );
+
+    const bundle = trainRoutingCalibrationBundle(records);
+    expect(bundle.isotonic_calibrator.trained_sample_count).toBe(40);
+    expect(bundle.isotonic_calibrator.x_knots.length).toBeGreaterThanOrEqual(2);
+    expect(bundle.isotonic_calibrator.holdout_ece_raw).not.toBeNull();
+    expect(bundle.isotonic_calibrator.holdout_ece_calibrated).not.toBeNull();
+  });
+
   it('falls back to defaults when bundle file is missing', () => {
     const dir = mkdtempSync(join(tmpdir(), 'sp117-missing-'));
     try {
       const missingPath = join(dir, 'missing-bundle.json');
       const bundle = resolveRoutingCalibrationBundle(missingPath);
-      expect(bundle.version).toBe(1);
+      expect(bundle.version).toBe(2);
       expect(bundle.triage_thresholds.cyclomatic_threshold).toBe(CYCLOMATIC_THRESHOLD);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -145,7 +168,7 @@ describe('train routing calibration (SP-117)', () => {
       const invalidPath = join(dir, 'invalid-bundle.json');
       writeFileSync(invalidPath, JSON.stringify({ version: 99 }), 'utf8');
       const bundle = resolveRoutingCalibrationBundle(invalidPath);
-      expect(bundle.version).toBe(1);
+      expect(bundle.version).toBe(2);
       expect(bundle.p_success_weights.trained_sample_count).toBe(0);
     } finally {
       rmSync(dir, { recursive: true, force: true });

@@ -41,8 +41,13 @@ import {
   type LabeledTrainingSample,
   type PSuccessWeights,
 } from '../src/domain/routing/p-success-classifier.js';
+import {
+  createDefaultIsotonicCalibratorArtifact,
+  fitIsotonicCalibratorFromSamples,
+  type IsotonicCalibratorArtifact,
+} from './lib/isotonic-calibrator.js';
 
-export const ROUTING_CALIBRATION_BUNDLE_VERSION = 1 as const;
+export const ROUTING_CALIBRATION_BUNDLE_VERSION = 2 as const;
 export const DEFAULT_ROUTING_CALIBRATION_PATH = resolve('config', 'routing-calibration.json');
 export const ROUTING_CALIBRATION_SCHEMA_PATH = resolve(
   'specs/001-build-smart-router/contracts/routing-calibration.schema.json',
@@ -68,6 +73,7 @@ export interface RoutingCalibrationBundle {
   readonly hydra_projection: HydraProjectionBundleArtifact;
   readonly triage_thresholds: TriageThresholdsArtifact;
   readonly p_success_weights: PSuccessWeights;
+  readonly isotonic_calibrator: IsotonicCalibratorArtifact;
   readonly routing_centroids: RoutingCentroidsArtifact;
 }
 
@@ -199,6 +205,7 @@ export function createDefaultRoutingCalibrationBundle(): RoutingCalibrationBundl
     hydra_projection: createDefaultHydraProjectionArtifact(),
     triage_thresholds: createDefaultTriageThresholdsArtifact(),
     p_success_weights: createDefaultPSuccessWeights(),
+    isotonic_calibrator: createDefaultIsotonicCalibratorArtifact(),
     routing_centroids: loadDefaultRoutingCentroids(),
   };
 }
@@ -216,6 +223,7 @@ const RoutingCalibrationBundleSchema = z.object({
     hydra_projection: z.number().int().min(1),
     triage_thresholds: z.number().int().min(1),
     p_success_weights: z.number().int().min(1),
+    isotonic_calibrator: z.number().int().min(1),
     routing_centroids: z.number().int().min(1),
   }),
   hydra_projection: z.object({
@@ -237,6 +245,15 @@ const RoutingCalibrationBundleSchema = z.object({
     intercept: z.number(),
     coefficients: z.array(z.number()).length(P_SUCCESS_FEATURE_NAMES.length),
     trained_sample_count: z.number().int().min(0),
+  }),
+  isotonic_calibrator: z.object({
+    version: z.literal(1),
+    min_training_samples: z.number().int().min(0),
+    x_knots: z.array(z.number().finite().min(0).max(1)).min(2),
+    y_knots: z.array(z.number().finite().min(0).max(1)).min(2),
+    trained_sample_count: z.number().int().min(0),
+    holdout_ece_raw: z.number().finite().min(0).max(1).nullable(),
+    holdout_ece_calibrated: z.number().finite().min(0).max(1).nullable(),
   }),
   routing_centroids: z.object({
     version: z.literal(1),
@@ -429,12 +446,21 @@ function trainHydraProjection(
   };
 }
 
-function trainPSuccessWeights(records: readonly Record<string, unknown>[]): PSuccessWeights {
-  const samples = records
+function collectLabeledSamples(records: readonly Record<string, unknown>[]): LabeledTrainingSample[] {
+  return records
     .map((record) => contribToLabeledSample(record))
     .filter((sample): sample is LabeledTrainingSample => sample !== null);
+}
 
+function trainPSuccessWeights(samples: readonly LabeledTrainingSample[]): PSuccessWeights {
   return trainFromLabeledSamples(samples);
+}
+
+function trainIsotonicCalibrator(
+  samples: readonly LabeledTrainingSample[],
+  weights: PSuccessWeights,
+): IsotonicCalibratorArtifact {
+  return fitIsotonicCalibratorFromSamples(samples, weights).artifact;
 }
 
 /** Train all bundle artifacts from validated contrib rows (feature vectors only). */
@@ -446,14 +472,51 @@ export function trainRoutingCalibrationBundle(
       record.reason_code === 'hydra_embedding_match' ||
       readRequirementVector(record) !== null,
   );
+  const labeledSamples = collectLabeledSamples(records);
+  const pSuccessWeights = trainPSuccessWeights(labeledSamples);
 
   return {
     version: ROUTING_CALIBRATION_BUNDLE_VERSION,
     minimum_training_samples: MINIMUM_TRAINING_SAMPLES,
     hydra_projection: trainHydraProjection(hydraRows),
     triage_thresholds: trainTriageThreshold(records),
-    p_success_weights: trainPSuccessWeights(records),
+    p_success_weights: pSuccessWeights,
+    isotonic_calibrator: trainIsotonicCalibrator(labeledSamples, pSuccessWeights),
     routing_centroids: loadDefaultRoutingCentroids(),
+  };
+}
+
+export interface TrainRoutingCalibrationResult {
+  readonly bundle: RoutingCalibrationBundle;
+  readonly isotonic_fit_sample_count: number;
+  readonly isotonic_holdout_sample_count: number;
+}
+
+/** Train bundle and return isotonic split metadata for logging. */
+export function trainRoutingCalibrationBundleWithMetrics(
+  records: readonly Record<string, unknown>[],
+): TrainRoutingCalibrationResult {
+  const hydraRows = records.filter(
+    (record) =>
+      record.reason_code === 'hydra_embedding_match' ||
+      readRequirementVector(record) !== null,
+  );
+  const labeledSamples = collectLabeledSamples(records);
+  const pSuccessWeights = trainPSuccessWeights(labeledSamples);
+  const isotonicFit = fitIsotonicCalibratorFromSamples(labeledSamples, pSuccessWeights);
+
+  return {
+    bundle: {
+      version: ROUTING_CALIBRATION_BUNDLE_VERSION,
+      minimum_training_samples: MINIMUM_TRAINING_SAMPLES,
+      hydra_projection: trainHydraProjection(hydraRows),
+      triage_thresholds: trainTriageThreshold(records),
+      p_success_weights: pSuccessWeights,
+      isotonic_calibrator: isotonicFit.artifact,
+      routing_centroids: loadDefaultRoutingCentroids(),
+    },
+    isotonic_fit_sample_count: isotonicFit.fit_sample_count,
+    isotonic_holdout_sample_count: isotonicFit.holdout_sample_count,
   };
 }
 
@@ -529,7 +592,8 @@ async function main(): Promise<void> {
 
   const text = await readInputText(inputPath);
   const records = text.trim().length > 0 ? parseContribJsonl(text, inputPath ?? 'stdin') : [];
-  const bundle = trainRoutingCalibrationBundle(records);
+  const trained = trainRoutingCalibrationBundleWithMetrics(records);
+  const bundle = trained.bundle;
 
   parseRoutingCalibrationBundleJson(serializeRoutingCalibrationBundle(bundle));
   writeFileSync(outputPath, serializeRoutingCalibrationBundle(bundle), 'utf8');
@@ -540,8 +604,20 @@ async function main(): Promise<void> {
   console.error(
     `  p_success samples=${bundle.p_success_weights.trained_sample_count},`,
     `triage samples=${bundle.triage_thresholds.trained_sample_count},`,
-    `hydra samples=${bundle.hydra_projection.trained_sample_count}`,
+    `hydra samples=${bundle.hydra_projection.trained_sample_count},`,
+    `isotonic samples=${bundle.isotonic_calibrator.trained_sample_count}`,
   );
+
+  const isotonic = bundle.isotonic_calibrator;
+  if (isotonic.holdout_ece_raw !== null && isotonic.holdout_ece_calibrated !== null) {
+    console.error(
+      `  isotonic holdout ECE: raw=${isotonic.holdout_ece_raw.toFixed(4)},`,
+      `calibrated=${isotonic.holdout_ece_calibrated.toFixed(4)},`,
+      `fit=${trained.isotonic_fit_sample_count},`,
+      `holdout=${trained.isotonic_holdout_sample_count},`,
+      `knots=${isotonic.x_knots.length}`,
+    );
+  }
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

@@ -10,13 +10,14 @@
     "hydra_projection",
     "triage_thresholds",
     "p_success_weights",
+    "isotonic_calibrator",
     "routing_centroids"
   ],
   "additionalProperties": false,
   "properties": {
     "version": {
       "type": "integer",
-      "const": 1,
+      "const": 2,
       "description": "Bundle format version; runtime rejects incompatible versions."
     },
     "minimum_training_samples": {
@@ -31,6 +32,9 @@
     "p_success_weights": {
       "$ref": "#/$defs/p_success_weights"
     },
+    "isotonic_calibrator": {
+      "$ref": "#/$defs/isotonic_calibrator"
+    },
     "routing_centroids": {
       "$ref": "#/$defs/routing_centroids"
     }
@@ -43,6 +47,7 @@
         "hydra_projection",
         "triage_thresholds",
         "p_success_weights",
+        "isotonic_calibrator",
         "routing_centroids"
       ],
       "additionalProperties": false,
@@ -61,6 +66,11 @@
           "type": "integer",
           "minimum": 1,
           "description": "Economical-tier P(success) logistic regression — 30 labeled rows (MIN_TRAINING_SAMPLES)."
+        },
+        "isotonic_calibrator": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Isotonic regression calibrator on logistic scores — same minimum as p_success_weights."
         },
         "routing_centroids": {
           "type": "integer",
@@ -135,6 +145,49 @@
           "minItems": 1
         },
         "trained_sample_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "isotonic_calibrator": {
+      "type": "object",
+      "description": "Monotonic isotonic regression calibrator on logistic P(success) scores (SP-132). Piecewise lookup via x/y knot tables.",
+      "required": [
+        "version",
+        "min_training_samples",
+        "x_knots",
+        "y_knots",
+        "trained_sample_count",
+        "holdout_ece_raw",
+        "holdout_ece_calibrated"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "integer", "const": 1 },
+        "min_training_samples": { "type": "integer", "minimum": 0 },
+        "x_knots": {
+          "type": "array",
+          "description": "Non-decreasing raw logistic score knots in [0, 1].",
+          "items": { "type": "number", "minimum": 0, "maximum": 1 },
+          "minItems": 2
+        },
+        "y_knots": {
+          "type": "array",
+          "description": "Non-decreasing calibrated probability knots aligned with x_knots.",
+          "items": { "type": "number", "minimum": 0, "maximum": 1 },
+          "minItems": 2
+        },
+        "trained_sample_count": { "type": "integer", "minimum": 0 },
+        "holdout_ece_raw": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Holdout expected calibration error for raw logistic scores."
+        },
+        "holdout_ece_calibrated": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Holdout expected calibration error after isotonic mapping."
+        }
       }
     },
     "routing_centroids": {

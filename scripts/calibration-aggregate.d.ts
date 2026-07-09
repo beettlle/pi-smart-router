@@ -17,6 +17,7 @@ export declare const MINIMUM_TRAINING_SAMPLES: {
     readonly hydra_projection: 100;
     readonly triage_thresholds: 50;
     readonly p_success_weights: 30;
+    readonly isotonic_calibrator: 30;
     readonly routing_centroids: 10;
 };
 /** Keys whose presence rejects the whole contrib row (prompt content, raw identifiers). */

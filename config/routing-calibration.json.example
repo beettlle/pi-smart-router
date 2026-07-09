@@ -1,9 +1,10 @@
 {
-  "version": 1,
+  "version": 2,
   "minimum_training_samples": {
     "hydra_projection": 100,
     "triage_thresholds": 50,
     "p_success_weights": 30,
+    "isotonic_calibrator": 30,
     "routing_centroids": 10
   },
   "hydra_projection": {
@@ -1204,6 +1205,15 @@
       0
     ],
     "trained_sample_count": 0
+  },
+  "isotonic_calibrator": {
+    "version": 1,
+    "min_training_samples": 30,
+    "x_knots": [0, 1],
+    "y_knots": [0, 1],
+    "trained_sample_count": 0,
+    "holdout_ece_raw": null,
+    "holdout_ece_calibrated": null
   },
   "routing_centroids": {
     "version": 1,
