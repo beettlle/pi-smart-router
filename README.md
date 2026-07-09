@@ -565,6 +565,25 @@ Contributors must run `npm run build` before publishing or consuming the library
 | `npm run routing:calibration-aggregate` | Aggregate community telemetry for calibration |
 | `npm run routing:train-calibration` | Train routing calibration artifact bundle |
 | `npm run routing:verify-calibration` | Verify calibration bundle against benchmark prompts |
+| `npm run routing:ingest-benchmarks` | Regenerate `config/benchmark-profiles.json` from leaderboard fixtures |
+| `npm run routing:verify-benchmark-profiles` | CI smoke: assert checked-in profiles match fixture ingest |
+
+### Benchmark profile refresh
+
+Capability scores in `config/benchmark-profiles.json` are grounded from public leaderboard snapshots under `tests/fixtures/benchmark-leaderboards/`. Each artifact records provenance (`source_urls`, `scrape_date`, `catalog_freeze_date`) in its header.
+
+**Operator policy:**
+
+1. **PR smoke** — `.github/workflows/benchmark-profile-refresh.yml` runs on PRs that touch fixtures, ingest, or the checked-in artifact. It executes `npm run routing:verify-benchmark-profiles` so fixture edits cannot drift from `config/benchmark-profiles.json`.
+2. **Monthly refresh** — the same workflow runs on the 1st of each month (06:00 UTC) and via `workflow_dispatch`. It re-ingests fixtures, updates `catalog_freeze_date` to the run date, and opens a PR when model scores change.
+3. **Manual updates** — after editing fixture snapshots, run `npm run routing:ingest-benchmarks` (optionally `--catalog-freeze-date YYYY-MM-DD`) and commit the regenerated `config/benchmark-profiles.json` with the PR.
+
+Regenerate locally:
+
+```bash
+npm run routing:ingest-benchmarks
+npm run routing:verify-benchmark-profiles
+```
 
 ### Releasing
 
