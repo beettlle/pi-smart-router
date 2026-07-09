@@ -50,7 +50,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| 2026-07-08 | 1-4 | plan | skipped (in-worker; engine runs post-.DONE) |
+| 2026-07-08 | 4 | plan | skipped (in-worker SP-195); REVISE lint fix applied |
 
 ## Discoveries
 
@@ -65,7 +65,7 @@
 |------|------|--------|
 | 2026-07-08 | Step 1 | Verified pi-ai google-shared serializer; documented base64 sentinel |
 | 2026-07-08 | Step 2-3 | Implemented repair helpers and unit tests |
-| 2026-07-08 | Step 4 | typecheck + 1125/1125 tests pass |
+| 2026-07-08 | Step 4 | REVISE fix — lint pass, virtual-router direct repair test |
 
 ## Blockers
 
