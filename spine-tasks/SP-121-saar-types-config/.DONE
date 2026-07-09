@@ -1,1 +1,3 @@
-SP-121 complete 2026-07-08
+SP-121 complete — SAAR types, schema, and operator config.
+
+Contract testCommand verified: node --test tests/unit/schemas.test.ts tests/unit/defaults.test.ts (13/13 pass).
