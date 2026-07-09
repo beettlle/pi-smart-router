@@ -1,10 +1,16 @@
-import { describe, expect, it } from 'vitest';
+// @ts-nocheck
+import assert from 'node:assert/strict';
+import * as nodeTest from 'node:test';
 
-import {
+const vitest = process.env.VITEST ? await import('vitest') : null;
+const describe = vitest?.describe ?? nodeTest.describe;
+const it = vitest?.it ?? nodeTest.it;
+
+const {
   OperatorConfigSchema,
   SaarConfigSchema,
   SaarSessionStateSchema,
-} from '../../src/domain/types/schemas.js';
+} = await import('../../src/domain/types/schemas.ts');
 
 const validSaarConfig = {
   planning_turn_buffer: 2,
@@ -13,9 +19,17 @@ const validSaarConfig = {
   switch_threshold: 0.5,
 };
 
+function expectEqual(actual, expected) {
+  if (vitest) {
+    vitest.expect(actual).toBe(expected);
+  } else {
+    assert.equal(actual, expected);
+  }
+}
+
 describe('SaarConfigSchema', () => {
   it('accepts valid SAAR config', () => {
-    expect(SaarConfigSchema.safeParse(validSaarConfig).success).toBe(true);
+    expectEqual(SaarConfigSchema.safeParse(validSaarConfig).success, true);
   });
 
   it('rejects non-positive planning_turn_buffer', () => {
@@ -23,7 +37,7 @@ describe('SaarConfigSchema', () => {
       ...validSaarConfig,
       planning_turn_buffer: 0,
     });
-    expect(result.success).toBe(false);
+    expectEqual(result.success, false);
   });
 
   it('rejects prefix_cache_weight above 1', () => {
@@ -31,7 +45,7 @@ describe('SaarConfigSchema', () => {
       ...validSaarConfig,
       prefix_cache_weight: 1.01,
     });
-    expect(result.success).toBe(false);
+    expectEqual(result.success, false);
   });
 
   it('rejects negative prefix_cache_weight', () => {
@@ -39,7 +53,7 @@ describe('SaarConfigSchema', () => {
       ...validSaarConfig,
       prefix_cache_weight: -0.1,
     });
-    expect(result.success).toBe(false);
+    expectEqual(result.success, false);
   });
 
   it('rejects non-positive idle_timeout_seconds', () => {
@@ -47,7 +61,7 @@ describe('SaarConfigSchema', () => {
       ...validSaarConfig,
       idle_timeout_seconds: 0,
     });
-    expect(result.success).toBe(false);
+    expectEqual(result.success, false);
   });
 
   it('rejects switch_threshold above 1', () => {
@@ -55,7 +69,7 @@ describe('SaarConfigSchema', () => {
       ...validSaarConfig,
       switch_threshold: 2,
     });
-    expect(result.success).toBe(false);
+    expectEqual(result.success, false);
   });
 });
 
@@ -66,7 +80,7 @@ describe('SaarSessionStateSchema', () => {
       hard_lock: false,
       last_activity_at: '2026-07-08T12:00:00.000Z',
     });
-    expect(result.success).toBe(true);
+    expectEqual(result.success, true);
   });
 
   it('rejects negative turn_index', () => {
@@ -75,7 +89,7 @@ describe('SaarSessionStateSchema', () => {
       hard_lock: false,
       last_activity_at: '2026-07-08T12:00:00.000Z',
     });
-    expect(result.success).toBe(false);
+    expectEqual(result.success, false);
   });
 });
 
@@ -115,6 +129,6 @@ describe('OperatorConfigSchema SAAR section', () => {
         p_success_alpha: 0.5,
       },
     });
-    expect(result.success).toBe(false);
+    expectEqual(result.success, false);
   });
 });

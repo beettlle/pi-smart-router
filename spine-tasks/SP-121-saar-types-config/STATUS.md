@@ -41,4 +41,4 @@
 
 ## Discoveries
 
-(none yet)
+- Contract `testCommand` uses `node --test` (not vitest); SAAR unit tests were converted to dual `node:test`/vitest runners with dynamic `.ts` imports. SAAR defaults/env resolution live in `schemas.ts` so tests avoid the `tier-features` import chain at runtime.
