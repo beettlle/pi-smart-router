@@ -13,7 +13,11 @@ import {
 } from '@earendil-works/pi-ai/compat';
 import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
 
-import { normalizeDelegationContext } from '../../../src/domain/delegation/delegation-context.js';
+import {
+  isGoogleDelegationTarget,
+  normalizeDelegationContext,
+  repairGeminiReplayContext,
+} from '../../../src/domain/delegation/delegation-context.js';
 import {
   computeOutputHeadroom,
   type OutputHeadroomConfig,
@@ -147,9 +151,15 @@ export function buildDelegationContext(
     ? deps.executionLedger.getLastExecution(sessionId)
     : null;
 
-  return normalizeDelegationContext(context, targetModel, {
+  const normalized = normalizeDelegationContext(context, targetModel, {
     sessionExecution,
   });
+
+  if (isGoogleDelegationTarget(targetModel)) {
+    return repairGeminiReplayContext(normalized, targetModel, sessionExecution);
+  }
+
+  return normalized;
 }
 
 export function createErrorMessage(

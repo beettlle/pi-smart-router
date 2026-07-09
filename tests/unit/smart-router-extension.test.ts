@@ -46,6 +46,7 @@ import { createRouterFromFleet } from '../../src/index.js';
 import { mapFleetFromRegistry, mapPiModelToProfile } from '../../src/config/pi-model-mapper.js';
 import { LifecycleHookState } from '../../src/index.js';
 import { ExecutionLedger } from '../../src/domain/delegation/execution-ledger.js';
+import { GEMINI_SKIP_THOUGHT_SIGNATURE_SENTINEL } from '../../src/domain/delegation/delegation-context.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import {
   HydraMatcher,
@@ -723,6 +724,123 @@ describe('createStreamSimple', () => {
           toolResultMessage('results'),
         ]),
         { sessionId: 'replay-sess-1' },
+      ),
+    );
+  });
+
+  it('repairs cross-model Gemini replay context before delegating to a different Google model', async () => {
+    const signature = 'dGhvdWdodC1zaWduYXR1cmU=';
+    const crossModelFleet: ModelProfile[] = [
+      makeProfile({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
+      makeProfile({ id: 'gemini-pro', tier: 'frontier-cloud', provider: 'google' }),
+    ];
+    const geminiFlash = makeRegistryModel({
+      provider: 'google',
+      id: 'gemini-flash',
+      api: 'google-generative-ai',
+    });
+    const geminiPro = makeRegistryModel({
+      provider: 'google',
+      id: 'gemini-pro',
+      api: 'google-generative-ai',
+    });
+
+    mockDelegateStreamSimple.mockImplementation((_model, context: Context) => {
+      const assistants = context.messages.filter(
+        (message: Message): message is AssistantMessage => message.role === 'assistant',
+      );
+      expect(assistants).toHaveLength(2);
+
+      const priorTurn = assistants[0]!;
+      expect(priorTurn.provider).toBe('google');
+      expect(priorTurn.model).toBe('gemini-pro');
+      expect(priorTurn.api).toBe('google-generative-ai');
+      const priorToolCall = priorTurn.content[0];
+      if (priorToolCall?.type === 'toolCall') {
+        expect(priorToolCall.thoughtSignature).toBe(signature);
+      }
+
+      const latestTurn = assistants[1]!;
+      expect(latestTurn.provider).toBe('google');
+      expect(latestTurn.model).toBe('gemini-pro');
+      const latestToolCall = latestTurn.content[0];
+      if (latestToolCall?.type === 'toolCall') {
+        expect(latestToolCall.thoughtSignature).toBe(GEMINI_SKIP_THOUGHT_SIGNATURE_SENTINEL);
+      }
+
+      return makeSuccessStream(geminiPro);
+    });
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router: createMockRouter(
+          vi.fn(async () => makeDecision({ selected_model_id: 'gemini-pro' })),
+          crossModelFleet,
+        ),
+        fleet: crossModelFleet,
+        modelRegistry: createMockRegistry([geminiFlash, geminiPro]),
+      }),
+    );
+
+    await collectEvents(
+      streamSimple(
+        makeAutoModel(),
+        makeContext([
+          userMessage('search scuba tanks'),
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'toolCall',
+                id: 'call-1',
+                name: 'web_search',
+                arguments: { query: 'scuba' },
+                thoughtSignature: signature,
+              },
+            ],
+            api: 'google-generative-ai',
+            provider: 'google',
+            model: 'gemini-flash',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: 'toolUse',
+            timestamp: 2,
+          },
+          toolResultMessage('results'),
+          userMessage('summarize the results', 4),
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'toolCall',
+                id: 'call-2',
+                name: 'read',
+                arguments: { path: '/tmp/results' },
+              },
+            ],
+            api: 'google-generative-ai',
+            provider: 'google',
+            model: 'gemini-flash',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: 'toolUse',
+            timestamp: 5,
+          },
+          toolResultMessage('summary source', 6),
+        ]),
+        { sessionId: 'cross-model-gemini-replay' },
       ),
     );
   });
