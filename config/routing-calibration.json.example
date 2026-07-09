@@ -8,8 +8,10 @@
     "routing_centroids": 10
   },
   "hydra_projection": {
-    "version": 1,
+    "version": 2,
     "embedding_dim": 384,
+    "prefix_schema_version": 2,
+    "prefix_flag_count": 7,
     "weights": [
       0,
       0,
