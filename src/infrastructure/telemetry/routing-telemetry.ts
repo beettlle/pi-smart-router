@@ -26,6 +26,8 @@ import type {
   ContextFitRejectedEntry,
   LowIntensityBreakdown,
   ModelProfile,
+  PlanningDelegateObservability,
+  PlanningDelegatePath,
   PriceCatalog,
   RejectedTierEntry,
   RoutingDecision,
@@ -58,6 +60,11 @@ export const BREAKEVEN_BLOCKED = 'breakeven_blocked' as const;
 export const BREAKEVEN_PASS = 'breakeven_pass' as const;
 export const SAAR_BUFFER_ACTIVE = 'saar_buffer_active' as const;
 export const SAAR_HARD_LOCK = 'saar_hard_lock' as const;
+
+export const PLANNING_DELEGATE = 'planning_delegate' as const;
+export const PLANNING_DIRECT_FRONTIER = 'planning_direct_frontier' as const;
+export const PLANNING_DELEGATE_DISABLED = 'planning_delegate_disabled' as const;
+export const PLANNING_DELEGATE_UNAVAILABLE = 'planning_delegate_unavailable' as const;
 
 const TURN_ENVELOPE_TIER_MAP: Readonly<Record<string, Tier | null>> = {
   planning: 'frontier-cloud',
@@ -538,6 +545,51 @@ function resolveSaarReasonCode(decision: RoutingDecision): string | null {
   return null;
 }
 
+/** Build planning delegate observability from routing decision features (SP-142). */
+export function buildPlanningDelegateObservability(
+  decision: RoutingDecision,
+): PlanningDelegateObservability | null {
+  return decision.features?.planning_delegate ?? null;
+}
+
+/** Construct planning delegate observability for pipeline and tests (SP-142). */
+export function createPlanningDelegateObservability(input: {
+  path: PlanningDelegatePath;
+  primary_model_id?: string | null;
+  delegate_model_id?: string | null;
+  compressed_context?: PlanningDelegateObservability['compressed_context'];
+  planning_delegate_reason_code: string;
+  fallback_reason?: string | null;
+}): PlanningDelegateObservability {
+  return {
+    path: input.path,
+    primary_model_id: input.primary_model_id ?? null,
+    delegate_model_id: input.delegate_model_id ?? null,
+    compressed_context: input.compressed_context ?? null,
+    planning_delegate_reason_code: input.planning_delegate_reason_code,
+    fallback_reason: input.fallback_reason ?? null,
+  };
+}
+
+/** Attach planning delegate observability to routing decision features (SP-142). */
+export function enrichRoutingDecisionWithPlanningDelegate(
+  decision: RoutingDecision,
+  planningDelegate?: PlanningDelegateObservability | null,
+): RoutingDecision {
+  const observability = planningDelegate ?? buildPlanningDelegateObservability(decision);
+  if (!observability) {
+    return decision;
+  }
+
+  return {
+    ...decision,
+    features: {
+      ...(decision.features ?? emptyFeatureSidecar()),
+      planning_delegate: observability,
+    },
+  };
+}
+
 /** Build privacy-safe SAAR pin state for explain and telemetry (SP-126). */
 export function buildSaarObservability(
   input: PinEconomicsObservabilityInput,
@@ -657,6 +709,53 @@ export const DEFAULT_BREAKEVEN_TELEMETRY_FIELDS = defaultBreakevenTelemetry();
 
 /** Default SAAR telemetry scalars for tests and legacy store reads. */
 export const DEFAULT_SAAR_TELEMETRY_FIELDS = defaultSaarTelemetry();
+
+function defaultPlanningDelegateTelemetry(): Pick<
+  RoutingTelemetry,
+  | 'planning_delegate_path'
+  | 'planning_delegate_primary_model_id'
+  | 'planning_delegate_model_id'
+  | 'planning_delegate_reason_code'
+  | 'planning_delegate_fallback_reason'
+  | 'planning_delegate_max_messages'
+  | 'planning_delegate_max_tokens'
+  | 'planning_delegate_exclude_execution_history'
+> {
+  return {
+    planning_delegate_path: null,
+    planning_delegate_primary_model_id: null,
+    planning_delegate_model_id: null,
+    planning_delegate_reason_code: null,
+    planning_delegate_fallback_reason: null,
+    planning_delegate_max_messages: null,
+    planning_delegate_max_tokens: null,
+    planning_delegate_exclude_execution_history: null,
+  };
+}
+
+/** Default planning delegate telemetry scalars for tests and legacy store reads. */
+export const DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS = defaultPlanningDelegateTelemetry();
+
+function planningDelegateTelemetryFromDecision(
+  decision: RoutingDecision,
+): ReturnType<typeof defaultPlanningDelegateTelemetry> {
+  const observability = buildPlanningDelegateObservability(decision);
+  if (!observability) {
+    return defaultPlanningDelegateTelemetry();
+  }
+
+  return {
+    planning_delegate_path: observability.path === 'none' ? null : observability.path,
+    planning_delegate_primary_model_id: observability.primary_model_id,
+    planning_delegate_model_id: observability.delegate_model_id,
+    planning_delegate_reason_code: observability.planning_delegate_reason_code,
+    planning_delegate_fallback_reason: observability.fallback_reason,
+    planning_delegate_max_messages: observability.compressed_context?.max_messages ?? null,
+    planning_delegate_max_tokens: observability.compressed_context?.max_tokens ?? null,
+    planning_delegate_exclude_execution_history:
+      observability.compressed_context?.exclude_execution_history ?? null,
+  };
+}
 
 function pinEconomicsTelemetryFromInput(
   input: PinEconomicsObservabilityInput,
@@ -786,7 +885,9 @@ export async function enrichRoutingDecisionForExplain(
 
   return enrichRoutingDecisionWithPinEconomics(
     request,
-    enrichRoutingDecisionWithTierSelection(withContextFit, clusterMatchTable),
+    enrichRoutingDecisionWithPlanningDelegate(
+      enrichRoutingDecisionWithTierSelection(withContextFit, clusterMatchTable),
+    ),
     pinEconomicsOptionsFromExplain(options),
   );
 }
@@ -847,12 +948,14 @@ export function buildRoutingDecisionLogPayload(
 ): Record<string, unknown> {
   const enriched = enrichRoutingDecisionWithPinEconomics(
     request,
-    enrichRoutingDecisionWithTierSelection(
-      enrichRoutingDecisionWithContextFit(
-        request,
-        decision,
-        fleet,
-        contextFitConfig,
+    enrichRoutingDecisionWithPlanningDelegate(
+      enrichRoutingDecisionWithTierSelection(
+        enrichRoutingDecisionWithContextFit(
+          request,
+          decision,
+          fleet,
+          contextFitConfig,
+        ),
       ),
     ),
     {
@@ -869,6 +972,7 @@ export function buildRoutingDecisionLogPayload(
   const tierSelection = enriched.features?.tier_selection;
   const breakeven = enriched.features?.breakeven;
   const saar = enriched.features?.saar;
+  const planningDelegate = enriched.features?.planning_delegate;
 
   return {
     request_id: enriched.request_id,
@@ -906,6 +1010,16 @@ export function buildRoutingDecisionLogPayload(
           planning_turn_buffer: saar.planning_turn_buffer,
           idle_timeout_seconds: saar.idle_timeout_seconds,
           saar_reason_code: saar.saar_reason_code,
+        }
+      : null,
+    planning_delegate_summary: planningDelegate
+      ? {
+          path: planningDelegate.path,
+          primary_model_id: planningDelegate.primary_model_id,
+          delegate_model_id: planningDelegate.delegate_model_id,
+          compressed_context: planningDelegate.compressed_context,
+          planning_delegate_reason_code: planningDelegate.planning_delegate_reason_code,
+          fallback_reason: planningDelegate.fallback_reason,
         }
       : null,
     delegate,
@@ -1093,6 +1207,7 @@ export class RoutingTelemetryEmitter {
         : {}),
       ...(this.saarConfig !== undefined ? { saarConfig: this.saarConfig } : {}),
     });
+    const planningDelegateFields = planningDelegateTelemetryFromDecision(decision);
 
     const record: RoutingTelemetry = {
       timestamp: this.clock(),
@@ -1128,6 +1243,7 @@ export class RoutingTelemetryEmitter {
       saar_hard_lock: pinEconomicsFields.saar_hard_lock,
       turn_index_in_session: pinEconomicsFields.turn_index_in_session,
       saar_reason_code: pinEconomicsFields.saar_reason_code,
+      ...planningDelegateFields,
     };
 
     this.entries.push(record);

@@ -4,21 +4,24 @@
  */
 
 import {
+  DEFAULT_PLANNING_DELEGATE_CONFIG,
   DEFAULT_SAAR_CONFIG,
+  resolvePlanningDelegateConfigFromEnv,
   resolveSaarConfigFromEnv,
   type OperatorConfig,
 } from '../domain/types/schemas.js';
 import { DEFAULT_LOW_INTENSITY_WEIGHTS } from '../domain/routing/tier-features.js';
 
-export { DEFAULT_SAAR_CONFIG, resolveSaarConfigFromEnv } from '../domain/types/schemas.js';
+export { DEFAULT_PLANNING_DELEGATE_CONFIG, DEFAULT_SAAR_CONFIG, resolvePlanningDelegateConfigFromEnv, resolveSaarConfigFromEnv } from '../domain/types/schemas.js';
 
-/** Merge operator env overrides onto defaults (SAAR section only today). */
+/** Merge operator env overrides onto defaults (SAAR and planning delegate sections). */
 export function resolveOperatorConfigFromEnv(
   base: OperatorConfig = DEFAULT_OPERATOR_CONFIG,
 ): OperatorConfig {
   return {
     ...base,
     saar: resolveSaarConfigFromEnv(base.saar),
+    planning_delegate: resolvePlanningDelegateConfigFromEnv(base.planning_delegate),
   };
 }
 
@@ -49,4 +52,5 @@ export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
     p_success_alpha: 0.5,
   },
   saar: DEFAULT_SAAR_CONFIG,
+  planning_delegate: DEFAULT_PLANNING_DELEGATE_CONFIG,
 } as const;

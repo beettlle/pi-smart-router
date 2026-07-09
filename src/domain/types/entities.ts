@@ -208,6 +208,48 @@ export interface BreakevenObservability {
   readonly breakeven_reason_code: string | null;
 }
 
+/** Planning delegate routing path (SP-142, #71). */
+export type PlanningDelegatePath = 'delegate' | 'direct' | 'none';
+
+/**
+ * Compressed context limits for ephemeral frontier sub-calls (SP-142).
+ * Excludes full execution history per #71; enforced by pi extension in SP-144.
+ */
+export interface CompressedContextSpec {
+  /** Max user/assistant messages retained in the delegate sub-call. */
+  readonly max_messages: number;
+  /** Max estimated tokens for delegate context window. */
+  readonly max_tokens: number;
+  /** When true, tool execution traces and verbose history are excluded. */
+  readonly exclude_execution_history: boolean;
+}
+
+/** Operator knobs for cache-preserving planning delegate (SP-142, #71). */
+export interface PlanningDelegateConfig {
+  /** Prefer ephemeral frontier sub-call over primary model switch on planning turns. */
+  readonly enabled: boolean;
+  readonly compressed_context: CompressedContextSpec;
+}
+
+/** Planning delegate observability for explain and telemetry (SP-142, #71). */
+export interface PlanningDelegateObservability {
+  /** Active routing path for this planning turn. */
+  readonly path: PlanningDelegatePath;
+  /** Primary model kept on pinned session when path is delegate. */
+  readonly primary_model_id: string | null;
+  /** Frontier model selected for delegate sub-call when path is delegate. */
+  readonly delegate_model_id: string | null;
+  /** Compressed context limits applied to delegate sub-call. */
+  readonly compressed_context: CompressedContextSpec | null;
+  /**
+   * Machine-readable path reason, e.g. `planning_delegate`, `planning_direct_frontier`,
+   * `planning_delegate_disabled`.
+   */
+  readonly planning_delegate_reason_code: string | null;
+  /** Operator-visible fallback explanation when path is not delegate. */
+  readonly fallback_reason: string | null;
+}
+
 /** SAAR pin policy observability (SP-126, #72). */
 export interface SaarObservability {
   readonly buffer_active: boolean;
@@ -275,6 +317,8 @@ export interface RoutingFeatureSidecar {
   readonly breakeven?: BreakevenObservability;
   /** SAAR pin state summary (SP-126, #72). */
   readonly saar?: SaarObservability;
+  /** Planning delegate path summary (SP-142, #71). */
+  readonly planning_delegate?: PlanningDelegateObservability;
   /** Why local_zero eligibility passed (SP-111, #59). */
   readonly local_eligible_reason: string | null;
 }
@@ -441,4 +485,12 @@ export interface RoutingTelemetry {
   readonly saar_hard_lock: boolean;
   readonly turn_index_in_session: number | null;
   readonly saar_reason_code: string | null;
+  readonly planning_delegate_path: PlanningDelegatePath | null;
+  readonly planning_delegate_primary_model_id: string | null;
+  readonly planning_delegate_model_id: string | null;
+  readonly planning_delegate_reason_code: string | null;
+  readonly planning_delegate_fallback_reason: string | null;
+  readonly planning_delegate_max_messages: number | null;
+  readonly planning_delegate_max_tokens: number | null;
+  readonly planning_delegate_exclude_execution_history: boolean | null;
 }

@@ -61,6 +61,9 @@ Stdout: JSON matching RoutingDecision schema.
 | `keyword_frontier` | triage | Lexical match to complex intent |
 | `cyclomatic_high` | triage | AST score > threshold |
 | `turn_planning` | turn_envelope | Planning turn bias |
+| `planning_delegate` | turn_envelope | Planning turn delegated to compressed frontier sub-call; primary stays pinned |
+| `planning_direct_frontier` | turn_envelope | Planning turn routed primary inference to frontier (no delegate) |
+| `planning_delegate_disabled` | turn_envelope | Delegate path disabled; fell back to direct frontier |
 | `turn_tool_result` | turn_envelope | Tool result sub-routing |
 | `pin_hit` | session_pin | Valid pin; bypassed matching |
 | `pin_break_compaction` | session_pin | Compaction triggered re-route |
@@ -104,7 +107,30 @@ When the low-intensity tier gate runs, `features.tier_selection` MAY be present 
 | `low_intensity_breakdown` | object \| null | Score, hint, P(success), and rejected expected-cost tiers |
 | `local_zero_skip_reasons` | string[] | Why local_zero did not dispatch when another stage won |
 
-`SMART_ROUTER_LOG_ROUTING=1` JSON lines include `cluster_summary` with cluster id, similarity, margin, tier hint, and tier-selection reason code. When session pin economics apply, lines also include `breakeven_summary` (`marginal_savings`, `future_cache_value`, `cache_reprime_cost`, `decision`, `breakeven_reason_code`) and `saar_summary` (`buffer_active`, `hard_lock`, `turn_index_in_session`, `planning_turn_buffer`, `idle_timeout_seconds`, `saar_reason_code`).
+`SMART_ROUTER_LOG_ROUTING=1` JSON lines include `cluster_summary` with cluster id, similarity, margin, tier hint, and tier-selection reason code. When session pin economics apply, lines also include `breakeven_summary` (`marginal_savings`, `future_cache_value`, `cache_reprime_cost`, `decision`, `breakeven_reason_code`) and `saar_summary` (`buffer_active`, `hard_lock`, `turn_index_in_session`, `planning_turn_buffer`, `idle_timeout_seconds`, `saar_reason_code`). When a planning delegate path is active, lines also include `planning_delegate_summary` (see below).
+
+## Planning delegate observability (SP-142)
+
+When a planning turn uses the cache-preserving delegate path (#71), `features.planning_delegate` MAY be present on the routing decision:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `path` | `delegate` \| `direct` \| `none` | Active routing path for this planning turn |
+| `primary_model_id` | string \| null | Pinned economical model kept for primary inference when `path` is `delegate` |
+| `delegate_model_id` | string \| null | Frontier model selected for the ephemeral sub-call when `path` is `delegate` |
+| `compressed_context` | object \| null | Limits for delegate sub-call context (see below) |
+| `planning_delegate_reason_code` | string \| null | `planning_delegate`, `planning_direct_frontier`, `planning_delegate_disabled`, etc. |
+| `fallback_reason` | string \| null | Operator-visible explanation when `path` is not `delegate` |
+
+**Compressed context spec** (`compressed_context` object):
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `max_messages` | number | Max user/assistant messages retained in delegate sub-call |
+| `max_tokens` | number | Max estimated tokens for delegate context window |
+| `exclude_execution_history` | boolean | When true, tool execution traces and verbose history are excluded |
+
+**Delegate vs direct:** `path: "delegate"` means primary inference stays on `primary_model_id` while a compressed frontier sub-call runs on `delegate_model_id`. `path: "direct"` means the router switched primary inference to frontier (legacy SP-064 path). Operator config `planning_delegate.enabled` gates the delegate path; when disabled, explain documents `planning_delegate_disabled` and `fallback_reason`.
 
 ## Cache breakeven observability (SP-126)
 
