@@ -65,6 +65,7 @@
     "routing:verify-calibration": "npm run build && node --experimental-strip-types scripts/verify-routing-calibration.ts",
     "routing:eval-replay": "tsx scripts/eval/counterfactual-replay.ts",
     "routing:eval-harness": "tsx scripts/eval/run-harness.ts",
+    "routing:eval-harness:smoke": "tsx scripts/eval/run-harness.ts --summary-only",
     "routing:test-projection": "npm run build && node --experimental-strip-types scripts/test-hydra-projection.ts",
     "verify:ci": "npm run build && npm run typecheck && npm run lint && npm test && npm run coverage:check"
   },

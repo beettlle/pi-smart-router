@@ -632,6 +632,35 @@ Contributors must run `npm run build` before publishing or consuming the library
 | `npm run routing:verify-calibration` | Verify calibration bundle against benchmark prompts |
 | `npm run routing:ingest-benchmarks` | Regenerate `config/benchmark-profiles.json` from leaderboard fixtures |
 | `npm run routing:verify-benchmark-profiles` | CI smoke: assert checked-in profiles match fixture ingest |
+| `npm run routing:eval-replay` | Counterfactual replay on eval trace fixtures |
+| `npm run routing:eval-harness` | Three-track eval harness (capability, cost, continuity) on fixture traces |
+| `npm run routing:eval-harness:smoke` | Harness summary JSON only (CI smoke; no network) |
+
+### Offline eval harness (agent-native routing)
+
+The eval harness scores routing decisions on **fixture traces** — multi-turn agent sessions with step-level `prefix_hash` identifiers and frozen model catalog metadata. Fixtures live under `tests/eval/fixtures/` (native eval trace JSON) and `tests/eval/fixtures/twinrouterbench/` (TwinRouterBench-compatible static track format adapted at load time).
+
+**Frozen catalog rule:** every published QR/CS number must cite `catalog_id` + `checkpoint_date` from the fixture's `frozen_catalog` block (see `docs/routing-roadmap.md` §5).
+
+Run locally:
+
+```bash
+# Full metrics JSON (per-fixture + aggregate track summaries)
+npm run routing:eval-harness
+
+# CI-style summary only
+npm run routing:eval-harness:smoke
+
+# Custom fixture directory (includes TwinRouterBench static track subdirs)
+npm run routing:eval-harness -- --fixtures tests/eval/fixtures
+
+# Counterfactual replay only (SP-151)
+npm run routing:eval-replay
+```
+
+**CI smoke:** `.github/workflows/eval-harness-smoke.yml` runs on PRs that touch eval scripts, fixtures, or the workflow. It executes `routing:eval-harness:smoke` and eval unit tests — fast, offline, no provider network calls.
+
+**TwinRouterBench static track:** import step-level router-visible prefixes with execution-verified target tiers (`track: "static"`). The adapter in `scripts/eval/twinrouterbench-adapter.ts` converts static track records into native eval fixtures for the three-track harness. See `docs/gemini-research.md` §9 for methodology context.
 
 ### Benchmark profile refresh
 
