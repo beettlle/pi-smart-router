@@ -308,7 +308,7 @@ describe('SqliteStore', () => {
 
     it('lists telemetry newest first', async () => {
       store.appendTelemetry({
-        timestamp: '2026-07-02T00:00:00.000Z',
+        timestamp: new Date(Date.now() - 60_000).toISOString(),
         session_id: 'sess-1',
         request_id: 'req-1',
         turn_type: 'main_loop',
@@ -322,7 +322,7 @@ describe('SqliteStore', () => {
         ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
       });
       store.appendTelemetry({
-        timestamp: '2026-07-02T00:01:00.000Z',
+        timestamp: new Date().toISOString(),
         session_id: 'sess-1',
         request_id: 'req-2',
         turn_type: 'main_loop',

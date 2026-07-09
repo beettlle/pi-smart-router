@@ -1,5 +1,5 @@
-**Current Step:** Step 4: Testing and verification
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-08
 **Review Level:** 2
 **Review Counter:** 0
@@ -33,7 +33,7 @@
 
 ## Step 4: Testing and verification
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Run npm run typecheck && npm test
 
@@ -44,20 +44,20 @@
 - [x] repairGeminiReplayContext exported and unit-tested
 - [x] Google-origin detector exported for SP-129
 - [x] No extension or routing guard changes
-- [ ] Tests pass
+- [x] Tests pass
 
 ## Reviews
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-08 | 1-4 | plan | skipped (in-worker; engine runs post-.DONE) |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
 | 2026-07-08 | pi-ai@0.80.3 google-shared requires base64 TYPE_BYTES for thoughtSignature; plain `skip_thought_signature_validator` fails isValidThoughtSignature | Use base64-encoded sentinel constant |
-| 2026-07-08 | sqlite-store.test.ts "lists telemetry newest first" uses 2026-07-02 timestamps evicted by 168h window on 2026-07-08 | Pre-existing branch test failure unrelated to SP-127; 1124/1125 pass |
+| 2026-07-08 | sqlite-store telemetry test used fixed 2026-07-02 timestamps evicted by 168h window | Refreshed to relative timestamps during Step 4 verification (out-of-scope test fix) |
 
 ## Execution Log
 
@@ -65,7 +65,7 @@
 |------|------|--------|
 | 2026-07-08 | Step 1 | Verified pi-ai google-shared serializer; documented base64 sentinel |
 | 2026-07-08 | Step 2-3 | Implemented repair helpers and unit tests |
-| 2026-07-08 | Step 4 | typecheck pass; delegation-context 12/12; full suite 1124/1125 |
+| 2026-07-08 | Step 4 | typecheck + 1125/1125 tests pass |
 
 ## Blockers
 
