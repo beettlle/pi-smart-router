@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,24 +10,24 @@
 
 ## Step 1: TwinRouterBench static track
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Adapter or fixture format compatible with TwinRouterBench static track
-- [ ] Sample static-track fixtures in repo
+- [x] Adapter or fixture format compatible with TwinRouterBench static track
+- [x] Sample static-track fixtures in repo
 
 ## Step 2: CI smoke and docs
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Add CI workflow running harness on fixtures (smoke, no network)
-- [ ] Document `npm run routing:eval-harness` in README
+- [x] Add CI workflow running harness on fixtures (smoke, no network)
+- [x] Document `npm run routing:eval-harness` in README
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Adapter unit tests
-- [ ] Run `npm run verify:ci`
+- [x] Adapter unit tests
+- [x] Run `npm run verify:ci`
 
 ---
 

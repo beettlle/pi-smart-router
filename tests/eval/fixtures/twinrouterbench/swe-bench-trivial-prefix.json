@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0.0",
+  "track": "static",
+  "frozen_catalog": {
+    "catalog_id": "pi-smart-router-v0.5.0-eval",
+    "checkpoint_date": "2026-07-01",
+    "models": [
+      {
+        "model_id": "ollama/llama3.2:3b",
+        "tier": "zero-tier",
+        "cost_per_1m_input_usd": 0,
+        "capability_score": 0.35
+      },
+      {
+        "model_id": "gpt-4o-mini",
+        "tier": "economical-cloud",
+        "cost_per_1m_input_usd": 0.15,
+        "capability_score": 0.72
+      },
+      {
+        "model_id": "claude-sonnet-4",
+        "tier": "frontier-cloud",
+        "cost_per_1m_input_usd": 3.0,
+        "capability_score": 0.95
+      }
+    ]
+  },
+  "records": [
+    {
+      "trace_id": "swb-verified-042-step-0",
+      "session_id_hash": "cafe042deadbeef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "step_index": 0,
+      "turn_type": "main_loop",
+      "prefix_hash": "trb_sw042_s0_prefix_a1b2c3d4",
+      "prefix_token_estimate": 950,
+      "verified_target_tier": "economical-cloud",
+      "verified_target_model_id": "gpt-4o-mini",
+      "verified_tool_progression": true,
+      "downgrade_cascade_verified": true,
+      "benchmark_source": "swe-bench-verified",
+      "baseline_tier": "economical-cloud",
+      "baseline_model_id": "gpt-4o-mini",
+      "baseline_reason_code": "downgrade_first_candidate"
+    },
+    {
+      "trace_id": "swb-verified-042-step-1",
+      "session_id_hash": "cafe042deadbeef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "step_index": 1,
+      "turn_type": "tool_result",
+      "prefix_hash": "trb_sw042_s1_prefix_e5f6a7b8",
+      "prefix_token_estimate": 2100,
+      "verified_target_tier": "economical-cloud",
+      "verified_target_model_id": "gpt-4o-mini",
+      "verified_tool_progression": true,
+      "downgrade_cascade_verified": true,
+      "benchmark_source": "swe-bench-verified",
+      "baseline_tier": "economical-cloud",
+      "baseline_model_id": "gpt-4o-mini",
+      "baseline_reason_code": "session_pin"
+    }
+  ]
+}

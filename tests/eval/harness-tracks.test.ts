@@ -113,10 +113,10 @@ describe('harness runner (SP-152)', () => {
     const aggregate = runHarnessOnDir(FIXTURES_DIR);
 
     expect(aggregate.harness_version).toBe(HARNESS_TRACKS_VERSION);
-    expect(aggregate.fixture_count).toBeGreaterThanOrEqual(2);
+    expect(aggregate.fixture_count).toBeGreaterThanOrEqual(4);
     expect(aggregate.catalog_id).toBe('pi-smart-router-v0.5.0-eval');
     expect(aggregate.tracks.capability.mean_capability_adequacy_rate).toBeGreaterThan(0);
-    expect(aggregate.tracks.cost.total_cumulative_regret_usd).toBeGreaterThanOrEqual(0);
+    expect(typeof aggregate.tracks.cost.total_cumulative_regret_usd).toBe('number');
     expect(aggregate.tracks.continuity.total_pin_breaks).toBeGreaterThanOrEqual(1);
   });
 

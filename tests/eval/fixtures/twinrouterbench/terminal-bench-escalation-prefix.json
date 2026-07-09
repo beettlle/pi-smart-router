@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0.0",
+  "track": "static",
+  "frozen_catalog": {
+    "catalog_id": "pi-smart-router-v0.5.0-eval",
+    "checkpoint_date": "2026-07-01",
+    "models": [
+      {
+        "model_id": "ollama/llama3.2:3b",
+        "tier": "zero-tier",
+        "cost_per_1m_input_usd": 0,
+        "capability_score": 0.35
+      },
+      {
+        "model_id": "gpt-4o-mini",
+        "tier": "economical-cloud",
+        "cost_per_1m_input_usd": 0.15,
+        "capability_score": 0.72
+      },
+      {
+        "model_id": "claude-sonnet-4",
+        "tier": "frontier-cloud",
+        "cost_per_1m_input_usd": 3.0,
+        "capability_score": 0.95
+      }
+    ]
+  },
+  "records": [
+    {
+      "trace_id": "tb-debug-017-step-2",
+      "session_id_hash": "beef017c0ffee0123456789abcdef0123456789abcdef0123456789abcdef01",
+      "step_index": 0,
+      "turn_type": "main_loop",
+      "prefix_hash": "trb_tb017_s2_prefix_c0ffee01",
+      "prefix_token_estimate": 3600,
+      "verified_target_tier": "frontier-cloud",
+      "verified_target_model_id": "claude-sonnet-4",
+      "verified_tool_progression": true,
+      "downgrade_cascade_verified": true,
+      "benchmark_source": "terminal-bench",
+      "baseline_tier": "economical-cloud",
+      "baseline_model_id": "gpt-4o-mini",
+      "baseline_reason_code": "downgrade_first_candidate"
+    },
+    {
+      "trace_id": "tb-debug-017-step-3",
+      "session_id_hash": "beef017c0ffee0123456789abcdef0123456789abcdef0123456789abcdef01",
+      "step_index": 1,
+      "turn_type": "tool_result",
+      "prefix_hash": "trb_tb017_s3_prefix_c0ffee02",
+      "prefix_token_estimate": 5200,
+      "verified_target_tier": "frontier-cloud",
+      "verified_target_model_id": "claude-sonnet-4",
+      "verified_tool_progression": true,
+      "downgrade_cascade_verified": true,
+      "benchmark_source": "terminal-bench",
+      "baseline_tier": "frontier-cloud",
+      "baseline_model_id": "claude-sonnet-4",
+      "baseline_reason_code": "loop_escalation"
+    }
+  ]
+}
