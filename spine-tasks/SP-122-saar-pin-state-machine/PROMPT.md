@@ -41,7 +41,7 @@ Implement SAAR pin state machine logic in the pinning domain layer. Turns 0 thro
 
 | Field | Value |
 |-------|-------|
-| testCommand | `node --test tests/unit/saar-session-state.test.ts tests/unit/session-pinner.test.ts` |
+| testCommand | `npm run typecheck && npm test -- tests/unit/saar-session-state.test.ts tests/unit/session-pinner.test.ts` |
 | fileScopeMustChange | `src/domain/pinning/session-pinner.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | Buffer transitions, tool-loop hard-lock, and idle-timeout reopen covered by unit tests; no pipeline wiring yet. |
@@ -65,7 +65,7 @@ Implement SAAR pin state machine logic in the pinning domain layer. Turns 0 thro
 - [ ] Unit tests: buffer transitions (turns 0–1 with buffer=2)
 - [ ] Unit tests: hard-lock during tool loop; tier upgrade allowed
 - [ ] Unit tests: idle timeout reopen
-- [ ] Run `node --test tests/unit/saar-session-state.test.ts tests/unit/session-pinner.test.ts`
+- [ ] Run `npm run typecheck && npm test -- tests/unit/saar-session-state.test.ts tests/unit/session-pinner.test.ts`
 
 ## Completion Criteria
 

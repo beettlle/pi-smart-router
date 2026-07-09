@@ -41,7 +41,7 @@ Integrate SP-122 SAAR pin state machine into the routing pipeline. Fix the SP-06
 
 | Field | Value |
 |-------|-------|
-| testCommand | `node --test tests/integration/session-pinning.test.ts` |
+| testCommand | `npm run typecheck && npm test -- tests/integration/session-pinning.test.ts` |
 | fileScopeMustChange | `src/domain/pipeline/router-pipeline.ts` |
 | fileScopeMustNotChange | `src/domain/triage/turn-envelope.ts` |
 | completionCriteria | Planning-then-execution sequence respects SAAR buffer and hard-lock; integration test proves no unplanned model switch after buffer on warm pin. |
@@ -63,7 +63,7 @@ Integrate SP-122 SAAR pin state machine into the routing pipeline. Fix the SP-06
 
 - [ ] Extend `session-pinning.test.ts`: planning turn then execution turns respect pin after buffer
 - [ ] Regression: loop escalation and context overflow pin breaks still work
-- [ ] Run `node --test tests/integration/session-pinning.test.ts`
+- [ ] Run `npm run typecheck && npm test -- tests/integration/session-pinning.test.ts`
 
 ## Completion Criteria
 

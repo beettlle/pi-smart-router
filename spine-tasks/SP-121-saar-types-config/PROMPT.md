@@ -42,7 +42,7 @@ Add Session-Aware Agentic Routing (SAAR) configuration surface for v0.2.0. Intro
 
 | Field | Value |
 |-------|-------|
-| testCommand | `node --test tests/unit/schemas.test.ts tests/unit/defaults.test.ts` |
+| testCommand | `npm run typecheck && npm test -- tests/unit/schemas.test.ts tests/unit/defaults.test.ts` |
 | fileScopeMustChange | `src/domain/types/schemas.ts`, `src/config/defaults.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | SAAR fields validated by Zod; defaults match roadmap (buffer=2, prefix_cache_weight=0.20); schema unit tests pass. |
@@ -64,7 +64,7 @@ Add Session-Aware Agentic Routing (SAAR) configuration surface for v0.2.0. Intro
 
 - [ ] Unit tests: schema accepts valid SAAR config; rejects invalid bounds
 - [ ] Unit tests: defaults match `planning_turn_buffer=2`, `prefix_cache_weight=0.20`
-- [ ] Run `node --test tests/unit/schemas.test.ts tests/unit/defaults.test.ts`
+- [ ] Run `npm run typecheck && npm test -- tests/unit/schemas.test.ts tests/unit/defaults.test.ts`
 
 ## Completion Criteria
 

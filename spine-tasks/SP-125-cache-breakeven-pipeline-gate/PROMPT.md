@@ -43,7 +43,7 @@ Gate turn_envelope sub-routes and session pin breaks with SP-124 breakeven math.
 
 | Field | Value |
 |-------|-------|
-| testCommand | `node --test tests/integration/session-pinning.test.ts tests/unit/session-pinner.test.ts` |
+| testCommand | `npm run typecheck && npm test -- tests/integration/session-pinning.test.ts tests/unit/session-pinner.test.ts` |
 | fileScopeMustChange | `src/domain/pipeline/router-pipeline.ts` |
 | fileScopeMustNotChange | `src/domain/triage/turn-envelope.ts` |
 | completionCriteria | tool_result sub-route blocked when breakeven fails; pin-break gated beyond #32 warmup; integration tests pass. |
@@ -67,7 +67,7 @@ Gate turn_envelope sub-routes and session pin breaks with SP-124 breakeven math.
 - [ ] Integration: tool_result sub-route blocked when breakeven fails on warm prefix
 - [ ] Integration: breakeven pass allows legitimate sub-route
 - [ ] Regression: #32 warmup and loop escalation breaks still work
-- [ ] Run `node --test tests/integration/session-pinning.test.ts tests/unit/session-pinner.test.ts`
+- [ ] Run `npm run typecheck && npm test -- tests/integration/session-pinning.test.ts tests/unit/session-pinner.test.ts`
 
 ## Completion Criteria
 

@@ -42,7 +42,7 @@ Complete v0.2.0 operator observability. Expose breakeven components (`marginal_s
 
 | Field | Value |
 |-------|-------|
-| testCommand | `node --test tests/unit/routing-telemetry.test.ts tests/unit/router-explain.test.ts` |
+| testCommand | `npm run typecheck && npm test -- tests/unit/routing-telemetry.test.ts tests/unit/router-explain.test.ts` |
 | fileScopeMustChange | `src/infrastructure/telemetry/routing-telemetry.ts`, `README.md` |
 | fileScopeMustNotChange | `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | Explain shows breakeven decision and components; telemetry includes SAAR/breakeven fields; README documents v0.2.0 operator config. |
@@ -70,7 +70,7 @@ Complete v0.2.0 operator observability. Expose breakeven components (`marginal_s
 ### Step 4: Testing and verification
 
 - [ ] Unit tests for telemetry emitter and explain serializer
-- [ ] Run `node --test tests/unit/routing-telemetry.test.ts tests/unit/router-explain.test.ts`
+- [ ] Run `npm run typecheck && npm test -- tests/unit/routing-telemetry.test.ts tests/unit/router-explain.test.ts`
 - [ ] Run `npm run verify:ci` as full-suite gate
 
 ## Completion Criteria

@@ -42,7 +42,7 @@ Note: `cache-economics.ts` implements legacy FR-008 warmup rule (#32) — do not
 
 | Field | Value |
 |-------|-------|
-| testCommand | `node --test tests/unit/cache-breakeven.test.ts` |
+| testCommand | `npm run typecheck && npm test -- tests/unit/cache-breakeven.test.ts` |
 | fileScopeMustChange | `src/domain/pinning/cache-breakeven.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | Breakeven function with typed inputs/outputs; unit tests for cold vs warm prefix edge cases pass. |
@@ -65,7 +65,7 @@ Note: `cache-economics.ts` implements legacy FR-008 warmup rule (#32) — do not
 
 - [ ] Unit tests: switch blocked when savings < reprime cost on warm prefix
 - [ ] Unit tests: switch allowed when marginal savings + cache value exceeds reprime
-- [ ] Run `node --test tests/unit/cache-breakeven.test.ts`
+- [ ] Run `npm run typecheck && npm test -- tests/unit/cache-breakeven.test.ts`
 
 ## Completion Criteria
 
