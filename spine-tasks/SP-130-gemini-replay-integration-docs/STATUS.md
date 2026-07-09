@@ -1,5 +1,5 @@
 **Current Step:** Step 1: End-to-end extension test
-**Status:** Ready
+**Status:** In Progress
 **Last Updated:** 2026-07-08
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,11 +10,11 @@
 
 ## Step 1: End-to-end extension test
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Multi-turn Gemini tool session (gemini-flash turn 1, continuation turn 2)
-- [ ] Assert no thought_signature terminal error path
-- [ ] Update SP-084 expectations if repair covers google-only fleet case
+- [x] Multi-turn Gemini tool session (gemini-flash turn 1, continuation turn 2)
+- [x] Assert no thought_signature terminal error path
+- [x] Update SP-084 expectations if repair covers google-only fleet case
 
 ## Step 2: README and provider copy
 

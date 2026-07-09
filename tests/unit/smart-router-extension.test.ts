@@ -845,6 +845,126 @@ describe('createStreamSimple', () => {
     );
   });
 
+  it('completes multi-turn gemini-flash tool session without thought_signature terminal error (SP-130)', async () => {
+    const signature = 'dGhvdWdodC1zaWduYXR1cmU=';
+    const geminiFlash = makeRegistryModel({
+      provider: 'google',
+      id: 'gemini-flash',
+      api: 'google-generative-ai',
+    });
+    const googleFirstFleet: ModelProfile[] = [
+      makeProfile({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
+      makeProfile({ id: 'gpt-4o-mini', tier: 'economical-cloud', provider: 'openai' }),
+    ];
+
+    mockDelegateStreamSimple.mockImplementation((_model, context: Context) => {
+      const assistants = context.messages.filter(
+        (message: Message): message is AssistantMessage => message.role === 'assistant',
+      );
+      expect(assistants).toHaveLength(2);
+
+      const turn1 = assistants[0]!;
+      expect(turn1.provider).toBe('google');
+      expect(turn1.model).toBe('gemini-flash');
+      expect(turn1.api).toBe('google-generative-ai');
+      const turn1Tool = turn1.content[0];
+      if (turn1Tool?.type === 'toolCall') {
+        expect(turn1Tool.thoughtSignature).toBe(signature);
+      }
+
+      const turn2 = assistants[1]!;
+      expect(turn2.provider).toBe('google');
+      expect(turn2.model).toBe('gemini-flash');
+      const turn2Tool = turn2.content[0];
+      if (turn2Tool?.type === 'toolCall') {
+        expect(turn2Tool.thoughtSignature).toBe(GEMINI_SKIP_THOUGHT_SIGNATURE_SENTINEL);
+      }
+
+      return makeSuccessStream(geminiFlash);
+    });
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router: createMockRouter(
+          vi.fn(async () => makeDecision({ selected_model_id: 'gemini-flash' })),
+          googleFirstFleet,
+        ),
+        fleet: googleFirstFleet,
+        modelRegistry: createMockRegistry([
+          geminiFlash,
+          makeRegistryModel({ provider: 'openai', id: 'gpt-4o-mini', api: 'openai-responses' }),
+        ]),
+      }),
+    );
+
+    const events = await collectEvents(
+      streamSimple(
+        makeAutoModel(),
+        makeContext([
+          userMessage('search scuba tanks'),
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'toolCall',
+                id: 'call-1',
+                name: 'web_search',
+                arguments: { query: 'scuba' },
+                thoughtSignature: signature,
+              },
+            ],
+            api: 'google-generative-ai',
+            provider: 'google',
+            model: 'gemini-flash',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: 'toolUse',
+            timestamp: 2,
+          },
+          toolResultMessage('results'),
+          userMessage('summarize the results', 4),
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'toolCall',
+                id: 'call-2',
+                name: 'read',
+                arguments: { path: '/tmp/results' },
+              },
+            ],
+            api: 'google-generative-ai',
+            provider: 'google',
+            model: 'gemini-flash',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: 'toolUse',
+            timestamp: 5,
+          },
+          toolResultMessage('summary source', 6),
+          userMessage('write a short recap', 7),
+        ]),
+        { sessionId: 'multi-turn-gemini-flash' },
+      ),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+    expect(events.some((event) => event.type === 'done')).toBe(true);
+    expect(events.some((event) => event.type === 'error')).toBe(false);
+  });
+
   it('records success outcome and execution ledger after delegated stream completes', async () => {
     const target = registryModels[0]!;
     mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
