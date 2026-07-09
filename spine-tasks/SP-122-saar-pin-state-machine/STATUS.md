@@ -1,4 +1,4 @@
-**Current Step:** Step 2
+**Current Step:** Step 3
 **Status:** In Progress
 **Last Updated:** 2026-07-08
 **Review Level:** 2
@@ -17,7 +17,7 @@
 
 ## Step 2: SessionPinner SAAR integration
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Wire SAAR state into SessionPinner lookup
 - [x] Buffer window and hard-lock behavior
@@ -25,10 +25,10 @@
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Unit tests for buffer, hard-lock, idle timeout
-- [ ] Run targeted test command
+- [x] Unit tests for buffer, hard-lock, idle timeout
+- [x] Run targeted test command
 
 ---
 
@@ -36,7 +36,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| 2026-07-08 | 1 | plan | skipped (engine post-.DONE) |
+| 2026-07-08 | 2 | plan | skipped (engine post-.DONE) |
 
 ## Discoveries
 

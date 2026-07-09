@@ -8,6 +8,7 @@ import {
   type CacheEconomicsConfig,
 } from '../../src/domain/pinning/cache-economics.js';
 import type { ModelProfile, RoutingRequest, SessionPin } from '../../src/domain/types/index.js';
+import { DEFAULT_SAAR_CONFIG } from '../../src/domain/types/schemas.js';
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
 import { SqliteStore } from '../../src/infrastructure/persistence/sqlite-store.js';
 
@@ -863,6 +864,143 @@ describe('SessionPinner', () => {
       const stored = await sqliteStore.getSessionPin('sess-overflow');
       expect(stored?.pin_reason).toBe('context_overflow');
       sqliteStore.close();
+    });
+  });
+});
+
+// ─── SAAR pin policy (SP-122) ───────────────────────────────────────────────
+
+describe('SessionPinner SAAR policy', () => {
+  const saarConfig = {
+    ...DEFAULT_SAAR_CONFIG,
+    planning_turn_buffer: 2,
+    idle_timeout_seconds: 300,
+  };
+
+  const BASE_TIME = Date.parse('2026-07-08T12:00:00.000Z');
+
+  describe('buffer window (turns 0–1 with buffer=2)', () => {
+    it('allows capability-gated frontier without pin overwrite', () => {
+      const pinner = new SessionPinner({ saarConfig });
+      pinner.recordPin('sess-1', 'claude-haiku', 'initial');
+
+      const result = pinner.lookupPin(
+        makeRequest({
+          turn_type: 'planning',
+          candidate_model_id: 'claude-opus',
+        }),
+        fleet,
+      );
+
+      expect(result.action).toBe('saar_route');
+      expect(result.saarReason).toBe('saar_buffer_active');
+      expect(result.saarRouteModel?.id).toBe('claude-opus');
+      expect(result.pinnedModel?.id).toBe('claude-haiku');
+      expect(pinner.getPin('sess-1')?.pinned_model_id).toBe('claude-haiku');
+    });
+
+    it('exits buffer after recordSaarTurn reaches planning_turn_buffer', () => {
+      const pinner = new SessionPinner({ saarConfig });
+      pinner.recordPin('sess-1', 'claude-haiku', 'initial');
+
+      pinner.recordSaarTurn('sess-1');
+      pinner.recordSaarTurn('sess-1');
+
+      expect(pinner.getSaarState('sess-1')?.hard_lock).toBe(true);
+      expect(pinner.getSaarState('sess-1')?.turn_index).toBe(2);
+
+      const result = pinner.lookupPin(
+        makeRequest({
+          turn_type: 'planning',
+          candidate_model_id: 'claude-opus',
+        }),
+        fleet,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.saarReason).toBe('saar_hard_lock');
+      expect(result.pinnedModel?.id).toBe('claude-haiku');
+    });
+  });
+
+  describe('hard-lock during tool loop', () => {
+    it('allows tier upgrade during active tool loop', () => {
+      const pinner = new SessionPinner({ saarConfig });
+      pinner.recordPin('sess-1', 'claude-haiku', 'initial');
+      pinner.recordSaarTurn('sess-1');
+      pinner.recordSaarTurn('sess-1');
+
+      const result = pinner.lookupPin(
+        makeRequest({
+          turn_type: 'main_loop',
+          candidate_model_id: 'claude-opus',
+        }),
+        fleet,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.saarReason).toBe('saar_tier_upgrade');
+      expect(result.pinnedModel?.id).toBe('claude-opus');
+      expect(pinner.getPin('sess-1')?.pinned_model_id).toBe('claude-opus');
+    });
+
+    it('blocks non-upgrade candidate switches when hard-locked outside tool loop', () => {
+      const pinner = new SessionPinner({ saarConfig });
+      pinner.recordPin('sess-1', 'claude-haiku', 'initial');
+      pinner.recordSaarTurn('sess-1');
+      pinner.recordSaarTurn('sess-1');
+
+      const result = pinner.lookupPin(
+        makeRequest({
+          turn_type: 'planning',
+          candidate_model_id: 'claude-opus',
+        }),
+        fleet,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.saarReason).toBe('saar_hard_lock');
+      expect(pinner.getPin('sess-1')?.pinned_model_id).toBe('claude-haiku');
+    });
+  });
+
+  describe('idle timeout reopen', () => {
+    it('breaks pin and returns no_pin when idle timeout expires', () => {
+      let now = BASE_TIME;
+      const pinner = new SessionPinner({
+        saarConfig,
+        saarClock: () => now,
+      });
+      pinner.recordPin('sess-1', 'claude-haiku', 'initial');
+
+      pinner.lookupPin(makeRequest(), fleet);
+      now += saarConfig.idle_timeout_seconds * 1000;
+
+      const result = pinner.lookupPin(makeRequest(), fleet);
+
+      expect(result.action).toBe('no_pin');
+      expect(result.saarReason).toBe('saar_idle_reopen');
+      expect(pinner.getPin('sess-1')).toBeNull();
+      expect(pinner.getSaarState('sess-1')).toBeNull();
+    });
+  });
+
+  describe('SAAR disabled by default', () => {
+    it('preserves legacy pin behavior without saarConfig', () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'claude-haiku', 'initial');
+
+      const result = pinner.lookupPin(
+        makeRequest({
+          turn_type: 'planning',
+          candidate_model_id: 'claude-opus',
+        }),
+        fleet,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.saarReason).toBeUndefined();
+      expect(pinner.getSaarState('sess-1')).toBeNull();
     });
   });
 });
