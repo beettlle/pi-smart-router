@@ -1,6 +1,6 @@
 {
   "name": "pi-smart-router",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Auto-model router middleware for the pi.dev coding agent",
   "type": "module",
   "license": "MIT",
