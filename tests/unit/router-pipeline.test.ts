@@ -141,8 +141,18 @@ describe('RouterPipeline', () => {
 
   describe('session pin integration (FR-006, FR-007, FR-008)', () => {
     const pinFleet: ModelProfile[] = [
-      makeModel({ id: 'econ-a', tier: 'economical-cloud', provider: 'anthropic' }),
-      makeModel({ id: 'frontier-a', tier: 'frontier-cloud', provider: 'anthropic' }),
+      makeModel({
+        id: 'econ-a',
+        tier: 'economical-cloud',
+        provider: 'anthropic',
+        pricing: { fallback_cost_per_1m: 1.0 },
+      }),
+      makeModel({
+        id: 'frontier-a',
+        tier: 'frontier-cloud',
+        provider: 'anthropic',
+        pricing: { fallback_cost_per_1m: 15.0 },
+      }),
       makeModel({ id: 'econ-o', tier: 'economical-cloud', provider: 'openai' }),
     ];
 
@@ -172,7 +182,7 @@ describe('RouterPipeline', () => {
       expect(pin!.pin_reason).toBe('initial');
     });
 
-    it('sub-route decisions do not re-persist the pin', async () => {
+    it('sub-route decisions do not re-persist the pin when breakeven passes', async () => {
       const pinner = new SessionPinner();
       pinner.recordPin('sess-1', 'frontier-a', 'initial');
 
@@ -191,25 +201,71 @@ describe('RouterPipeline', () => {
       expect(pin!.pinned_model_id).toBe('frontier-a');
     });
 
-    it('planning turn with economical pin routes frontier via turn_envelope (SP-064)', async () => {
+    it('turn_envelope downgrade blocked by breakeven does not re-persist the pin (SP-125)', async () => {
+      const warmPinFleet: ModelProfile[] = [
+        makeModel({
+          id: 'econ-a',
+          tier: 'economical-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 30.0 },
+        }),
+        makeModel({
+          id: 'frontier-a',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 30.0 },
+        }),
+      ];
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'frontier-a', 'initial');
+
+      const pipeline = new RouterPipeline(warmPinFleet, { sessionPinner: pinner });
+      const decision = await pipeline.route(
+        makeRequest({
+          turn_type: 'tool_result',
+          estimated_input_tokens: 100_000,
+        }),
+      );
+
+      expect(decision.stage).toBe('session_pin');
+      expect(decision.reason_code).toBe('session_pinned');
+      expect(decision.selected_model_id).toBe('frontier-a');
+      const pin = pinner.getPin('sess-1');
+      expect(pin!.pinned_model_id).toBe('frontier-a');
+    });
+
+    it('planning turn blocked without SAAR buffer when breakeven fails (SP-125)', async () => {
       const pinner = new SessionPinner();
       pinner.recordPin('sess-1', 'econ-a', 'initial');
 
       const pipeline = new RouterPipeline(pinFleet, { sessionPinner: pinner });
       const decision = await pipeline.route(makeRequest({ turn_type: 'planning' }));
 
-      expect(decision.stage).toBe('turn_envelope');
-      expect(decision.reason_code).toBe('turn_planning');
-      expect(decision.tier).toBe('frontier-cloud');
-      expect(decision.selected_model_id).toBe('frontier-a');
+      expect(decision.stage).toBe('session_pin');
+      expect(decision.reason_code).toBe('session_pinned');
+      expect(decision.selected_model_id).toBe('econ-a');
       expect(pinner.getPin('sess-1')!.pinned_model_id).toBe('econ-a');
     });
 
-    it('tool_result turn with frontier pin routes economical via turn_envelope (SP-064)', async () => {
+    it('tool_result turn with frontier pin routes economical when breakeven passes (SP-064/125)', async () => {
+      const pricedPinFleet: ModelProfile[] = [
+        makeModel({
+          id: 'econ-a',
+          tier: 'economical-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 0.8 },
+        }),
+        makeModel({
+          id: 'frontier-a',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 15.0 },
+        }),
+      ];
       const pinner = new SessionPinner();
       pinner.recordPin('sess-1', 'frontier-a', 'initial');
 
-      const pipeline = new RouterPipeline(pinFleet, { sessionPinner: pinner });
+      const pipeline = new RouterPipeline(pricedPinFleet, { sessionPinner: pinner });
       const decision = await pipeline.route(
         makeRequest({ turn_type: 'tool_result', estimated_input_tokens: 50 }),
       );
@@ -356,8 +412,18 @@ describe('RouterPipeline', () => {
     // Use different providers so FR-024 sub-routing does not interfere
     // with escalation verification (sub-routing requires same provider).
     const escalationFleet: ModelProfile[] = [
-      makeModel({ id: 'econ-a', tier: 'economical-cloud', provider: 'openai' }),
-      makeModel({ id: 'frontier-a', tier: 'frontier-cloud', provider: 'anthropic' }),
+      makeModel({
+        id: 'econ-a',
+        tier: 'economical-cloud',
+        provider: 'openai',
+        pricing: { fallback_cost_per_1m: 1.0 },
+      }),
+      makeModel({
+        id: 'frontier-a',
+        tier: 'frontier-cloud',
+        provider: 'anthropic',
+        pricing: { fallback_cost_per_1m: 15.0 },
+      }),
     ];
 
     const failureContent = 'Error: ENOENT file not found';
@@ -446,6 +512,7 @@ describe('RouterPipeline', () => {
       const decision1 = await pipeline.route(failureRequest);
       expect(decision1.selected_model_id).toBe('econ-a');
       expect(decision1.stage).toBe('turn_envelope');
+      expect(decision1.reason_code).toBe('turn_tool_result');
 
       const pin = pinner.getPin('sess-1');
       expect(pin!.pin_reason).toBe('loop_escalation');
@@ -492,6 +559,7 @@ describe('RouterPipeline', () => {
 
       expect(decision.selected_model_id).toBe('econ-a');
       expect(decision.stage).toBe('turn_envelope');
+      expect(decision.reason_code).toBe('turn_tool_result');
       expect(pinner.getPin('sess-1')!.pin_reason).toBe('loop_escalation');
     });
   });

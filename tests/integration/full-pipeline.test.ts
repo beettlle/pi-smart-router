@@ -225,7 +225,7 @@ describe('Full pipeline E2E (T060)', () => {
       expect(pin?.pinned_model_id).toBe('claude-opus');
     });
 
-    it('planning with economical pin routes frontier via turn_envelope (SP-064)', async () => {
+    it('planning blocked without SAAR buffer when breakeven fails (SP-125)', async () => {
       const pinner = new SessionPinner();
       pinner.recordPin('session-e2e-001', 'claude-haiku', 'initial');
       const pipeline = new RouterPipeline(e2eFleet, { sessionPinner: pinner });
@@ -237,10 +237,9 @@ describe('Full pipeline E2E (T060)', () => {
         }),
       );
 
-      expect(decision.stage).toBe('turn_envelope');
-      expect(decision.reason_code).toBe('turn_planning');
-      expect(decision.tier).toBe('frontier-cloud');
-      expect(decision.selected_model_id).toBe('gpt-4o');
+      expect(decision.stage).toBe('session_pin');
+      expect(decision.reason_code).toBe('session_pinned');
+      expect(decision.selected_model_id).toBe('claude-haiku');
       expect(pinner.getPin('session-e2e-001')!.pinned_model_id).toBe('claude-haiku');
     });
 
