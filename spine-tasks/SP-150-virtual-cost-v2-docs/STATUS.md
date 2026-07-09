@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,23 +10,23 @@
 
 ## Step 1: Operator documentation
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Document λ decay, window position config, and cache credit in README
-- [ ] Note deterministic-only scope (no MDP)
+- [x] Document λ decay, window position config, and cache credit in README
+- [x] Note deterministic-only scope (no MDP)
 
 ## Step 2: Regression tests
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Late-window scenario: economical tier preferred over composer when quota low
-- [ ] Cache credit scenario: pin preserved when savings exceed reprime
+- [x] Late-window scenario: economical tier preferred over composer when quota low
+- [x] Cache credit scenario: pin preserved when savings exceed reprime
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run `npm run verify:ci`
+- [x] Run `npm run verify:ci`
 
 ---
 
