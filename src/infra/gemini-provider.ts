@@ -67,7 +67,8 @@ export function formatGeminiThoughtSignatureErrorMessage(errorMessage: string): 
     summary,
     '',
     'Gemini rejected this request because a prior tool call is missing its thought_signature (protocol validation, not provider outage).',
-    'Workarounds: start a fresh session with /new, or route to a non-Google model until pi preserves thought signatures in replay.',
+    'pi-smart-router normally repairs replay state before Google delegation (thoughtSignature preservation + skip sentinel for missing signatures).',
+    'If this error persists, the session may contain unrepairable Google replay state — start a fresh session with /new, or route to a non-Google model.',
     `Docs: ${GEMINI_THOUGHT_SIGNATURE_DOCS}`,
     `Upstream: ${PI_THOUGHT_SIGNATURE_ISSUE}`,
   ].join('\n');

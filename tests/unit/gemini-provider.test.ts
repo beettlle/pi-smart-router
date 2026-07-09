@@ -67,6 +67,7 @@ describe('gemini-provider', () => {
 
     const formatted = formatGeminiThoughtSignatureErrorMessage(raw);
     expect(formatted).toContain('400 INVALID_ARGUMENT: Function call is missing a thought_signature');
+    expect(formatted).toContain('repairs replay state');
     expect(formatted).toContain('/new');
     expect(formatted).toContain('ai.google.dev/gemini-api/docs/generate-content/thought-signatures');
     expect(formatted).toContain('github.com/earendil-works/pi/issues/6342');
