@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "provenance": {
+    "source_urls": {
+      "swebench_verified": "https://www.swebench.com/",
+      "terminal_bench": "https://www.tbench.ai/leaderboard",
+      "livecodebench": "https://livecodebench.github.io/leaderboard.html",
+      "bfcl": "https://gorilla.cs.berkeley.edu/leaderboard.html"
+    },
+    "scrape_date": "2026-07-09",
+    "catalog_freeze_date": "2026-07-09"
+  },
+  "models": [
+    {
+      "model_id": "claude-3.5-haiku",
+      "capabilities": {
+        "reasoning": 0.5685,
+        "code_gen": 0.587,
+        "tool_use": 0.6095
+      },
+      "benchmark_sources": {
+        "bfcl": {
+          "raw_score": 70.6,
+          "normalized": 0.706
+        },
+        "livecodebench": {
+          "raw_score": 55,
+          "normalized": 0.55
+        },
+        "swebench_verified": {
+          "raw_score": 62.4,
+          "normalized": 0.624
+        },
+        "terminal_bench": {
+          "raw_score": 51.3,
+          "normalized": 0.513
+        }
+      }
+    },
+    {
+      "model_id": "claude-opus-4-5",
+      "capabilities": {
+        "reasoning": 0.767,
+        "code_gen": 0.7915,
+        "tool_use": 0.8035
+      },
+      "benchmark_sources": {
+        "bfcl": {
+          "raw_score": 88.2,
+          "normalized": 0.882
+        },
+        "livecodebench": {
+          "raw_score": 77.4,
+          "normalized": 0.774
+        },
+        "swebench_verified": {
+          "raw_score": 80.9,
+          "normalized": 0.809
+        },
+        "terminal_bench": {
+          "raw_score": 72.5,
+          "normalized": 0.725
+        }
+      }
+    },
+    {
+      "model_id": "claude-sonnet-4-6",
+      "capabilities": {
+        "reasoning": 0.738,
+        "code_gen": 0.7635,
+        "tool_use": 0.7625
+      },
+      "benchmark_sources": {
+        "bfcl": {
+          "raw_score": 84.5,
+          "normalized": 0.845
+        },
+        "livecodebench": {
+          "raw_score": 73.1,
+          "normalized": 0.731
+        },
+        "swebench_verified": {
+          "raw_score": 79.6,
+          "normalized": 0.7959999999999999
+        },
+        "terminal_bench": {
+          "raw_score": 68,
+          "normalized": 0.68
+        }
+      }
+    },
+    {
+      "model_id": "gemini-2.5-flash",
+      "capabilities": {
+        "reasoning": 0.5295,
+        "code_gen": 0.5525,
+        "tool_use": 0.5735
+      },
+      "benchmark_sources": {
+        "bfcl": {
+          "raw_score": 66.9,
+          "normalized": 0.669
+        },
+        "livecodebench": {
+          "raw_score": 52.4,
+          "normalized": 0.524
+        },
+        "swebench_verified": {
+          "raw_score": 58.1,
+          "normalized": 0.581
+        },
+        "terminal_bench": {
+          "raw_score": 47.8,
+          "normalized": 0.478
+        }
+      }
+    },
+    {
+      "model_id": "gpt-5.3-codex",
+      "capabilities": {
+        "reasoning": 0.796,
+        "code_gen": 0.833,
+        "tool_use": 0.8215
+      },
+      "benchmark_sources": {
+        "bfcl": {
+          "raw_score": 90.1,
+          "normalized": 0.9009999999999999
+        },
+        "livecodebench": {
+          "raw_score": 81.6,
+          "normalized": 0.816
+        },
+        "swebench_verified": {
+          "raw_score": 85,
+          "normalized": 0.85
+        },
+        "terminal_bench": {
+          "raw_score": 74.2,
+          "normalized": 0.742
+        }
+      }
+    }
+  ]
+}

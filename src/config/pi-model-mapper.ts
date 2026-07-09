@@ -2,9 +2,16 @@
  * Pi model registry → ModelProfile mapper.
  *
  * Maps pi `Model` objects (provider + id) to router fleet entries using
- * pattern-based lookup for known families. Unknown models receive conservative
- * economical-cloud defaults.
+ * pattern-based lookup for known families. When `config/benchmark-profiles.json`
+ * contains a row for the model id (SP-134/136 ingest output), capability
+ * vectors are grounded in benchmark scores instead of regex defaults.
+ * Unknown models or missing benchmark rows receive conservative pattern defaults.
  */
+
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { z } from 'zod';
 
 import type {
   ModelCapabilities,
@@ -14,6 +21,103 @@ import type {
   ModelProfile,
   Tier,
 } from '../domain/types/entities.js';
+
+/** Checked-in ingest artifact from `npm run routing:ingest-benchmarks` (SP-134). */
+export const DEFAULT_BENCHMARK_PROFILES_PATH = resolve('config', 'benchmark-profiles.json');
+
+const benchmarkCapabilitiesSchema = z.object({
+  reasoning: z.number().min(0).max(1),
+  code_gen: z.number().min(0).max(1),
+  tool_use: z.number().min(0).max(1),
+});
+
+const benchmarkModelRowSchema = z.object({
+  model_id: z.string().min(1),
+  capabilities: benchmarkCapabilitiesSchema,
+});
+
+const benchmarkProfilesArtifactSchema = z.object({
+  version: z.literal(1),
+  models: z.array(benchmarkModelRowSchema).min(1),
+});
+
+let benchmarkProfilesPathOverride: string | null | undefined;
+let benchmarkCapabilitiesByModelId: ReadonlyMap<string, ModelCapabilities> | null | undefined;
+
+/**
+ * Test hook — override benchmark artifact path (null disables benchmark grounding).
+ */
+export function setBenchmarkProfilesPathForTests(filePath: string | null): void {
+  benchmarkProfilesPathOverride = filePath;
+  benchmarkCapabilitiesByModelId = undefined;
+}
+
+/** Test hook — clear cached benchmark artifact between cases. */
+export function resetBenchmarkProfilesCacheForTests(): void {
+  benchmarkProfilesPathOverride = undefined;
+  benchmarkCapabilitiesByModelId = undefined;
+}
+
+function resolveBenchmarkProfilesPath(): string | null {
+  if (benchmarkProfilesPathOverride === null) {
+    return null;
+  }
+  return benchmarkProfilesPathOverride ?? DEFAULT_BENCHMARK_PROFILES_PATH;
+}
+
+function loadBenchmarkCapabilitiesMap(): ReadonlyMap<string, ModelCapabilities> | null {
+  if (benchmarkCapabilitiesByModelId !== undefined) {
+    return benchmarkCapabilitiesByModelId;
+  }
+
+  const filePath = resolveBenchmarkProfilesPath();
+  if (filePath === null || !existsSync(filePath)) {
+    benchmarkCapabilitiesByModelId = null;
+    return null;
+  }
+
+  try {
+    const raw = readFileSync(filePath, 'utf8');
+    const parsed: unknown = JSON.parse(raw);
+    const result = benchmarkProfilesArtifactSchema.safeParse(parsed);
+    if (!result.success) {
+      throw new Error(result.error.message);
+    }
+
+    const map = new Map<string, ModelCapabilities>();
+    for (const row of result.data.models) {
+      map.set(row.model_id, { ...row.capabilities });
+    }
+    benchmarkCapabilitiesByModelId = map;
+    return map;
+  } catch (err: unknown) {
+    console.warn('benchmark profiles artifact invalid; using regex capability defaults', {
+      path: filePath,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    benchmarkCapabilitiesByModelId = null;
+    return null;
+  }
+}
+
+function lookupBenchmarkCapabilities(modelId: string): ModelCapabilities | undefined {
+  return loadBenchmarkCapabilitiesMap()?.get(modelId);
+}
+
+function withBenchmarkCapabilities(
+  defaults: ModelFamilyDefaults,
+  modelId: string,
+): ModelFamilyDefaults {
+  const grounded = lookupBenchmarkCapabilities(modelId);
+  if (grounded === undefined) {
+    return defaults;
+  }
+
+  return {
+    ...defaults,
+    capabilities: { ...grounded },
+  };
+}
 
 /** Pi registry `Model.cost` shape — per-token USD rates. */
 export interface PiRegistryCost {
@@ -262,19 +366,19 @@ export function mapPiModelToProfile(input: PiModelInput): ModelProfile {
       id: input.id,
       ...(input.name !== undefined ? { name: input.name } : {}),
     };
-    return buildProfile(localInput, LOCAL_DEFAULTS);
+    return buildProfile(localInput, withBenchmarkCapabilities(LOCAL_DEFAULTS, input.id));
   }
 
   if (input.id === OPAQUE_FLEET_DEFAULT_ID) {
-    return buildProfile(input, CURSOR_AUTO_DEFAULTS);
+    return buildProfile(input, withBenchmarkCapabilities(CURSOR_AUTO_DEFAULTS, input.id));
   }
 
   const matched = matchPatternRules(input.id);
   if (matched) {
-    return buildProfile(input, matched);
+    return buildProfile(input, withBenchmarkCapabilities(matched, input.id));
   }
 
-  return buildProfile(input, UNKNOWN_DEFAULTS);
+  return buildProfile(input, withBenchmarkCapabilities(UNKNOWN_DEFAULTS, input.id));
 }
 
 /**
