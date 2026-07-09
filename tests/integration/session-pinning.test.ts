@@ -21,6 +21,7 @@ import {
 } from '../../.pi/extensions/smart-router/index.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
+import { extractToolFailureSignature } from '../../src/domain/pinning/loop-escalation.js';
 import {
   GatewayDispatch,
 } from '../../src/infrastructure/gateway/gateway-dispatch.js';
@@ -34,6 +35,7 @@ import {
 } from '../../src/api/middleware/pi-router-middleware.js';
 import { createRouterFromFleet } from '../../src/index.js';
 import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../src/domain/types/index.js';
+import { DEFAULT_SAAR_CONFIG } from '../../src/domain/types/schemas.js';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -449,6 +451,150 @@ describe('Session pinning integration', () => {
     it('returns null for unknown session cache marker', () => {
       const gateway = new GatewayDispatch(fleet);
       expect(gateway.getCacheMarker('nonexistent')).toBeNull();
+    });
+  });
+
+  describe('SP-123: SAAR turn envelope and session pin wiring', () => {
+    const saarConfig = {
+      ...DEFAULT_SAAR_CONFIG,
+      planning_turn_buffer: 2,
+    };
+
+    function createSaarPipeline(pinner: SessionPinner): RouterPipeline {
+      return new RouterPipeline(fleet, {
+        sessionPinner: pinner,
+        saarConfig,
+      });
+    }
+
+    it('planning inside buffer routes frontier without overwriting economical pin', async () => {
+      const pinner = new SessionPinner({ saarConfig });
+      const pipeline = createSaarPipeline(pinner);
+
+      const initial = await pipeline.route(
+        makeRequest({ request_id: 'saar-turn-0', turn_type: 'main_loop' }),
+      );
+      expect(initial.selected_model_id).toBe('claude-haiku');
+
+      const planning = await pipeline.route(
+        makeRequest({ request_id: 'saar-planning-buffer', turn_type: 'planning' }),
+      );
+
+      expect(planning.stage).toBe('turn_envelope');
+      expect(planning.reason_code).toBe('turn_planning');
+      expect(planning.tier).toBe('frontier-cloud');
+      expect(planning.selected_model_id).toBe('claude-opus');
+      expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-haiku');
+      expect(pinner.getSaarState('session-pin-int')?.turn_index).toBe(2);
+    });
+
+    it('execution turns after buffer respect hard-lock on warm economical pin', async () => {
+      const pinner = new SessionPinner({ saarConfig });
+      const pipeline = createSaarPipeline(pinner);
+
+      await pipeline.route(makeRequest({ request_id: 'saar-exec-0', turn_type: 'main_loop' }));
+      await pipeline.route(
+        makeRequest({ request_id: 'saar-exec-plan', turn_type: 'planning' }),
+      );
+
+      expect(pinner.getSaarState('session-pin-int')?.hard_lock).toBe(true);
+
+      const execution = await pipeline.route(
+        makeRequest({ request_id: 'saar-exec-2', turn_type: 'main_loop' }),
+      );
+      expect(execution.stage).toBe('session_pin');
+      expect(execution.reason_code).toBe('session_pinned');
+      expect(execution.selected_model_id).toBe('claude-haiku');
+
+      const planningAfterBuffer = await pipeline.route(
+        makeRequest({ request_id: 'saar-exec-plan-2', turn_type: 'planning' }),
+      );
+      expect(planningAfterBuffer.stage).toBe('session_pin');
+      expect(planningAfterBuffer.reason_code).toBe('saar_hard_lock');
+      expect(planningAfterBuffer.selected_model_id).toBe('claude-haiku');
+      expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-haiku');
+    });
+
+    it('loop escalation still breaks pin after SAAR hard-lock', async () => {
+      const pinner = new SessionPinner({ saarConfig });
+      const pipeline = new RouterPipeline(fleet, {
+        sessionPinner: pinner,
+        saarConfig,
+        loopEscalationConfig: { threshold: 3 },
+      });
+
+      const failureContent = 'Error: ENOENT file not found';
+      const failureRequest = makeRequest({
+        turn_type: 'tool_result',
+        messages: [{ role: 'tool', content: failureContent }],
+      });
+
+      await pipeline.route(makeRequest({ request_id: 'loop-0', turn_type: 'main_loop' }));
+      await pipeline.route(makeRequest({ request_id: 'loop-1', turn_type: 'planning' }));
+
+      const initialPin = pinner.getPin('session-pin-int')!;
+      pinner.loadPin({
+        ...initialPin,
+        consecutive_tool_failures: 2,
+        last_tool_failure_signature: extractToolFailureSignature(failureRequest)!,
+        updated_at: new Date().toISOString(),
+      });
+
+      await pipeline.route({ ...failureRequest, request_id: 'loop-fail-3' });
+
+      expect(pinner.getPin('session-pin-int')!.pin_reason).toBe('loop_escalation');
+      expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-opus');
+    });
+
+    it('context overflow still breaks pin after SAAR hard-lock', async () => {
+      const overflowFleet = [
+        makeModel({
+          id: 'small-econ',
+          tier: 'economical-cloud',
+          provider: 'anthropic',
+          limits: { max_input_tokens: 1000 },
+        }),
+        makeModel({
+          id: 'large-frontier',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          limits: { max_input_tokens: 200_000 },
+        }),
+      ];
+      const pinner = new SessionPinner({ saarConfig });
+      const pipeline = new RouterPipeline(overflowFleet, {
+        sessionPinner: pinner,
+        saarConfig,
+      });
+
+      await pipeline.route(
+        makeRequest({
+          request_id: 'overflow-0',
+          session_id: 'overflow-sess',
+          turn_type: 'main_loop',
+        }),
+      );
+      await pipeline.route(
+        makeRequest({
+          request_id: 'overflow-1',
+          session_id: 'overflow-sess',
+          turn_type: 'planning',
+        }),
+      );
+
+      const overflow = await pipeline.route(
+        makeRequest({
+          request_id: 'overflow-2',
+          session_id: 'overflow-sess',
+          turn_type: 'main_loop',
+          estimated_input_tokens: 950,
+        }),
+      );
+
+      expect(overflow.stage).toBe('fallback');
+      expect(overflow.reason_code).toBe('context_overflow_same_provider_fallback');
+      expect(overflow.selected_model_id).toBe('large-frontier');
+      expect(pinner.getPin('overflow-sess')!.pinned_model_id).toBe('large-frontier');
     });
   });
 

@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Ready
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-07-08
 **Review Level:** 2
 **Review Counter:** 0
@@ -10,24 +10,24 @@
 
 ## Step 1: Turn envelope SAAR guard
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] SAAR-aware planning early-exit in turnEnvelope
-- [ ] Buffer vs post-buffer behavior
+- [x] SAAR-aware planning early-exit in turnEnvelope
+- [x] Buffer vs post-buffer behavior
 
 ## Step 2: Session pin stage alignment
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Record turn index and tool-loop state for SAAR
-- [ ] Preserve existing break rules
+- [x] Record turn index and tool-loop state for SAAR
+- [x] Preserve existing break rules
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Extend session-pinning integration tests
-- [ ] Run targeted integration test command
+- [x] Extend session-pinning integration tests
+- [x] Run targeted integration test command
 
 ---
 
