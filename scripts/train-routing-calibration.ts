@@ -6,7 +6,7 @@
  * - P(success) logistic regression
  * - Triage cyclomatic threshold fit
  * - HyDRA 384×3 linear projection (when embedding vectors are present)
- * - Routing cluster centroids (from bootstrap artifact or defaults)
+ * - Routing cluster centroids (bootstrap + OATS outcome-aware refinement — SP-146)
  *
  * SP-139 recalibration: after SP-138 extends the HyDRA encoder to a seven-flag
  * metadata prefix, operators must re-run this script on contrib rows whose
@@ -52,6 +52,10 @@ import {
   fitIsotonicCalibratorFromSamples,
   type IsotonicCalibratorArtifact,
 } from './lib/isotonic-calibrator.js';
+import {
+  refineRoutingCentroidsWithOats,
+  type RefinedRoutingCentroidsArtifact,
+} from './lib/oats-centroid-refinement.js';
 
 export const ROUTING_CALIBRATION_BUNDLE_VERSION = 2 as const;
 
@@ -92,7 +96,7 @@ export interface RoutingCalibrationBundle {
   readonly triage_thresholds: TriageThresholdsArtifact;
   readonly p_success_weights: PSuccessWeights;
   readonly isotonic_calibrator: IsotonicCalibratorArtifact;
-  readonly routing_centroids: RoutingCentroidsArtifact;
+  readonly routing_centroids: RefinedRoutingCentroidsArtifact;
 }
 
 export class RoutingCalibrationError extends Error {
@@ -301,6 +305,18 @@ const RoutingCentroidRecordSchema = z.object({
   reference_count: z.number().int().min(0),
 });
 
+const OatsRefinementMetadataSchema = z.object({
+  version: z.literal(1),
+  alpha: z.number().finite().min(0).max(1),
+  beta: z.number().finite().min(0).max(1),
+  min_positive_samples: z.number().int().min(1),
+  min_negative_samples: z.number().int().min(1),
+  positive_sample_count: z.number().int().min(0),
+  negative_sample_count: z.number().int().min(0),
+  clusters_refined: z.number().int().min(0),
+  clusters_skipped: z.number().int().min(0),
+});
+
 const RoutingCalibrationBundleSchema = z.object({
   version: z.literal(ROUTING_CALIBRATION_BUNDLE_VERSION),
   minimum_training_samples: z.object({
@@ -345,6 +361,7 @@ const RoutingCalibrationBundleSchema = z.object({
     version: z.literal(1),
     embedding_dim: z.literal(EMBEDDING_DIM),
     clusters: z.array(RoutingCentroidRecordSchema).min(1),
+    oats_refinement: OatsRefinementMetadataSchema.optional(),
   }),
 });
 
@@ -552,6 +569,13 @@ function trainIsotonicCalibrator(
   return fitIsotonicCalibratorFromSamples(samples, weights).artifact;
 }
 
+function trainRoutingCentroids(
+  records: readonly Record<string, unknown>[],
+): RefinedRoutingCentroidsArtifact {
+  const bootstrap = loadDefaultRoutingCentroids();
+  return refineRoutingCentroidsWithOats(bootstrap, records);
+}
+
 /** Train all bundle artifacts from validated contrib rows (feature vectors only). */
 export function trainRoutingCalibrationBundle(
   records: readonly Record<string, unknown>[],
@@ -578,7 +602,7 @@ export function trainRoutingCalibrationBundle(
     triage_thresholds: trainTriageThreshold(records),
     p_success_weights: pSuccessWeights,
     isotonic_calibrator: trainIsotonicCalibrator(labeledSamples, pSuccessWeights),
-    routing_centroids: loadDefaultRoutingCentroids(),
+    routing_centroids: trainRoutingCentroids(records),
   };
 }
 
@@ -609,7 +633,7 @@ export function trainRoutingCalibrationBundleWithMetrics(
       triage_thresholds: trainTriageThreshold(records),
       p_success_weights: pSuccessWeights,
       isotonic_calibrator: isotonicFit.artifact,
-      routing_centroids: loadDefaultRoutingCentroids(),
+      routing_centroids: trainRoutingCentroids(records),
     },
     isotonic_fit_sample_count: isotonicFit.fit_sample_count,
     isotonic_holdout_sample_count: isotonicFit.holdout_sample_count,
