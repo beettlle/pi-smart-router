@@ -1,5 +1,5 @@
 **Current Step:** 1
-**Status:** Ready
+**Status:** In progress
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -9,9 +9,9 @@
 
 ## Step 1: Integration test
 
-- [ ] Add `tests/integration/planning-delegate.test.ts` (or extend session-pinning)
-- [ ] Assert planning turn does not switch primary inference model when delegate path active
-- [ ] Assert explain output documents delegate vs direct route
+- [x] Add `tests/integration/planning-delegate.test.ts` (or extend session-pinning)
+- [x] Assert planning turn does not switch primary inference model when delegate path active
+- [x] Assert explain output documents delegate vs direct route
 
 ## Step 2: Operator documentation
 
