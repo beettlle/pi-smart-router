@@ -15,6 +15,7 @@ import type { HttpFetchPort } from '../../src/infrastructure/local/local-zero-ti
 import type { SystemInfo } from '../../src/infrastructure/hardware/hardware-probe.js';
 import type { ModelProfile, PriceCatalog, RoutingRequest } from '../../src/domain/types/index.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
+import { DEFAULT_SAAR_CONFIG } from '../../src/domain/types/schemas.js';
 import {
   P_SUCCESS_FEATURE_NAMES,
   type PSuccessWeights,
@@ -235,11 +236,80 @@ describe('RouterPipeline', () => {
       expect(pin!.pinned_model_id).toBe('frontier-a');
     });
 
-    it('planning turn blocked without SAAR buffer when breakeven fails (SP-125)', async () => {
+    it('planning turn emits planning_delegate when warm economical pin active (SP-143)', async () => {
       const pinner = new SessionPinner();
       pinner.recordPin('sess-1', 'econ-a', 'initial');
 
       const pipeline = new RouterPipeline(pinFleet, { sessionPinner: pinner });
+      const decision = await pipeline.route(makeRequest({ turn_type: 'planning' }));
+
+      expect(decision.stage).toBe('turn_envelope');
+      expect(decision.reason_code).toBe('planning_delegate');
+      expect(decision.selected_model_id).toBe('econ-a');
+      expect(decision.tier).toBe('economical-cloud');
+      expect(decision.features?.planning_delegate).toMatchObject({
+        path: 'delegate',
+        primary_model_id: 'econ-a',
+        delegate_model_id: 'frontier-a',
+        planning_delegate_reason_code: 'planning_delegate',
+      });
+      expect(pinner.getPin('sess-1')!.pinned_model_id).toBe('econ-a');
+    });
+
+    it('planning delegate disabled falls back to direct frontier inside SAAR buffer (SP-143)', async () => {
+      const pricedPinFleet: ModelProfile[] = [
+        makeModel({
+          id: 'econ-a',
+          tier: 'economical-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 0.8 },
+        }),
+        makeModel({
+          id: 'frontier-a',
+          tier: 'frontier-cloud',
+          provider: 'anthropic',
+          pricing: { fallback_cost_per_1m: 15.0 },
+        }),
+      ];
+      const saarConfig = { ...DEFAULT_SAAR_CONFIG, planning_turn_buffer: 2 };
+      const pinner = new SessionPinner({ saarConfig });
+      const pipeline = new RouterPipeline(pricedPinFleet, {
+        sessionPinner: pinner,
+        saarConfig,
+        planningDelegateConfig: {
+          enabled: false,
+          compressed_context: DEFAULT_OPERATOR_CONFIG.planning_delegate.compressed_context,
+        },
+      });
+
+      await pipeline.route(makeRequest({ request_id: 'warmup', turn_type: 'main_loop' }));
+      const decision = await pipeline.route(
+        makeRequest({ request_id: 'planning-direct', turn_type: 'planning' }),
+      );
+
+      expect(decision.stage).toBe('turn_envelope');
+      expect(decision.reason_code).toBe('planning_direct_frontier');
+      expect(decision.selected_model_id).toBe('frontier-a');
+      expect(decision.tier).toBe('frontier-cloud');
+      expect(decision.features?.planning_delegate).toMatchObject({
+        path: 'direct',
+        delegate_model_id: 'frontier-a',
+        planning_delegate_reason_code: 'planning_direct_frontier',
+        fallback_reason: 'planning_delegate_disabled',
+      });
+    });
+
+    it('planning delegate disabled blocked by breakeven stays on economical pin (SP-143)', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'econ-a', 'initial');
+
+      const pipeline = new RouterPipeline(pinFleet, {
+        sessionPinner: pinner,
+        planningDelegateConfig: {
+          enabled: false,
+          compressed_context: DEFAULT_OPERATOR_CONFIG.planning_delegate.compressed_context,
+        },
+      });
       const decision = await pipeline.route(makeRequest({ turn_type: 'planning' }));
 
       expect(decision.stage).toBe('session_pin');

@@ -199,7 +199,7 @@ describe('Session pinning integration', () => {
       }
     });
 
-    it('turn envelope overrides pin for subagent; planning blocked without SAAR buffer (SP-125)', async () => {
+    it('turn envelope overrides pin for subagent; planning delegates on warm economical pin (SP-143)', async () => {
       const pinner = new SessionPinner();
       pinner.recordPin('session-pin-int', 'claude-haiku', 'initial');
       const pipeline = new RouterPipeline(fleet, { sessionPinner: pinner });
@@ -207,9 +207,11 @@ describe('Session pinning integration', () => {
       const planning = await pipeline.route(
         makeRequest({ request_id: 'planning-override', turn_type: 'planning' }),
       );
-      expect(planning.stage).toBe('session_pin');
-      expect(planning.reason_code).toBe('session_pinned');
+      expect(planning.stage).toBe('turn_envelope');
+      expect(planning.reason_code).toBe('planning_delegate');
       expect(planning.selected_model_id).toBe('claude-haiku');
+      expect(planning.features?.planning_delegate?.path).toBe('delegate');
+      expect(planning.features?.planning_delegate?.delegate_model_id).toBe('claude-opus');
       expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-haiku');
 
       const subagent = await pipeline.route(
@@ -469,7 +471,7 @@ describe('Session pinning integration', () => {
       });
     }
 
-    it('planning inside buffer routes frontier without overwriting economical pin', async () => {
+    it('planning inside buffer emits planning_delegate without overwriting economical pin (SP-143)', async () => {
       const pinner = new SessionPinner({ saarConfig });
       const pipeline = createSaarPipeline(pinner);
 
@@ -483,9 +485,14 @@ describe('Session pinning integration', () => {
       );
 
       expect(planning.stage).toBe('turn_envelope');
-      expect(planning.reason_code).toBe('turn_planning');
-      expect(planning.tier).toBe('frontier-cloud');
-      expect(planning.selected_model_id).toBe('claude-opus');
+      expect(planning.reason_code).toBe('planning_delegate');
+      expect(planning.tier).toBe('economical-cloud');
+      expect(planning.selected_model_id).toBe('claude-haiku');
+      expect(planning.features?.planning_delegate).toMatchObject({
+        path: 'delegate',
+        primary_model_id: 'claude-haiku',
+        delegate_model_id: 'claude-opus',
+      });
       expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-haiku');
       expect(pinner.getSaarState('session-pin-int')?.turn_index).toBe(2);
     });
