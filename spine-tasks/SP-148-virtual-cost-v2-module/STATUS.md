@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Virtual cost v2 pure functions
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,7 +10,7 @@
 
 ## Step 1: Virtual cost v2 pure functions
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Implement `computeVirtualCostV2()` with quota_arbitrage_premium and kv_cache_savings
 - [x] λ(remaining_window) decay for subscription quota position
@@ -18,7 +18,7 @@
 
 ## Step 2: Types and unit tests
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Extend pricing types if needed for window position
 - [x] Unit tests: λ decay at window start vs near exhaustion
@@ -26,7 +26,7 @@
 
 ## Step 3: Testing and verification
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Run `npm run verify:ci`
 
