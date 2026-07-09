@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Ready
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-08
 **Review Level:** 2
 **Review Counter:** 0
@@ -10,25 +10,25 @@
 
 ## Step 1: SAAR state helper
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Add SAAR state tracking module
-- [ ] Implement buffer, hard-lock, idle-timeout helpers
+- [x] Add SAAR state tracking module
+- [x] Implement buffer, hard-lock, idle-timeout helpers
 
 ## Step 2: SessionPinner SAAR integration
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Wire SAAR state into SessionPinner lookup
-- [ ] Buffer window and hard-lock behavior
-- [ ] Idle timeout reopen
+- [x] Wire SAAR state into SessionPinner lookup
+- [x] Buffer window and hard-lock behavior
+- [x] Idle timeout reopen
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Unit tests for buffer, hard-lock, idle timeout
-- [ ] Run targeted test command
+- [x] Unit tests for buffer, hard-lock, idle timeout
+- [x] Run targeted test command
 
 ---
 
@@ -36,7 +36,14 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-08 | 3 | plan | skipped (engine post-.DONE) |
+
+## Completion Criteria
+
+- [x] SAAR state machine unit-tested in isolation
+- [x] SessionPinner exposes SAAR-aware pin actions
+- [x] No changes to `router-pipeline.ts`
+- [x] Targeted unit tests pass
 
 ## Discoveries
 
