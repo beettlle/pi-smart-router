@@ -1,4 +1,4 @@
-**Current Step:** Step 1: Fixture schema and sample traces
+**Current Step:** Step 2: Counterfactual replay core
 **Status:** In Progress
 **Last Updated:** 2026-07-09
 **Review Level:** 1
@@ -10,7 +10,7 @@
 
 ## Step 1: Fixture schema and sample traces
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Define JSON schema for step-level agent trace fixtures
 - [x] Add sample fixtures under `tests/eval/fixtures/`
@@ -18,11 +18,11 @@
 
 ## Step 2: Counterfactual replay core
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Implement replay engine comparing actual vs counterfactual routing at each step
-- [ ] Compute cumulative regret vs hindsight-optimal routing on fixtures
-- [ ] Add `npm run routing:eval-replay` script entry
+- [x] Implement replay engine comparing actual vs counterfactual routing at each step
+- [x] Compute cumulative regret vs hindsight-optimal routing on fixtures
+- [x] Add `npm run routing:eval-replay` script entry
 
 ## Step 3: Testing and verification
 
