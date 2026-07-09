@@ -267,12 +267,18 @@ Frozen catalog metadata (catalog_id, checkpoint_date) is echoed for reproducibil
     }
   }
 
-  return { fixturesDir, cheapAtStepIndex };
+  return cheapAtStepIndex === undefined
+    ? { fixturesDir }
+    : { fixturesDir, cheapAtStepIndex };
 }
 
 async function main(): Promise<void> {
-  const { fixturesDir, cheapAtStepIndex } = parseArgs(process.argv.slice(2));
-  const results = replayFixtureDir(fixturesDir, { cheapAtStepIndex });
+  const parsed = parseArgs(process.argv.slice(2));
+  const options: ReplayOptions =
+    parsed.cheapAtStepIndex === undefined
+      ? {}
+      : { cheapAtStepIndex: parsed.cheapAtStepIndex };
+  const results = replayFixtureDir(parsed.fixturesDir, options);
   const summary = summarizeReplayResults(results);
   printSummary(summary);
 }

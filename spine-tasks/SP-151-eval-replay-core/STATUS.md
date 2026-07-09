@@ -1,5 +1,5 @@
-**Current Step:** Step 2: Counterfactual replay core
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-09
 **Review Level:** 1
 **Review Counter:** 0
@@ -18,7 +18,7 @@
 
 ## Step 2: Counterfactual replay core
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Implement replay engine comparing actual vs counterfactual routing at each step
 - [x] Compute cumulative regret vs hindsight-optimal routing on fixtures
@@ -26,10 +26,20 @@
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Unit tests on fixture traces
-- [ ] Run `npm run verify:ci`
+- [x] Unit tests on fixture traces
+- [x] Run `npm run verify:ci`
+
+---
+
+## Completion Criteria
+
+- [x] Fixture trace format with step-level prefixes
+- [x] Counterfactual replay: cheap-at-step-k vs verified progression
+- [x] Frozen model catalog metadata in fixtures
+- [x] Unit tests on sample traces
+- [x] `npm run verify:ci` passes
 
 ---
 
