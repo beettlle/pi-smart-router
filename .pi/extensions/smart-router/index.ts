@@ -94,6 +94,15 @@ export {
   initHydraMatcher,
   wireSmartRouterExtension,
 };
+export {
+  buildCompressedDelegateContext,
+  defaultSpawnPlanningDelegate,
+  extractAssistantText,
+  injectPlanningDelegateObservation,
+  isPlanningDelegateActive,
+  PLANNING_DELEGATE_OBSERVATION_PREFIX,
+  resolvePlanningDelegatePath,
+} from './planning-delegate.js';
 export { SMART_ROUTER_FULL_INVOCATIONS, SMART_ROUTER_USAGE } from './commands.js';
 export { routeAndDelegate } from './route-and-delegate.js';
 export {

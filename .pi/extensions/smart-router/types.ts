@@ -15,6 +15,7 @@ import type {
   PriceCatalog,
   RoutingDecision,
 } from '../../../src/domain/types/index.js';
+import type { PlanningDelegateSpawnFn } from './planning-delegate.js';
 import type { StorePort } from '../../../src/domain/types/store-port.js';
 import {
   DatasetRecorder,
@@ -56,6 +57,8 @@ export interface StreamDelegationDeps {
   readonly executionLedger: ExecutionLedger;
   /** Injectable for tests; production uses pi-ai streamSimple. */
   delegateStream?: DelegateStreamFn;
+  /** Injectable planning delegate sub-call; production uses frontier stream delegate. */
+  spawnPlanningDelegate?: PlanningDelegateSpawnFn;
   readonly lifecycleHookState?: LifecycleHookState;
   readonly datasetRecorder?: DatasetRecorder;
   readonly outcomeRecorder?: OutcomeRecorder;
