@@ -403,6 +403,55 @@ When a **planning** turn would route primary inference to frontier while a warm 
 
 See [routing-roadmap.md](docs/routing-roadmap.md) §2 P0 and GitHub [#71](https://github.com/beettlle/pi-smart-router/issues/71) for acceptance criteria.
 
+### Virtual cost v2 (v0.5.0 subscription economics)
+
+**Virtual cost v2** extends SP-096 flat `quota_cost_per_1m` with deterministic subscription-window economics ([#78](https://github.com/beettlle/pi-smart-router/issues/78)). It inflates effective frontier cost late in a rolling quota window and credits warm prefix-cache value on active pins — without MDP or reinforcement-learning quota policy (SeqRoute HBR+CQL is deferred).
+
+**Formula (per turn)**
+
+`effective_cost_usd = base × λ + quota_arbitrage_premium + exhaustion_risk_premium + kv_cache_savings`
+
+| Component | Meaning |
+|-----------|---------|
+| `base` | SP-096 subscription virtual cost (`quota_cost_per_1m`) or sticker `fallback_cost_per_1m` |
+| **λ (quota decay)** | Multiplier rising from 1 at full window toward `lambda_max_multiplier` as budget depletes |
+| **Quota arbitrage premium** | Opportunity-cost uplift for burning subscription quota late in the window |
+| **Exhaustion risk premium** | Extra penalty when remaining window fraction falls below `exhaustion_risk_threshold` |
+| **KV-cache savings** | Negative credit when pin is active and prefix is warm (`prefix_cache_discount` × `prefix_cache_weight`) |
+
+**Window position**
+
+Rolling-window position is supplied to the router pipeline as `quotaWindowPosition` (library API / telemetry integration). Use `remaining_window_fraction` in `[0, 1]` (1 = full budget). Optionally derive it from elapsed time and consumed quota via `deriveRemainingWindowFraction(elapsed_seconds, consumed_fraction)` in `virtual-cost-v2.ts` (defaults assume a Cursor-style **5h** window).
+
+When `quotaWindowPosition` is omitted, λ stays at 1 and quota premiums are zero — behavior matches SP-096 flat virtual cost.
+
+**Operator knobs** (`VirtualCostV2Config` — wire through `RouterPipeline` options today; defaults in `DEFAULT_VIRTUAL_COST_V2_CONFIG`):
+
+| Knob | Default | Effect |
+|------|---------|--------|
+| `window_duration_seconds` | `18000` (5h) | Rolling window length for time-based remaining fraction |
+| `lambda_decay_exponent` | `2` | Curvature of λ rise as window depletes |
+| `lambda_max_multiplier` | `3` | λ cap at exhaustion |
+| `quota_arbitrage_weight` | `0.5` | Weight on late-window arbitrage premium |
+| `exhaustion_risk_weight` | `1` | Weight on exhaustion risk below threshold |
+| `exhaustion_risk_threshold` | `0.2` | Remaining fraction below which exhaustion premium applies |
+| `prefix_cache_discount` | `0.9` | Assumed prefix-cache discount on warm tokens |
+| `prefix_cache_weight` | `0.2` | Retained future cache value (aligned with SAAR `SMART_ROUTER_PREFIX_CACHE_WEIGHT`) |
+
+**Where v2 applies**
+
+- **Expected-cost tier selection** — frontier/composer effective cost rises near window exhaustion; economical tiers can win when subscription quota is scarce.
+- **Cache breakeven gate** — marginal switch savings and observability use v2 when `quotaWindowPosition` is set; KV credit on the pinned model reduces marginal savings and can block unnecessary pin breaks.
+
+**Dogfood verification**
+
+1. Configure a fleet with subscription `quota_cost_per_1m` on cursor/composer frontier models (see `config/models.yaml.example`).
+2. Run routing with `quotaWindowPosition: { remaining_window_fraction: 0.05 }` via library `RouterPipeline` options — inspect `tier_selection` / expected-cost rationale for `v2 λ=`, `quota_premium=`, `exhaustion=`, `cache_credit=` strings.
+3. On a warm pinned session with low `remaining_window_fraction`, trigger a `tool_result` sub-route — when cache credit plus reprime math fails breakeven, expect pin hold (`breakeven_blocked`) in routing logs and `features.breakeven` on explain.
+4. Compare `remaining_window_fraction: 1` vs `0.02` on the same request — late-window runs should show higher frontier `effective_cost_usd` in `features.tier_selection.tier_costs[].virtual_cost_v2`.
+
+See [routing-roadmap.md](docs/routing-roadmap.md) §2 P2 and GitHub [#78](https://github.com/beettlle/pi-smart-router/issues/78).
+
 ### P(success) training export (baseline classifier)
 
 When `SMART_ROUTER_DATASET=1`, the router records privacy-safe dataset rows and behavioral outcome labels (model override, compaction pin break, `/smart-router feedback good|bad`). Export labeled training data from pi:
