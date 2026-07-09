@@ -1,15 +1,26 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  DEFAULT_BENCHMARK_PROFILES_PATH,
   DEFAULT_CURSOR_QUOTA_COST_PER_1M,
   mapFleetFromRegistry,
   mapPiModelToProfile,
+  resetBenchmarkProfilesCacheForTests,
+  setBenchmarkProfilesPathForTests,
   type PiModelInput,
 } from '../../src/config/pi-model-mapper.js';
+import { ingestBenchmarkProfilesFromDir, serializeBenchmarkProfilesArtifact } from '../../scripts/ingest-benchmark-profiles.js';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 function makeInput(overrides: PiModelInput): PiModelInput {
   return overrides;
 }
+
+afterEach(() => {
+  resetBenchmarkProfilesCacheForTests();
+});
 
 describe('mapPiModelToProfile', () => {
   describe('Claude family', () => {
@@ -38,7 +49,9 @@ describe('mapPiModelToProfile', () => {
       );
 
       expect(profile.tier).toBe('economical-cloud');
-      expect(profile.capabilities.reasoning).toBe(0.7);
+      expect(profile.capabilities.reasoning).toBeCloseTo(0.5685, 4);
+      expect(profile.capabilities.code_gen).toBeCloseTo(0.587, 4);
+      expect(profile.capabilities.tool_use).toBeCloseTo(0.6095, 4);
       expect(profile.pricing.fallback_cost_per_1m).toBe(0.8);
     });
   });
@@ -86,7 +99,8 @@ describe('mapPiModelToProfile', () => {
       );
 
       expect(profile.tier).toBe('economical-cloud');
-      expect(profile.capabilities.code_gen).toBe(0.75);
+      expect(profile.capabilities.code_gen).toBeCloseTo(0.5525, 4);
+      expect(profile.capabilities.reasoning).toBeLessThan(0.7);
     });
 
     it('maps gemini-3.1-pro-preview to frontier tier (SP-085)', () => {
@@ -221,6 +235,77 @@ describe('mapPiModelToProfile', () => {
       expect(profile.pricing.fallback_cost_per_1m).toBe(1.0);
       expect(profile.id).toBe('mystery-model-v9');
       expect(profile.provider).toBe('custom-vendor');
+    });
+  });
+
+  describe('benchmark-grounded capabilities (SP-136)', () => {
+    it('uses ingest artifact scores for known benchmark model ids', () => {
+      setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
+
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'anthropic', id: 'claude-opus-4-5' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.reasoning).toBeCloseTo(0.767, 4);
+      expect(profile.capabilities.code_gen).toBeCloseTo(0.7915, 4);
+      expect(profile.capabilities.tool_use).toBeCloseTo(0.8035, 4);
+      expect(profile.capabilities.reasoning).not.toBe(0.95);
+    });
+
+    it('falls back to regex defaults when benchmark row is missing', () => {
+      setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
+
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'anthropic', id: 'claude-3.5-sonnet' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.reasoning).toBe(0.95);
+      expect(profile.capabilities.code_gen).toBe(0.95);
+      expect(profile.capabilities.tool_use).toBe(0.95);
+    });
+
+    it('falls back to regex defaults when benchmark artifact is disabled', () => {
+      setBenchmarkProfilesPathForTests(null);
+
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'anthropic', id: 'claude-3.5-haiku' }),
+      );
+
+      expect(profile.capabilities.reasoning).toBe(0.7);
+      expect(profile.capabilities.code_gen).toBe(0.75);
+      expect(profile.capabilities.tool_use).toBe(0.7);
+    });
+
+    it('falls back to regex defaults when benchmark artifact path is missing', () => {
+      setBenchmarkProfilesPathForTests(join(tmpdir(), 'missing-benchmark-profiles.json'));
+
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'google', id: 'gemini-2.5-flash' }),
+      );
+
+      expect(profile.capabilities.code_gen).toBe(0.75);
+    });
+
+    it('loads custom benchmark artifact from an override path', () => {
+      const dir = mkdtempSync(join(tmpdir(), 'sp136-benchmark-'));
+      const artifactPath = join(dir, 'benchmark-profiles.json');
+      try {
+        const artifact = ingestBenchmarkProfilesFromDir('tests/fixtures/benchmark-leaderboards', {
+          catalogFreezeDate: '2026-07-09',
+        });
+        writeFileSync(artifactPath, serializeBenchmarkProfilesArtifact(artifact), 'utf8');
+        setBenchmarkProfilesPathForTests(artifactPath);
+
+        const profile = mapPiModelToProfile(
+          makeInput({ provider: 'anthropic', id: 'claude-3.5-haiku' }),
+        );
+
+        expect(profile.capabilities.reasoning).toBeCloseTo(0.5685, 4);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
     });
   });
 

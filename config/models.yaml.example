@@ -1,5 +1,10 @@
 # Example fleet catalog — copy to config/models.yaml and customize.
 # See specs/001-build-smart-router/data-model.md (ModelProfile) and docs/PRD.md §5.
+#
+# Capability scores in this file are static examples. At runtime, mapPiModelToProfile
+# prefers benchmark-grounded profiles from config/benchmark-profiles.json (SP-136)
+# when a model id has an ingest row; regex/pattern defaults apply otherwise.
+# Regenerate the artifact with: npm run routing:ingest-benchmarks
 
 models:
   - id: local-gemma-4-7b

@@ -31,8 +31,16 @@ import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
 import type { ClusterMatcher } from '../../src/domain/matching/cluster-matcher.js';
 import { mapFleetFromRegistry,
   mapPiModelToProfile,
+  resetBenchmarkProfilesCacheForTests,
+  setBenchmarkProfilesPathForTests,
+  DEFAULT_BENCHMARK_PROFILES_PATH,
   type PiModelInput,
 } from '../../src/config/pi-model-mapper.js';
+import {
+  HydraMatcher,
+  type EmbeddingProvider,
+  type RequirementVector,
+} from '../../src/domain/matching/hydra-matcher.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import type { ModelProfile, RoutingDecision } from '../../src/domain/types/index.js';
 import type { SystemInfo } from '../../src/infrastructure/hardware/hardware-probe.js';
@@ -220,6 +228,60 @@ describe('Pi extension integration (SP-043)', () => {
         'economical-cloud',
         'zero-tier',
       ]);
+    });
+  });
+
+  describe('benchmark-grounded profiles (SP-136)', () => {
+    afterEach(() => {
+      resetBenchmarkProfilesCacheForTests();
+    });
+
+    it('maps economical models with benchmark scores instead of hardcoded 0.95 frontier defaults', () => {
+      setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
+
+      const haiku = mapPiModelToProfile({ provider: 'anthropic', id: 'claude-3.5-haiku' });
+      const sonnet = mapPiModelToProfile({ provider: 'anthropic', id: 'claude-3.5-sonnet' });
+
+      expect(haiku.capabilities.reasoning).toBeCloseTo(0.5685, 4);
+      expect(haiku.capabilities.reasoning).not.toBe(0.95);
+      expect(sonnet.capabilities.reasoning).toBe(0.95);
+    });
+
+    it('shortfall gate uses grounded economical capabilities from mapped fleet', async () => {
+      setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
+
+      const requirements: RequirementVector = {
+        reasoning: 0.65,
+        code_gen: 0.65,
+        tool_use: 0.65,
+      };
+      const provider: EmbeddingProvider = {
+        extractRequirements: vi.fn(async () => requirements),
+        dispose: vi.fn(async () => {}),
+      };
+      const matcher = new HydraMatcher(provider, { artifactCachePath: '.pi-smart-router/models/' });
+
+      const fleet = [
+        mapPiModelToProfile({ provider: 'anthropic', id: 'claude-3.5-haiku' }),
+        mapPiModelToProfile({ provider: 'anthropic', id: 'claude-3.5-sonnet' }),
+      ];
+
+      const result = await matcher.match(
+        {
+          request_id: 'sp136-grounded-shortfall',
+          session_id: 'sess-sp136',
+          prompt_text: 'Refactor the auth middleware and add integration tests',
+        },
+        fleet,
+      );
+
+      const haiku = result.candidates.find((candidate) => candidate.model_id === 'claude-3.5-haiku');
+      const sonnet = result.candidates.find((candidate) => candidate.model_id === 'claude-3.5-sonnet');
+
+      expect(haiku?.rejected_reason).toBe('shortfall_gate');
+      expect(haiku?.shortfall).toBeGreaterThan(0);
+      expect(sonnet?.rejected_reason).toBeNull();
+      expect(result.selected?.model_id).toBe('claude-3.5-sonnet');
     });
   });
 
