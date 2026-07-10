@@ -1,6 +1,6 @@
 # SP-179: Live Leaderboard Snapshot Ingest — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Live / recorded ingest modes
 
-**Status:** 🔄 In Progress (outcomes done; awaiting plan-review skip → complete)
+**Status:** ✅ Complete
 
 - [x] Add CLI flags for live fetch and/or record-to-fixture and ingest-from-recorded
 - [x] Keep default path = checked-in fixtures (no network)
