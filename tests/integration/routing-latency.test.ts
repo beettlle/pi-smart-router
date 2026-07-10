@@ -5,7 +5,7 @@
  * Validates that the full pipeline (triage → turn envelope → fallback) stays
  * within the latency budget for a representative set of ambiguous prompts.
  *
- * Also validates SC-004: obvious-case triage adds <5ms median overhead.
+ * Release matrix: routing latency budget — SC-004 triage <5ms, SC-005 ambiguous <200ms.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -116,6 +116,7 @@ function percentile(values: number[], p: number): number {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
+describe('@release', () => {
 describe('Routing latency benchmark (T061)', () => {
   describe('SC-005: median <200ms for ambiguous prompts', () => {
     it('median routing_latency_ms stays under 200ms for 20 ambiguous prompts', async () => {
@@ -299,4 +300,5 @@ describe('Routing latency benchmark (T061)', () => {
       expect(p99).toBeLessThan(200);
     });
   });
+});
 });

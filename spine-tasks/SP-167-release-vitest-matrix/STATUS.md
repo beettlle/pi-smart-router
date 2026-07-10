@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Pending
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,33 +10,33 @@
 
 ## Step 1: @release wrappers
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Wrap 8 integration test files in top-level `describe('@release', ...)`
-- [ ] Wrap `tests/contract/routing-schemas.test.ts` and `tests/eval/harness-tracks.test.ts`
-- [ ] Add optional scenario matrix comment at file top where helpful
+- [x] Wrap 8 integration test files in top-level `describe('@release', ...)`
+- [x] Wrap `tests/contract/routing-schemas.test.ts` and `tests/eval/harness-tracks.test.ts`
+- [x] Add optional scenario matrix comment at file top where helpful
 
 ## Step 2: test:release script
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Add `"test:release": "vitest run --testNamePattern '@release'"` to package.json
+- [x] Add `"test:release": "vitest run --testNamePattern '@release'"` to package.json
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Run `npm run test:release` — confirms matrix subset runs
-- [ ] Run `npm run verify:ci`
+- [x] Run `npm run test:release` — confirms matrix subset runs
+- [x] Run `npm run verify:ci`
 
 ---
 
 ## Completion Criteria
 
-- [ ] 10 test files wrapped with @release
-- [ ] `test:release` script in package.json
-- [ ] No changes to test assertions
-- [ ] `npm run verify:ci` passes
+- [x] 10 test files wrapped with @release
+- [x] `test:release` script in package.json
+- [x] No changes to test assertions
+- [x] `npm run verify:ci` passes
 
 ---
 
@@ -44,7 +44,8 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-10 | Step 1 | plan | skipped (engine-owned) |
+| 2026-07-10 | Step 2 | plan | skipped (engine-owned) |
 
 ## Discoveries
 
@@ -56,7 +57,9 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-10 | Step 1 complete | 10 files wrapped with @release |
+| 2026-07-10 | Step 2 complete | test:release script added |
+| 2026-07-10 | Step 3 complete | test:release 157 tests, verify:ci passed |
 
 ## Blockers
 

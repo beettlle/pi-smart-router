@@ -1,3 +1,6 @@
+/**
+ * Release matrix: eval harness tracks — capability, cost, continuity, runner (SP-152).
+ */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -21,6 +24,7 @@ function loadFixture(name: string): unknown {
   return JSON.parse(readFileSync(join(FIXTURES_DIR, name), 'utf8'));
 }
 
+describe('@release', () => {
 describe('capability track (SP-152)', () => {
   it('scores routing tier vs required min_tier on fixtures', () => {
     const fixture = loadEvalTraceFixture(loadFixture('trivial-pin-session.json'));
@@ -133,4 +137,5 @@ describe('harness runner (SP-152)', () => {
     expect(tracks.cost).toBeDefined();
     expect(tracks.continuity).toBeDefined();
   });
+});
 });
