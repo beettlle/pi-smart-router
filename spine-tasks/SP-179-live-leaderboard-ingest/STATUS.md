@@ -1,7 +1,7 @@
 # SP-179: Live Leaderboard Snapshot Ingest — Status
 
-**Current Step:** 2
-**Status:** 🔄 In Progress
+**Current Step:** 3
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -21,7 +21,7 @@
 
 ## Step 2: Recorded snapshot fixture + unit tests
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Check in at least one recorded live-style snapshot usable offline
 - [x] Unit tests: fixtures default; recorded replay; help documents flags
@@ -29,12 +29,12 @@
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Scoped vitest + typecheck
-- [ ] `routing:verify-benchmark-profiles`
-- [ ] Full `npm test`
-- [ ] Coverage gate ≥77%
+- [x] Scoped vitest + typecheck
+- [x] `routing:verify-benchmark-profiles`
+- [x] Full `npm test`
+- [x] Coverage gate ≥77%
 
 ---
 
@@ -53,6 +53,8 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine-owned after .DONE; SP-195) |
+| 2026-07-10 | 2 | plan | skipped (engine-owned after .DONE; SP-195) |
+| 2026-07-10 | 3 | plan | skipped (engine-owned after .DONE; SP-195) |
 
 ## Discoveries
 
@@ -67,6 +69,7 @@
 | 2026-07-10 | start | Step 1 in progress; plan review skipped by engine |
 | 2026-07-10 | step1 | CLI `--live` / `--recorded` / `--record-dir` / `--live-url`; fetch lib; fail-fast preserves output |
 | 2026-07-10 | step2 | Recorded fixtures under `tests/fixtures/benchmark-leaderboards/recorded/`; unit tests green; verify green |
+| 2026-07-10 | step3 | typecheck + scoped vitest; verify; npm test 1513 passed; coverage 92.91% lines |
 
 ## Blockers
 
@@ -77,3 +80,4 @@
 ## Notes
 
 Blast radius for `ingestBenchmarkProfilesFromDir`: LOW (0 upstream callers).
+detect_changes before Step 1 commit: medium risk on ingest `main` (expected CLI surface).
