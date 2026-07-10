@@ -25,12 +25,16 @@ import {
   parseAssistantMessageError,
 } from '../../../src/infrastructure/delegation/provider-error.js';
 import { shouldFailoverOnProviderError } from '../../../src/infrastructure/gateway/gateway-dispatch.js';
-import { delegateWithOutcome } from './delegate-stream.js';
+import {
+  commitPipedTerminal,
+  delegateWithOutcome,
+  type PipedDelegatedStreamResult,
+} from './delegate-stream.js';
 import {
   createErrorMessage,
   findFleetProfile,
   flushDelegatedEvents,
-  injectFailoverNotice,
+  type FailoverNoticeInfo,
   resolveRegistryModel,
 } from './delegation-runtime.js';
 import { buildRoutingRequest } from './routing-context.js';
@@ -41,6 +45,12 @@ import {
 } from './planning-delegate.js';
 import type { StreamDelegationDeps } from './types.js';
 import { isAbortError } from './utils.js';
+
+function isPipedResult(
+  result: Awaited<ReturnType<typeof delegateWithOutcome>>,
+): result is PipedDelegatedStreamResult {
+  return 'heldTerminal' in result;
+}
 
 function isRoutingLogEnabled(): boolean {
   return process.env.SMART_ROUTER_LOG_ROUTING === '1';
@@ -282,10 +292,19 @@ export async function routeAndDelegate(
       deps,
       options,
       sessionId,
+      undefined,
+      {
+        outer,
+        contextWindow: fallbackModel.contextWindow,
+      },
     );
-    flushDelegatedEvents(outer, fallbackResult.events, {
-      contextWindow: fallbackModel.contextWindow,
-    });
+    if (isPipedResult(fallbackResult)) {
+      commitPipedTerminal(fallbackResult);
+    } else {
+      flushDelegatedEvents(outer, fallbackResult.events, {
+        contextWindow: fallbackModel.contextWindow,
+      });
+    }
     return;
   }
 
@@ -337,11 +356,7 @@ export async function routeAndDelegate(
   const headroomExcludedModelIds: string[] = [];
   const estimatedInputTokens =
     request.estimated_input_tokens ?? request.prompt_text.length;
-  let pendingFailoverInfo: {
-    failedModelId: string;
-    alternateModelId: string;
-    errorObj?: ReturnType<typeof parseAssistantMessageError>;
-  } | undefined;
+  let pendingFailoverInfo: FailoverNoticeInfo | undefined;
 
   while (true) {
     try {
@@ -394,6 +409,9 @@ export async function routeAndDelegate(
         ? { profile: targetProfile, estimatedInputTokens }
         : undefined;
 
+      const failoverNotice = pendingFailoverInfo;
+      pendingFailoverInfo = undefined;
+
       const result = await delegateWithOutcome(
         targetModel,
         delegationContext,
@@ -401,16 +419,19 @@ export async function routeAndDelegate(
         options,
         sessionId,
         headroomContext,
+        {
+          outer,
+          ...(failoverNotice !== undefined ? { failoverNotice } : {}),
+          contextWindow: targetModel.contextWindow,
+        },
       );
 
-      if (pendingFailoverInfo) {
-        injectFailoverNotice(
-          result.events,
-          pendingFailoverInfo.failedModelId,
-          pendingFailoverInfo.alternateModelId,
-          pendingFailoverInfo.errorObj,
-        );
-        pendingFailoverInfo = undefined;
+      if (!isPipedResult(result)) {
+        flushDelegatedEvents(outer, result.events, {
+          sanitizeErrors: result.failed,
+          contextWindow: targetModel.contextWindow,
+        });
+        return;
       }
 
       if (result.finalMessage && isZeroOutputLengthStop(result.finalMessage)) {
@@ -455,10 +476,7 @@ export async function routeAndDelegate(
         result.finalMessage &&
         isGeminiThoughtSignatureAssistantError(result.finalMessage)
       ) {
-        flushDelegatedEvents(outer, result.events, {
-          sanitizeErrors: true,
-          contextWindow: targetModel.contextWindow,
-        });
+        commitPipedTerminal(result, { sanitizeErrors: true });
         return;
       }
 
@@ -477,19 +495,13 @@ export async function routeAndDelegate(
             effectiveFleet,
           );
           if (!failover) {
-            flushDelegatedEvents(outer, result.events, {
-          sanitizeErrors: true,
-          contextWindow: targetModel.contextWindow,
-        });
+            commitPipedTerminal(result, { sanitizeErrors: true });
             return;
           }
 
           const alternateModel = resolveTargetModel(deps, failover);
           if (!alternateModel || alternateModel.id === targetModel.id) {
-            flushDelegatedEvents(outer, result.events, {
-          sanitizeErrors: true,
-          contextWindow: targetModel.contextWindow,
-        });
+            commitPipedTerminal(result, { sanitizeErrors: true });
             return;
           }
 
@@ -497,6 +509,7 @@ export async function routeAndDelegate(
             '[smart-router] infra error, failing over to alternate model',
             alternateModel.id,
           );
+          // Discard held terminal from the failed attempt — do not forward to outer.
           pendingFailoverInfo = {
             failedModelId: targetModel.id,
             alternateModelId: alternateModel.id,
@@ -508,7 +521,7 @@ export async function routeAndDelegate(
         }
       }
 
-      flushDelegatedEvents(outer, result.events, {
+      commitPipedTerminal(result, {
         sanitizeErrors: result.failed,
         contextWindow: targetModel.contextWindow,
       });
@@ -567,24 +580,28 @@ export async function routeAndDelegate(
         errorObj: { message: error instanceof Error ? error.message : String(error) },
       };
 
+      const failoverNotice = pendingFailoverInfo;
+      pendingFailoverInfo = undefined;
       const fallbackResult = await delegateWithOutcome(
         fallbackModel,
         context,
         deps,
         options,
         sessionId,
+        undefined,
+        {
+          outer,
+          ...(failoverNotice !== undefined ? { failoverNotice } : {}),
+          contextWindow: fallbackModel.contextWindow,
+        },
       );
-      if (pendingFailoverInfo) {
-        injectFailoverNotice(
-          fallbackResult.events,
-          pendingFailoverInfo.failedModelId,
-          pendingFailoverInfo.alternateModelId,
-          pendingFailoverInfo.errorObj,
-        );
+      if (isPipedResult(fallbackResult)) {
+        commitPipedTerminal(fallbackResult);
+      } else {
+        flushDelegatedEvents(outer, fallbackResult.events, {
+          contextWindow: fallbackModel.contextWindow,
+        });
       }
-      flushDelegatedEvents(outer, fallbackResult.events, {
-      contextWindow: fallbackModel.contextWindow,
-    });
       return;
     }
   }
