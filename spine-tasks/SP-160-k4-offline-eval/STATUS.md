@@ -55,7 +55,9 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-10 | Step 1 complete | K=4 shape regression + debugging shortfall exclusion tests |
+| 2026-07-10 | Step 2 complete | K=4 offline eval smoke + QR comparison on fixture subset |
+| 2026-07-10 | Step 3 complete | `npm run verify:ci` passed |
 
 ## Blockers
 
