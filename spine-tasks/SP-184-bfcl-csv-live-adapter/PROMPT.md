@@ -96,4 +96,11 @@ Parse CSV (no heavy new dependency if stdlib/manual parse suffices). Use **Overa
 
 ## Amendments (Added During Execution)
 
-(none yet)
+### 2026-07-10 — Allow SP-181 live-URL assertion updates
+
+Registering `bfcl` `liveFetchUrl` breaks two SP-181 assertions that expect
+`getDefaultLiveFetchUrls() === {}` and all adapters `liveFetchUrl === undefined`.
+
+**File Scope May change (added):**
+- `tests/unit/benchmark-leaderboard-fetch.test.ts` (live URL registry assertion only)
+- `tests/unit/ingest-benchmark-profiles.test.ts` (live URL registry assertion only)
