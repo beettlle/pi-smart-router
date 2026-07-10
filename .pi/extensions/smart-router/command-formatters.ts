@@ -2,7 +2,11 @@ import {
   DEFAULT_HISTORY_LIMIT,
   MAX_HISTORY_LIMIT,
 } from '../../../src/infrastructure/telemetry/telemetry-limits.js';
-import type { RoutingDecision, RoutingTelemetry } from '../../../src/domain/types/index.js';
+import type {
+  ModelProfile,
+  RoutingDecision,
+  RoutingTelemetry,
+} from '../../../src/domain/types/index.js';
 import { SMART_ROUTER_USAGE } from './commands.js';
 import {
   DEFAULT_TELEMETRY_CONTRIB_EXPORT_LIMIT,
@@ -14,6 +18,78 @@ import {
 } from './dataset-export.js';
 import { formatPricingStalenessLine } from './pricing-lifecycle.js';
 import type { FleetMode, SmartRouterCommand, SmartRouterRuntime } from './types.js';
+
+/** Opaque / virtual auto ids that hide the concrete delegated fleet model (SP-178). */
+function isBareOrSmartRouterAuto(modelId: string): boolean {
+  return modelId === 'auto' || modelId === 'smart-router/auto';
+}
+
+/**
+ * Resolve the operator-facing model id for history/status (SP-178 / #99).
+ * Prefer a concrete delegated/primary id over virtual `auto`.
+ */
+export function resolveHistoryModelId(
+  entry: Pick<
+    RoutingTelemetry,
+    | 'selected_model_id'
+    | 'planning_delegate_primary_model_id'
+    | 'planning_delegate_model_id'
+  >,
+  fleet?: readonly ModelProfile[],
+): string {
+  let modelId = entry.selected_model_id;
+
+  if (isBareOrSmartRouterAuto(modelId)) {
+    const primary = entry.planning_delegate_primary_model_id;
+    if (primary && !isBareOrSmartRouterAuto(primary)) {
+      modelId = primary;
+    } else if (
+      entry.planning_delegate_model_id &&
+      !isBareOrSmartRouterAuto(entry.planning_delegate_model_id)
+    ) {
+      modelId = entry.planning_delegate_model_id;
+    }
+  }
+
+  return qualifyModelIdForDisplay(modelId, fleet);
+}
+
+/**
+ * Qualify bare `auto` with provider when fleet is available so history never
+ * looks like the smart-router virtual model.
+ */
+export function qualifyModelIdForDisplay(
+  modelId: string,
+  fleet?: readonly ModelProfile[],
+): string {
+  if (modelId !== 'auto') {
+    return modelId;
+  }
+
+  const profile = fleet?.find((m) => m.id === 'auto');
+  if (profile) {
+    return `${profile.provider}/${profile.id}`;
+  }
+
+  // Cursor opaque auto is the common bare-`auto` fleet id; never leave it unqualified.
+  return 'cursor/auto';
+}
+
+export function resolveStatusModelId(
+  decision: RoutingDecision,
+  fleet?: readonly ModelProfile[],
+): string {
+  const primary = decision.features?.planning_delegate?.primary_model_id ?? null;
+  const delegate = decision.features?.planning_delegate?.delegate_model_id ?? null;
+  return resolveHistoryModelId(
+    {
+      selected_model_id: decision.selected_model_id,
+      planning_delegate_primary_model_id: primary,
+      planning_delegate_model_id: delegate,
+    },
+    fleet,
+  );
+}
 
 export function parseHistoryLimit(raw: string | undefined): number {
   if (raw === undefined) {
@@ -142,8 +218,9 @@ export function formatStatusMessage(
     return lines.join('\n');
   }
 
+  const displayModelId = resolveStatusModelId(decision, runtime.streamDeps.fleet);
   lines.push(
-    `Model: ${decision.selected_model_id}`,
+    `Model: ${displayModelId}`,
     `Stage: ${decision.stage}`,
     `Reason: ${decision.reason_code}`,
     `Latency: ${decision.routing_latency_ms}ms`,
@@ -151,16 +228,20 @@ export function formatStatusMessage(
   return lines.join('\n');
 }
 
-export function formatHistoryMessage(entries: readonly RoutingTelemetry[]): string {
+export function formatHistoryMessage(
+  entries: readonly RoutingTelemetry[],
+  options?: { fleet?: readonly ModelProfile[] },
+): string {
   if (entries.length === 0) {
     return 'No routing history yet.';
   }
 
+  const fleet = options?.fleet;
   return entries
-    .map(
-      (entry) =>
-        `${entry.timestamp} | ${entry.selected_model_id} | ${entry.stage} | ${entry.turn_type} | ${entry.routing_latency_ms}ms`,
-    )
+    .map((entry) => {
+      const modelId = resolveHistoryModelId(entry, fleet);
+      return `${entry.timestamp} | ${modelId} | ${entry.stage} | ${entry.turn_type} | ${entry.routing_latency_ms}ms`;
+    })
     .join('\n');
 }
 

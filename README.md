@@ -197,7 +197,7 @@ Cursor models bill against your **Cursor Pro subscription quota**, not per-token
 |---------|---------|
 | `/smart-router` | Same as `status` (default when no subcommand is given) |
 | `/smart-router status` | Show fleet mode, fleet size, pricing freshness/staleness, and the last routing decision (stage, tier, selected model, latency) |
-| `/smart-router history` | Show recent routing telemetry from SQLite (default limit; optional numeric limit, e.g. `/smart-router history 20`) |
+| `/smart-router history` | Show recent routing telemetry from SQLite (default limit; optional numeric limit, e.g. `/smart-router history 20`). Displays the concrete delegated model id (never bare virtual `auto`) |
 | `/smart-router mode scoped` | Route only among pi's **enabled model patterns** (default) |
 | `/smart-router mode all` | Route among **all authenticated models** in the registry |
 | `/smart-router pricing refresh` | Manually fetch LiteLLM pricing from `LITELLM_PRICING_URL`, persist to SQLite, and rebuild the fleet with updated rates |
@@ -339,7 +339,7 @@ Cluster IDs are stable reason-code prefixes (`cluster_low_stakes_general`, `clus
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `ROUTER_STATE_DB_PATH` | `./.pi-smart-router/state.db` | Override SQLite state store location (telemetry, pricing catalog, session data) |
-| `SMART_ROUTER_LOG_ROUTING` | (unset) | Set to `1` to log each routing decision to stderr as JSON (debugging dogfood sessions) |
+| `SMART_ROUTER_LOG_ROUTING` | (unset) | Set to `1` to log each routing decision to stderr as JSON (debugging dogfood sessions). Canonical payload builder (`buildRoutingDecisionLogPayload`) includes top-level `stage`, `reason_code`, `low_intensity_score`, `tier_hint`, `local_eligible_reason`, and `cluster_id` (plus nested `cluster_summary` / `features`). The pi extension’s live stderr logger is still a slim subset — see [LOG_ROUTING field checklist](#log_routing-field-checklist) |
 | `SMART_ROUTER_DATASET` | (unset) | Set to `1` to opt in to privacy-safe routing dataset capture (metadata and feature fields only; 30-day / 10k-row retention). Prompt text, messages, and tool arguments are never stored. Required for outcome labels and P(success) training export. See [#8](https://github.com/beettlle/pi-smart-router/issues/8). |
 | `SMART_ROUTER_DATASET_FINGERPRINT` | (unset) | Set to `1` (requires `SMART_ROUTER_DATASET=1`) to store an install-local HMAC-SHA256 fingerprint of each normalized prompt for duplicate detection within this install. The install pepper lives in `.pi-smart-router/.dataset-key` (gitignored) and is never exported. **Warning:** short or common prompts are vulnerable to offline rainbow-table guessing; use only when you accept that tradeoff. See [#10](https://github.com/beettlle/pi-smart-router/issues/10). |
 | `MODELS_YAML_PATH` | `./config/models.yaml` | Fleet catalog path (library API only) |
@@ -353,6 +353,23 @@ Cluster IDs are stable reason-code prefixes (`cluster_low_stakes_general`, `clus
 | `SMART_ROUTER_SWITCH_THRESHOLD` | `0.5` | SAAR switch score gate (0–1) for tier upgrades during hard-lock |
 | `ROUTER_SAFE_DEFAULT_TIER` | `economical-cloud` | Fallback tier on any routing failure |
 | `LITELLM_PRICING_URL` | — | LiteLLM pricing JSON source |
+
+### LOG_ROUTING field checklist
+
+When `SMART_ROUTER_LOG_ROUTING=1`, prefer the canonical payload from `buildRoutingDecisionLogPayload` (library / tests). Checklist for [#99](https://github.com/beettlle/pi-smart-router/issues/99):
+
+| Field | In payload builder? | Notes |
+|-------|---------------------|-------|
+| `stage` | Yes (top-level) | Pipeline stage that decided |
+| `reason_code` | Yes (top-level) | Machine-readable reason |
+| `low_intensity_score` | Yes (top-level + `cluster_summary`) | Null when low-intensity stage did not run |
+| `tier_hint` | Yes (top-level + `cluster_summary`) | Null when no tier hint |
+| `local_eligible_reason` | Yes (top-level + `features`) | Null when local_zero did not evaluate eligibility |
+| `cluster_id` | Yes (top-level + `cluster_summary`) | Null when no cluster match |
+
+**Gap:** the pi extension’s live stderr path (`logRoutingDecision` in `.pi/extensions/smart-router`) still emits a slim JSON object (`selected_model_id`, `stage`, `reason_code`, `features`, `delegate`) and does **not** yet call `buildRoutingDecisionLogPayload`. SQLite `/smart-router history` and the payload builder carry the full checklist; wire the extension logger in a follow-up if dogfood needs identical stderr shape.
+
+**History model id:** `/smart-router history` resolves bare/`smart-router` virtual `auto` to the concrete planning-delegate primary (or qualifies Cursor opaque `auto` as `cursor/auto`) so operators see the delegated fleet model, not the virtual router id.
 
 ### SAAR session pin and cache breakeven (v0.2.0 Continuity)
 
@@ -567,7 +584,7 @@ Additional operator defaults:
 
 | Key | Default | Purpose |
 |-----|---------|---------|
-| `loop_escalation.threshold` | 3 | Consecutive identical failures before escalating to frontier |
+| `loop_escalation.threshold` | 3 | Consecutive identical failures before escalating to frontier. Also used as the default **zero-tier tool-call churn** threshold (SP-178 / [#99](https://github.com/beettlle/pi-smart-router/issues/99)): while pinned to `zero-tier`, unsupported/unknown tool results escalate immediately, and N `tool_result` turns escalate via the same `loop_escalation` pin path (FR-014) — not a cache-breakeven bypass |
 | `pin_only_fallback` | `false` | Emergency pin-on-first-turn mode — see [Pin-only emergency fallback](#pin-only-emergency-fallback) |
 | `local.min_memory_gb_full` | 16 | Minimum RAM for full local inference |
 | `local.battery_threshold_pct` | 20 | Minimum battery to allow local inference |

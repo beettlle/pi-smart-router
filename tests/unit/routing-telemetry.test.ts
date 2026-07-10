@@ -505,6 +505,13 @@ describe('tier-selection observability (SP-113)', () => {
       tier_selection_reason_code: P_SUCCESS_CHEAP,
       low_intensity_score: 0.72,
     });
+    // SP-178 / #99 — top-level LOG_ROUTING checklist fields
+    expect(payload.stage).toBe('fallback');
+    expect(payload.reason_code).toBe('safe_cloud_default');
+    expect(payload.low_intensity_score).toBe(0.72);
+    expect(payload.tier_hint).toBe('economical-cloud');
+    expect(payload.cluster_id).toBe('low_stakes_general');
+    expect(payload).toHaveProperty('local_eligible_reason');
   });
 
   it('attaches tier_selection to decision features for explain', () => {

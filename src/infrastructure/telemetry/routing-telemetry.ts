@@ -1124,6 +1124,17 @@ export function buildRoutingDecisionLogPayload(
     tier: enriched.tier,
     stage: enriched.stage,
     reason_code: enriched.reason_code,
+    // Top-level checklist fields for SMART_ROUTER_LOG_ROUTING=1 (SP-178 / #99)
+    low_intensity_score:
+      tierSelection?.low_intensity_score ??
+      enriched.features?.low_intensity_score ??
+      null,
+    tier_hint: tierSelection?.tier_hint ?? enriched.features?.tier_hint ?? null,
+    local_eligible_reason:
+      tierSelection?.local_eligible_reason ??
+      enriched.features?.local_eligible_reason ??
+      null,
+    cluster_id: tierSelection?.cluster_id ?? null,
     routing_latency_ms: enriched.routing_latency_ms,
     features: enriched.features ?? null,
     cluster_summary: tierSelection

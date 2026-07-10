@@ -38,6 +38,8 @@ import {
   formatHistoryMessage,
   formatStatusMessage,
   parseSmartRouterArgs,
+  resolveHistoryModelId,
+  qualifyModelIdForDisplay,
 } from './command-formatters.js';
 import { formatPricingStalenessLine, refreshPricingCatalog } from './pricing-lifecycle.js';
 import {
@@ -87,8 +89,10 @@ export {
   getSmartRouterArgumentCompletions,
   mapContextMessages,
   parseSmartRouterArgs,
+  qualifyModelIdForDisplay,
   refreshPricingCatalog,
   resolveDelegationOptions,
+  resolveHistoryModelId,
   logRoutingDecision,
   toDatasetExportRecord,
   capturePreRouteOutcomes,
