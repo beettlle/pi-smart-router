@@ -1,7 +1,7 @@
 # SP-169: Abort Must Not Trigger Failover — Status
 
 **Current Step:** 3
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -27,11 +27,11 @@
 
 ## Step 3: Testing and verification
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
-- [ ] Run scoped vitest for smart-router-extension
-- [ ] Run full `npm test`
-- [ ] Run coverage gate
+- [x] Run scoped vitest for smart-router-extension
+- [x] Run full `npm test`
+- [x] Run coverage gate
 
 ---
 
@@ -50,6 +50,7 @@
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine post-.DONE; SP-195) |
 | 2026-07-10 | 2 | plan | skipped (engine post-.DONE; SP-195) |
+| 2026-07-10 | 3 | plan | skipped (engine post-.DONE; SP-195) |
 
 ## Discoveries
 
@@ -66,6 +67,8 @@
 | 2026-07-10 | step_start | Step 2 — Mid-stream abort tests |
 | 2026-07-10 | step_complete | Mid-stream + pre-aborted tests pass |
 | 2026-07-10 | step_start | Step 3 — Testing and verification |
+| 2026-07-10 | verify | typecheck + scoped vitest 70/70; npm test 1458/1458; coverage:check 92.54% lines |
+| 2026-07-10 | step_complete | Step 3 verification complete |
 
 ## Blockers
 
