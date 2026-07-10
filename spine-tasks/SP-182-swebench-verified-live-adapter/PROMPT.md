@@ -97,4 +97,22 @@ Select the board named **Verified**. Map each result’s display `name` / tags t
 
 ## Amendments (Added During Execution)
 
-(none yet)
+### 2026-07-10 — SP-181 empty live-URL assertions
+
+Registering `swebench_verified.liveFetchUrl` breaks two SP-181 expectations that asserted all stubs omit defaults. Allow updating those assertions only:
+
+| Scope | Paths |
+|-------|-------|
+| May change (added) | `tests/unit/benchmark-leaderboard-fetch.test.ts`, `tests/unit/ingest-benchmark-profiles.test.ts` |
+
+Constraint: change only expectations around `getDefaultLiveFetchUrls()` / `swebench_verified` `liveFetchUrl`; do not alter fallback orchestration behavior.
+
+### 2026-07-10 — README live-adapter note
+
+`README.md` still says live adapters require fixture-shaped JSON only. SWE-bench Verified now parses native `leaderboards.json`. Allow a minimal docs tweak:
+
+| Scope | Paths |
+|-------|-------|
+| May change (added) | `README.md` |
+
+Constraint: update only the live-ingest / adapter provenance wording; no unrelated README edits.

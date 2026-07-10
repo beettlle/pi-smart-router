@@ -332,14 +332,23 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
     }
   });
 
-  it('stub registry has four adapters with provenance URLs and no default live URLs', () => {
+  it('registry has four adapters; swebench_verified has native live URL (SP-182)', () => {
     expect(Object.keys(LEADERBOARD_ADAPTERS).sort()).toEqual([...BENCHMARK_IDS].sort());
-    expect(getDefaultLiveFetchUrls()).toEqual({});
+    expect(getDefaultLiveFetchUrls()).toEqual({
+      swebench_verified:
+        'https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json',
+    });
     for (const benchmark of BENCHMARK_IDS) {
       const adapter = getLeaderboardAdapter(benchmark);
       expect(adapter.id).toBe(benchmark);
       expect(adapter.provenanceUrl).toBe(BENCHMARK_SOURCE_URLS[benchmark]);
-      expect(adapter.liveFetchUrl).toBeUndefined();
+      if (benchmark === 'swebench_verified') {
+        expect(adapter.liveFetchUrl).toBe(
+          'https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json',
+        );
+      } else {
+        expect(adapter.liveFetchUrl).toBeUndefined();
+      }
     }
   });
 

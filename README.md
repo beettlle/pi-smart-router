@@ -848,7 +848,29 @@ Capability scores in `config/benchmark-profiles.json` are grounded from public l
 | **Recorded replay** | `npm run routing:ingest-benchmarks -- --recorded` | No | Replay last successful live snapshots offline |
 | **Live + record** | `npm run routing:ingest-benchmarks -- --live` | Yes | Operator refresh; writes `tests/fixtures/benchmark-leaderboards/recorded/` then regenerates profiles |
 
-Optional flags: `--catalog-freeze-date YYYY-MM-DD`, `--scrape-date YYYY-MM-DD`, `--record-dir DIR`, `--live-url BENCHMARK=URL`, `--output PATH`. See `npm run routing:ingest-benchmarks -- --help`. Live adapters require fixture-shaped JSON; HTML pages fail fast and leave `config/benchmark-profiles.json` unchanged.
+Optional flags: `--catalog-freeze-date YYYY-MM-DD`, `--scrape-date YYYY-MM-DD`, `--record-dir DIR`, `--live-url BENCHMARK=URL`, `--output PATH`. See `npm run routing:ingest-benchmarks -- --help`.
+
+**Live sources (per benchmark):** each `--live` run resolves independently — live adapter → recorded → checked-in fixtures. One failing source never invents scores or blocks siblings. Logs: `ingest-benchmark-profiles: <id> source=live|recorded|fixture (…)`.
+
+| Benchmark | Default live fetch | Score field | Fallback |
+|-----------|-------------------|-------------|----------|
+| `swebench_verified` | Native: [SWE-bench `leaderboards.json`](https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json) (Verified board) | `resolved` → `score` (0–100) | recorded → fixtures |
+| `livecodebench` | Native when adapter landed (SP-183): [LCB `performances_generation.json`](https://raw.githubusercontent.com/LiveCodeBench/livecodebench.github.io/main/src/mocks/performances_generation.json); until then fixture-shaped `--live-url` only | aggregate `pass@1` | recorded → fixtures |
+| `bfcl` | Native when adapter landed (SP-184): [Gorilla `data_overall.csv`](https://raw.githubusercontent.com/ShishirPatil/gorilla/gh-pages/data_overall.csv); until then fixture-shaped `--live-url` only | `Overall Acc` | recorded → fixtures |
+| `terminal_bench` | **No free stable JSON** (tbench.ai is HTML; HF leaderboard is submissions-only; paid Parse API is **not** the default). Pass `--live-url terminal_bench=URL` at a fixture-shaped mirror | `score` (0–100) | recorded → fixtures |
+
+**Terminal-Bench operator mirror schema** (SP-185 / #104):
+
+```json
+{
+  "benchmark": "terminal_bench",
+  "source_url": "https://www.tbench.ai/leaderboard",
+  "scrape_date": "YYYY-MM-DD",
+  "entries": [{ "model_id": "claude-opus-4-5", "score": 72.5 }]
+}
+```
+
+Example: `npm run routing:ingest-benchmarks -- --live --live-url terminal_bench=https://example.com/tb-mirror.json`. HTML bodies fail fast; without `--live-url`, TB uses recorded/fixtures. `release:refresh-benchmarks` uses the same `--live` path (fixture fallback on total failure).
 
 **Cadence (release-tied, not calendar):**
 
