@@ -95,3 +95,5 @@ Benchmark-grounded capability ingest landed (#75), but live scoped-fleet model I
 ---
 
 ## Amendments (Added During Execution)
+
+- **2026-07-10:** May change `tests/integration/pi-extension.test.ts` — update SP-136 assertions for fleet aliases (claude-3.5-sonnet now resolves via alias to grounded sonnet-4-6 scores).

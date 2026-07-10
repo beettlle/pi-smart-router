@@ -3,9 +3,11 @@
  *
  * Maps pi `Model` objects (provider + id) to router fleet entries using
  * pattern-based lookup for known families. When `config/benchmark-profiles.json`
- * contains a row for the model id (SP-134/136 ingest output), capability
- * vectors are grounded in benchmark scores instead of regex defaults.
- * Unknown models or missing benchmark rows receive conservative pattern defaults.
+ * contains a row for the model id (SP-134/136 ingest output), or a fleet alias
+ * pointing at such a row (SP-174), capability vectors are grounded in benchmark
+ * scores instead of regex defaults. Unknown models or missing benchmark rows
+ * receive conservative pattern defaults. Mapped profiles include
+ * `capability_source` (`benchmark` | `pattern_default`) for explain/telemetry.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -25,6 +27,14 @@ import type {
 /** Checked-in ingest artifact from `npm run routing:ingest-benchmarks` (SP-134). */
 export const DEFAULT_BENCHMARK_PROFILES_PATH = resolve('config', 'benchmark-profiles.json');
 
+/** Whether HyDRA capabilities came from the ingest artifact (or alias) vs regex defaults. */
+export type CapabilitySource = 'benchmark' | 'pattern_default';
+
+/** ModelProfile plus operator-visible capability provenance (SP-174). */
+export interface MappedModelProfile extends ModelProfile {
+  readonly capability_source: CapabilitySource;
+}
+
 const benchmarkCapabilitiesSchema = z.object({
   reasoning: z.number().min(0).max(1),
   code_gen: z.number().min(0).max(1),
@@ -38,24 +48,30 @@ const benchmarkModelRowSchema = z.object({
 
 const benchmarkProfilesArtifactSchema = z.object({
   version: z.literal(1),
+  aliases: z.record(z.string().min(1), z.string().min(1)).optional(),
   models: z.array(benchmarkModelRowSchema).min(1),
 });
 
+interface BenchmarkProfilesCache {
+  readonly capabilitiesByModelId: ReadonlyMap<string, ModelCapabilities>;
+  readonly aliases: ReadonlyMap<string, string>;
+}
+
 let benchmarkProfilesPathOverride: string | null | undefined;
-let benchmarkCapabilitiesByModelId: ReadonlyMap<string, ModelCapabilities> | null | undefined;
+let benchmarkProfilesCache: BenchmarkProfilesCache | null | undefined;
 
 /**
  * Test hook — override benchmark artifact path (null disables benchmark grounding).
  */
 export function setBenchmarkProfilesPathForTests(filePath: string | null): void {
   benchmarkProfilesPathOverride = filePath;
-  benchmarkCapabilitiesByModelId = undefined;
+  benchmarkProfilesCache = undefined;
 }
 
 /** Test hook — clear cached benchmark artifact between cases. */
 export function resetBenchmarkProfilesCacheForTests(): void {
   benchmarkProfilesPathOverride = undefined;
-  benchmarkCapabilitiesByModelId = undefined;
+  benchmarkProfilesCache = undefined;
 }
 
 function resolveBenchmarkProfilesPath(): string | null {
@@ -65,14 +81,14 @@ function resolveBenchmarkProfilesPath(): string | null {
   return benchmarkProfilesPathOverride ?? DEFAULT_BENCHMARK_PROFILES_PATH;
 }
 
-function loadBenchmarkCapabilitiesMap(): ReadonlyMap<string, ModelCapabilities> | null {
-  if (benchmarkCapabilitiesByModelId !== undefined) {
-    return benchmarkCapabilitiesByModelId;
+function loadBenchmarkProfilesCache(): BenchmarkProfilesCache | null {
+  if (benchmarkProfilesCache !== undefined) {
+    return benchmarkProfilesCache;
   }
 
   const filePath = resolveBenchmarkProfilesPath();
   if (filePath === null || !existsSync(filePath)) {
-    benchmarkCapabilitiesByModelId = null;
+    benchmarkProfilesCache = null;
     return null;
   }
 
@@ -84,38 +100,84 @@ function loadBenchmarkCapabilitiesMap(): ReadonlyMap<string, ModelCapabilities> 
       throw new Error(result.error.message);
     }
 
-    const map = new Map<string, ModelCapabilities>();
+    const capabilitiesByModelId = new Map<string, ModelCapabilities>();
     for (const row of result.data.models) {
-      map.set(row.model_id, { ...row.capabilities });
+      capabilitiesByModelId.set(row.model_id, { ...row.capabilities });
     }
-    benchmarkCapabilitiesByModelId = map;
-    return map;
+    const aliases = new Map<string, string>(
+      Object.entries(result.data.aliases ?? {}),
+    );
+    benchmarkProfilesCache = { capabilitiesByModelId, aliases };
+    return benchmarkProfilesCache;
   } catch (err: unknown) {
     console.warn('benchmark profiles artifact invalid; using regex capability defaults', {
       path: filePath,
       error: err instanceof Error ? err.message : String(err),
     });
-    benchmarkCapabilitiesByModelId = null;
+    benchmarkProfilesCache = null;
     return null;
   }
 }
 
+/**
+ * Resolve a scoped-fleet model id to the canonical ingest `model_id` via aliases.
+ * Returns the input id when no alias exists.
+ */
+export function resolveBenchmarkModelId(modelId: string): string {
+  const cache = loadBenchmarkProfilesCache();
+  if (cache === null) {
+    return modelId;
+  }
+  return cache.aliases.get(modelId) ?? modelId;
+}
+
 function lookupBenchmarkCapabilities(modelId: string): ModelCapabilities | undefined {
-  return loadBenchmarkCapabilitiesMap()?.get(modelId);
+  const cache = loadBenchmarkProfilesCache();
+  if (cache === null) {
+    return undefined;
+  }
+  const direct = cache.capabilitiesByModelId.get(modelId);
+  if (direct !== undefined) {
+    return direct;
+  }
+  const canonical = cache.aliases.get(modelId);
+  if (canonical === undefined) {
+    return undefined;
+  }
+  return cache.capabilitiesByModelId.get(canonical);
+}
+
+/**
+ * Whether capabilities for this model id resolve from the benchmark artifact
+ * (direct row or fleet alias) vs pattern/family defaults.
+ */
+export function getCapabilitySource(modelId: string): CapabilitySource {
+  return lookupBenchmarkCapabilities(modelId) !== undefined ? 'benchmark' : 'pattern_default';
+}
+
+interface ModelFamilyDefaults {
+  readonly tier: Tier;
+  readonly capabilities: ModelCapabilities;
+  readonly performance?: ModelPerformance;
+  readonly pricing: ModelPricing;
+  readonly endpoint?: string;
 }
 
 function withBenchmarkCapabilities(
   defaults: ModelFamilyDefaults,
   modelId: string,
-): ModelFamilyDefaults {
+): { readonly defaults: ModelFamilyDefaults; readonly capability_source: CapabilitySource } {
   const grounded = lookupBenchmarkCapabilities(modelId);
   if (grounded === undefined) {
-    return defaults;
+    return { defaults, capability_source: 'pattern_default' };
   }
 
   return {
-    ...defaults,
-    capabilities: { ...grounded },
+    defaults: {
+      ...defaults,
+      capabilities: { ...grounded },
+    },
+    capability_source: 'benchmark',
   };
 }
 
@@ -132,14 +194,6 @@ export interface PiModelInput {
   readonly id: string;
   readonly name?: string;
   readonly cost?: PiRegistryCost;
-}
-
-interface ModelFamilyDefaults {
-  readonly tier: Tier;
-  readonly capabilities: ModelCapabilities;
-  readonly performance?: ModelPerformance;
-  readonly pricing: ModelPricing;
-  readonly endpoint?: string;
 }
 
 interface ModelPatternRule {
@@ -323,11 +377,15 @@ function resolveFallbackCost(
   return fromRegistry ?? defaults.pricing.fallback_cost_per_1m;
 }
 
-function buildProfile(input: PiModelInput, defaults: ModelFamilyDefaults): ModelProfile {
+function buildProfile(
+  input: PiModelInput,
+  defaults: ModelFamilyDefaults,
+  capability_source: CapabilitySource,
+): MappedModelProfile {
   const provider = input.provider.trim();
   const registryKey = `${normalizeProvider(provider)}/${input.id}`;
 
-  const profile: ModelProfile = {
+  const profile: MappedModelProfile = {
     id: input.id,
     tier: defaults.tier,
     provider,
@@ -339,6 +397,7 @@ function buildProfile(input: PiModelInput, defaults: ModelFamilyDefaults): Model
         ? { quota_cost_per_1m: defaults.pricing.quota_cost_per_1m }
         : {}),
     },
+    capability_source,
   };
 
   const withPerformance =
@@ -355,8 +414,9 @@ function buildProfile(input: PiModelInput, defaults: ModelFamilyDefaults): Model
 
 /**
  * Map a pi model registry entry to a router ModelProfile.
+ * Includes `capability_source` for operators (benchmark vs pattern_default).
  */
-export function mapPiModelToProfile(input: PiModelInput): ModelProfile {
+export function mapPiModelToProfile(input: PiModelInput): MappedModelProfile {
   const provider = normalizeProvider(input.provider);
 
   if (LOCAL_PROVIDERS.has(provider)) {
@@ -366,24 +426,28 @@ export function mapPiModelToProfile(input: PiModelInput): ModelProfile {
       id: input.id,
       ...(input.name !== undefined ? { name: input.name } : {}),
     };
-    return buildProfile(localInput, withBenchmarkCapabilities(LOCAL_DEFAULTS, input.id));
+    const grounded = withBenchmarkCapabilities(LOCAL_DEFAULTS, input.id);
+    return buildProfile(localInput, grounded.defaults, grounded.capability_source);
   }
 
   if (input.id === OPAQUE_FLEET_DEFAULT_ID) {
-    return buildProfile(input, withBenchmarkCapabilities(CURSOR_AUTO_DEFAULTS, input.id));
+    const grounded = withBenchmarkCapabilities(CURSOR_AUTO_DEFAULTS, input.id);
+    return buildProfile(input, grounded.defaults, grounded.capability_source);
   }
 
   const matched = matchPatternRules(input.id);
   if (matched) {
-    return buildProfile(input, withBenchmarkCapabilities(matched, input.id));
+    const grounded = withBenchmarkCapabilities(matched, input.id);
+    return buildProfile(input, grounded.defaults, grounded.capability_source);
   }
 
-  return buildProfile(input, withBenchmarkCapabilities(UNKNOWN_DEFAULTS, input.id));
+  const grounded = withBenchmarkCapabilities(UNKNOWN_DEFAULTS, input.id);
+  return buildProfile(input, grounded.defaults, grounded.capability_source);
 }
 
 /**
  * Map an array of pi registry models to a router fleet catalog.
  */
-export function mapFleetFromRegistry(models: readonly PiModelInput[]): ModelProfile[] {
+export function mapFleetFromRegistry(models: readonly PiModelInput[]): MappedModelProfile[] {
   return models.map(mapPiModelToProfile);
 }
