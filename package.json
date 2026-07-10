@@ -51,7 +51,8 @@
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
     "prepublishOnly": "npm run release:check",
-    "release:check": "npm run verify:ci && npm run release:consumer-pack && npm run release:functional-smoke",
+    "release:check": "npm run release:refresh-benchmarks && npm run verify:ci && npm run release:consumer-pack && npm run release:functional-smoke",
+    "release:refresh-benchmarks": "tsx scripts/release-refresh-benchmark-profiles.ts",
     "release:consumer-pack": "bash scripts/verify-consumer-pack.sh",
     "release:functional-smoke": "npm run routing:verify-calibration -- --skip-embed && npm run routing:verify-benchmark-profiles && tsx scripts/eval/assert-release-gates.ts --fixtures tests/eval/fixtures --baseline-version 0.6.0",
     "typecheck": "tsc --noEmit",

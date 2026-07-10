@@ -850,19 +850,22 @@ Capability scores in `config/benchmark-profiles.json` are grounded from public l
 
 Optional flags: `--catalog-freeze-date YYYY-MM-DD`, `--scrape-date YYYY-MM-DD`, `--record-dir DIR`, `--live-url BENCHMARK=URL`, `--output PATH`. See `npm run routing:ingest-benchmarks -- --help`. Live adapters require fixture-shaped JSON; HTML pages fail fast and leave `config/benchmark-profiles.json` unchanged.
 
-**Cadence (linked to CI):**
+**Cadence (release-tied, not calendar):**
 
-| Trigger | Schedule / action | Behavior |
-|---------|-------------------|----------|
-| **Monthly** | cron `0 6 1 * *` (1st of each month, 06:00 UTC) in `.github/workflows/benchmark-profile-refresh.yml` | Attempt **live** ingest; on failure fall back to checked-in fixtures; open a bot PR when model scores change (includes updated recorded snapshots when live succeeds) |
-| **Manual dispatch** | Actions → *Benchmark Profile Refresh* → `workflow_dispatch` (`use_live` default `true`) | Same live-or-fixture path; set `use_live=false` for fixtures-only |
+| Trigger | When | Behavior |
+|---------|------|----------|
+| **Pre-tag release gate** | `npm run release:check` → `release:refresh-benchmarks` | Attempt **live** ingest; on failure fall back to fixtures; **fail if** `config/benchmark-profiles.json` or recorded snapshots are dirty — commit on `main`, re-run, then `npm version` / tag |
+| **Manual dispatch** | Actions → *Benchmark Profile Refresh* → `workflow_dispatch` (`use_live` default `true`) | Same live-or-fixture path; opens a bot PR when scores change; set `use_live=false` for fixtures-only |
 | **PR smoke** | PRs touching fixtures / ingest / artifact / workflow | **Fixtures only** — `npm run routing:verify-benchmark-profiles` (offline, no network) |
+
+There is **no monthly cron**. Refresh runs when you ship so each release packages the latest grounded scores. Tag-triggered Release publish uses `--ignore-scripts` and does not re-fetch (profiles are already frozen in the tag). Offline skip: `SMART_ROUTER_SKIP_LIVE_BENCHMARK_REFRESH=1 npm run release:check`.
 
 **Operator policy:**
 
 1. **PR smoke** — fixture-only verify so PRs never require live network.
-2. **Monthly / dispatch refresh** — live with fixture fallback; provenance (`source_urls`, `scrape_date`, `catalog_freeze_date`) is preserved in the artifact header and echoed in the bot PR body.
-3. **Manual local updates** — prefer fixtures or `--recorded` for offline work; use `--live` when refreshing from public leaderboard JSON endpoints.
+2. **Every release** — live with fixture fallback via `release:check`; commit any profile/recorded diffs on `main` before tagging.
+3. **Ad-hoc** — Actions dispatch or local `--live` when refreshing between releases.
+4. **Manual local updates** — prefer fixtures or `--recorded` for offline work; use `--live` when refreshing from public leaderboard JSON endpoints.
 
 Verify after any regenerate:
 
@@ -883,7 +886,7 @@ Tag-triggered publish via GitHub Actions (requires `NPMSECRET` repository secret
 2. `routing:verify-benchmark-profiles` — checked-in capability profiles match fixture ingest
 3. `assert-release-gates --fixtures tests/eval/fixtures --baseline-version 0.6.0` — eval harness aggregate metrics vs `config/release-gates.json` and semver baseline regression vs `tests/eval/baselines/v0.6.0.json`
 
-`release:check` runs the full pre-release path: `verify:ci`, consumer pack verify, then Tier 0 functional smoke.
+`release:check` runs the full pre-release path: **live benchmark profile refresh** (fixture fallback; dirty-tree fail), then `verify:ci`, consumer pack verify, then Tier 0 functional smoke.
 
 **Baseline re-capture (post-tag):** after shipping a new semver (e.g. v0.7.0), freeze harness metrics for the next regression reference:
 
@@ -896,7 +899,8 @@ npm run routing:capture-baseline -- --version 0.7.0
 
 Commit the new baseline JSON and update `baseline_regression.reference_version` in `config/release-gates.json` plus the `--baseline-version` flag in `release:functional-smoke`. Re-run `npm run release:check` before tagging the next release.
 
-1. `npm run release:check` (CI parity + consumer pack + Tier 0 functional smoke)
+1. `npm run release:check` (live benchmark refresh → CI parity + consumer pack + Tier 0 functional smoke)
+   - If refresh rewrites profiles/recorded snapshots, **commit them on `main`** and re-run until clean
 2. `npm version 0.1.1` (creates commit + `v0.1.1` tag)
 3. `git push && git push --tags`
 4. Actions → **Release** runs pack smoke, consumer pack verify, Tier 0 functional smoke, `npm publish`, and creates a GitHub Release
