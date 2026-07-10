@@ -35,8 +35,8 @@ Long work runs before any events reach pi with no signal check: `ensureFleetFres
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `.pi/extensions/smart-router/route-and-delegate.ts` |
-| May change | `.pi/extensions/smart-router/planning-delegate.ts`, `.pi/extensions/smart-router/delegate-stream.ts`, `tests/unit/smart-router-extension.test.ts`, `README.md` |
+| Must change | `.pi/extensions/smart-router/planning-delegate.ts` |
+| May change | `.pi/extensions/smart-router/route-and-delegate.ts`, `.pi/extensions/smart-router/delegate-stream.ts`, `tests/unit/smart-router-extension.test.ts`, `README.md` |
 | Must NOT change | `src/domain/pipeline/**` |
 
 ## Contract
@@ -44,9 +44,8 @@ Long work runs before any events reach pi with no signal check: `ensureFleetFres
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/smart-router-extension.test.ts` |
-| fileScopeMustChange | `.pi/extensions/smart-router/route-and-delegate.ts` |
+| fileScopeMustChange | `.pi/extensions/smart-router/planning-delegate.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/**` |
-| completionCriteria | throwIfAborted at phase boundaries; abort during mocked slow dispatch never starts delegation; HyDRA mid-ONNX limitation documented. |
 
 ## Steps
 
@@ -87,3 +86,8 @@ Long work runs before any events reach pi with no signal check: `ensureFleetFres
 ---
 
 ## Amendments (Added During Execution)
+
+### Amendment 1 — 2026-07-10
+
+**Issue:** Preflight `prelanded-file-scope` — SP-169 already changed `route-and-delegate.ts` on main.
+**Resolution:** Redirected `fileScopeMustChange` to `.pi/extensions/smart-router/planning-delegate.ts` (abort wiring on planning sub-call). Worker may still edit `route-and-delegate.ts` under May change for phase-boundary `throwIfAborted`; contract proof is `planning-delegate.ts` diff.

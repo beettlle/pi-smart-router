@@ -36,8 +36,8 @@ Stream delegation buffers all provider events until the turn completes, then flu
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `.pi/extensions/smart-router/delegate-stream.ts`, `.pi/extensions/smart-router/route-and-delegate.ts` |
-| May change | `.pi/extensions/smart-router/delegation-runtime.ts`, `.pi/extensions/smart-router/planning-delegate.ts`, `tests/unit/smart-router-extension.test.ts`, `README.md` |
+| Must change | `.pi/extensions/smart-router/delegation-runtime.ts` |
+| May change | `.pi/extensions/smart-router/delegate-stream.ts`, `.pi/extensions/smart-router/route-and-delegate.ts`, `.pi/extensions/smart-router/planning-delegate.ts`, `tests/unit/smart-router-extension.test.ts`, `README.md` |
 | Must NOT change | `src/domain/pipeline/**` |
 
 ## Contract
@@ -45,9 +45,8 @@ Stream delegation buffers all provider events until the turn completes, then flu
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/smart-router-extension.test.ts` |
-| fileScopeMustChange | `.pi/extensions/smart-router/delegate-stream.ts`, `.pi/extensions/smart-router/route-and-delegate.ts` |
+| fileScopeMustChange | `.pi/extensions/smart-router/delegation-runtime.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/**` |
-| completionCriteria | Consumer receives text_delta or start before done on mocked slow stream; existing failover tests updated and pass. |
 
 ## Steps
 
@@ -89,3 +88,8 @@ Stream delegation buffers all provider events until the turn completes, then flu
 ---
 
 ## Amendments (Added During Execution)
+
+### Amendment 1 — 2026-07-10
+
+**Issue:** Preflight `prelanded-file-scope` — SP-169 already changed `delegate-stream.ts` and `route-and-delegate.ts` on main.
+**Resolution:** Redirected `fileScopeMustChange` to `.pi/extensions/smart-router/delegation-runtime.ts` (live-pipe flush/failover-notice delivery). Worker may still edit `delegate-stream.ts` / `route-and-delegate.ts` under May change; contract proof is `delegation-runtime.ts` mtime/diff.

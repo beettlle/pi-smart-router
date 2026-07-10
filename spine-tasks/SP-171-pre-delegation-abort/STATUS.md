@@ -69,3 +69,5 @@
 | | | |
 
 ## Notes
+
+- 2026-07-10: Contract `fileScopeMustChange` redirected to `planning-delegate.ts` (SP-169 prelanded route-and-delegate).

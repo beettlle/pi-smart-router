@@ -70,3 +70,5 @@
 | | | |
 
 ## Notes
+
+- 2026-07-10: Contract `fileScopeMustChange` redirected to `delegation-runtime.ts` (SP-169 prelanded stream paths).
