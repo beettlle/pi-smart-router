@@ -1,0 +1,2 @@
+SP-181 complete — per-benchmark live fallback + adapter registry stubs.
+Verification: npm run typecheck && npm test && npm run coverage:check (92.91% lines).
