@@ -82,6 +82,10 @@ export const PLANNING_DELEGATE_DISABLED = 'planning_delegate_disabled' as const;
 export const PLANNING_DELEGATE_UNAVAILABLE = 'planning_delegate_unavailable' as const;
 
 export const THROUGHPUT_BELOW_THRESHOLD = 'throughput_below_threshold' as const;
+/** Pre-local_zero tool-use capability shortfall (SP-177, #98). */
+export const TOOL_USE_CAPABILITY_SHORTFALL = 'tool_use_capability_shortfall' as const;
+/** Operator disabled local_zero stage (SP-177, #98). */
+export const LOCAL_ZERO_DISABLED = 'local_zero_disabled' as const;
 /** Emergency pin-on-first-turn fallback reason code (#83, SP-161/162). */
 export const PIN_ONLY_FALLBACK = 'pin_only_fallback' as const;
 

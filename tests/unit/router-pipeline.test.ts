@@ -6,7 +6,7 @@ import {
   type EmbeddingProvider,
   type RequirementVector,
 } from '../../src/domain/matching/hydra-matcher.js';
-import { RouterPipeline, PIPELINE_STAGE_ORDER, resolveLocalEligible } from '../../src/domain/pipeline/router-pipeline.js';
+import { RouterPipeline, PIPELINE_STAGE_ORDER, resolveLocalEligible, estimateCheapToolUseRequirement, resolveLocalZeroToolUseCeiling } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { extractToolFailureSignature } from '../../src/domain/pinning/loop-escalation.js';
 import { RoutingTelemetryEmitter } from '../../src/infrastructure/telemetry/routing-telemetry.js';
@@ -1613,6 +1613,24 @@ describe('RouterPipeline', () => {
       });
 
       expect(result).toEqual({ eligible: false, reason: null });
+    });
+  });
+
+  describe('estimateCheapToolUseRequirement (SP-177)', () => {
+    it('returns 0 for true trivial format/lint prompts', () => {
+      expect(estimateCheapToolUseRequirement('Format this JSON file')).toBe(0);
+      expect(estimateCheapToolUseRequirement('Lint the source file')).toBe(0);
+    });
+
+    it('scores agentic git/bash/edit/explore/delete/repo cues above local ceiling', () => {
+      const predicted = estimateCheapToolUseRequirement(
+        'run git status then explore the repo with bash and delete the bad files',
+      );
+      expect(predicted).toBeGreaterThan(0.25);
+      expect(
+        resolveLocalZeroToolUseCeiling(0.1, 0.25),
+      ).toBe(0.1);
+      expect(predicted).toBeGreaterThan(resolveLocalZeroToolUseCeiling(0.1, 0.25));
     });
   });
 

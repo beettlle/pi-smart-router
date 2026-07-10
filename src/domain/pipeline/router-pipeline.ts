@@ -22,7 +22,8 @@ import type {
   CandidateScore,
 } from '../types/index.js';
 import type { QuotaWindowPosition } from '../types/entities.js';
-import type { LowIntensityConfig, VirtualCostV2Config } from '../types/schemas.js';
+import type { LowIntensityConfig, LocalZeroConfig, VirtualCostV2Config } from '../types/schemas.js';
+import { DEFAULT_LOCAL_ZERO_CONFIG } from '../types/schemas.js';
 import type { HardwareProbeConfig, HardwareProbeResult, SystemInfo } from '../../infrastructure/hardware/hardware-probe.js';
 import type { ThroughputMeter } from '../../infrastructure/hardware/throughput-meter.js';
 import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
@@ -61,6 +62,8 @@ import {
   PLANNING_DELEGATE_DISABLED,
   PLANNING_DIRECT_FRONTIER,
   THROUGHPUT_BELOW_THRESHOLD,
+  TOOL_USE_CAPABILITY_SHORTFALL,
+  LOCAL_ZERO_DISABLED,
 } from '../../infrastructure/telemetry/routing-telemetry.js';
 import type { HydraMatcher as HydraMatcherType, MatchResult } from '../matching/hydra-matcher.js';
 import type { ClusterMatcher, ClusterMatchResult } from '../matching/cluster-matcher.js';
@@ -167,6 +170,45 @@ export function resolveLocalEligible(input: LocalEligibleInput): LocalEligibleRe
   return { eligible: true, reason: 'low_intensity_structural' };
 }
 
+/**
+ * Cheap pre-HyDRA tool-use requirement estimate for local_zero gating (SP-177, #98).
+ * Cue categories: git / bash-shell / edit / explore / delete / repo.
+ * Returns 0–1; true trivial prompts (format/lint) stay near 0.
+ */
+const TOOL_USE_CUE_PATTERNS: readonly { readonly id: string; readonly pattern: RegExp }[] = [
+  { id: 'git', pattern: /\b(git|commit|checkout|unstage|rebase|merge conflict)\b/i },
+  { id: 'bash', pattern: /\b(bash|shell|terminal|zsh|powershell|cmd\.exe)\b/i },
+  { id: 'edit', pattern: /\b(edit|rewrite|patch|apply diff)\b/i },
+  { id: 'explore', pattern: /\b(explore|navigate|search (the )?codebase|list files|find files)\b/i },
+  { id: 'delete', pattern: /\b(delete|remove files?|rm\b|unlink)\b/i },
+  { id: 'repo', pattern: /\b(repo|repository|workdir|working tree)\b/i },
+];
+
+export function estimateCheapToolUseRequirement(promptText: string): number {
+  if (!promptText || promptText.trim().length === 0) {
+    return 0;
+  }
+
+  let hits = 0;
+  for (const cue of TOOL_USE_CUE_PATTERNS) {
+    if (cue.pattern.test(promptText)) {
+      hits += 1;
+    }
+  }
+
+  if (hits === 0) return 0;
+  if (hits === 1) return 0.55;
+  if (hits === 2) return 0.75;
+  return 0.9;
+}
+
+export function resolveLocalZeroToolUseCeiling(
+  localToolUseCapability: number,
+  maxToolUseRequirement: number,
+): number {
+  return Math.min(localToolUseCapability, maxToolUseRequirement);
+}
+
 // ─── Pipeline configuration ──────────────────────────────────────────────────
 
 export interface PipelineOptions {
@@ -203,6 +245,8 @@ export interface PipelineOptions {
   readonly pinOnlyFallback?: boolean;
   /** Rolling median tok/s gate for local_zero dispatch (SP-164, #84). */
   readonly throughputMeter?: ThroughputMeter;
+  /** Pre-local_zero tool-use capability gate (SP-177, #98). */
+  readonly localZeroConfig?: LocalZeroConfig;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -418,10 +462,20 @@ export class RouterPipeline {
       return decision;
     }
 
+    const capabilityGateActive = this.currentLocalZeroGateSkipReasons.some(
+      (reason) =>
+        reason === TOOL_USE_CAPABILITY_SHORTFALL || reason === LOCAL_ZERO_DISABLED,
+    );
+    const inferredReasons = capabilityGateActive
+      ? tierSelection.local_zero_skip_reasons.filter(
+          (reason) => reason !== 'hardware_or_local_unavailable',
+        )
+      : tierSelection.local_zero_skip_reasons;
+
     const mergedSkipReasons = [
-      ...tierSelection.local_zero_skip_reasons,
+      ...inferredReasons,
       ...this.currentLocalZeroGateSkipReasons.filter(
-        (reason) => !tierSelection.local_zero_skip_reasons.includes(reason),
+        (reason) => !inferredReasons.includes(reason),
       ),
     ];
 
@@ -701,10 +755,16 @@ export class RouterPipeline {
   /**
    * SC-007: classification_only MUST NOT dispatch full local.
    * Eligibility: triage trivial OR low-intensity zero-tier hint OR zero-tier cluster (SP-111).
+   * Pre-dispatch tool-use capability gate (SP-177, #98) skips when predicted need exceeds
+   * min(local tool_use capability, local_zero.max_tool_use_requirement).
    */
   private async localZeroTierStage(request: RoutingRequest): Promise<StageResult> {
     const lowIntensityConfig =
       this.options.lowIntensityConfig ?? DEFAULT_OPERATOR_CONFIG.low_intensity;
+    const localZeroConfig =
+      this.options.localZeroConfig ??
+      DEFAULT_OPERATOR_CONFIG.local_zero ??
+      DEFAULT_LOCAL_ZERO_CONFIG;
     const eligibility = resolveLocalEligible({
       triageVerdict: this.currentTriageResult?.verdict ?? null,
       tierHint: this.currentTierHint,
@@ -717,7 +777,32 @@ export class RouterPipeline {
       return { decided: false, stage: 'local_zero' };
     }
 
+    if (!localZeroConfig.enabled) {
+      this.currentLocalEligibleReason = eligibility.reason;
+      this.currentLocalZeroGateSkipReasons = [LOCAL_ZERO_DISABLED];
+      return { decided: false, stage: 'local_zero' };
+    }
+
     if (this.currentHardwareResult !== 'full_local') {
+      return { decided: false, stage: 'local_zero' };
+    }
+
+    const localModel = this.activeFleet.find(
+      (m) => m.tier === 'zero-tier' && m.healthy !== false,
+    );
+
+    if (!localModel) {
+      return { decided: false, stage: 'local_zero' };
+    }
+
+    const predictedToolUse = estimateCheapToolUseRequirement(request.prompt_text);
+    const ceiling = resolveLocalZeroToolUseCeiling(
+      localModel.capabilities.tool_use,
+      localZeroConfig.max_tool_use_requirement,
+    );
+    if (predictedToolUse > ceiling) {
+      this.currentLocalEligibleReason = eligibility.reason;
+      this.currentLocalZeroGateSkipReasons = [TOOL_USE_CAPABILITY_SHORTFALL];
       return { decided: false, stage: 'local_zero' };
     }
 
@@ -754,14 +839,6 @@ export class RouterPipeline {
     );
 
     if (!readiness.anyModelReady) {
-      return { decided: false, stage: 'local_zero' };
-    }
-
-    const localModel = this.activeFleet.find(
-      (m) => m.tier === 'zero-tier' && m.healthy !== false,
-    );
-
-    if (!localModel) {
       return { decided: false, stage: 'local_zero' };
     }
 

@@ -218,6 +218,28 @@ export const DEFAULT_THROUGHPUT_CONFIG: Readonly<ThroughputConfig> = {
   threshold_tps: 25,
 } as const;
 
+/**
+ * Pre-local_zero tool-use / capability gate knobs (SP-177, #98).
+ * Defaults keep true trivial traffic on the cheap local path.
+ */
+export const LocalZeroConfigSchema = z.object({
+  /** When false, local_zero never dispatches (falls through to later stages). */
+  enabled: z.boolean().default(true),
+  /**
+   * Max predicted tool_use requirement (0–1) allowed for local_zero dispatch.
+   * Effective ceiling is min(local model tool_use capability, this value).
+   */
+  max_tool_use_requirement: z.number().min(0).max(1),
+});
+
+export type LocalZeroConfig = z.infer<typeof LocalZeroConfigSchema>;
+
+/** Safe defaults: gate on, ceiling above trivial (0) but below agentic tool cues. */
+export const DEFAULT_LOCAL_ZERO_CONFIG: Readonly<LocalZeroConfig> = {
+  enabled: true,
+  max_tool_use_requirement: 0.25,
+} as const;
+
 /** HyDRA text encoder selection (SP-156, #80). */
 export const EncoderSchema = z.enum(['minilm', 'granite']);
 
@@ -501,6 +523,8 @@ export const OperatorConfigSchema = z.object({
   saar: SaarConfigSchema,
   planning_delegate: PlanningDelegateConfigSchema,
   throughput: ThroughputConfigSchema.optional(),
+  /** Pre-local_zero tool-use capability gate (SP-177, #98). */
+  local_zero: LocalZeroConfigSchema.optional(),
   routing_clusters: RoutingClustersConfigSchema.optional(),
   /**
    * Emergency pin-on-first-turn fallback (#83, SP-161).
