@@ -1,6 +1,6 @@
 # SP-173: Extension Operator SAAR Wiring — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -20,10 +20,10 @@
 
 ## Step 2: Tests for live wiring
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Unit/integration test asserts pinner + dispatch receive SAAR + planning delegate
-- [ ] Assert `pin_only_fallback` true when configured; default false
+- [x] Unit/integration test asserts pinner + dispatch receive SAAR + planning delegate
+- [x] Assert `pin_only_fallback` true when configured; default false
 
 ## Step 3: Testing and verification
 
