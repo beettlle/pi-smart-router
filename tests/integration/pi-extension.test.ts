@@ -500,7 +500,10 @@ describe('Pi extension integration (SP-043)', () => {
         }),
       );
       expect(events.some((event) => event.type === 'done')).toBe(true);
-      expect(infoSpy).not.toHaveBeenCalled();
+      const unexpectedInfo = infoSpy.mock.calls.filter(
+        ([message]) => message !== 'Expected-cost tier gate',
+      );
+      expect(unexpectedInfo).toHaveLength(0);
       expect(warnSpy).not.toHaveBeenCalledWith(
         '[smart-router] routing decision',
         expect.any(String),

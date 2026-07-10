@@ -20,9 +20,13 @@ import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
 import { DEFAULT_SAAR_CONFIG } from '../../src/domain/types/schemas.js';
 import {
   P_SUCCESS_FEATURE_NAMES,
+  createDefaultPSuccessWeights,
   type PSuccessWeights,
 } from '../../src/domain/routing/p-success-classifier.js';
 import type { IsotonicCalibratorArtifact } from '../../src/domain/routing/isotonic-calibrator.js';
+
+/** Pre-SP-175 structural tests: ignore shipped dogfood weights. */
+const UNTRAINED_P_SUCCESS_WEIGHTS = createDefaultPSuccessWeights();
 
 function makeModel(
   overrides: Partial<ModelProfile> & { id: string; tier: ModelProfile['tier'] },
@@ -696,7 +700,9 @@ describe('RouterPipeline', () => {
     }
 
     it('attaches triage summary on fallback decisions', async () => {
-      const pipeline = new RouterPipeline(fleet);
+      const pipeline = new RouterPipeline(fleet, {
+        pSuccessWeights: UNTRAINED_P_SUCCESS_WEIGHTS,
+      });
       const decision = await pipeline.route(
         makeRequest({ prompt_text: 'Fix the typo in the README' }),
       );
@@ -734,7 +740,10 @@ describe('RouterPipeline', () => {
       const hydraMatcher = new HydraMatcher(makeMockHydraProvider(requirements), {
         artifactCachePath: '.pi-smart-router/models/',
       });
-      const pipeline = new RouterPipeline(fleet, { hydraMatcher });
+      const pipeline = new RouterPipeline(fleet, {
+        hydraMatcher,
+        pSuccessWeights: UNTRAINED_P_SUCCESS_WEIGHTS,
+      });
       const decision = await pipeline.route(
         makeRequest({ prompt_text: 'Hello, how are you today?' }),
       );
@@ -1012,7 +1021,9 @@ describe('RouterPipeline', () => {
     });
 
     it('leaves short-prompt routing unchanged when all models fit', async () => {
-      const pipeline = new RouterPipeline(fleet);
+      const pipeline = new RouterPipeline(fleet, {
+        pSuccessWeights: UNTRAINED_P_SUCCESS_WEIGHTS,
+      });
       const decision = await pipeline.route(
         makeRequest({ estimated_input_tokens: 50 }),
       );
@@ -1052,6 +1063,7 @@ describe('RouterPipeline', () => {
 
       const pipeline = new RouterPipeline(narrowFleet, {
         contextFitConfig: { safetyMargin: 0.95 },
+        pSuccessWeights: UNTRAINED_P_SUCCESS_WEIGHTS,
       });
       const decision = await pipeline.route(
         makeRequest({ estimated_input_tokens: 18_000 }),
@@ -1231,6 +1243,7 @@ describe('RouterPipeline', () => {
         localConfig: LOCAL_TEST_CONFIG,
         systemInfoProvider: () => Promise.resolve(makeSystemInfo()),
         httpFetchPort: READY_FETCH,
+        pSuccessWeights: UNTRAINED_P_SUCCESS_WEIGHTS,
       });
 
       const decision = await pipeline.route(
@@ -1251,6 +1264,7 @@ describe('RouterPipeline', () => {
           high_threshold: 0.9,
           low_threshold: 0.1,
         },
+        pSuccessWeights: UNTRAINED_P_SUCCESS_WEIGHTS,
       });
       const decision = await pipeline.route(
         makeRequest({ prompt_text: 'Hello, how are you today?' }),
@@ -1279,6 +1293,7 @@ describe('RouterPipeline', () => {
           ...DEFAULT_OPERATOR_CONFIG.low_intensity,
           low_threshold: 0.55,
         },
+        pSuccessWeights: UNTRAINED_P_SUCCESS_WEIGHTS,
       });
       const decision = await pipeline.route(
         makeRequest({
@@ -1323,6 +1338,7 @@ describe('RouterPipeline', () => {
         hydraMatcher,
         clusterMatcher,
         lowIntensityConfig: DEFAULT_OPERATOR_CONFIG.low_intensity,
+        pSuccessWeights: UNTRAINED_P_SUCCESS_WEIGHTS,
       });
 
       const decision = await pipeline.route(
@@ -1346,7 +1362,10 @@ describe('RouterPipeline', () => {
         elapsedMs: 1,
       });
 
-      const pipeline = new RouterPipeline(fleet, { clusterMatcher });
+      const pipeline = new RouterPipeline(fleet, {
+        clusterMatcher,
+        pSuccessWeights: UNTRAINED_P_SUCCESS_WEIGHTS,
+      });
       const decision = await pipeline.route(
         makeRequest({ prompt_text: 'what is 2+2 ?' }),
       );
