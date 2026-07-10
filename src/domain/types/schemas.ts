@@ -202,8 +202,17 @@ export const LocalConfigSchema = z.object({
   battery_threshold_pct: z.number().min(0).max(100),
 });
 
+/** HyDRA text encoder selection (SP-156, #80). */
+export const EncoderSchema = z.enum(['minilm', 'granite']);
+
+export type Encoder = z.infer<typeof EncoderSchema>;
+
+export const DEFAULT_ENCODER: Encoder = 'minilm';
+
 export const HydraConfigSchema = z.object({
   artifact_cache_path: z.string(),
+  /** ONNX encoder: MiniLM (default) or Granite 97M 384-dim long-context trial. */
+  encoder: EncoderSchema.default(DEFAULT_ENCODER),
 });
 
 export const LowIntensityWeightsSchema = z.object({
@@ -467,4 +476,5 @@ export const OperatorConfigSchema = z.object({
 // ─── Inferred types ──────────────────────────────────────────────────────────
 
 export type OperatorConfig = z.infer<typeof OperatorConfigSchema>;
+export type HydraConfig = z.infer<typeof HydraConfigSchema>;
 export type LowIntensityConfig = z.infer<typeof LowIntensityConfigSchema>;
