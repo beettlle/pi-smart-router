@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,11 +10,11 @@
 
 ## Step 1: Throughput meter module
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Implement `throughput-meter.ts` with rolling median over last N samples
-- [ ] API: `recordSample(tokens, durationMs)`, `getMedianTps()`, `isAboveThreshold(threshold)`
-- [ ] Default threshold ~25 tok/s; configurable window size
+- [x] Implement `throughput-meter.ts` with rolling median over last N samples
+- [x] API: `recordSample(tokens, durationMs)`, `getMedianTps()`, `isAboveThreshold(threshold)`
+- [x] Default threshold ~25 tok/s; configurable window size
 
 ## Step 2: Config and unit tests
 
@@ -56,7 +56,8 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-10 | Started | Step 1 — throughput meter module |
+| 2026-07-10 | Completed | Step 1 outcomes — throughput-meter.ts module |
 
 ## Blockers
 
