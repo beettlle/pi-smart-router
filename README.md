@@ -782,6 +782,16 @@ npm run routing:eval-replay
 
 Capability scores in `config/benchmark-profiles.json` are grounded from public leaderboard snapshots under `tests/fixtures/benchmark-leaderboards/`. Each artifact records provenance (`source_urls`, `scrape_date`, `catalog_freeze_date`) in its header.
 
+**Fleet ID aliases (SP-174):** live pi/Cursor scoped-fleet model IDs often differ from leaderboard `model_id` strings. The artifact’s optional `aliases` map sends those fleet IDs to an existing grounded row (never invents scores). `mapPiModelToProfile` sets `capability_source` to `benchmark` when a direct row or alias hits, otherwise `pattern_default`. Operators can also call `getCapabilitySource(modelId)` / `resolveBenchmarkModelId(modelId)`.
+
+**Add a new fleet ID after ingest:**
+
+1. Ensure the canonical model has fixture scores (edit `tests/fixtures/benchmark-leaderboards/*.json` if needed).
+2. Run `npm run routing:ingest-benchmarks` (and commit the regenerated `config/benchmark-profiles.json`).
+3. Add `"your-fleet-id": "canonical-model_id"` under `aliases` in `config/benchmark-profiles.json` (target must already appear in `models[].model_id`).
+4. Re-run ingest anytime — the CLI **preserves** existing `aliases` from the output file. Seed defaults live in `DEFAULT_FLEET_BENCHMARK_ALIASES` when no prior artifact exists.
+5. Confirm with `npm run routing:verify-benchmark-profiles` and a mapper unit test that `capability_source === 'benchmark'` for the fleet id.
+
 **Operator policy:**
 
 1. **PR smoke** — `.github/workflows/benchmark-profile-refresh.yml` runs on PRs that touch fixtures, ingest, or the checked-in artifact. It executes `npm run routing:verify-benchmark-profiles` so fixture edits cannot drift from `config/benchmark-profiles.json`.

@@ -3,9 +3,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   DEFAULT_BENCHMARK_PROFILES_PATH,
   DEFAULT_CURSOR_QUOTA_COST_PER_1M,
+  getCapabilitySource,
   mapFleetFromRegistry,
   mapPiModelToProfile,
   resetBenchmarkProfilesCacheForTests,
+  resolveBenchmarkModelId,
   setBenchmarkProfilesPathForTests,
   type PiModelInput,
 } from '../../src/config/pi-model-mapper.js';
@@ -30,7 +32,9 @@ describe('mapPiModelToProfile', () => {
       );
 
       expect(profile.tier).toBe('frontier-cloud');
-      expect(profile.capabilities.reasoning).toBeGreaterThanOrEqual(0.9);
+      // Alias → claude-opus-4-5 benchmark row (not pattern 0.95)
+      expect(profile.capabilities.reasoning).toBeCloseTo(0.767, 4);
+      expect(profile.capability_source).toBe('benchmark');
       expect(profile.pricing.fallback_cost_per_1m).toBe(3.0);
     });
 
@@ -40,7 +44,9 @@ describe('mapPiModelToProfile', () => {
       );
 
       expect(profile.tier).toBe('frontier-cloud');
-      expect(profile.capabilities.code_gen).toBe(0.95);
+      // Alias → claude-sonnet-4-6 benchmark row
+      expect(profile.capabilities.code_gen).toBeCloseTo(0.7635, 4);
+      expect(profile.capability_source).toBe('benchmark');
     });
 
     it('maps claude-haiku to economical tier', () => {
@@ -63,7 +69,9 @@ describe('mapPiModelToProfile', () => {
       );
 
       expect(profile.tier).toBe('frontier-cloud');
-      expect(profile.capabilities.tool_use).toBe(0.95);
+      // Alias → gpt-5.3-codex benchmark row
+      expect(profile.capabilities.tool_use).toBeCloseTo(0.8215, 4);
+      expect(profile.capability_source).toBe('benchmark');
     });
 
     it('maps gpt-5.1 to economical tier', () => {
@@ -109,7 +117,9 @@ describe('mapPiModelToProfile', () => {
       );
 
       expect(profile.tier).toBe('frontier-cloud');
+      // No alias / row yet — pattern frontier defaults
       expect(profile.capabilities.reasoning).toBeGreaterThanOrEqual(0.9);
+      expect(profile.capability_source).toBe('pattern_default');
     });
 
     it('maps generic gemini pro variants to frontier tier (SP-085)', () => {
@@ -145,37 +155,41 @@ describe('mapPiModelToProfile', () => {
   });
 
   describe('Cursor family (SP-086)', () => {
-    it('maps cursor/auto to frontier tier with high capabilities', () => {
+    it('maps cursor/auto to frontier tier with benchmark-grounded capabilities (SP-174)', () => {
       const profile = mapPiModelToProfile(
         makeInput({ provider: 'cursor', id: 'cursor/auto' }),
       );
 
       expect(profile.tier).toBe('frontier-cloud');
-      expect(profile.capabilities.reasoning).toBeGreaterThanOrEqual(0.9);
-      expect(profile.capabilities.tool_use).toBeGreaterThanOrEqual(0.9);
+      // Alias → gpt-5.3-codex (not pattern 0.9/0.95)
+      expect(profile.capabilities.reasoning).toBeCloseTo(0.796, 4);
+      expect(profile.capabilities.tool_use).toBeCloseTo(0.8215, 4);
+      expect(profile.capability_source).toBe('benchmark');
       expect(profile.pricing.fallback_cost_per_1m).toBe(0.0);
       expect(profile.pricing.quota_cost_per_1m).toBe(DEFAULT_CURSOR_QUOTA_COST_PER_1M);
       expect(profile.provider).toBe('cursor');
     });
 
-    it('maps composer-latest to frontier tier with strong code_gen', () => {
+    it('maps composer-latest to frontier tier with benchmark-grounded code_gen (SP-174)', () => {
       const profile = mapPiModelToProfile(
         makeInput({ provider: 'cursor', id: 'composer-latest' }),
       );
 
       expect(profile.tier).toBe('frontier-cloud');
-      expect(profile.capabilities.code_gen).toBeGreaterThanOrEqual(0.95);
+      expect(profile.capabilities.code_gen).toBeCloseTo(0.833, 4);
+      expect(profile.capability_source).toBe('benchmark');
       expect(profile.pricing.fallback_cost_per_1m).toBe(0.0);
       expect(profile.pricing.quota_cost_per_1m).toBe(DEFAULT_CURSOR_QUOTA_COST_PER_1M);
     });
 
-    it('maps cursor/composer-latest via cursor/* rule', () => {
+    it('maps cursor/composer-latest via cursor/* rule with alias grounding', () => {
       const profile = mapPiModelToProfile(
         makeInput({ provider: 'cursor', id: 'cursor/composer-latest' }),
       );
 
       expect(profile.tier).toBe('frontier-cloud');
-      expect(profile.capabilities.code_gen).toBeGreaterThanOrEqual(0.9);
+      expect(profile.capabilities.code_gen).toBeCloseTo(0.833, 4);
+      expect(profile.capability_source).toBe('benchmark');
     });
 
     it('keeps zero API fallback but virtual quota cost for cursor models (SP-096)', () => {
@@ -207,7 +221,8 @@ describe('mapPiModelToProfile', () => {
       );
 
       expect(profile.tier).toBe('frontier-cloud');
-      expect(profile.capabilities.reasoning).toBeGreaterThanOrEqual(0.9);
+      expect(profile.capabilities.reasoning).toBeCloseTo(0.796, 4);
+      expect(profile.capability_source).toBe('benchmark');
       expect(profile.pricing.fallback_cost_per_1m).toBe(0.0);
       expect(profile.pricing.quota_cost_per_1m).toBe(DEFAULT_CURSOR_QUOTA_COST_PER_1M);
     });
@@ -219,6 +234,7 @@ describe('mapPiModelToProfile', () => {
 
       expect(profile.tier).toBe('frontier-cloud');
       expect(profile.capabilities.reasoning).not.toBe(0.6);
+      expect(profile.capability_source).toBe('benchmark');
       expect(profile.pricing.quota_cost_per_1m).toBe(DEFAULT_CURSOR_QUOTA_COST_PER_1M);
     });
   });
@@ -238,7 +254,7 @@ describe('mapPiModelToProfile', () => {
     });
   });
 
-  describe('benchmark-grounded capabilities (SP-136)', () => {
+  describe('benchmark-grounded capabilities (SP-136 / SP-174)', () => {
     it('uses ingest artifact scores for known benchmark model ids', () => {
       setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
 
@@ -251,19 +267,36 @@ describe('mapPiModelToProfile', () => {
       expect(profile.capabilities.code_gen).toBeCloseTo(0.7915, 4);
       expect(profile.capabilities.tool_use).toBeCloseTo(0.8035, 4);
       expect(profile.capabilities.reasoning).not.toBe(0.95);
+      expect(profile.capability_source).toBe('benchmark');
     });
 
-    it('falls back to regex defaults when benchmark row is missing', () => {
+    it('resolves scoped-fleet alias to benchmark row (not pattern-default-only)', () => {
+      setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
+
+      // Real dogfood Cursor fleet id — must not stay on CURSOR_AUTO pattern defaults
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'cursor', id: 'cursor/auto' }),
+      );
+
+      expect(profile.capability_source).toBe('benchmark');
+      expect(profile.capabilities.reasoning).toBeCloseTo(0.796, 4);
+      expect(profile.capabilities.reasoning).not.toBe(0.9);
+      expect(profile.capabilities.code_gen).not.toBe(0.9);
+      expect(profile.capabilities.tool_use).not.toBe(0.95);
+    });
+
+    it('falls back to regex defaults when benchmark row and alias are missing', () => {
       setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
 
       const profile = mapPiModelToProfile(
-        makeInput({ provider: 'anthropic', id: 'claude-3.5-sonnet' }),
+        makeInput({ provider: 'anthropic', id: 'claude-sonnet-experimental-99' }),
       );
 
       expect(profile.tier).toBe('frontier-cloud');
       expect(profile.capabilities.reasoning).toBe(0.95);
       expect(profile.capabilities.code_gen).toBe(0.95);
       expect(profile.capabilities.tool_use).toBe(0.95);
+      expect(profile.capability_source).toBe('pattern_default');
     });
 
     it('falls back to regex defaults when benchmark artifact is disabled', () => {
@@ -276,6 +309,7 @@ describe('mapPiModelToProfile', () => {
       expect(profile.capabilities.reasoning).toBe(0.7);
       expect(profile.capabilities.code_gen).toBe(0.75);
       expect(profile.capabilities.tool_use).toBe(0.7);
+      expect(profile.capability_source).toBe('pattern_default');
     });
 
     it('falls back to regex defaults when benchmark artifact path is missing', () => {
@@ -286,6 +320,7 @@ describe('mapPiModelToProfile', () => {
       );
 
       expect(profile.capabilities.code_gen).toBe(0.75);
+      expect(profile.capability_source).toBe('pattern_default');
     });
 
     it('loads custom benchmark artifact from an override path', () => {
@@ -303,6 +338,7 @@ describe('mapPiModelToProfile', () => {
         );
 
         expect(profile.capabilities.reasoning).toBeCloseTo(0.5685, 4);
+        expect(profile.capability_source).toBe('benchmark');
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
@@ -390,7 +426,9 @@ describe('mapFleetFromRegistry', () => {
 
     expect(fleet).toHaveLength(4);
     expect(fleet[0]!.tier).toBe('frontier-cloud');
+    expect(fleet[0]!.capability_source).toBe('benchmark');
     expect(fleet[1]!.tier).toBe('economical-cloud');
+    expect(fleet[1]!.capability_source).toBe('pattern_default');
     expect(fleet[2]!.tier).toBe('zero-tier');
     expect(fleet[3]!.tier).toBe('economical-cloud');
     expect(fleet.map((m) => m.id)).toEqual([
@@ -399,5 +437,24 @@ describe('mapFleetFromRegistry', () => {
       'local-gemma',
       'model-x',
     ]);
+  });
+});
+
+describe('fleet benchmark aliases (SP-174)', () => {
+  it('resolves common scoped-fleet ids to canonical ingest model_ids', () => {
+    setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
+
+    expect(resolveBenchmarkModelId('claude-opus-4')).toBe('claude-opus-4-5');
+    expect(resolveBenchmarkModelId('cursor/auto')).toBe('gpt-5.3-codex');
+    expect(resolveBenchmarkModelId('gemini-2.5-flash-preview')).toBe('gemini-2.5-flash');
+    expect(resolveBenchmarkModelId('claude-opus-4-5')).toBe('claude-opus-4-5');
+  });
+
+  it('exposes capability_source via getCapabilitySource for operators', () => {
+    setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
+
+    expect(getCapabilitySource('cursor/auto')).toBe('benchmark');
+    expect(getCapabilitySource('claude-opus-4-5')).toBe('benchmark');
+    expect(getCapabilitySource('mystery-model-v9')).toBe('pattern_default');
   });
 });

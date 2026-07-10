@@ -111,9 +111,46 @@ const provenanceSchema = z.object({
   catalog_freeze_date: z.string().regex(ISO_DATE_PATTERN),
 });
 
+/**
+ * Scoped-fleet registry IDs → canonical ingest `model_id` (SP-174 / #94).
+ * Prefer aliasing live pi/Cursor IDs onto grounded rows over inventing scores.
+ * Operators may extend `aliases` in `config/benchmark-profiles.json`; re-ingest
+ * preserves that map (see CLI). Seed defaults cover common dogfood fleet IDs.
+ */
+export const DEFAULT_FLEET_BENCHMARK_ALIASES: Readonly<Record<string, string>> = {
+  // Anthropic — registry short / dated IDs → fixture rows
+  'claude-opus-4': 'claude-opus-4-5',
+  'claude-opus-4-20250514': 'claude-opus-4-5',
+  'claude-sonnet-4': 'claude-sonnet-4-6',
+  'claude-sonnet-4-20250514': 'claude-sonnet-4-6',
+  'claude-3.5-sonnet': 'claude-sonnet-4-6',
+  'claude-3-5-sonnet': 'claude-sonnet-4-6',
+  'claude-3.5-sonnet-latest': 'claude-sonnet-4-6',
+  // OpenAI — frontier coding IDs → gpt-5.3-codex row
+  'gpt-5.5': 'gpt-5.3-codex',
+  'gpt-5.3': 'gpt-5.3-codex',
+  'gpt-5': 'gpt-5.3-codex',
+  'gpt-5-codex': 'gpt-5.3-codex',
+  // Gemini — flash family variants → gemini-2.5-flash row
+  'gemini-2.5-flash-preview': 'gemini-2.5-flash',
+  'gemini-2.5-flash-lite': 'gemini-2.5-flash',
+  'gemini-2.0-flash': 'gemini-2.5-flash',
+  'gemini-flash-latest': 'gemini-2.5-flash',
+  // Cursor / opaque fleet placeholders → strongest grounded coding row
+  'cursor/auto': 'gpt-5.3-codex',
+  'composer-latest': 'gpt-5.3-codex',
+  'composer-1': 'gpt-5.3-codex',
+  'cursor/composer-latest': 'gpt-5.3-codex',
+  default: 'gpt-5.3-codex',
+};
+
+const fleetAliasesSchema = z.record(z.string().min(1), z.string().min(1));
+
 const benchmarkProfilesArtifactSchema = z.object({
   version: z.literal(BENCHMARK_PROFILES_VERSION),
   provenance: provenanceSchema,
+  /** Optional fleet-id → canonical model_id map (SP-174). */
+  aliases: fleetAliasesSchema.optional(),
   models: z.array(modelProfileSchema).min(1),
 });
 
@@ -137,6 +174,8 @@ export interface IngestBenchmarkProfilesOptions {
   readonly fixturesDir?: string;
   readonly catalogFreezeDate?: string;
   readonly scrapeDate?: string;
+  /** Fleet-id aliases preserved across re-ingest (SP-174). */
+  readonly aliases?: Readonly<Record<string, string>>;
   readonly onSkippedToolCallEntry?: (entry: SkippedToolCallEntry) => void;
 }
 
@@ -361,6 +400,11 @@ export function aggregateBenchmarkProfiles(
     console.error(`  note: ${AST_VALIDATION_FALSE_NEGATIVE_NOTE}`);
   }
 
+  const aliases =
+    options.aliases !== undefined
+      ? { ...options.aliases }
+      : { ...DEFAULT_FLEET_BENCHMARK_ALIASES };
+
   const artifact: BenchmarkProfilesArtifact = {
     version: BENCHMARK_PROFILES_VERSION,
     provenance: {
@@ -368,10 +412,26 @@ export function aggregateBenchmarkProfiles(
       scrape_date: scrapeDate,
       catalog_freeze_date: catalogFreezeDate,
     },
+    aliases,
     models,
   };
 
   return parseBenchmarkProfilesArtifact(artifact);
+}
+
+/** Load aliases from an existing artifact file (for re-ingest preserve). */
+export function loadAliasesFromBenchmarkProfilesFile(
+  filePath: string,
+): Readonly<Record<string, string>> | undefined {
+  if (!existsSync(filePath)) {
+    return undefined;
+  }
+  try {
+    const parsed = parseBenchmarkProfilesArtifact(JSON.parse(readFileSync(filePath, 'utf8')));
+    return parsed.aliases;
+  } catch {
+    return undefined;
+  }
 }
 
 export function parseBenchmarkProfilesArtifact(value: unknown): BenchmarkProfilesArtifact {
@@ -386,7 +446,20 @@ export function serializeBenchmarkProfilesArtifact(
   artifact: BenchmarkProfilesArtifact,
 ): string {
   const validated = parseBenchmarkProfilesArtifact(artifact);
-  return `${JSON.stringify(validated, null, 2)}\n`;
+  // Stable key order: version, provenance, aliases (sorted), models
+  const aliases =
+    validated.aliases !== undefined
+      ? Object.fromEntries(
+          Object.entries(validated.aliases).sort(([a], [b]) => a.localeCompare(b)),
+        )
+      : undefined;
+  const ordered = {
+    version: validated.version,
+    provenance: validated.provenance,
+    ...(aliases !== undefined ? { aliases } : {}),
+    models: validated.models,
+  };
+  return `${JSON.stringify(ordered, null, 2)}\n`;
 }
 
 export function ingestBenchmarkProfilesFromDir(
@@ -462,20 +535,26 @@ async function main(): Promise<void> {
     throw new BenchmarkIngestError(`Unknown argument: ${arg}`);
   }
 
+  const preservedAliases = loadAliasesFromBenchmarkProfilesFile(outputPath);
   const artifact = ingestBenchmarkProfilesFromDir(fixturesDir, {
     ...(catalogFreezeDate !== undefined ? { catalogFreezeDate } : {}),
     ...(scrapeDate !== undefined ? { scrapeDate } : {}),
+    aliases: preservedAliases ?? DEFAULT_FLEET_BENCHMARK_ALIASES,
   });
 
   writeFileSync(outputPath, serializeBenchmarkProfilesArtifact(artifact), 'utf8');
+  const aliasCount = artifact.aliases !== undefined ? Object.keys(artifact.aliases).length : 0;
   console.error(
-    `ingest-benchmark-profiles: wrote v${artifact.version} (${artifact.models.length} model(s)) to ${outputPath}`,
+    `ingest-benchmark-profiles: wrote v${artifact.version} (${artifact.models.length} model(s), ${aliasCount} alias(es)) to ${outputPath}`,
   );
   console.error(
     `  catalog_freeze_date=${artifact.provenance.catalog_freeze_date}, scrape_date=${artifact.provenance.scrape_date}`,
   );
   console.error(
     '  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows',
+  );
+  console.error(
+    '  fleet aliases: preserved from existing artifact when present; else DEFAULT_FLEET_BENCHMARK_ALIASES (SP-174)',
   );
   console.error(`  ${AST_VALIDATION_FALSE_NEGATIVE_NOTE}`);
 }

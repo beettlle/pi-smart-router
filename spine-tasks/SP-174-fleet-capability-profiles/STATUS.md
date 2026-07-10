@@ -1,7 +1,7 @@
 # SP-174: Fleet Capability Profiles — Status
 
 **Current Step:** 1
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,11 +12,11 @@
 
 ## Step 1: Alias map and profile coverage
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Add alias map and/or expand benchmark-profiles for common scoped-fleet IDs
-- [ ] Keep ingest/verify path coherent
-- [ ] Prefer alias → existing model_id over inventing scores
+- [x] Add alias map and/or expand benchmark-profiles for common scoped-fleet IDs
+- [x] Keep ingest/verify path coherent
+- [x] Prefer alias → existing model_id over inventing scores
 
 ## Step 2: Source signal + tests + docs
 
@@ -50,19 +50,22 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-10 | 1 | plan | skipped (engine-owned; SP-195) |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-07-10 | Checked-in artifact has 5 model_ids only; live fleet IDs miss rows | Alias map in artifact + mapper |
+| 2026-07-10 | ModelProfile / telemetry / explain outside File Scope | `capability_source` on MappedModelProfile + getCapabilitySource() |
+| 2026-07-10 | gemini-2.5-pro has no fixture row — left pattern_default (no invented scores) | Document; add fixtures later |
 
 ## Execution Log
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-10 | start | Resume from Step 1; plan review skipped by engine |
+| 2026-07-10 | step1 | Aliases in artifact; ingest preserves; mapper resolves |
 
 ## Blockers
 

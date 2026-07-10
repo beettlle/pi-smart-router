@@ -112,9 +112,31 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
     const artifact = ingestBenchmarkProfilesFromDir(DEFAULT_BENCHMARK_FIXTURES_DIR, {
       catalogFreezeDate: parsed.provenance.catalog_freeze_date,
       scrapeDate: parsed.provenance.scrape_date,
+      ...(parsed.aliases !== undefined ? { aliases: parsed.aliases } : {}),
     });
 
     expect(serializeBenchmarkProfilesArtifact(artifact)).toBe(checkedIn);
+  });
+
+  it('emits default fleet aliases when none are supplied (SP-174)', () => {
+    const artifact = ingestBenchmarkProfilesFromDir(DEFAULT_BENCHMARK_FIXTURES_DIR, {
+      catalogFreezeDate: '2026-07-09',
+      scrapeDate: '2026-07-09',
+    });
+
+    expect(artifact.aliases?.['claude-opus-4']).toBe('claude-opus-4-5');
+    expect(artifact.aliases?.['cursor/auto']).toBe('gpt-5.3-codex');
+    expect(artifact.aliases?.['gemini-2.5-flash-preview']).toBe('gemini-2.5-flash');
+  });
+
+  it('preserves custom aliases when provided (SP-174)', () => {
+    const artifact = ingestBenchmarkProfilesFromDir(DEFAULT_BENCHMARK_FIXTURES_DIR, {
+      catalogFreezeDate: '2026-07-09',
+      scrapeDate: '2026-07-09',
+      aliases: { 'my-fleet-id': 'claude-opus-4-5' },
+    });
+
+    expect(artifact.aliases).toEqual({ 'my-fleet-id': 'claude-opus-4-5' });
   });
 
   it('validates required capability dimensions and rejects duplicate benchmark rows', () => {
