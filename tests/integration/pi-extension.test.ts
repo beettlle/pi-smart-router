@@ -24,10 +24,15 @@ import {
   createDispatchOptions,
   createExtensionDatasetRecorder,
   createExtensionOutcomeRecorder,
+  createOperatorAwareSessionPinner,
   createStreamSimple,
   getRoutingFeatureSidecar,
 } from '../../.pi/extensions/smart-router/index.js';
-import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
+import {
+  DEFAULT_OPERATOR_CONFIG,
+  DEFAULT_PLANNING_DELEGATE_CONFIG,
+  DEFAULT_SAAR_CONFIG,
+} from '../../src/config/defaults.js';
 import type { ClusterMatcher } from '../../src/domain/matching/cluster-matcher.js';
 import { mapFleetFromRegistry,
   mapPiModelToProfile,
@@ -42,7 +47,7 @@ import {
   type RequirementVector,
 } from '../../src/domain/matching/hydra-matcher.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
-import type { ModelProfile, RoutingDecision } from '../../src/domain/types/index.js';
+import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../src/domain/types/index.js';
 import type { SystemInfo } from '../../src/infrastructure/hardware/hardware-probe.js';
 import { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import {
@@ -735,6 +740,138 @@ describe('Pi extension integration (SP-043)', () => {
       expect(options.rateLimiter?.consumeToken).toBeTypeOf('function');
 
       sqliteStore.close();
+    });
+
+    it('createDispatchOptions wires SAAR, planning delegate, and default pin_only_fallback (SP-173)', () => {
+      const sessionPinner = new SessionPinner();
+      const sqliteStore = new SqliteStore({ dbPath: ':memory:', models: [] });
+      const options = createDispatchOptions(sqliteStore, sessionPinner);
+
+      expect(options.saarConfig).toEqual(DEFAULT_SAAR_CONFIG);
+      expect(options.planningDelegateConfig).toEqual(DEFAULT_PLANNING_DELEGATE_CONFIG);
+      expect(options.pinOnlyFallback).toBe(false);
+      expect(options.priceCatalog).toBeUndefined();
+      expect(options.quotaWindowPosition).toBeUndefined();
+
+      sqliteStore.close();
+    });
+
+    it('createDispatchOptions applies SMART_ROUTER_* SAAR and planning-delegate env knobs (SP-173)', () => {
+      const envKeys = [
+        'SMART_ROUTER_PLANNING_TURN_BUFFER',
+        'SMART_ROUTER_PREFIX_CACHE_WEIGHT',
+        'SMART_ROUTER_IDLE_TIMEOUT_SECONDS',
+        'SMART_ROUTER_SWITCH_THRESHOLD',
+        'SMART_ROUTER_PLANNING_DELEGATE_ENABLED',
+        'SMART_ROUTER_PLANNING_DELEGATE_MAX_MESSAGES',
+      ] as const;
+      const previous = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
+
+      try {
+        process.env.SMART_ROUTER_PLANNING_TURN_BUFFER = '5';
+        process.env.SMART_ROUTER_PREFIX_CACHE_WEIGHT = '0.42';
+        process.env.SMART_ROUTER_IDLE_TIMEOUT_SECONDS = '900';
+        process.env.SMART_ROUTER_SWITCH_THRESHOLD = '0.8';
+        process.env.SMART_ROUTER_PLANNING_DELEGATE_ENABLED = 'false';
+        process.env.SMART_ROUTER_PLANNING_DELEGATE_MAX_MESSAGES = '6';
+
+        const sessionPinner = new SessionPinner();
+        const sqliteStore = new SqliteStore({ dbPath: ':memory:', models: [] });
+        const options = createDispatchOptions(sqliteStore, sessionPinner);
+
+        expect(options.saarConfig).toEqual({
+          planning_turn_buffer: 5,
+          prefix_cache_weight: 0.42,
+          idle_timeout_seconds: 900,
+          switch_threshold: 0.8,
+        });
+        expect(options.planningDelegateConfig).toEqual({
+          enabled: false,
+          compressed_context: {
+            max_messages: 6,
+            max_tokens: DEFAULT_PLANNING_DELEGATE_CONFIG.compressed_context.max_tokens,
+            exclude_execution_history:
+              DEFAULT_PLANNING_DELEGATE_CONFIG.compressed_context.exclude_execution_history,
+          },
+        });
+        expect(options.pinOnlyFallback).toBe(false);
+
+        sqliteStore.close();
+      } finally {
+        for (const key of envKeys) {
+          const value = previous[key];
+          if (value === undefined) {
+            delete process.env[key];
+          } else {
+            process.env[key] = value;
+          }
+        }
+      }
+    });
+
+    it('createDispatchOptions honors pin_only_fallback when configured and passes catalog fields (SP-173)', () => {
+      const sessionPinner = new SessionPinner();
+      const sqliteStore = new SqliteStore({ dbPath: ':memory:', models: [] });
+      const catalog = {
+        registry_snapshot: {},
+        user_overrides: {},
+        last_updated: '2026-07-10T00:00:00.000Z',
+        source: 'registry' as const,
+      };
+      const options = createDispatchOptions(sqliteStore, sessionPinner, undefined, {
+        operatorConfig: {
+          ...DEFAULT_OPERATOR_CONFIG,
+          pin_only_fallback: true,
+        },
+        priceCatalog: catalog,
+        quotaWindowPosition: { remaining_window_fraction: 0.25 },
+      });
+
+      expect(options.pinOnlyFallback).toBe(true);
+      expect(options.priceCatalog).toEqual(catalog);
+      expect(options.quotaWindowPosition).toEqual({ remaining_window_fraction: 0.25 });
+
+      sqliteStore.close();
+    });
+
+    it('createOperatorAwareSessionPinner applies SAAR and pin_only_fallback (SP-173)', () => {
+      const store = new MemoryStore([]);
+      const defaultPinner = createOperatorAwareSessionPinner(store, {
+        ...DEFAULT_OPERATOR_CONFIG,
+        pin_only_fallback: false,
+        saar: { ...DEFAULT_SAAR_CONFIG, planning_turn_buffer: 3 },
+      });
+      const pinOnlyPinner = createOperatorAwareSessionPinner(store, {
+        ...DEFAULT_OPERATOR_CONFIG,
+        pin_only_fallback: true,
+        saar: { ...DEFAULT_SAAR_CONFIG, planning_turn_buffer: 3 },
+      });
+
+      const fleet = mapFleetFromRegistry(REGISTRY_MODELS);
+      const pinnedId = fleet[0]!.id;
+      defaultPinner.recordPin('sess-default', pinnedId, 'initial');
+      pinOnlyPinner.recordPin('sess-pin-only', pinnedId, 'initial');
+
+      const toolResultRequest = (sessionId: string): RoutingRequest => ({
+        request_id: `req-${sessionId}`,
+        session_id: sessionId,
+        prompt_text: 'tool output',
+        turn_type: 'tool_result',
+        estimated_input_tokens: 100,
+      });
+
+      const defaultDecision = defaultPinner.lookupPin(
+        toolResultRequest('sess-default'),
+        fleet,
+      );
+      const pinOnlyDecision = pinOnlyPinner.lookupPin(
+        toolResultRequest('sess-pin-only'),
+        fleet,
+      );
+
+      expect(pinOnlyDecision.action).toBe('use_pin');
+      expect(pinOnlyDecision.pinnedModel?.id).toBe(pinnedId);
+      expect(['use_pin', 'sub_route']).toContain(defaultDecision.action);
     });
 
     it('omits rateLimiter when the extension store is not SQLite-backed', () => {

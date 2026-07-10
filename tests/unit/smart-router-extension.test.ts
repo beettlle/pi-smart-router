@@ -15,6 +15,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   formatLmuStatus,
   initHydraMatcher,
+  createDispatchOptions,
+  createOperatorAwareSessionPinner,
 } from '../../.pi/extensions/smart-router/fleet-bootstrap.js';
 import * as fleetBootstrap from '../../.pi/extensions/smart-router/fleet-bootstrap.js';
 import { registerSmartRouterCommand } from '../../.pi/extensions/smart-router/commands.js';
@@ -52,6 +54,9 @@ import { resolveRegistryModel } from '../../.pi/extensions/smart-router/delegati
 import type { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import { createRouterFromFleet } from '../../src/index.js';
 import { mapFleetFromRegistry, mapPiModelToProfile } from '../../src/config/pi-model-mapper.js';
+import {
+  DEFAULT_OPERATOR_CONFIG,
+} from '../../src/config/defaults.js';
 import { LifecycleHookState } from '../../src/index.js';
 import { ExecutionLedger } from '../../src/domain/delegation/execution-ledger.js';
 import { GEMINI_SKIP_THOUGHT_SIGNATURE_SENTINEL } from '../../src/domain/delegation/delegation-context.js';
@@ -2987,5 +2992,66 @@ describe('LMU active-provider gate (SP-088)', () => {
       'smart-router-lmu',
       formatLmuStatus('claude-opus'),
     );
+  });
+});
+
+describe('operator SAAR wiring (SP-173)', () => {
+  const envKeys = [
+    'SMART_ROUTER_PLANNING_TURN_BUFFER',
+    'SMART_ROUTER_PLANNING_DELEGATE_ENABLED',
+  ] as const;
+
+  afterEach(() => {
+    for (const key of envKeys) {
+      delete process.env[key];
+    }
+  });
+
+  it('createDispatchOptions defaults pin_only_fallback to false and includes SAAR/planning', () => {
+    const store = new MemoryStore([]);
+    const pinner = createOperatorAwareSessionPinner(store);
+    const options = createDispatchOptions(store, pinner);
+
+    expect(options.pinOnlyFallback).toBe(false);
+    expect(options.saarConfig?.planning_turn_buffer).toBe(2);
+    expect(options.planningDelegateConfig?.enabled).toBe(true);
+  });
+
+  it('createDispatchOptions reflects SMART_ROUTER_* env into dispatch options', () => {
+    process.env.SMART_ROUTER_PLANNING_TURN_BUFFER = '7';
+    process.env.SMART_ROUTER_PLANNING_DELEGATE_ENABLED = '0';
+
+    const store = new MemoryStore([]);
+    const pinner = createOperatorAwareSessionPinner(store);
+    const options = createDispatchOptions(store, pinner);
+
+    expect(options.saarConfig?.planning_turn_buffer).toBe(7);
+    expect(options.planningDelegateConfig?.enabled).toBe(false);
+  });
+
+  it('createOperatorAwareSessionPinner honors pin_only_fallback when configured', () => {
+    const store = new MemoryStore([]);
+    const pinner = createOperatorAwareSessionPinner(store, {
+      ...DEFAULT_OPERATOR_CONFIG,
+      pin_only_fallback: true,
+    });
+    const fleet = [
+      makeProfile({ id: 'claude-opus', tier: 'frontier-cloud', provider: 'anthropic' }),
+      makeProfile({ id: 'claude-haiku', tier: 'economical-cloud', provider: 'anthropic' }),
+    ];
+    pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+    const result = pinner.lookupPin(
+      {
+        request_id: 'req-1',
+        session_id: 'sess-1',
+        prompt_text: 'tool',
+        turn_type: 'tool_result',
+        estimated_input_tokens: 100,
+      },
+      fleet,
+    );
+
+    expect(result.action).toBe('use_pin');
   });
 });

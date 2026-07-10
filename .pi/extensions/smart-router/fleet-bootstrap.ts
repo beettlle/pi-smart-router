@@ -6,13 +6,18 @@ import {
 } from '@earendil-works/pi-coding-agent';
 
 import { mapFleetFromRegistry } from '../../../src/config/pi-model-mapper.js';
-import { DEFAULT_OPERATOR_CONFIG } from '../../../src/config/defaults.js';
+import {
+  DEFAULT_OPERATOR_CONFIG,
+  resolveOperatorConfigFromEnv,
+} from '../../../src/config/defaults.js';
 import {
   HydraMatcher,
   createOnnxEmbeddingProvider,
 } from '../../../src/domain/matching/hydra-matcher.js';
 import { SessionPinner } from '../../../src/domain/pinning/session-pinner.js';
 import type { ModelProfile, PriceCatalog } from '../../../src/domain/types/index.js';
+import type { QuotaWindowPosition } from '../../../src/domain/types/entities.js';
+import type { OperatorConfig } from '../../../src/domain/types/schemas.js';
 import type { StorePort } from '../../../src/domain/types/store-port.js';
 import { getDefaultSystemInfo } from '../../../src/infrastructure/hardware/hardware-probe.js';
 import { DEFAULT_LOCAL_CONFIG } from '../../../src/infrastructure/local/local-zero-tier.js';
@@ -26,6 +31,16 @@ import {
 import { resolveModelScope } from './pi-model-scope.js';
 import type { FleetMode, SmartRouterRuntime } from './types.js';
 import { resolveRateLimiter } from './utils.js';
+
+/** Optional overrides for extension dispatch wiring (SP-173). */
+export interface CreateDispatchOptionsExtras {
+  /** Base operator config before env merge; defaults to DEFAULT_OPERATOR_CONFIG. */
+  readonly operatorConfig?: OperatorConfig;
+  /** Live price catalog when fleet discovery has loaded one. */
+  readonly priceCatalog?: PriceCatalog | null;
+  /** Rolling subscription quota position when available. */
+  readonly quotaWindowPosition?: QuotaWindowPosition;
+}
 
 /** Minimal settings surface used for scoped fleet discovery. */
 export interface ScopedSettingsReader {
@@ -152,24 +167,56 @@ export function createDispatchOptions(
   store: StorePort,
   sessionPinner: SessionPinner,
   hydraMatcher?: HydraMatcher,
+  extras?: CreateDispatchOptionsExtras,
 ): GatewayDispatchOptions {
+  const operatorConfig = resolveOperatorConfigFromEnv(
+    extras?.operatorConfig ?? DEFAULT_OPERATOR_CONFIG,
+  );
   const telemetryEmitter = new RoutingTelemetryEmitter({
     onRecord: (record) => {
       store.appendTelemetry(record);
     },
+    sessionPinner,
+    saarConfig: operatorConfig.saar,
+    ...(extras?.priceCatalog !== undefined ? { priceCatalog: extras.priceCatalog } : {}),
+    ...(extras?.quotaWindowPosition !== undefined
+      ? { quotaWindowPosition: extras.quotaWindowPosition }
+      : {}),
   });
   const rateLimiter = resolveRateLimiter(store);
 
   return {
     sessionPinner,
-    hardwareConfig: DEFAULT_OPERATOR_CONFIG.local,
+    hardwareConfig: operatorConfig.local,
     systemInfoProvider: getDefaultSystemInfo,
     localConfig: DEFAULT_LOCAL_CONFIG,
-    loopEscalationConfig: DEFAULT_OPERATOR_CONFIG.loop_escalation,
+    loopEscalationConfig: operatorConfig.loop_escalation,
+    saarConfig: operatorConfig.saar,
+    planningDelegateConfig: operatorConfig.planning_delegate,
+    pinOnlyFallback: operatorConfig.pin_only_fallback,
+    ...(extras?.priceCatalog !== undefined ? { priceCatalog: extras.priceCatalog } : {}),
+    ...(extras?.quotaWindowPosition !== undefined
+      ? { quotaWindowPosition: extras.quotaWindowPosition }
+      : {}),
     ...(hydraMatcher ? { hydraMatcher } : {}),
     ...(rateLimiter ? { rateLimiter } : {}),
     telemetryEmitter,
   };
+}
+
+/**
+ * Build a SessionPinner wired with operator SAAR / pin-only settings (SP-173).
+ * No operator-config.json loader exists yet — env + optional base config only.
+ */
+export function createOperatorAwareSessionPinner(
+  store: StorePort,
+  operatorConfig: OperatorConfig = resolveOperatorConfigFromEnv(),
+): SessionPinner {
+  return new SessionPinner({
+    store,
+    saarConfig: operatorConfig.saar,
+    pinOnlyFallback: operatorConfig.pin_only_fallback,
+  });
 }
 
 export async function rebuildFleet(
@@ -189,7 +236,9 @@ export async function rebuildFleet(
   runtime.priceCatalog = catalog;
   runtime.fleetScopeFingerprint = fingerprint;
   const router = createRouterFromFleet(fleet, {
-    ...createDispatchOptions(runtime.store, runtime.sessionPinner, runtime.hydraMatcher),
+    ...createDispatchOptions(runtime.store, runtime.sessionPinner, runtime.hydraMatcher, {
+      priceCatalog: catalog,
+    }),
     lifecycleHookState: runtime.lifecycleHookState,
   });
   router.register(createHooksAdapter(pi));
