@@ -1,6 +1,6 @@
 # SP-174: Fleet Capability Profiles — Status
 
-**Current Step:** 2
+**Current Step:** 3
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -20,7 +20,7 @@
 
 ## Step 2: Source signal + tests + docs
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Surface capability source (benchmark vs pattern default)
 - [x] Unit/integration: at least one real scoped-fleet ID not pattern-default-only
@@ -28,10 +28,10 @@
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Run scoped vitest for mapper + ingest
-- [ ] Run `routing:verify-benchmark-profiles` if needed
+- [x] Run scoped vitest for mapper + ingest
+- [x] Run `routing:verify-benchmark-profiles` if needed
 - [ ] Run full `npm test`
 - [ ] Run coverage gate
 

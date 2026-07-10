@@ -245,7 +245,11 @@ describe('Pi extension integration (SP-043)', () => {
 
       expect(haiku.capabilities.reasoning).toBeCloseTo(0.5685, 4);
       expect(haiku.capabilities.reasoning).not.toBe(0.95);
-      expect(sonnet.capabilities.reasoning).toBe(0.95);
+      expect(haiku.capability_source).toBe('benchmark');
+      // SP-174: sonnet fleet id aliases to claude-sonnet-4-6 grounded row
+      expect(sonnet.capabilities.reasoning).toBeCloseTo(0.738, 4);
+      expect(sonnet.capabilities.reasoning).not.toBe(0.95);
+      expect(sonnet.capability_source).toBe('benchmark');
     });
 
     it('shortfall gate uses grounded economical capabilities from mapped fleet', async () => {
