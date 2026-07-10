@@ -428,6 +428,15 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
 
       const bodies = new Map<string, string>(
         BENCHMARK_IDS.map((benchmark) => {
+          if (benchmark === 'bfcl') {
+            // SP-184 native adapter expects Gorilla CSV, not fixture-shaped JSON
+            const csv = [
+              'Rank,Overall Acc,Model,Organization',
+              '1,80%,Claude-Opus-4-5-20251101 (FC),Anthropic',
+              '2,82%,gpt-5.3-codex (FC),OpenAI',
+            ].join('\n');
+            return [`${mirrorBase}/${benchmark}.json`, csv];
+          }
           const payload: BenchmarkLeaderboardFixture = {
             benchmark,
             source_url: BENCHMARK_SOURCE_URLS[benchmark],

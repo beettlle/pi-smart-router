@@ -104,3 +104,12 @@ Registering `bfcl` `liveFetchUrl` breaks two SP-181 assertions that expect
 **File Scope May change (added):**
 - `tests/unit/benchmark-leaderboard-fetch.test.ts` (live URL registry assertion only)
 - `tests/unit/ingest-benchmark-profiles.test.ts` (live URL registry assertion only)
+
+### 2026-07-10 — Allow SC-004 latency warmup (pre-existing flake)
+
+`tests/unit/triage-engine.test.ts` SC-004 `<5ms` cases fail on cold first
+`pipeline.route()` (~5–30ms) while warmed calls are ~1ms. Unrelated to BFCL;
+blocks Step 3 `npm test`.
+
+**File Scope May change (added):**
+- `tests/unit/triage-engine.test.ts` (SC-004 warmup only — call `route` once before timing)
