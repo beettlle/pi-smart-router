@@ -202,6 +202,22 @@ export const LocalConfigSchema = z.object({
   battery_threshold_pct: z.number().min(0).max(100),
 });
 
+/** Rolling median local throughput gate knobs (SP-163, #84). */
+export const ThroughputConfigSchema = z.object({
+  /** Number of recent local inference samples in the rolling window. */
+  window_size: z.number().int().positive(),
+  /** Minimum median tokens_per_second for local viability (~25 tok/s). */
+  threshold_tps: z.number().positive(),
+});
+
+export type ThroughputConfig = z.infer<typeof ThroughputConfigSchema>;
+
+/** Throughput defaults per routing-roadmap.md §3 / #84 (SP-163). */
+export const DEFAULT_THROUGHPUT_CONFIG: Readonly<ThroughputConfig> = {
+  window_size: 50,
+  threshold_tps: 25,
+} as const;
+
 export const HydraConfigSchema = z.object({
   artifact_cache_path: z.string(),
 });
@@ -461,6 +477,7 @@ export const OperatorConfigSchema = z.object({
   low_intensity: LowIntensityConfigSchema,
   saar: SaarConfigSchema,
   planning_delegate: PlanningDelegateConfigSchema,
+  throughput: ThroughputConfigSchema.optional(),
   routing_clusters: RoutingClustersConfigSchema.optional(),
 });
 

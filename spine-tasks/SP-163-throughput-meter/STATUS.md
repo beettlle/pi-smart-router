@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -10,7 +10,7 @@
 
 ## Step 1: Throughput meter module
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Implement `throughput-meter.ts` with rolling median over last N samples
 - [x] API: `recordSample(tokens, durationMs)`, `getMedianTps()`, `isAboveThreshold(threshold)`
@@ -18,10 +18,10 @@
 
 ## Step 2: Config and unit tests
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Add throughput config to operator/hardware config schema
-- [ ] Unit tests with mocked throughput samples (above/below threshold)
+- [x] Add throughput config to operator/hardware config schema
+- [x] Unit tests with mocked throughput samples (above/below threshold)
 
 ## Step 3: Testing and verification
 
@@ -44,7 +44,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-10 | 1 | plan | skipped (engine-owned) |
 
 ## Discoveries
 
@@ -58,6 +58,7 @@
 |------|-------|--------|
 | 2026-07-10 | Started | Step 1 — throughput meter module |
 | 2026-07-10 | Completed | Step 1 outcomes — throughput-meter.ts module |
+| 2026-07-10 | Completed | Step 1 — plan review skipped (engine-owned) |
 
 ## Blockers
 
