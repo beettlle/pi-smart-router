@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -10,18 +10,18 @@
 
 ## Step 1: Config schema
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Add `pin_only_fallback: boolean` to operator config (default `false`)
 - [x] Document emergency-only posture in config example
 
 ## Step 2: Session pin and pipeline wiring
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] When `pin_only_fallback` enabled, pin on first turn and short-circuit later stages
-- [ ] Integrate with session pinner `use_pin` path
-- [ ] Preserve normal multi-stage routing when flag off
+- [x] When `pin_only_fallback` enabled, pin on first turn and short-circuit later stages
+- [x] Integrate with session pinner `use_pin` path
+- [x] Preserve normal multi-stage routing when flag off
 
 ## Step 3: Testing and verification
 

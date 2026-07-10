@@ -76,6 +76,11 @@ export interface SessionPinnerConfig {
   /** Injectable clock for SAAR idle-timeout tests. */
   readonly saarClock?: () => number;
   /**
+   * Emergency pin-only fallback (#83, SP-161). When true, warm sessions always
+   * return use_pin after break rules — SAAR sub-routes and tier upgrades are skipped.
+   */
+  readonly pinOnlyFallback?: boolean;
+  /**
    * Break pin when estimated input tokens exceed the pinned model's
    * max_input_tokens multiplied by this margin. Default 0.90.
    */
@@ -303,6 +308,7 @@ export class SessionPinner {
   private readonly cacheEconomicsConfig: CacheEconomicsConfig | undefined;
   private readonly saarConfig: SaarConfig | undefined;
   private readonly saarClock: (() => number) | undefined;
+  private readonly pinOnlyFallback: boolean;
   private readonly contextOverflowSafetyMargin: number;
 
   constructor(config?: SessionPinnerConfig) {
@@ -312,6 +318,7 @@ export class SessionPinner {
     this.cacheEconomicsConfig = config?.cacheEconomicsConfig;
     this.saarConfig = config?.saarConfig;
     this.saarClock = config?.saarClock;
+    this.pinOnlyFallback = config?.pinOnlyFallback ?? false;
     this.contextOverflowSafetyMargin =
       config?.contextOverflowSafetyMargin ?? DEFAULT_CONTEXT_OVERFLOW_SAFETY_MARGIN;
   }
@@ -350,6 +357,19 @@ export class SessionPinner {
     const breakResult = this.evaluateBreakRules(request, pin, fleet);
     if (breakResult) {
       return breakResult;
+    }
+
+    // ── Pin-only emergency fallback (#83, SP-161) ───────────────────────────
+
+    if (this.pinOnlyFallback) {
+      const pinnedModel = fleet.find(
+        (m) => m.id === pin.pinned_model_id && m.healthy !== false,
+      );
+      if (!pinnedModel) {
+        this.breakPin(request.session_id);
+        return { action: 'no_pin' };
+      }
+      return { action: 'use_pin', pinnedModel };
     }
 
     // ── SAAR policy (SP-122) ────────────────────────────────────────────────
