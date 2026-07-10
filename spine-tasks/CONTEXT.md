@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-10
 **Status:** Active
-**Next Task ID:** SP-173
+**Next Task ID:** SP-176
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -468,6 +468,25 @@
 | C | SP-171 | After SP-170 |
 
 **Deferred:** #1/#25/#26 hardware dogfooding.
+
+### Phase 37 — Release v0.7.0 Dogfood Readiness (SP-173–SP-175)
+
+| Task | Summary | Size | Deps | Maps |
+|------|---------|------|------|------|
+| SP-173 | Extension operator SAAR wiring | M | — | #92 |
+| SP-174 | Fleet capability profiles | M | — | #94 |
+| SP-175 | P(success) trained weights | M | SP-174 | #93 |
+
+**Source:** GitHub dogfood-readiness issues #92–#94 (operator-approved backlog for v0.7.0). Ratio: 1 bug + 2 features (docs empty; only one open bug; #95 skipped).
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-173, SP-174 | Parallel — disjoint scopes (extension vs mapper/profiles) |
+| B | SP-175 | After SP-174 (README serialization) |
+
+**Deferred:** #95 (operator skip), #96 (modernbert_k4 enablement epic), #1/#25/#26 hardware dogfooding.
 
 ---
 
