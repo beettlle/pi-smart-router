@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -10,7 +10,7 @@
 
 ## Step 1: Matcher integration
 
-**Status:** Pending
+**Status:** Complete
 
 - [x] Branch `extractRequirements` on `hydra_heads` config
 - [x] Route `modernbert_k4` to ModernBERT heads module
@@ -18,10 +18,10 @@
 
 ## Step 2: Migration documentation
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Document SP-115 → K=4 migration in operator config example
-- [ ] Note K=4 debugging dimension and shortfall gate behavior
+- [x] Document SP-115 → K=4 migration in operator config example
+- [x] Note K=4 debugging dimension and shortfall gate behavior
 
 ## Step 3: Testing and verification
 

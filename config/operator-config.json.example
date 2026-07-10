@@ -20,7 +20,12 @@
   },
   "hydra": {
     "artifact_cache_path": ".pi-smart-router/models/",
-    "encoder": "minilm"
+    "encoder": "minilm",
+    "hydra_heads": "learned_projection",
+    "_hydra_heads_documentation": {
+      "learned_projection": "Default — SP-115 384×3 linear projection on MiniLM/Granite embeddings (config/hydra-projection-weights.json). Approximates HyDRA K sigmoid heads; keep until calibration Top-1 error exceeds ~10%.",
+      "modernbert_k4": "ModernBERT-base [CLS] with K=4 independent sigmoid heads (config/modernbert-k4-heads.json). Migrating from SP-115: train K=4 head weights offline, set hydra_heads to modernbert_k4, and remove or ignore hydra-projection-weights.json. The fourth debugging dimension is predicted for HyDRA fidelity but excluded from the catalog-decoupled shortfall gate (reasoning, code_gen, tool_use only). See docs/routing-roadmap.md §2 P3 and GitHub #81."
+    }
   },
   "low_intensity": {
     "weights": {
