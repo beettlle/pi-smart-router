@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,11 +10,11 @@
 
 ## Step 1: Benchmark script
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Create `scripts/benchmark-encoder-latency.ts` comparing MiniLM vs Granite
-- [ ] Use held-out agent turn sample fixtures
-- [ ] Report p50/p95 latency; assert Granite within 80–120ms budget
+- [x] Create `scripts/benchmark-encoder-latency.ts` comparing MiniLM vs Granite
+- [x] Use held-out agent turn sample fixtures
+- [x] Report p50/p95 latency; assert Granite within 80–120ms budget
 
 ## Step 2: Docs and npm script
 
