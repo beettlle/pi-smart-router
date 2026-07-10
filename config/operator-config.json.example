@@ -1,0 +1,58 @@
+{
+  "_documentation": {
+    "pin_only_fallback": "EMERGENCY ONLY — default false. When true, the router pins on the first turn and reuses that model for all subsequent turns, skipping turn_envelope, triage, HyDRA, and sub-routing. Use when shadow quality retention regresses (>5% vs baseline) or as a manual operator fallback. See docs/routing-roadmap.md §1 and GitHub #83. Automated trigger wiring is SP-162."
+  },
+  "frugality": {
+    "lambda_cost": 0.5,
+    "lambda_latency": 0.1,
+    "lambda_verbosity": 0.15
+  },
+  "loop_escalation": {
+    "threshold": 3
+  },
+  "pricing": {
+    "staleness_days": 14
+  },
+  "local": {
+    "min_memory_gb_full": 16,
+    "min_memory_gb_classification": 8,
+    "battery_threshold_pct": 20
+  },
+  "hydra": {
+    "artifact_cache_path": ".pi-smart-router/models/"
+  },
+  "low_intensity": {
+    "weights": {
+      "prompt_shortness": 0.08,
+      "token_shortness": 0.08,
+      "cyclomatic_low": 0.08,
+      "trivial_signal": 0.08,
+      "complex_inverse": 0.08,
+      "triage_verdict": 0.08,
+      "turn_type": 0.08,
+      "no_tool_context": 0.08,
+      "message_shallow": 0.08,
+      "prose_ratio": 0.08,
+      "requirement_low": 0.08,
+      "cluster_signal": 0.12
+    },
+    "high_threshold": 0.65,
+    "low_threshold": 0.35,
+    "p_success_alpha": 0.5
+  },
+  "saar": {
+    "planning_turn_buffer": 2,
+    "prefix_cache_weight": 0.2,
+    "idle_timeout_seconds": 300,
+    "switch_threshold": 0.5
+  },
+  "planning_delegate": {
+    "enabled": true,
+    "compressed_context": {
+      "max_messages": 12,
+      "max_tokens": 16384,
+      "exclude_execution_history": true
+    }
+  },
+  "pin_only_fallback": false
+}

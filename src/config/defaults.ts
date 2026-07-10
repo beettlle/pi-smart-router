@@ -53,4 +53,5 @@ export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
   },
   saar: DEFAULT_SAAR_CONFIG,
   planning_delegate: DEFAULT_PLANNING_DELEGATE_CONFIG,
+  pin_only_fallback: false,
 } as const;

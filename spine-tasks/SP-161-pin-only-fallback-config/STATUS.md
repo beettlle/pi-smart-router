@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,10 +10,10 @@
 
 ## Step 1: Config schema
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Add `pin_only_fallback: boolean` to operator config (default `false`)
-- [ ] Document emergency-only posture in config example
+- [x] Add `pin_only_fallback: boolean` to operator config (default `false`)
+- [x] Document emergency-only posture in config example
 
 ## Step 2: Session pin and pipeline wiring
 

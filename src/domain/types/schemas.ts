@@ -462,6 +462,13 @@ export const OperatorConfigSchema = z.object({
   saar: SaarConfigSchema,
   planning_delegate: PlanningDelegateConfigSchema,
   routing_clusters: RoutingClustersConfigSchema.optional(),
+  /**
+   * Emergency pin-on-first-turn fallback (#83, SP-161).
+   * When true, subsequent turns use the session pin only — multi-stage routing
+   * (turn_envelope, triage, HyDRA) is skipped after the initial pin is set.
+   * Default false — not a design pivot; enable only when shadow quality regresses.
+   */
+  pin_only_fallback: z.boolean().default(false),
 });
 
 // ─── Inferred types ──────────────────────────────────────────────────────────
