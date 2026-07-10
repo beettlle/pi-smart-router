@@ -11,7 +11,7 @@ import {
 } from '../../ingest-benchmark-profiles.js';
 
 import { bfclStubAdapter } from './bfcl-stub.js';
-import { livecodebenchStubAdapter } from './livecodebench-stub.js';
+import { livecodebenchAdapter } from './livecodebench.js';
 import { swebenchVerifiedAdapter } from './swebench-verified.js';
 import { terminalBenchAdapter } from './terminal-bench.js';
 import type { LeaderboardAdapter } from './types.js';
@@ -25,12 +25,12 @@ export type {
 
 /**
  * Registry of adapters keyed by benchmark id.
- * swebench_verified: native (SP-182); terminal_bench: operator-mirror native (SP-185);
- * livecodebench / bfcl remain stubs until SP-183 / SP-184.
+ * swebench_verified (SP-182), livecodebench (SP-183), terminal_bench (SP-185) native;
+ * bfcl remains stub until SP-184 merges.
  */
 export const LEADERBOARD_ADAPTERS: Readonly<Record<BenchmarkId, LeaderboardAdapter>> = {
   swebench_verified: swebenchVerifiedAdapter,
-  livecodebench: livecodebenchStubAdapter,
+  livecodebench: livecodebenchAdapter,
   bfcl: bfclStubAdapter,
   terminal_bench: terminalBenchAdapter,
 };

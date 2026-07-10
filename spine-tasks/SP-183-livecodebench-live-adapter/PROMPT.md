@@ -38,7 +38,7 @@ Aggregate per-model `pass@1` (document mean vs latest-window policy in code comm
 | Scope | Paths |
 |-------|-------|
 | Must change | `scripts/lib/leaderboard-adapters/livecodebench.ts` |
-| May change | `tests/unit/leaderboard-adapters/livecodebench.test.ts`, `scripts/lib/leaderboard-adapters/index.ts`, `tests/fixtures/benchmark-leaderboards/recorded/livecodebench.json` |
+| May change | `tests/unit/leaderboard-adapters/livecodebench.test.ts`, `scripts/lib/leaderboard-adapters/index.ts`, `tests/fixtures/benchmark-leaderboards/recorded/livecodebench.json`, `tests/unit/ingest-benchmark-profiles.test.ts`, `tests/unit/benchmark-leaderboard-fetch.test.ts` |
 | Must NOT change | `src/domain/pipeline/router-pipeline.ts`, `scripts/lib/leaderboard-adapters/swebench-verified.ts`, `scripts/lib/leaderboard-adapters/bfcl.ts`, `scripts/lib/leaderboard-adapters/terminal-bench.ts` |
 
 ## Contract
@@ -96,4 +96,13 @@ Aggregate per-model `pass@1` (document mean vs latest-window policy in code comm
 
 ## Amendments (Added During Execution)
 
-(none yet)
+### 2026-07-10 — SP-181 stub live-URL assertions
+
+Registering `livecodebench.liveFetchUrl` breaks two SP-181 unit assertions that require
+`getDefaultLiveFetchUrls() === {}` and all adapters `liveFetchUrl === undefined`.
+
+**May change (added):**
+- `tests/unit/ingest-benchmark-profiles.test.ts` — only the stub-registry / live-URL expectations
+- `tests/unit/benchmark-leaderboard-fetch.test.ts` — only the stub-registry / live-URL expectations
+
+Do not change orchestration behavior in those files beyond asserting LCB now exposes its default live URL.

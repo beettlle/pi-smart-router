@@ -332,11 +332,13 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
     }
   });
 
-  it('registry has four adapters; swebench_verified has native live URL (SP-182)', () => {
+  it('registry has four adapters; swebench + livecodebench have native live URLs', () => {
     expect(Object.keys(LEADERBOARD_ADAPTERS).sort()).toEqual([...BENCHMARK_IDS].sort());
     expect(getDefaultLiveFetchUrls()).toEqual({
       swebench_verified:
         'https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json',
+      livecodebench:
+        'https://raw.githubusercontent.com/LiveCodeBench/livecodebench.github.io/main/src/mocks/performances_generation.json',
     });
     for (const benchmark of BENCHMARK_IDS) {
       const adapter = getLeaderboardAdapter(benchmark);
@@ -346,6 +348,8 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
         expect(adapter.liveFetchUrl).toBe(
           'https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json',
         );
+      } else if (benchmark === 'livecodebench') {
+        expect(adapter.liveFetchUrl).toMatch(/performances_generation\.json$/);
       } else {
         expect(adapter.liveFetchUrl).toBeUndefined();
       }
@@ -429,6 +433,20 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
 
       const bodies = new Map<string, string>(
         BENCHMARK_IDS.map((benchmark) => {
+          if (benchmark === 'livecodebench') {
+            // Native SP-183 adapter expects performances_generation.json shape.
+            // Only emit models also present in stub mirrors so ingest covers all dims.
+            const lcbPayload = {
+              performances: [
+                { model: 'Claude-Opus-4', 'pass@1': 80 },
+                { model: 'Claude-Opus-4', 'pass@1': 80 },
+              ],
+              models: [
+                { model_name: 'claude-opus-4-20250514_nothink', model_repr: 'Claude-Opus-4' },
+              ],
+            };
+            return [`${mirrorBase}/${benchmark}.json`, JSON.stringify(lcbPayload)];
+          }
           const payload: BenchmarkLeaderboardFixture = {
             benchmark,
             source_url: BENCHMARK_SOURCE_URLS[benchmark],
