@@ -1719,6 +1719,30 @@ describe('RouterPipeline', () => {
       expect(decision.features?.tier_hint).toBeNull();
       expect(decision.features?.tier_hint_reason_code).toBeNull();
     });
+
+    it('loads shipped dogfood weights and exposes raw vs used P(success) (SP-175)', async () => {
+      const pipeline = new RouterPipeline(fleet, {
+        pSuccessWeightsPath: 'config/p-success-weights.json',
+        lowIntensityConfig: {
+          ...DEFAULT_OPERATOR_CONFIG.low_intensity,
+          high_threshold: 0.9,
+          low_threshold: 0.1,
+          p_success_alpha: 0.5,
+        },
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Hello, how are you today?' }),
+      );
+
+      expect(decision.features?.p_success_raw).not.toBeNull();
+      expect(decision.features?.p_success_calibrated).not.toBeNull();
+      expect(decision.features?.p_success_cheap).not.toBeNull();
+      expect(decision.features?.p_success_cheap).not.toBe(0.5);
+      expect(decision.features?.p_success_cheap).toBe(decision.features?.p_success_calibrated);
+      expect(decision.features?.p_success_raw).toBe(decision.features?.p_success_calibrated);
+      expect(decision.features?.tier_hint_reason_code).toMatch(/^expected_cost_/);
+    });
   });
 
   describe('isotonic P(success) calibration (SP-133)', () => {

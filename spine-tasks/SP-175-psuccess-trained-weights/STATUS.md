@@ -1,6 +1,6 @@
 # SP-175: P(success) Trained Weights — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Train path and ship weights
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Ensure ≥30-sample train path (document or fixture/synthetic input)
 - [x] Commit non-example `config/p-success-weights.json` with trained_sample_count ≥ min
@@ -21,7 +21,7 @@
 
 ## Step 2: Load, explain, docs
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Verify pipeline uses trained scores when artifact present
 - [ ] Telemetry/explain shows raw vs used P(success); safe fallback
@@ -64,6 +64,8 @@
 |------|-------|--------|
 | 2026-07-10 | start | Step 1 in progress — train path + ship weights |
 | 2026-07-10 | train | Synthetic fixture 40 rows → config/p-success-weights.json (trained_sample_count=40) |
+| 2026-07-10 | commit | feat(SP-175): complete Step 1 — Train path and ship weights |
+| 2026-07-10 | start | Step 2 in progress — load, explain, docs |
 
 ## Blockers
 
