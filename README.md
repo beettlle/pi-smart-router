@@ -582,6 +582,8 @@ Exit code `2` signals regression above threshold — operators can wire this int
 
 The embedding matcher uses `@huggingface/transformers` with ONNX models (384-dim embeddings). Artifacts are downloaded at runtime and cached under `.pi-smart-router/models/` (configurable via `hydra.artifact_cache_path`). This directory is gitignored.
 
+**Abort / cancel limitation (SP-171):** `AbortSignal` is checked at phase boundaries before fleet refresh, HyDRA/dispatch, planning delegate, and each failover iteration. Mid-ONNX embedding inference cannot be cancelled — abort is fail-fast only before or after that stage, not during an in-flight ONNX run.
+
 | Encoder | Model | Context | Default |
 |---------|-------|---------|---------|
 | `minilm` | `Xenova/all-MiniLM-L6-v2` | 512 tokens | yes |

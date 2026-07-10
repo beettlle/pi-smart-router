@@ -44,7 +44,7 @@ import {
   resolvePlanningDelegatePath,
 } from './planning-delegate.js';
 import type { StreamDelegationDeps } from './types.js';
-import { isAbortError } from './utils.js';
+import { isAbortError, throwIfAborted } from './utils.js';
 
 function isPipedResult(
   result: Awaited<ReturnType<typeof delegateWithOutcome>>,
@@ -234,6 +234,10 @@ function resolveHeadroomFallbackTarget(
 /**
  * Route a request and delegate to the selected provider with failover.
  * Kept as one module to preserve the atomic failover state machine (#33).
+ *
+ * Abort checks run at phase boundaries (entry, fleet refresh, dispatch,
+ * planning delegate, each failover iteration). HyDRA/ONNX embedding inference
+ * cannot cancel mid-run — fail-fast only before/after that stage (SP-171).
  */
 export async function routeAndDelegate(
   context: Context,
@@ -241,8 +245,12 @@ export async function routeAndDelegate(
   deps: StreamDelegationDeps,
   outer: AssistantMessageEventStream,
 ): Promise<void> {
+  // Phase boundary: abort before any long work (fleet refresh, HyDRA dispatch, delegate).
+  throwIfAborted(options);
+
   const sessionId = options?.sessionId;
   if (deps.ensureFleetFresh) {
+    throwIfAborted(options);
     await deps.ensureFleetFresh();
   }
   let decision: RoutingDecision;
@@ -276,8 +284,14 @@ export async function routeAndDelegate(
       );
     }
     capturePreRouteOutcomes(request, deps, priorSnapshot, hadPin);
+    // Phase boundary: abort before HyDRA/dispatch (mid-ONNX cancel unsupported).
+    throwIfAborted(options);
     decision = await deps.router.dispatch.dispatch(request, { effectiveFleet });
   } catch (error) {
+    // Do not treat abort as a routing failure — never failover on cancel.
+    if (isAbortError(error, options)) {
+      throw error;
+    }
     const fallbackModel = resolveFallbackModel(deps, effectiveFleet);
     if (!fallbackModel) {
       throw error;
@@ -315,6 +329,8 @@ export async function routeAndDelegate(
   let delegationContext: Context = context;
 
   if (isPlanningDelegateActive(decision)) {
+    // Phase boundary: abort before planning-delegate sub-call.
+    throwIfAborted(options);
     const planningResolution = await resolvePlanningDelegatePath(
       context,
       decision,
@@ -359,6 +375,8 @@ export async function routeAndDelegate(
   let pendingFailoverInfo: FailoverNoticeInfo | undefined;
 
   while (true) {
+    // Phase boundary: abort before each failover / delegation attempt.
+    throwIfAborted(options);
     try {
       const targetProfile =
         findFleetProfile(effectiveFleet, targetModel.id) ??
