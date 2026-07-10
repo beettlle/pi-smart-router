@@ -123,6 +123,21 @@ describe('triage keyword scan (T025)', () => {
     });
   });
 
+  describe('repo-hygiene / destructive-intent (SP-176, #97)', () => {
+    it.each([
+      'help me clean up mistakenly added files in the repo',
+      'Help me clean up the repo',
+      'Please cleanup the repo after the accidental add',
+      'Unstage the mistakenly added files',
+      'Do not force push or run rm -rf on production',
+    ])('classifies "%s" as complex (keyword_frontier)', (prompt) => {
+      const result = triage(prompt);
+      expect(result.verdict).toBe('complex');
+      expect(result.reason_code).toBe('keyword_frontier');
+      expect(result.complex_hits).toBeGreaterThan(0);
+    });
+  });
+
   describe('ambiguous prompts', () => {
     it('classifies generic prompt as ambiguous', () => {
       const result = triage('Hello, how are you?');
@@ -543,6 +558,19 @@ describe('Pipeline triage stage (T027, T028)', () => {
 
       expect(decision.stage).toBe('triage');
       expect(decision.tier).toBe('frontier-cloud');
+    });
+
+    it('routes repo-cleanup fixture to frontier-cloud (SP-176)', async () => {
+      const pipeline = new RouterPipeline(triageFleet);
+      const decision = await pipeline.route(
+        makeRequest({
+          prompt_text: 'help me clean up mistakenly added files in the repo',
+        }),
+      );
+
+      expect(decision.stage).toBe('triage');
+      expect(decision.tier).toBe('frontier-cloud');
+      expect(decision.reason_code).toBe('keyword_frontier');
     });
   });
 
