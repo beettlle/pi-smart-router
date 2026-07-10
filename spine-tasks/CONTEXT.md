@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-10
 **Status:** Active
-**Next Task ID:** SP-179
+**Next Task ID:** SP-181
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -506,6 +506,24 @@
 | B | SP-177 | After SP-176 (pipeline serialization) |
 
 **Deferred:** #95 (operator skip), #96 (modernbert_k4 enablement epic), #1/#25/#26 hardware dogfooding.
+
+### Phase 39 — Release v0.9.0 Live Leaderboard Ingest (SP-179–SP-180)
+
+| Task | Summary | Size | Deps | Maps |
+|------|---------|------|------|------|
+| SP-179 | Live/recorded leaderboard snapshot ingest CLI | M | — | #100 |
+| SP-180 | Monthly CI live refresh + operator docs + mapper smoke | M | SP-179 | #100 |
+
+**Source:** GitHub #100 (P1 live leaderboard ingest follow-on #75). Operator-approved v0.9.0 scope: P1 only. Ratio: 0 bugs + 1 feature (docs empty; no open bugs; feature-only override).
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-179 | Ingest CLI + recorded snapshot |
+| B | SP-180 | After SP-179 (workflow + README) |
+
+**Deferred:** #101/#102 (P2), #103 (P3), #95 dogfood protocol, #96 modernbert_k4 enablement, #1/#25/#26 hardware.
 
 ---
 
