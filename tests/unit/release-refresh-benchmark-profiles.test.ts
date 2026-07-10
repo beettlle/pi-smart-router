@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   listDirtyReleaseProfilePaths,
   shouldSkipLiveRefresh,
-} from '../../scripts/release-refresh-benchmark-profiles.ts';
+} from '../../scripts/release-refresh-benchmark-profiles.js';
 
 describe('release-refresh-benchmark-profiles (SP-180 release gate)', () => {
   it('skips live refresh when env skip flag is set', () => {
