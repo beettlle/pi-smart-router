@@ -332,14 +332,21 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
     }
   });
 
-  it('stub registry has four adapters with provenance URLs and no default live URLs', () => {
+  it('registry has four adapters with provenance URLs; native LCB exposes live URL', () => {
     expect(Object.keys(LEADERBOARD_ADAPTERS).sort()).toEqual([...BENCHMARK_IDS].sort());
-    expect(getDefaultLiveFetchUrls()).toEqual({});
+    expect(getDefaultLiveFetchUrls()).toEqual({
+      livecodebench:
+        'https://raw.githubusercontent.com/LiveCodeBench/livecodebench.github.io/main/src/mocks/performances_generation.json',
+    });
     for (const benchmark of BENCHMARK_IDS) {
       const adapter = getLeaderboardAdapter(benchmark);
       expect(adapter.id).toBe(benchmark);
       expect(adapter.provenanceUrl).toBe(BENCHMARK_SOURCE_URLS[benchmark]);
-      expect(adapter.liveFetchUrl).toBeUndefined();
+      if (benchmark === 'livecodebench') {
+        expect(adapter.liveFetchUrl).toMatch(/performances_generation\.json$/);
+      } else {
+        expect(adapter.liveFetchUrl).toBeUndefined();
+      }
     }
   });
 

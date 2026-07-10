@@ -1,7 +1,7 @@
 /**
  * Leaderboard adapter registry — SP-181 / GitHub #104.
  *
- * Maps each BenchmarkId to a stub that accepts fixture-shaped JSON.
+ * Maps each BenchmarkId to a stub or native adapter.
  * SP-182–SP-185 replace stubs with native parsers without reworking orchestration.
  */
 
@@ -11,7 +11,7 @@ import {
 } from '../../ingest-benchmark-profiles.js';
 
 import { bfclStubAdapter } from './bfcl-stub.js';
-import { livecodebenchStubAdapter } from './livecodebench-stub.js';
+import { livecodebenchAdapter } from './livecodebench.js';
 import { swebenchVerifiedStubAdapter } from './swebench-stub.js';
 import { terminalBenchStubAdapter } from './terminal-bench-stub.js';
 import type { LeaderboardAdapter } from './types.js';
@@ -23,10 +23,10 @@ export type {
   LeaderboardLoadSource,
 } from './types.js';
 
-/** Registry of adapters keyed by benchmark id (stubs until SP-182–SP-185). */
+/** Registry of adapters keyed by benchmark id (native LCB; stubs until SP-182/184/185). */
 export const LEADERBOARD_ADAPTERS: Readonly<Record<BenchmarkId, LeaderboardAdapter>> = {
   swebench_verified: swebenchVerifiedStubAdapter,
-  livecodebench: livecodebenchStubAdapter,
+  livecodebench: livecodebenchAdapter,
   bfcl: bfclStubAdapter,
   terminal_bench: terminalBenchStubAdapter,
 };

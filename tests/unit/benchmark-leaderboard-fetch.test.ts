@@ -33,9 +33,12 @@ function loadsById(
 }
 
 describe('benchmark-leaderboard-fetch (SP-181)', () => {
-  it('exposes a stub adapter registry for all four benchmarks', () => {
+  it('exposes adapter registry; livecodebench has a default live URL (SP-183)', () => {
     expect(Object.keys(LEADERBOARD_ADAPTERS)).toHaveLength(4);
-    expect(getDefaultLiveFetchUrls()).toEqual({});
+    expect(getDefaultLiveFetchUrls()).toEqual({
+      livecodebench:
+        'https://raw.githubusercontent.com/LiveCodeBench/livecodebench.github.io/main/src/mocks/performances_generation.json',
+    });
   });
 
   it('fetchLiveLeaderboardSnapshot requires a live URL when stub has none', async () => {
@@ -114,10 +117,22 @@ describe('benchmark-leaderboard-fetch (SP-181)', () => {
   });
 
   it('falls back to checked-in recorded when live is skipped (no URL)', async () => {
+    const load = await resolveBenchmarkLeaderboardWithFallback('terminal_bench', {
+      scrapeDate: '2026-07-10',
+      recordedDir: DEFAULT_RECORDED_LEADERBOARDS_DIR,
+      fixturesDir: DEFAULT_BENCHMARK_FIXTURES_DIR,
+    });
+    expect(load.source).toBe('recorded');
+    expect(load.fixture.benchmark).toBe('terminal_bench');
+    expect(load.fixture.entries.length).toBeGreaterThan(0);
+  });
+
+  it('falls back to recorded when livecodebench live fetch fails (SP-183)', async () => {
     const load = await resolveBenchmarkLeaderboardWithFallback('livecodebench', {
       scrapeDate: '2026-07-10',
       recordedDir: DEFAULT_RECORDED_LEADERBOARDS_DIR,
       fixturesDir: DEFAULT_BENCHMARK_FIXTURES_DIR,
+      fetchFn: async () => new Response('nope', { status: 500 }),
     });
     expect(load.source).toBe('recorded');
     expect(load.fixture.benchmark).toBe('livecodebench');
