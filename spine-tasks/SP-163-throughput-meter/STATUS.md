@@ -1,5 +1,5 @@
-**Current Step:** Step 2
-**Status:** In Progress
+**Current Step:** Step 3
+**Status:** Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -18,25 +18,25 @@
 
 ## Step 2: Config and unit tests
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Add throughput config to operator/hardware config schema
 - [x] Unit tests with mocked throughput samples (above/below threshold)
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Run `npm run verify:ci`
+- [x] Run `npm run verify:ci`
 
 ---
 
 ## Completion Criteria
 
-- [ ] Rolling median tokens_per_second meter
-- [ ] Configurable window and threshold
-- [ ] Unit tests with mocked samples
-- [ ] `npm run verify:ci` passes
+- [x] Rolling median tokens_per_second meter
+- [x] Configurable window and threshold
+- [x] Unit tests with mocked samples
+- [x] `npm run verify:ci` passes
 
 ---
 
@@ -45,6 +45,7 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine-owned) |
+| 2026-07-10 | 2 | plan | skipped (engine-owned) |
 
 ## Discoveries
 
@@ -59,6 +60,9 @@
 | 2026-07-10 | Started | Step 1 — throughput meter module |
 | 2026-07-10 | Completed | Step 1 outcomes — throughput-meter.ts module |
 | 2026-07-10 | Completed | Step 1 — plan review skipped (engine-owned) |
+| 2026-07-10 | Completed | Step 2 — ThroughputConfigSchema + unit tests |
+| 2026-07-10 | Completed | Step 2 — plan review skipped (engine-owned) |
+| 2026-07-10 | Completed | Step 3 — npm run verify:ci passed |
 
 ## Blockers
 
