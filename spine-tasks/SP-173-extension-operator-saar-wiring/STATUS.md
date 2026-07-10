@@ -1,7 +1,7 @@
 # SP-173: Extension Operator SAAR Wiring — Status
 
-**Current Step:** 2
-**Status:** 🔄 In Progress
+**Current Step:** 3
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -27,20 +27,20 @@
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run scoped vitest for extension tests
-- [ ] Run full `npm test`
-- [ ] Run coverage gate
+- [x] Run scoped vitest for extension tests
+- [x] Run full `npm test`
+- [x] Run coverage gate
 
 ---
 
 ## Completion Criteria
 
-- [ ] Extension loads operator config into SessionPinner and gateway dispatch options
-- [ ] Documented SAAR / planning-delegate env vars affect live path (test-proven)
-- [ ] `pin_only_fallback` honored when set; default false
-- [ ] Integration/unit coverage for wiring
+- [x] Extension loads operator config into SessionPinner and gateway dispatch options
+- [x] Documented SAAR / planning-delegate env vars affect live path (test-proven)
+- [x] `pin_only_fallback` honored when set; default false
+- [x] Integration/unit coverage for wiring
 
 ---
 
@@ -49,6 +49,8 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine post-.DONE; SP-195) |
+| 2026-07-10 | 2 | plan | skipped (engine post-.DONE; SP-195) |
+| 2026-07-10 | 3 | plan | skipped (engine post-.DONE; SP-195) |
 
 ## Discoveries
 
@@ -61,6 +63,9 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-10 | start | Step 1 in progress — wire operator config into SessionPinner + createDispatchOptions |
+| 2026-07-10 | step1 | Wired resolveOperatorConfigFromEnv; createOperatorAwareSessionPinner; createDispatchOptions SAAR/planning/pin-only/catalog |
+| 2026-07-10 | step2 | Unit + integration tests for env wiring and pin_only_fallback |
+| 2026-07-10 | step3 | typecheck + scoped vitest OK; npm test 1474 passed; coverage:check 92.57% lines |
 
 ## Blockers
 
