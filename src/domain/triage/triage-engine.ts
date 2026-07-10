@@ -260,6 +260,21 @@ export const COMPLEX_KEYWORDS: readonly string[] = [
   'error handling strategy',
   'api design',
   'schema design',
+  // Repo-hygiene / destructive-intent (SP-176, #97) — never zero-tier on turn 1
+  'clean up the repo',
+  'cleanup the repo',
+  'repo cleanup',
+  'clean up',
+  'cleanup',
+  'mistakenly added',
+  'accidentally added',
+  'accidental add',
+  'unstage',
+  'git rm',
+  'rm -rf',
+  'force push',
+  'git reset --hard',
+  'destructive',
 ];
 
 /** Module-level singleton — built once at import time. */

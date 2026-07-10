@@ -23,6 +23,10 @@ const PLANNING_PATTERNS: readonly RegExp[] = [
   /\b(?:plan|planning|architect(?:ure)?|design|refactor|migration)\b/i,
   /\b(?:step\s*\d|phase\s*\d|breakdown|strategy|trade-?off)\b/i,
   /^#+\s*(?:plan|design|architecture)/im,
+  // Repo-hygiene / destructive-intent (SP-176, #97) — escalate off main_loop
+  /\b(?:clean\s*up(?:\s+the)?\s+repo|repo\s+cleanup|cleanup\s+the\s+repo)\b/i,
+  /\b(?:clean\s*up|cleanup|mistakenly\s+added|accidentally\s+added|accidental\s+add)\b/i,
+  /\b(?:unstage|git\s+rm|rm\s+-rf|force\s+push|git\s+reset\s+--hard|destructive)\b/i,
 ];
 
 const SUBAGENT_PATTERNS: readonly RegExp[] = [
