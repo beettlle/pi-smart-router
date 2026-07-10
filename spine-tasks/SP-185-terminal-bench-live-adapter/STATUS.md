@@ -1,10 +1,10 @@
 # SP-185: Terminal-Bench Live Source + Adapter — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
-**Review Counter:** 1
+**Review Counter:** 2
 **Iteration:** 0
 **Size:** M
 
@@ -12,7 +12,7 @@
 
 ## Step 1: Lock Terminal-Bench live source
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Choose free source or operator-mirror schema
 - [x] Implement adapter + model mapping
@@ -20,10 +20,10 @@
 
 ## Step 2: Operator docs + e2e smoke notes
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] README live sources table (all four)
-- [ ] Offline unit sample
+- [x] README live sources table (all four)
+- [x] Offline unit sample
 
 ## Step 3: Testing and verification
 
@@ -49,6 +49,7 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine post-.DONE; SP-195) |
+| 2026-07-10 | 2 | plan | skipped (engine post-.DONE; SP-195) |
 
 ## Discoveries
 
@@ -62,7 +63,9 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-10 | Step 1 started | Investigating free TB live source; plan review before implement |
-| 2026-07-10 | Step 1 outcomes | terminal-bench.ts operator-mirror adapter; index registry wired; unit tests added |
+| 2026-07-10 | Step 1 complete | terminal-bench.ts operator-mirror adapter; registry wired; unit tests |
+| 2026-07-10 | Step 2 started | README live sources table + offline unit sample |
+| 2026-07-10 | Step 2 outcomes | README live sources table for SWE/LCB/BFCL/TB; unit tests cover offline sample |
 
 ## Blockers
 
