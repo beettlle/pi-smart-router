@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,17 +10,17 @@
 
 ## Step 1: Shape regression tests
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Extend head shape tests for all K=4 dimensions
-- [ ] Test debugging dimension shortfall exclusion behavior
+- [x] Extend head shape tests for all K=4 dimensions
+- [x] Test debugging dimension shortfall exclusion behavior
 
 ## Step 2: Offline eval smoke
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Add eval harness smoke path for K=4 heads mode
-- [ ] Compare QR vs learned projection baseline on fixture subset
+- [x] Add eval harness smoke path for K=4 heads mode
+- [x] Compare QR vs learned projection baseline on fixture subset
 
 ## Step 3: Testing and verification
 
