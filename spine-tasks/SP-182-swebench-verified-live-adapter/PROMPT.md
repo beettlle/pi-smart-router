@@ -106,3 +106,13 @@ Registering `swebench_verified.liveFetchUrl` breaks two SP-181 expectations that
 | May change (added) | `tests/unit/benchmark-leaderboard-fetch.test.ts`, `tests/unit/ingest-benchmark-profiles.test.ts` |
 
 Constraint: change only expectations around `getDefaultLiveFetchUrls()` / `swebench_verified` `liveFetchUrl`; do not alter fallback orchestration behavior.
+
+### 2026-07-10 — README live-adapter note
+
+`README.md` still says live adapters require fixture-shaped JSON only. SWE-bench Verified now parses native `leaderboards.json`. Allow a minimal docs tweak:
+
+| Scope | Paths |
+|-------|-------|
+| May change (added) | `README.md` |
+
+Constraint: update only the live-ingest / adapter provenance wording; no unrelated README edits.

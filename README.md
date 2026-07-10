@@ -848,7 +848,7 @@ Capability scores in `config/benchmark-profiles.json` are grounded from public l
 | **Recorded replay** | `npm run routing:ingest-benchmarks -- --recorded` | No | Replay last successful live snapshots offline |
 | **Live + record** | `npm run routing:ingest-benchmarks -- --live` | Yes | Operator refresh; writes `tests/fixtures/benchmark-leaderboards/recorded/` then regenerates profiles |
 
-Optional flags: `--catalog-freeze-date YYYY-MM-DD`, `--scrape-date YYYY-MM-DD`, `--record-dir DIR`, `--live-url BENCHMARK=URL`, `--output PATH`. See `npm run routing:ingest-benchmarks -- --help`. Live adapters require fixture-shaped JSON; HTML pages fail fast and leave `config/benchmark-profiles.json` unchanged.
+Optional flags: `--catalog-freeze-date YYYY-MM-DD`, `--scrape-date YYYY-MM-DD`, `--record-dir DIR`, `--live-url BENCHMARK=URL`, `--output PATH`. See `npm run routing:ingest-benchmarks -- --help`. `swebench_verified` fetches native SWE-bench `leaderboards.json` (Verified board); other benchmarks still expect fixture-shaped JSON until their native adapters land. HTML pages fail fast per source and fall back to recorded/fixtures without inventing scores.
 
 **Cadence (release-tied, not calendar):**
 
