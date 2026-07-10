@@ -5,5 +5,12 @@
     "mean_quality_retention_min": 0.7,
     "mean_over_routing_rate_max": 0.15,
     "mean_pin_preserved_rate_min": 0.6
+  },
+  "baseline_regression": {
+    "reference_version": "0.6.0",
+    "max_quality_retention_drop": 0.05,
+    "max_capability_adequacy_rate_drop": 0.05,
+    "max_pin_preserved_rate_drop": 0.05,
+    "max_over_routing_rate_increase": 0.05
   }
 }

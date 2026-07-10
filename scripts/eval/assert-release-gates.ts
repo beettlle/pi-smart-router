@@ -11,7 +11,12 @@ import { resolve } from 'node:path';
 
 import { z } from 'zod';
 
+import { resolveBaselinePath } from './capture-baseline.js';
 import type { HarnessAggregateMetrics } from './harness-tracks.js';
+import {
+  computeQualityRetentionRegression,
+  DEFAULT_QR_REGRESSION_THRESHOLD,
+} from './quality-retention.js';
 import { runHarnessOnDir } from './run-harness.js';
 
 export const RELEASE_GATES_CONFIG_VERSION = 1 as const;
@@ -23,13 +28,29 @@ export const AbsoluteGatesSchema = z.object({
   mean_pin_preserved_rate_min: z.number().min(0).max(1),
 });
 
+export const BaselineRegressionGatesSchema = z.object({
+  reference_version: z.string().min(1),
+  max_quality_retention_drop: z.number().min(0).max(1).optional(),
+  max_capability_adequacy_rate_drop: z.number().min(0).max(1).optional(),
+  max_pin_preserved_rate_drop: z.number().min(0).max(1).optional(),
+  max_over_routing_rate_increase: z.number().min(0).max(1).optional(),
+});
+
 export const ReleaseGatesConfigSchema = z.object({
   version: z.literal(RELEASE_GATES_CONFIG_VERSION),
   absolute_gates: AbsoluteGatesSchema,
+  baseline_regression: BaselineRegressionGatesSchema.optional(),
 });
 
 export type AbsoluteGates = z.infer<typeof AbsoluteGatesSchema>;
+export type BaselineRegressionGates = z.infer<typeof BaselineRegressionGatesSchema>;
 export type ReleaseGatesConfig = z.infer<typeof ReleaseGatesConfigSchema>;
+
+export type HarnessGateMetrics = Pick<
+  HarnessAggregateMetrics['tracks']['capability'],
+  'mean_capability_adequacy_rate' | 'mean_quality_retention' | 'mean_over_routing_rate'
+> &
+  Pick<HarnessAggregateMetrics['tracks']['continuity'], 'mean_pin_preserved_rate'>;
 
 export interface FailedGate {
   readonly gate: keyof AbsoluteGates;
@@ -42,6 +63,33 @@ export interface FailedGate {
 export interface AssertAbsoluteGatesResult {
   readonly passed: boolean;
   readonly failed_gates: readonly FailedGate[];
+}
+
+export type BaselineRegressionGate =
+  | 'max_quality_retention_drop'
+  | 'max_capability_adequacy_rate_drop'
+  | 'max_pin_preserved_rate_drop'
+  | 'max_over_routing_rate_increase';
+
+export interface FailedBaselineGate {
+  readonly gate: BaselineRegressionGate;
+  readonly baseline_value: number;
+  readonly current_value: number;
+  readonly delta: number;
+  readonly threshold: number;
+  readonly message: string;
+}
+
+export interface AssertBaselineRegressionResult {
+  readonly passed: boolean;
+  readonly reference_version: string;
+  readonly failed_gates: readonly FailedBaselineGate[];
+}
+
+export interface AssertReleaseGatesResult {
+  readonly passed: boolean;
+  readonly absolute_gates: AssertAbsoluteGatesResult;
+  readonly baseline_regression?: AssertBaselineRegressionResult;
 }
 
 export class ReleaseGatesError extends Error {
@@ -90,11 +138,7 @@ const HarnessMetricsInputSchema = z.object({
 });
 
 /** Parse harness aggregate metrics JSON (full or track-only subset). */
-export function parseHarnessMetricsInput(raw: unknown): Pick<
-  HarnessAggregateMetrics['tracks']['capability'],
-  'mean_capability_adequacy_rate' | 'mean_quality_retention' | 'mean_over_routing_rate'
-> &
-  Pick<HarnessAggregateMetrics['tracks']['continuity'], 'mean_pin_preserved_rate'> {
+export function parseHarnessMetricsInput(raw: unknown): HarnessGateMetrics {
   const parsed = HarnessMetricsInputSchema.safeParse(raw);
   if (!parsed.success) {
     throw new ReleaseGatesError(
@@ -158,11 +202,7 @@ function checkMaxGate(
 
 /** Assert absolute release gates against harness aggregate track metrics. */
 export function assertAbsoluteGates(
-  metrics: Pick<
-    HarnessAggregateMetrics['tracks']['capability'],
-    'mean_capability_adequacy_rate' | 'mean_quality_retention' | 'mean_over_routing_rate'
-  > &
-    Pick<HarnessAggregateMetrics['tracks']['continuity'], 'mean_pin_preserved_rate'>,
+  metrics: HarnessGateMetrics,
   config: ReleaseGatesConfig,
 ): AssertAbsoluteGatesResult {
   const gates = config.absolute_gates;
@@ -202,19 +242,157 @@ export function assertAbsoluteGates(
   };
 }
 
+function checkBaselineMinDrop(
+  gate: Extract<
+    BaselineRegressionGate,
+    'max_quality_retention_drop' | 'max_capability_adequacy_rate_drop' | 'max_pin_preserved_rate_drop'
+  >,
+  baselineValue: number,
+  currentValue: number,
+  threshold: number,
+  label: string,
+): FailedBaselineGate | null {
+  const delta = Math.max(0, baselineValue - currentValue);
+  if (delta <= threshold) {
+    return null;
+  }
+  return {
+    gate,
+    baseline_value: roundRate(baselineValue),
+    current_value: roundRate(currentValue),
+    delta: roundRate(delta),
+    threshold,
+    message: `${label} dropped ${roundRate(delta)} > max ${threshold} (baseline ${roundRate(baselineValue)}, current ${roundRate(currentValue)})`,
+  };
+}
+
+function checkBaselineMaxIncrease(
+  gate: 'max_over_routing_rate_increase',
+  baselineValue: number,
+  currentValue: number,
+  threshold: number,
+  label: string,
+): FailedBaselineGate | null {
+  const delta = Math.max(0, currentValue - baselineValue);
+  if (delta <= threshold) {
+    return null;
+  }
+  return {
+    gate,
+    baseline_value: roundRate(baselineValue),
+    current_value: roundRate(currentValue),
+    delta: roundRate(delta),
+    threshold,
+    message: `${label} increased ${roundRate(delta)} > max ${threshold} (baseline ${roundRate(baselineValue)}, current ${roundRate(currentValue)})`,
+  };
+}
+
+/** Assert semver baseline regression gates against a frozen harness snapshot. */
+export function assertBaselineRegression(
+  current: HarnessGateMetrics,
+  baseline: HarnessGateMetrics,
+  gates: BaselineRegressionGates,
+): AssertBaselineRegressionResult {
+  const qrThreshold = gates.max_quality_retention_drop ?? DEFAULT_QR_REGRESSION_THRESHOLD;
+  const qrCheck = computeQualityRetentionRegression({
+    shadowQualityRetention: current.mean_quality_retention,
+    baselineQualityRetention: baseline.mean_quality_retention,
+    regressionThreshold: qrThreshold,
+  });
+
+  const checks: Array<FailedBaselineGate | null> = [
+    qrCheck.quality_regressed
+      ? {
+          gate: 'max_quality_retention_drop',
+          baseline_value: roundRate(qrCheck.baseline_quality_retention),
+          current_value: roundRate(qrCheck.shadow_quality_retention),
+          delta: roundRate(qrCheck.regression_delta),
+          threshold: qrThreshold,
+          message: `mean_quality_retention dropped ${roundRate(qrCheck.regression_delta)} > max ${qrThreshold} (baseline ${roundRate(qrCheck.baseline_quality_retention)}, current ${roundRate(qrCheck.shadow_quality_retention)})`,
+        }
+      : null,
+  ];
+
+  if (gates.max_capability_adequacy_rate_drop !== undefined) {
+    checks.push(
+      checkBaselineMinDrop(
+        'max_capability_adequacy_rate_drop',
+        baseline.mean_capability_adequacy_rate,
+        current.mean_capability_adequacy_rate,
+        gates.max_capability_adequacy_rate_drop,
+        'mean_capability_adequacy_rate',
+      ),
+    );
+  }
+
+  if (gates.max_pin_preserved_rate_drop !== undefined) {
+    checks.push(
+      checkBaselineMinDrop(
+        'max_pin_preserved_rate_drop',
+        baseline.mean_pin_preserved_rate,
+        current.mean_pin_preserved_rate,
+        gates.max_pin_preserved_rate_drop,
+        'mean_pin_preserved_rate',
+      ),
+    );
+  }
+
+  if (gates.max_over_routing_rate_increase !== undefined) {
+    checks.push(
+      checkBaselineMaxIncrease(
+        'max_over_routing_rate_increase',
+        baseline.mean_over_routing_rate,
+        current.mean_over_routing_rate,
+        gates.max_over_routing_rate_increase,
+        'mean_over_routing_rate',
+      ),
+    );
+  }
+
+  const failed_gates = checks.filter((entry): entry is FailedBaselineGate => entry !== null);
+
+  return {
+    passed: failed_gates.length === 0,
+    reference_version: gates.reference_version,
+    failed_gates,
+  };
+}
+
+/** Load baseline harness metrics from a versioned snapshot file. */
+export function loadBaselineMetricsFromVersion(version: string, baselinesDir?: string): HarnessGateMetrics {
+  const baselinePath = resolveBaselinePath(version, baselinesDir);
+  return loadHarnessMetricsFromFile(baselinePath);
+}
+
 /** Format failed gates as structured JSON for stderr. */
-export function formatFailedGatesStderr(result: AssertAbsoluteGatesResult): string {
+export function formatFailedGatesStderr(result: AssertReleaseGatesResult): string {
   return JSON.stringify(
     {
       release_gates_passed: result.passed,
-      failed_gate_count: result.failed_gates.length,
-      failed_gates: result.failed_gates.map((gate) => ({
+      absolute_gates_passed: result.absolute_gates.passed,
+      failed_absolute_gate_count: result.absolute_gates.failed_gates.length,
+      failed_absolute_gates: result.absolute_gates.failed_gates.map((gate) => ({
         gate: gate.gate,
         actual: gate.actual,
         threshold: gate.threshold,
         comparison: gate.comparison,
         message: gate.message,
       })),
+      ...(result.baseline_regression
+        ? {
+            baseline_regression_passed: result.baseline_regression.passed,
+            baseline_reference_version: result.baseline_regression.reference_version,
+            failed_baseline_gate_count: result.baseline_regression.failed_gates.length,
+            failed_baseline_gates: result.baseline_regression.failed_gates.map((gate) => ({
+              gate: gate.gate,
+              baseline_value: gate.baseline_value,
+              current_value: gate.current_value,
+              delta: gate.delta,
+              threshold: gate.threshold,
+              message: gate.message,
+            })),
+          }
+        : {}),
     },
     null,
     2,
@@ -225,13 +403,15 @@ export interface AssertReleaseGatesOptions {
   readonly configPath?: string;
   readonly metricsPath?: string;
   readonly fixturesDir?: string;
+  readonly baselinePath?: string;
+  readonly baselineVersion?: string;
 }
 
 /** Run release gate assertions from metrics file or fixtures directory. */
-export function assertReleaseGates(options: AssertReleaseGatesOptions): AssertAbsoluteGatesResult {
+export function assertReleaseGates(options: AssertReleaseGatesOptions): AssertReleaseGatesResult {
   const config = loadReleaseGatesConfigFromFile(options.configPath ?? DEFAULT_CONFIG_PATH);
 
-  let metrics: ReturnType<typeof parseHarnessMetricsInput>;
+  let metrics: HarnessGateMetrics;
 
   if (options.metricsPath) {
     metrics = loadHarnessMetricsFromFile(options.metricsPath);
@@ -247,13 +427,39 @@ export function assertReleaseGates(options: AssertReleaseGatesOptions): AssertAb
     throw new ReleaseGatesError('either --metrics or --fixtures is required');
   }
 
-  return assertAbsoluteGates(metrics, config);
+  const absolute_gates = assertAbsoluteGates(metrics, config);
+
+  let baseline_regression: AssertBaselineRegressionResult | undefined;
+  const baselineGates = config.baseline_regression;
+  const baselineVersion = options.baselineVersion ?? baselineGates?.reference_version;
+
+  if (baselineGates && baselineVersion) {
+    const baselineMetrics = options.baselinePath
+      ? loadHarnessMetricsFromFile(options.baselinePath)
+      : loadBaselineMetricsFromVersion(baselineVersion);
+
+    baseline_regression = assertBaselineRegression(metrics, baselineMetrics, {
+      ...baselineGates,
+      reference_version: baselineVersion,
+    });
+  }
+
+  const passed =
+    absolute_gates.passed && (baseline_regression === undefined || baseline_regression.passed);
+
+  return {
+    passed,
+    absolute_gates,
+    ...(baseline_regression ? { baseline_regression } : {}),
+  };
 }
 
 interface ParsedCliArgs {
   readonly configPath: string;
   readonly metricsPath?: string | undefined;
   readonly fixturesDir?: string | undefined;
+  readonly baselinePath?: string | undefined;
+  readonly baselineVersion?: string | undefined;
   readonly help?: boolean;
 }
 
@@ -261,6 +467,8 @@ function parseArgs(argv: readonly string[]): ParsedCliArgs {
   let configPath = DEFAULT_CONFIG_PATH;
   let metricsPath: string | undefined;
   let fixturesDir: string | undefined;
+  let baselinePath: string | undefined;
+  let baselineVersion: string | undefined;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -273,24 +481,33 @@ function parseArgs(argv: readonly string[]): ParsedCliArgs {
     } else if (arg === '--fixtures' && argv[i + 1]) {
       fixturesDir = resolve(argv[i + 1]!);
       i += 1;
+    } else if (arg === '--baseline' && argv[i + 1]) {
+      baselinePath = resolve(argv[i + 1]!);
+      i += 1;
+    } else if (arg === '--baseline-version' && argv[i + 1]) {
+      baselineVersion = argv[i + 1]!;
+      i += 1;
     } else if (arg === '--help' || arg === '-h') {
       return { configPath, help: true };
     }
   }
 
-  return { configPath, metricsPath, fixturesDir };
+  return { configPath, metricsPath, fixturesDir, baselinePath, baselineVersion };
 }
 
 function usage(): void {
-  console.error(`Usage: assert-release-gates (--metrics FILE | --fixtures DIR) [--config PATH]
+  console.error(`Usage: assert-release-gates (--metrics FILE | --fixtures DIR) [--config PATH] [--baseline FILE | --baseline-version VERSION]
 
 Asserts eval harness aggregate metrics against versioned absolute release gates.
+Optional baseline regression compares current metrics to a frozen semver snapshot.
 Exits 0 on pass, 1 with structured JSON on stderr when any gate fails.
 
 Options:
-  --metrics FILE    Harness aggregate metrics JSON (from routing:eval-harness)
-  --fixtures DIR    Run harness on fixture directory, then assert
-  --config PATH     Release gate config (default: config/release-gates.json)`);
+  --metrics FILE           Harness aggregate metrics JSON (from routing:eval-harness)
+  --fixtures DIR           Run harness on fixture directory, then assert
+  --config PATH            Release gate config (default: config/release-gates.json)
+  --baseline FILE          Frozen baseline metrics JSON for regression compare
+  --baseline-version VER   Baseline file version (default: tests/eval/baselines/v{VER}.json)`);
 }
 
 async function main(): Promise<void> {
@@ -309,10 +526,15 @@ async function main(): Promise<void> {
     configPath: parsed.configPath,
     ...(parsed.metricsPath ? { metricsPath: parsed.metricsPath } : {}),
     ...(parsed.fixturesDir ? { fixturesDir: parsed.fixturesDir } : {}),
+    ...(parsed.baselinePath ? { baselinePath: parsed.baselinePath } : {}),
+    ...(parsed.baselineVersion ? { baselineVersion: parsed.baselineVersion } : {}),
   });
 
   if (result.passed) {
-    console.log('release-gates: PASS');
+    const baselineNote = result.baseline_regression
+      ? ` (baseline v${result.baseline_regression.reference_version})`
+      : '';
+    console.log(`release-gates: PASS${baselineNote}`);
     process.exit(0);
   }
 

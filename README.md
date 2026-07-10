@@ -799,9 +799,20 @@ Tag-triggered publish via GitHub Actions (requires `NPMSECRET` repository secret
 
 1. `routing:verify-calibration --skip-embed` — artifact shape + triage benchmark gates (no ONNX embedding)
 2. `routing:verify-benchmark-profiles` — checked-in capability profiles match fixture ingest
-3. `assert-release-gates --fixtures tests/eval/fixtures` — eval harness aggregate metrics vs `config/release-gates.json`
+3. `assert-release-gates --fixtures tests/eval/fixtures --baseline-version 0.6.0` — eval harness aggregate metrics vs `config/release-gates.json` and semver baseline regression vs `tests/eval/baselines/v0.6.0.json`
 
 `release:check` runs the full pre-release path: `verify:ci`, consumer pack verify, then Tier 0 functional smoke.
+
+**Baseline re-capture (post-tag):** after shipping a new semver (e.g. v0.7.0), freeze harness metrics for the next regression reference:
+
+```bash
+# Capture aggregate metrics from current fixtures (writes tests/eval/baselines/v0.7.0.json)
+npm run routing:capture-baseline -- --version 0.7.0
+
+# Point release gates at the new reference (config/release-gates.json + release:functional-smoke --baseline-version)
+```
+
+Commit the new baseline JSON and update `baseline_regression.reference_version` in `config/release-gates.json` plus the `--baseline-version` flag in `release:functional-smoke`. Re-run `npm run release:check` before tagging the next release.
 
 1. `npm run release:check` (CI parity + consumer pack + Tier 0 functional smoke)
 2. `npm version 0.1.1` (creates commit + `v0.1.1` tag)
