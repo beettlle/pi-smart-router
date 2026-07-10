@@ -1,7 +1,7 @@
 # SP-177: Local Zero Tool-Use Gate — Status
 
-**Current Step:** 1
-**Status:** 🔄 In Progress
+**Current Step:** 3
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,7 +12,7 @@
 
 ## Step 1: Pre-local_zero capability estimate + skip
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Cheap tool-use / capability estimate before local_zero dispatch
 - [x] Skip when predicted need exceeds local capability or configured max
@@ -20,7 +20,7 @@
 
 ## Step 2: Operator config + tests
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
 - [x] Operator knobs with safe defaults
 - [x] Document in operator-config example (+ README if needed)
@@ -28,11 +28,11 @@
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run scoped vitest
-- [ ] Run full `npm test`
-- [ ] Run coverage gate
+- [x] Run scoped vitest
+- [x] Run full `npm test`
+- [x] Run coverage gate
 
 ---
 
@@ -51,6 +51,8 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine post-.DONE; spawnFailed=false) |
+| 2026-07-10 | 2 | plan | skipped (engine post-.DONE; spawnFailed=false) |
+| 2026-07-10 | 3 | plan | skipped (engine post-.DONE; spawnFailed=false) |
 
 ## Discoveries
 
@@ -64,7 +66,9 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-10 | Step 1 started | Plan review skipped by engine |
-| 2026-07-10 | Step 1 outcomes | estimateCheapToolUseRequirement + gate + telemetry; scoped tests 109 passed |
+| 2026-07-10 | Step 1 complete | estimate + gate + telemetry; commit 2bb54d6; scoped tests 109 passed |
+| 2026-07-10 | Step 2 complete | knobs/docs/tests landed with Step 1 commit |
+| 2026-07-10 | Step 3 complete | scoped 109; full npm test 1506; coverage:check pass (router-pipeline ~91.8% lines) |
 
 ## Blockers
 
