@@ -1,5 +1,5 @@
-**Current Step:** Step 2
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -17,15 +17,15 @@
 
 ## Step 2: Baseline regression in assert-release-gates
 
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Extend gate config with `baseline_regression` (`reference_version`, max drops)
-- [ ] Add `--baseline` and `--baseline-version` CLI flags
-- [ ] Reuse `computeQualityRetentionRegression` for QR; add optional capability/pin/over-routing deltas
+- [x] Extend gate config with `baseline_regression` (`reference_version`, max drops)
+- [x] Add `--baseline` and `--baseline-version` CLI flags
+- [x] Reuse `computeQualityRetentionRegression` for QR; add optional capability/pin/over-routing deltas
 
 ## Step 3: Wire release path and verify
 
-**Status:** Pending
+**Status:** In Progress
 
 - [ ] Update `release:functional-smoke` to pass baseline version from config
 - [ ] Document operator re-capture flow in README (post-tag v0.7.0)

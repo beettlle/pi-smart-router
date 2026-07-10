@@ -54,9 +54,9 @@ export function writeBaselineFile(options: CaptureBaselineOptions): string {
 }
 
 interface ParsedCliArgs {
-  readonly version?: string;
+  readonly version?: string | undefined;
   readonly fixturesDir: string;
-  readonly outputPath?: string;
+  readonly outputPath?: string | undefined;
   readonly help?: boolean;
 }
 
