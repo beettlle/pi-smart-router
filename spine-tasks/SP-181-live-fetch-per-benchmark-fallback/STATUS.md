@@ -1,6 +1,6 @@
 # SP-181: Live Fetch Per-Benchmark Fallback + Adapter Registry — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Adapter types + registry stubs
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] LeaderboardAdapter types + registry
 - [x] Four stub adapters (fixture-shaped JSON)
@@ -20,7 +20,7 @@
 
 ## Step 2: Per-benchmark fallback orchestration
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [x] Independent per-benchmark live → recorded → fixture
 - [x] Wire CLI / release refresh
@@ -62,6 +62,7 @@
 |------|-------|--------|
 | 2026-07-10 | start | Step 1 in progress — adapter types + registry stubs |
 | 2026-07-10 | implement | Adapters + per-benchmark fallback + scoped tests green |
+| 2026-07-10 | step1 | Complete — committed 1f2d17b |
 
 ## Blockers
 
@@ -71,4 +72,4 @@
 
 ## Notes
 
-Release refresh already invokes `--live`; per-benchmark fallback inside fetch path means no release script change required.
+Release refresh already invokes `--live`; per-benchmark fallback inside fetch path means no release script change required. Step 2 orchestration landed in the same commit as Step 1 (fetch rewrite inseparable from adapter wiring).
