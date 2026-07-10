@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,15 +6,19 @@ import { join } from 'node:path';
 import {
   HydraMatcher,
   HydraProjectionWeightsLoaderError,
+  createHydraEmbeddingProvider,
+  k4CapabilityVectorToRequirements,
   loadHydraProjectionWeights,
   parseHydraProjectionWeightsJson,
   projectToRequirements,
   resolveHydraProjectionWeights,
+  wrapModernBertHeadsEmbeddingProvider,
   type EmbeddingProvider,
   type HydraProjectionWeights,
   type RequirementVector,
   type HydraMatcherConfig,
 } from '../../src/domain/matching/hydra-matcher.js';
+import type { ModernBertHeadsPredictor } from '../../src/domain/matching/modernbert-heads.js';
 import { EMBEDDING_DIM } from '../../src/domain/matching/embedding-provider.js';
 import { buildHydraInput } from '../../src/domain/matching/hydra-input.js';
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
@@ -781,5 +785,193 @@ describe('HydraMatcher projection init', () => {
     });
 
     expect(matcher.usesLearnedProjection()).toBe(false);
+  });
+
+  it('reports modernbert_k4 mode without learned projection', () => {
+    const provider = makeMockProvider({ reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 });
+
+    const matcher = new HydraMatcher(provider, {
+      ...DEFAULT_CONFIG,
+      hydraHeads: 'modernbert_k4',
+      projectionWeightsPath: makeTempWeightsFile(makeProjectionWeights()),
+    });
+
+    expect(matcher.hydraHeadsMode()).toBe('modernbert_k4');
+    expect(matcher.usesModernBertK4()).toBe(true);
+    expect(matcher.usesLearnedProjection()).toBe(false);
+  });
+});
+
+// ─── K=4 heads wiring (SP-159) ───────────────────────────────────────────────
+
+describe('k4CapabilityVectorToRequirements', () => {
+  it('maps K=4 head output to 3-dim requirement vector', () => {
+    const requirements = k4CapabilityVectorToRequirements({
+      reasoning: 0.8,
+      code_gen: 0.6,
+      tool_use: 0.4,
+      debugging: 0.95,
+    });
+
+    expect(requirements).toEqual({
+      reasoning: 0.8,
+      code_gen: 0.6,
+      tool_use: 0.4,
+    });
+    expect(requirements).not.toHaveProperty('debugging');
+  });
+});
+
+describe('wrapModernBertHeadsEmbeddingProvider', () => {
+  it('extracts 3-dim requirements from K=4 predictor output', async () => {
+    const predictor: ModernBertHeadsPredictor = {
+      usesLearnedHeads: () => true,
+      predictCapabilities: vi.fn(async () => ({
+        reasoning: 0.7,
+        code_gen: 0.8,
+        tool_use: 0.5,
+        debugging: 0.99,
+      })),
+      dispose: vi.fn(async () => {}),
+    };
+
+    const provider = wrapModernBertHeadsEmbeddingProvider(predictor);
+    const requirements = await provider.extractRequirements('fix the flaky test');
+
+    expect(predictor.predictCapabilities).toHaveBeenCalledWith('fix the flaky test');
+    expect(requirements).toEqual({
+      reasoning: 0.7,
+      code_gen: 0.8,
+      tool_use: 0.5,
+    });
+    await provider.dispose();
+    expect(predictor.dispose).toHaveBeenCalledOnce();
+  });
+});
+
+describe('HydraMatcher modernbert_k4 path', () => {
+  it('uses 3-dim requirements for shortfall gate when debugging is high', async () => {
+    const provider = makeMockProvider({
+      reasoning: 0.5,
+      code_gen: 0.5,
+      tool_use: 0.5,
+    });
+    const matcher = new HydraMatcher(provider, {
+      ...DEFAULT_CONFIG,
+      hydraHeads: 'modernbert_k4',
+    });
+
+    const fleet: ModelProfile[] = [
+      makeModel({
+        id: 'low-debug-capable',
+        capabilities: { reasoning: 0.6, code_gen: 0.6, tool_use: 0.6 },
+      }),
+    ];
+
+    const result = await matcher.match(makeRequest(), fleet);
+
+    expect(matcher.usesModernBertK4()).toBe(true);
+    expect(result.selected).not.toBeNull();
+    expect(result.selected!.rejected_reason).toBeNull();
+  });
+});
+
+const mockModernBertPredictor = {
+  usesLearnedHeads: vi.fn(() => false),
+  predictCapabilities: vi.fn(async () => ({
+    reasoning: 0.6,
+    code_gen: 0.7,
+    tool_use: 0.4,
+    debugging: 0.9,
+  })),
+  dispose: vi.fn(async () => {}),
+};
+
+vi.mock('../../src/domain/matching/modernbert-heads.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/domain/matching/modernbert-heads.js')>();
+  return {
+    ...actual,
+    createModernBertHeadsPredictor: vi.fn(async () => mockModernBertPredictor),
+  };
+});
+
+describe('createHydraEmbeddingProvider hydra_heads branching', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('routes modernbert_k4 to ModernBERT heads predictor', async () => {
+    const { createModernBertHeadsPredictor } = await import(
+      '../../src/domain/matching/modernbert-heads.js'
+    );
+
+    const provider = await createHydraEmbeddingProvider('.cache/models', {
+      hydraHeads: 'modernbert_k4',
+    });
+
+    expect(createModernBertHeadsPredictor).toHaveBeenCalledWith('.cache/models', undefined);
+    const requirements = await provider.extractRequirements('trace this stack overflow');
+    expect(requirements).toEqual({
+      reasoning: 0.6,
+      code_gen: 0.7,
+      tool_use: 0.4,
+    });
+    await provider.dispose();
+  });
+
+  it('routes learned_projection to ONNX embedder path', async () => {
+    const mockData = new Float32Array(EMBEDDING_DIM).fill(0);
+    const mockExtractor = vi.fn(async () => ({ data: mockData }));
+    const mockPipeline = vi.fn(async () => mockExtractor);
+
+    vi.doMock('@huggingface/transformers', () => ({
+      pipeline: mockPipeline,
+    }));
+
+    const provider = await createHydraEmbeddingProvider('.cache/models', {
+      hydraHeads: 'learned_projection',
+      encoder: 'minilm',
+    });
+
+    const requirements = await provider.extractRequirements('implement quicksort');
+    expect(requirements.reasoning).toBe(0.5);
+    expect(requirements.code_gen).toBe(0.5);
+    expect(requirements.tool_use).toBe(0.5);
+    await provider.dispose();
+  });
+});
+
+describe('createHydraMatcherFromHydraConfig hydra_heads', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockModernBertPredictor.predictCapabilities.mockResolvedValue({
+      reasoning: 0.55,
+      code_gen: 0.65,
+      tool_use: 0.45,
+      debugging: 0.85,
+    });
+  });
+
+  it('wires modernbert_k4 from hydra config into matcher', async () => {
+    const { createHydraMatcherFromHydraConfig } = await import(
+      '../../src/domain/matching/hydra-matcher.js'
+    );
+
+    const matcher = await createHydraMatcherFromHydraConfig({
+      artifact_cache_path: '.cache/models',
+      hydra_heads: 'modernbert_k4',
+    });
+
+    expect(matcher.hydraHeadsMode()).toBe('modernbert_k4');
+    expect(matcher.usesModernBertK4()).toBe(true);
+
+    const result = await matcher.match(makeRequest(), [makeModel()]);
+    expect(result.requirements).toEqual({
+      reasoning: 0.55,
+      code_gen: 0.65,
+      tool_use: 0.45,
+    });
+
+    await matcher.dispose();
   });
 });

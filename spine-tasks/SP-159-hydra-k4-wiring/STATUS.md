@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Pending
+**Current Step:** Step 3
+**Status:** Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,34 +10,34 @@
 
 ## Step 1: Matcher integration
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Branch `extractRequirements` on `hydra_heads` config
-- [ ] Route `modernbert_k4` to ModernBERT heads module
-- [ ] Keep `learned_projection` (SP-115) and placeholder paths
+- [x] Branch `extractRequirements` on `hydra_heads` config
+- [x] Route `modernbert_k4` to ModernBERT heads module
+- [x] Keep `learned_projection` (SP-115) and placeholder paths
 
 ## Step 2: Migration documentation
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Document SP-115 → K=4 migration in operator config example
-- [ ] Note K=4 debugging dimension and shortfall gate behavior
+- [x] Document SP-115 → K=4 migration in operator config example
+- [x] Note K=4 debugging dimension and shortfall gate behavior
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Hydra matcher tests for learned vs K=4 paths
-- [ ] Run `npm run verify:ci`
+- [x] Hydra matcher tests for learned vs K=4 paths
+- [x] Run `npm run verify:ci`
 
 ---
 
 ## Completion Criteria
 
-- [ ] K=4 heads wired into hydra matcher
-- [ ] SP-115 learned projection path preserved
-- [ ] Migration documentation from SP-115 artifact
-- [ ] `npm run verify:ci` passes
+- [x] K=4 heads wired into hydra matcher
+- [x] SP-115 learned projection path preserved
+- [x] Migration documentation from SP-115 artifact
+- [x] `npm run verify:ci` passes
 
 ---
 
