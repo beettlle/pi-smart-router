@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -10,7 +10,7 @@
 
 ## Step 1: ModernBERT heads module
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Implement `modernbert-heads.ts` with K=4 independent sigmoid heads on [CLS]
 - [x] Dimensions: reasoning, code_gen, tool_use, debugging
@@ -18,11 +18,11 @@
 
 ## Step 2: Config and shape tests
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Add `hydra_heads` config flag (`learned_projection` | `modernbert_k4`)
-- [ ] Unit tests: head output shape [4] with values in [0,1]
-- [ ] Document when K=4 warranted (calibration Top-1 error >~10%)
+- [x] Add `hydra_heads` config flag (`learned_projection` | `modernbert_k4`)
+- [x] Unit tests: head output shape [4] with values in [0,1]
+- [x] Document when K=4 warranted (calibration Top-1 error >~10%)
 
 ## Step 3: Testing and verification
 
