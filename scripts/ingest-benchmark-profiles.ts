@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 /**
- * Benchmark capability profile ingest — SP-134, GitHub #75 (part 1).
+ * Benchmark capability profile ingest — SP-134 / SP-179, GitHub #75 / #100.
  *
- * Ingests checked-in leaderboard fixture snapshots (SWE-bench Verified,
- * Terminal-Bench, LiveCodeBench, BFCL) and emits normalized per-model
- * capability scores for SP-136 mapper integration.
+ * Modes:
+ * 1. Fixtures (default, CI-safe) — checked-in leaderboard snapshots, no network.
+ * 2. Live + record — fetch fixture-shaped JSON from public/override URLs, write
+ *    recorded snapshots, then ingest (operator refresh; fails fast on network/HTML).
+ * 3. Recorded replay — ingest from recorded live snapshots offline (CI/unit path).
  *
  * Fixture layout: `tests/fixtures/benchmark-leaderboards/<benchmark>.json`
+ * Recorded layout: `tests/fixtures/benchmark-leaderboards/recorded/<benchmark>.json`
  * Output artifact: versioned JSON with provenance + model capability rows.
  */
 
@@ -21,6 +24,12 @@ import {
   validateToolCallAst,
   type ToolCallValidationReasonCode,
 } from './lib/ast-tool-validation.js';
+
+/** Type-only imports from live-fetch module (runtime load is dynamic to avoid cycles). */
+import type {
+  LeaderboardFetchFn,
+  LiveLeaderboardFetchOptions,
+} from './lib/benchmark-leaderboard-fetch.js';
 
 export const BENCHMARK_PROFILES_VERSION = 1 as const;
 
@@ -42,6 +51,13 @@ export const DEFAULT_BENCHMARK_FIXTURES_DIR = resolve(
   'tests',
   'fixtures',
   'benchmark-leaderboards',
+);
+/** Recorded live snapshots (SP-179); sibling of checked-in fixtures. */
+export const DEFAULT_RECORDED_LEADERBOARDS_DIR = resolve(
+  'tests',
+  'fixtures',
+  'benchmark-leaderboards',
+  'recorded',
 );
 export const DEFAULT_BENCHMARK_PROFILES_PATH = resolve('config', 'benchmark-profiles.json');
 
@@ -476,38 +492,144 @@ export function ingestBenchmarkProfilesFromDir(
   return aggregateBenchmarkProfiles(fixtures, options);
 }
 
-function usage(): void {
-  console.error(
-    'Usage: npm run routing:ingest-benchmarks -- [--fixtures DIR] [--output PATH] [--catalog-freeze-date YYYY-MM-DD] [--scrape-date YYYY-MM-DD]',
-  );
+/** Aggregate already-loaded fixtures (live/recorded path) with full-benchmark check. */
+export function ingestBenchmarkProfilesFromFixtures(
+  fixtures: readonly BenchmarkLeaderboardFixture[],
+  options: IngestBenchmarkProfilesOptions = {},
+): BenchmarkProfilesArtifact {
+  const foundBenchmarks = new Set(fixtures.map((fixture) => fixture.benchmark));
+  for (const benchmark of BENCHMARK_IDS) {
+    if (!foundBenchmarks.has(benchmark)) {
+      throw new BenchmarkIngestError(`Missing fixture for benchmark: ${benchmark}`);
+    }
+  }
+  return aggregateBenchmarkProfiles(fixtures, options);
 }
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  if (args.includes('--help') || args.includes('-h')) {
-    usage();
-    return;
-  }
+export function buildUsageText(): string {
+  return [
+    'Usage: npm run routing:ingest-benchmarks -- [options]',
+    '',
+    'Modes (default = checked-in fixtures, no network):',
+    '  --fixtures DIR              Ingest from fixture directory',
+    `                              (default: ${DEFAULT_BENCHMARK_FIXTURES_DIR})`,
+    '  --recorded [DIR]            Ingest from recorded live snapshots (offline)',
+    `                              (default DIR: ${DEFAULT_RECORDED_LEADERBOARDS_DIR})`,
+    '  --live                      Fetch live fixture-shaped JSON snapshots (network),',
+    '                              write recorded files, then ingest',
+    '  --record-dir DIR            With --live: directory for recorded snapshots',
+    `                              (default: ${DEFAULT_RECORDED_LEADERBOARDS_DIR})`,
+    '  --live-url BENCHMARK=URL    Override live fetch URL for one benchmark (repeatable)',
+    '',
+    'Common:',
+    '  --output PATH               Profiles artifact path',
+    `                              (default: ${DEFAULT_BENCHMARK_PROFILES_PATH})`,
+    '  --catalog-freeze-date DATE  YYYY-MM-DD catalog freeze provenance',
+    '  --scrape-date DATE          YYYY-MM-DD scrape provenance (also stamps live records)',
+    '  -h, --help                  Show this help',
+    '',
+    'Live adapters require fixture-shaped JSON (same schema as checked-in fixtures).',
+    'HTML leaderboard pages fail fast — scores are never invented. On live/parse',
+    'failure the profiles output file is left unchanged.',
+  ].join('\n');
+}
 
+function usage(): void {
+  console.error(buildUsageText());
+}
+
+export interface ParsedIngestCliArgs {
+  readonly mode: 'fixtures' | 'recorded' | 'live';
+  readonly fixturesDir: string;
+  readonly recordDir: string;
+  readonly outputPath: string;
+  readonly catalogFreezeDate?: string;
+  readonly scrapeDate?: string;
+  readonly liveSourceUrls: Readonly<Partial<Record<BenchmarkId, string>>>;
+}
+
+function parseLiveUrlOverride(raw: string): { benchmark: BenchmarkId; url: string } {
+  const eq = raw.indexOf('=');
+  if (eq <= 0) {
+    throw new BenchmarkIngestError(
+      `--live-url requires BENCHMARK=URL (benchmarks: ${BENCHMARK_IDS.join(', ')})`,
+    );
+  }
+  const benchmark = raw.slice(0, eq);
+  const url = raw.slice(eq + 1);
+  if (!(BENCHMARK_IDS as readonly string[]).includes(benchmark)) {
+    throw new BenchmarkIngestError(
+      `Unknown benchmark in --live-url: ${benchmark} (expected ${BENCHMARK_IDS.join(', ')})`,
+    );
+  }
+  if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('file:')) {
+    throw new BenchmarkIngestError(`--live-url URL must be http(s) or file: got ${url}`);
+  }
+  return { benchmark: benchmark as BenchmarkId, url };
+}
+
+export function parseIngestCliArgs(args: readonly string[]): ParsedIngestCliArgs {
+  let mode: ParsedIngestCliArgs['mode'] = 'fixtures';
   let fixturesDir = DEFAULT_BENCHMARK_FIXTURES_DIR;
+  let recordDir = resolve(DEFAULT_RECORDED_LEADERBOARDS_DIR);
   let outputPath = DEFAULT_BENCHMARK_PROFILES_PATH;
   let catalogFreezeDate: string | undefined;
   let scrapeDate: string | undefined;
+  const liveSourceUrls: Partial<Record<BenchmarkId, string>> = {};
+  let fixturesExplicit = false;
+  let recordedExplicit = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
     if (arg === '--fixtures') {
       const next = args[i + 1];
-      if (!next) {
+      if (!next || next.startsWith('--')) {
         throw new BenchmarkIngestError('--fixtures requires a path');
       }
       fixturesDir = resolve(next);
+      fixturesExplicit = true;
+      mode = 'fixtures';
+      i++;
+      continue;
+    }
+    if (arg === '--recorded') {
+      const next = args[i + 1];
+      if (next && !next.startsWith('--')) {
+        fixturesDir = resolve(next);
+        i++;
+      } else {
+        fixturesDir = resolve(DEFAULT_RECORDED_LEADERBOARDS_DIR);
+      }
+      recordedExplicit = true;
+      mode = 'recorded';
+      continue;
+    }
+    if (arg === '--live') {
+      mode = 'live';
+      continue;
+    }
+    if (arg === '--record-dir') {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new BenchmarkIngestError('--record-dir requires a path');
+      }
+      recordDir = resolve(next);
+      i++;
+      continue;
+    }
+    if (arg === '--live-url') {
+      const next = args[i + 1];
+      if (!next || next.startsWith('--')) {
+        throw new BenchmarkIngestError('--live-url requires BENCHMARK=URL');
+      }
+      const override = parseLiveUrlOverride(next);
+      liveSourceUrls[override.benchmark] = override.url;
       i++;
       continue;
     }
     if (arg === '--output') {
       const next = args[i + 1];
-      if (!next) {
+      if (!next || next.startsWith('--')) {
         throw new BenchmarkIngestError('--output requires a path');
       }
       outputPath = resolve(next);
@@ -516,7 +638,7 @@ async function main(): Promise<void> {
     }
     if (arg === '--catalog-freeze-date') {
       const next = args[i + 1];
-      if (!next) {
+      if (!next || next.startsWith('--')) {
         throw new BenchmarkIngestError('--catalog-freeze-date requires a value');
       }
       catalogFreezeDate = next;
@@ -525,7 +647,7 @@ async function main(): Promise<void> {
     }
     if (arg === '--scrape-date') {
       const next = args[i + 1];
-      if (!next) {
+      if (!next || next.startsWith('--')) {
         throw new BenchmarkIngestError('--scrape-date requires a value');
       }
       scrapeDate = next;
@@ -535,17 +657,77 @@ async function main(): Promise<void> {
     throw new BenchmarkIngestError(`Unknown argument: ${arg}`);
   }
 
-  const preservedAliases = loadAliasesFromBenchmarkProfilesFile(outputPath);
-  const artifact = ingestBenchmarkProfilesFromDir(fixturesDir, {
+  if (mode === 'live' && (fixturesExplicit || recordedExplicit)) {
+    throw new BenchmarkIngestError(
+      'Do not combine --live with --fixtures or --recorded; live writes --record-dir then ingests from it',
+    );
+  }
+  if (fixturesExplicit && recordedExplicit) {
+    throw new BenchmarkIngestError('Use either --fixtures or --recorded, not both');
+  }
+
+  return {
+    mode,
+    fixturesDir,
+    recordDir,
+    outputPath,
     ...(catalogFreezeDate !== undefined ? { catalogFreezeDate } : {}),
     ...(scrapeDate !== undefined ? { scrapeDate } : {}),
-    aliases: preservedAliases ?? DEFAULT_FLEET_BENCHMARK_ALIASES,
-  });
+    liveSourceUrls,
+  };
+}
 
-  writeFileSync(outputPath, serializeBenchmarkProfilesArtifact(artifact), 'utf8');
+export interface RunIngestCliOptions {
+  readonly fetchFn?: LeaderboardFetchFn;
+  readonly liveFetchOptions?: Omit<LiveLeaderboardFetchOptions, 'fetchFn' | 'sourceUrls' | 'scrapeDate'>;
+}
+
+/**
+ * CLI entry body — exported for unit tests (injectable fetch; no process.exit).
+ * Writes `config/benchmark-profiles.json` only after a successful aggregate.
+ */
+export async function runIngestCli(
+  args: readonly string[],
+  options: RunIngestCliOptions = {},
+): Promise<BenchmarkProfilesArtifact> {
+  const parsed = parseIngestCliArgs(args);
+  const preservedAliases = loadAliasesFromBenchmarkProfilesFile(parsed.outputPath);
+  const ingestOptions: IngestBenchmarkProfilesOptions = {
+    ...(parsed.catalogFreezeDate !== undefined
+      ? { catalogFreezeDate: parsed.catalogFreezeDate }
+      : {}),
+    ...(parsed.scrapeDate !== undefined ? { scrapeDate: parsed.scrapeDate } : {}),
+    aliases: preservedAliases ?? DEFAULT_FLEET_BENCHMARK_ALIASES,
+  };
+
+  let artifact: BenchmarkProfilesArtifact;
+
+  if (parsed.mode === 'live') {
+    const {
+      fetchAllLiveLeaderboards,
+      writeRecordedLeaderboardSnapshots,
+    } = await import('./lib/benchmark-leaderboard-fetch.js');
+    const liveFixtures = await fetchAllLiveLeaderboards({
+      ...(options.fetchFn !== undefined ? { fetchFn: options.fetchFn } : {}),
+      ...(parsed.scrapeDate !== undefined ? { scrapeDate: parsed.scrapeDate } : {}),
+      sourceUrls: parsed.liveSourceUrls,
+      ...options.liveFetchOptions,
+    });
+    const written = writeRecordedLeaderboardSnapshots(liveFixtures, parsed.recordDir);
+    console.error(
+      `ingest-benchmark-profiles: recorded ${written.length} live snapshot(s) under ${parsed.recordDir}`,
+    );
+    artifact = ingestBenchmarkProfilesFromFixtures(liveFixtures, ingestOptions);
+  } else {
+    artifact = ingestBenchmarkProfilesFromDir(parsed.fixturesDir, ingestOptions);
+  }
+
+  writeFileSync(parsed.outputPath, serializeBenchmarkProfilesArtifact(artifact), 'utf8');
   const aliasCount = artifact.aliases !== undefined ? Object.keys(artifact.aliases).length : 0;
+  const modeLabel =
+    parsed.mode === 'live' ? 'live+record' : parsed.mode === 'recorded' ? 'recorded' : 'fixtures';
   console.error(
-    `ingest-benchmark-profiles: wrote v${artifact.version} (${artifact.models.length} model(s), ${aliasCount} alias(es)) to ${outputPath}`,
+    `ingest-benchmark-profiles: wrote v${artifact.version} (${artifact.models.length} model(s), ${aliasCount} alias(es)) to ${parsed.outputPath} [mode=${modeLabel}]`,
   );
   console.error(
     `  catalog_freeze_date=${artifact.provenance.catalog_freeze_date}, scrape_date=${artifact.provenance.scrape_date}`,
@@ -557,6 +739,16 @@ async function main(): Promise<void> {
     '  fleet aliases: preserved from existing artifact when present; else DEFAULT_FLEET_BENCHMARK_ALIASES (SP-174)',
   );
   console.error(`  ${AST_VALIDATION_FALSE_NEGATIVE_NOTE}`);
+  return artifact;
+}
+
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  if (args.includes('--help') || args.includes('-h')) {
+    usage();
+    return;
+  }
+  await runIngestCli(args);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

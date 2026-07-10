@@ -1,0 +1,27 @@
+{
+  "benchmark": "terminal_bench",
+  "source_url": "https://www.tbench.ai/leaderboard",
+  "scrape_date": "2026-07-10",
+  "entries": [
+    {
+      "model_id": "claude-opus-4-5",
+      "score": 72.5
+    },
+    {
+      "model_id": "claude-sonnet-4-6",
+      "score": 68.0
+    },
+    {
+      "model_id": "gpt-5.3-codex",
+      "score": 74.2
+    },
+    {
+      "model_id": "claude-3.5-haiku",
+      "score": 51.3
+    },
+    {
+      "model_id": "gemini-2.5-flash",
+      "score": 47.8
+    }
+  ]
+}

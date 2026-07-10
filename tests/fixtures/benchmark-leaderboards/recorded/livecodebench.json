@@ -1,0 +1,27 @@
+{
+  "benchmark": "livecodebench",
+  "source_url": "https://livecodebench.github.io/leaderboard.html",
+  "scrape_date": "2026-07-10",
+  "entries": [
+    {
+      "model_id": "claude-opus-4-5",
+      "score": 77.4
+    },
+    {
+      "model_id": "claude-sonnet-4-6",
+      "score": 73.1
+    },
+    {
+      "model_id": "gpt-5.3-codex",
+      "score": 81.6
+    },
+    {
+      "model_id": "claude-3.5-haiku",
+      "score": 55.0
+    },
+    {
+      "model_id": "gemini-2.5-flash",
+      "score": 52.4
+    }
+  ]
+}
