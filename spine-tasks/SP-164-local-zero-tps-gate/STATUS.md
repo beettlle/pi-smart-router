@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** In Progress
+**Current Step:** Step 3
+**Status:** Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,7 +10,7 @@
 
 ## Step 1: Pipeline integration
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Inject throughput meter into router pipeline
 - [x] In `localZeroTierStage`, check median tok/s before dispatch
@@ -18,25 +18,25 @@
 
 ## Step 2: Telemetry and tests
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Add `throughput_below_threshold` to local_zero skip reasons
 - [x] Unit tests with mocked throughput meter (above/below threshold)
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Run `npm run verify:ci`
+- [x] Run `npm run verify:ci`
 
 ---
 
 ## Completion Criteria
 
-- [ ] local_zero gated on rolling median tok/s
-- [ ] Fall through to economical cloud when below threshold
-- [ ] Unit tests with mocked throughput meter
-- [ ] `npm run verify:ci` passes
+- [x] local_zero gated on rolling median tok/s
+- [x] Fall through to economical cloud when below threshold
+- [x] Unit tests with mocked throughput meter
+- [x] `npm run verify:ci` passes
 
 ---
 
