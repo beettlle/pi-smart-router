@@ -62,6 +62,7 @@
     "routing:bootstrap-centroids": "node --experimental-strip-types scripts/bootstrap-routing-centroids.ts",
     "routing:calibration-aggregate": "node --experimental-strip-types scripts/calibration-aggregate.ts",
     "routing:train-calibration": "node --experimental-strip-types scripts/train-routing-calibration.ts",
+    "routing:train-p-success": "tsx scripts/train-p-success-weights.ts",
     "routing:ingest-benchmarks": "tsx scripts/ingest-benchmark-profiles.ts",
     "routing:verify-benchmark-profiles": "vitest run tests/unit/ingest-benchmark-profiles.test.ts -t \"checked-in artifact matches fixture ingest\"",
     "routing:verify-calibration": "bash -c 'if [[ \" $* \" == *\" --skip-embed \"* ]]; then vitest run tests/unit/train-routing-calibration.test.ts -t \"verifyRoutingCalibration passes|evaluates benchmark triage gates\"; else npm run build && tsx scripts/verify-routing-calibration.ts \"$@\"; fi' --",

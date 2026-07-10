@@ -420,3 +420,34 @@ describe('predictPSuccessCheapTimed (SP-105)', () => {
     nowSpy.mockRestore();
   });
 });
+
+describe('shipped dogfood P(success) weights (SP-175)', () => {
+  it('loads config/p-success-weights.json above the min-sample gate with non-neutral scores', () => {
+    const weights = loadPSuccessWeights();
+    expect(weights).not.toBeNull();
+    expect(weights!.trained_sample_count).toBeGreaterThanOrEqual(MIN_TRAINING_SAMPLES);
+    expect(weights!.min_training_samples).toBe(MIN_TRAINING_SAMPLES);
+
+    const easy = extractPSuccessFeatures(
+      makeDatasetRecord({
+        prompt_length_chars: 120,
+        triage_cyclomatic_score: 0.1,
+        requirement_reasoning: 0.15,
+      }),
+    );
+    const hard = extractPSuccessFeatures(
+      makeDatasetRecord({
+        prompt_length_chars: 4_000,
+        triage_cyclomatic_score: 0.85,
+        requirement_reasoning: 0.85,
+        has_tool_context: true,
+      }),
+    );
+
+    const easyP = predictPSuccessCheap(easy, weights!);
+    const hardP = predictPSuccessCheap(hard, weights!);
+    expect(easyP).not.toBe(NEUTRAL_P_SUCCESS);
+    expect(hardP).not.toBe(NEUTRAL_P_SUCCESS);
+    expect(easyP).toBeGreaterThan(hardP);
+  });
+});
