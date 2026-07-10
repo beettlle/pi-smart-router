@@ -521,4 +521,72 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
       }
     });
   });
+
+  describe('SP-177: pre-local_zero tool-use capability gate', () => {
+    const realisticLocal: ModelProfile = {
+      ...LOCAL_MODEL,
+      capabilities: { reasoning: 0.3, code_gen: 0.6, tool_use: 0.1 },
+    };
+    const realisticFleet: readonly ModelProfile[] = [realisticLocal, CLOUD_MODEL];
+
+    it('skips local_zero on agentic turn-1 with local ready (tool cues)', async () => {
+      const pipeline = new RouterPipeline(realisticFleet, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 16 })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({
+          prompt_text: 'Format this JSON file then run git status and delete the bad files in the repo',
+        }),
+      );
+
+      expect(decision.stage).not.toBe('local_zero');
+      expect(decision.tier).not.toBe('zero-tier');
+      expect(decision.reason_code).not.toBe('local_model_ready');
+      expect(decision.features?.local_eligible_reason).toBe('triage_trivial');
+      expect(decision.features?.tier_selection?.local_zero_skip_reasons).toContain(
+        'tool_use_capability_shortfall',
+      );
+    });
+
+    it('keeps true trivial prompts local when under tool-use threshold', async () => {
+      const pipeline = new RouterPipeline(realisticFleet, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 16 })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Format this JSON file' }),
+      );
+
+      expect(decision.stage).toBe('local_zero');
+      expect(decision.tier).toBe('zero-tier');
+      expect(decision.reason_code).toBe('local_model_ready');
+    });
+
+    it('skips local_zero when operator disables the stage', async () => {
+      const pipeline = new RouterPipeline(realisticFleet, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 16 })),
+        httpFetchPort: READY_FETCH,
+        localZeroConfig: { enabled: false, max_tool_use_requirement: 0.25 },
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Format this JSON file' }),
+      );
+
+      expect(decision.stage).not.toBe('local_zero');
+      expect(decision.tier).not.toBe('zero-tier');
+      expect(decision.features?.tier_selection?.local_zero_skip_reasons).toContain(
+        'local_zero_disabled',
+      );
+    });
+  });
 });

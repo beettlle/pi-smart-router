@@ -586,6 +586,8 @@ Additional operator defaults:
 |-----|---------|---------|
 | `loop_escalation.threshold` | 3 | Consecutive identical failures before escalating to frontier. Also used as the default **zero-tier tool-call churn** threshold (SP-178 / [#99](https://github.com/beettlle/pi-smart-router/issues/99)): while pinned to `zero-tier`, unsupported/unknown tool results escalate immediately, and N `tool_result` turns escalate via the same `loop_escalation` pin path (FR-014) — not a cache-breakeven bypass |
 | `pin_only_fallback` | `false` | Emergency pin-on-first-turn mode — see [Pin-only emergency fallback](#pin-only-emergency-fallback) |
+| `local_zero.enabled` | `true` | When `false`, skip `local_zero` dispatch (fall through to later stages). Default keeps the cheap local path for true trivial traffic |
+| `local_zero.max_tool_use_requirement` | `0.25` | Ceiling (0–1) on cheap predicted tool_use for `local_zero`. Effective limit is `min(local model tool_use, this value)`. Skips agentic git/bash/edit/explore/delete/repo cues with telemetry reason `tool_use_capability_shortfall` (SP-177 / [#98](https://github.com/beettlle/pi-smart-router/issues/98)) |
 | `local.min_memory_gb_full` | 16 | Minimum RAM for full local inference |
 | `local.battery_threshold_pct` | 20 | Minimum battery to allow local inference |
 | `pricing.staleness_days` | 14 | Max age before re-fetching pricing data |

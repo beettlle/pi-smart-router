@@ -60,5 +60,13 @@
       "exclude_execution_history": true
     }
   },
+  "local_zero": {
+    "enabled": true,
+    "max_tool_use_requirement": 0.25,
+    "_documentation": {
+      "enabled": "When false, skip local_zero entirely (fall through to triage cloud / HyDRA). Default true — does not disable local for trivial traffic.",
+      "max_tool_use_requirement": "Ceiling (0–1) on cheap predicted tool_use for local_zero dispatch. Effective limit is min(local model tool_use capability, this value). Default 0.25 keeps format/lint local while skipping agentic git/bash/edit/explore/delete/repo cues (SP-177, #98)."
+    }
+  },
   "pin_only_fallback": false
 }
