@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "absolute_gates": {
+    "mean_capability_adequacy_rate_min": 0.85,
+    "mean_quality_retention_min": 0.7,
+    "mean_over_routing_rate_max": 0.15,
+    "mean_pin_preserved_rate_min": 0.6
+  }
+}

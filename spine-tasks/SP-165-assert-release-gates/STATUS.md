@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Pending
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,35 +10,35 @@
 
 ## Step 1: Gate config and assertion module
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Add `config/release-gates.json` with zod-validated schema (`version`, `absolute_gates`)
-- [ ] Implement pure `assertAbsoluteGates(metrics, config)` returning pass/fail + failed gate list
-- [ ] Threshold keys: `mean_capability_adequacy_rate_min`, `mean_quality_retention_min`, `mean_over_routing_rate_max`, `mean_pin_preserved_rate_min`
+- [x] Add `config/release-gates.json` with zod-validated schema (`version`, `absolute_gates`)
+- [x] Implement pure `assertAbsoluteGates(metrics, config)` returning pass/fail + failed gate list
+- [x] Threshold keys: `mean_capability_adequacy_rate_min`, `mean_quality_retention_min`, `mean_over_routing_rate_max`, `mean_pin_preserved_rate_min`
 
 ## Step 2: CLI entry
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Implement `assert-release-gates.ts` with `--metrics`, `--fixtures`, `--config`
-- [ ] `--fixtures` runs `runHarnessOnDir()` then asserts
-- [ ] Structured stderr on failure; exit 0/1
+- [x] Implement `assert-release-gates.ts` with `--metrics`, `--fixtures`, `--config`
+- [x] `--fixtures` runs `runHarnessOnDir()` then asserts
+- [x] Structured stderr on failure; exit 0/1
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Unit tests: pass with current fixture metrics; fail when threshold violated
-- [ ] Run `npm run verify:ci`
+- [x] Unit tests: pass with current fixture metrics; fail when threshold violated
+- [x] Run `npm run verify:ci`
 
 ---
 
 ## Completion Criteria
 
-- [ ] `config/release-gates.json` with validated schema
-- [ ] `assert-release-gates.ts` CLI with metrics and fixtures modes
-- [ ] Unit tests for pass and fail paths
-- [ ] `npm run verify:ci` passes
+- [x] `config/release-gates.json` with validated schema
+- [x] `assert-release-gates.ts` CLI with metrics and fixtures modes
+- [x] Unit tests for pass and fail paths
+- [x] `npm run verify:ci` passes
 
 ---
 
@@ -52,13 +52,13 @@
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-07-10 | Current fixture smoke: CAR 0.875, QR 0.75, ORR 0.125, PPR 0.625 | Thresholds set slightly below/above observed values |
 
 ## Execution Log
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-10 | Step 1–3 | Implemented config, assertion module, CLI, and tests |
 
 ## Blockers
 
@@ -67,3 +67,5 @@
 | | | |
 
 ## Notes
+
+Thresholds derived from `runHarnessOnDir(tests/eval/fixtures)` smoke on 2026-07-10.
