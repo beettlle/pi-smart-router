@@ -19,10 +19,12 @@ import { z } from 'zod';
 import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
 import { buildHydraInput } from './hydra-input.js';
 import {
-  createOnnxTextEmbedder,
+  createTextEmbedder,
   EMBEDDING_DIM,
   type TextEmbedder,
 } from './embedding-provider.js';
+import type { Encoder, HydraConfig } from '../types/schemas.js';
+import { DEFAULT_ENCODER } from '../types/schemas.js';
 import {
   scoreMultiObjective,
   type FrugalityWeights,
@@ -63,6 +65,7 @@ export interface MatchResult {
 
 export interface HydraMatcherConfig {
   readonly artifactCachePath: string;
+  readonly encoder?: Encoder;
   readonly budgetMs?: number;
   readonly frugality?: FrugalityWeights;
   readonly projectionWeightsPath?: string;
@@ -434,21 +437,44 @@ export class HydraMatcher {
 // ─── ONNX embedding provider factory ─────────────────────────────────────────
 
 export interface CreateOnnxEmbeddingProviderOptions {
+  readonly encoder?: Encoder;
   readonly projectionWeightsPath?: string;
 }
 
 /**
  * Creates an EmbeddingProvider backed by the shared ONNX text embedder.
- * For multi-matcher setups, create one TextEmbedder via createOnnxTextEmbedder
+ * For multi-matcher setups, create one TextEmbedder via createTextEmbedder
  * and pass wrapHydraEmbeddingProvider(embedder) to HyDRA while sharing embed().
  */
 export async function createOnnxEmbeddingProvider(
   artifactCachePath: string,
   options?: CreateOnnxEmbeddingProviderOptions,
 ): Promise<EmbeddingProvider> {
-  const embedder = await createOnnxTextEmbedder(artifactCachePath);
+  const encoder = options?.encoder ?? DEFAULT_ENCODER;
+  const embedder = await createTextEmbedder(encoder, artifactCachePath);
   const projectionWeights = resolveHydraProjectionWeights(
     options?.projectionWeightsPath ? { filePath: options.projectionWeightsPath } : undefined,
   );
   return wrapHydraEmbeddingProvider(embedder, projectionWeights);
+}
+
+/**
+ * Bootstrap HyDRA matcher from operator hydra config (encoder + artifact path).
+ */
+export async function createHydraMatcherFromHydraConfig(
+  hydraConfig: Pick<HydraConfig, 'artifact_cache_path' | 'encoder'>,
+  options?: Omit<HydraMatcherConfig, 'artifactCachePath' | 'encoder'>,
+): Promise<HydraMatcher> {
+  const encoder = hydraConfig.encoder ?? DEFAULT_ENCODER;
+  const provider = await createOnnxEmbeddingProvider(
+    hydraConfig.artifact_cache_path,
+    options?.projectionWeightsPath === undefined
+      ? { encoder }
+      : { encoder, projectionWeightsPath: options.projectionWeightsPath },
+  );
+  return new HydraMatcher(provider, {
+    artifactCachePath: hydraConfig.artifact_cache_path,
+    encoder,
+    ...options,
+  });
 }
