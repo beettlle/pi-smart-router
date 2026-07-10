@@ -4,8 +4,8 @@ import {
   type ExtensionAPI,
 } from '@earendil-works/pi-coding-agent';
 
+import { resolveOperatorConfigFromEnv } from '../../../src/config/defaults.js';
 import { ExecutionLedger } from '../../../src/domain/delegation/execution-ledger.js';
-import { SessionPinner } from '../../../src/domain/pinning/session-pinner.js';
 import type { SessionRoutingSnapshot } from '../../../src/infrastructure/telemetry/outcome-recorder.js';
 import { createRouterFromFleet, LifecycleHookState } from '../../../src/index.js';
 
@@ -14,7 +14,11 @@ import {
   createExtensionDatasetRecorder,
   createExtensionOutcomeRecorder,
 } from './dataset-export.js';
-import { createDispatchOptions, initHydraMatcher } from './fleet-bootstrap.js';
+import {
+  createDispatchOptions,
+  createOperatorAwareSessionPinner,
+  initHydraMatcher,
+} from './fleet-bootstrap.js';
 import { setupSessionHooks } from './session-lifecycle.js';
 import { createStreamSimple } from './stream-delegation.js';
 import type { SmartRouterRuntime } from './types.js';
@@ -35,7 +39,8 @@ export async function createSmartRouterRuntime(cwd: string): Promise<{
   const modelRegistry = ModelRegistry.inMemory(authStorage);
   const hydraMatcher = await initHydraMatcher();
   const store = createExtensionStore(cwd);
-  const sessionPinner = new SessionPinner({ store });
+  const operatorConfig = resolveOperatorConfigFromEnv();
+  const sessionPinner = createOperatorAwareSessionPinner(store, operatorConfig);
   const executionLedger = new ExecutionLedger();
   const lifecycleHookState = new LifecycleHookState();
   const datasetNotify: DatasetNotify = {
@@ -62,7 +67,9 @@ export async function createSmartRouterRuntime(cwd: string): Promise<{
     sessionRouting,
     streamDeps: {
       router: createRouterFromFleet([], {
-        ...createDispatchOptions(store, sessionPinner, hydraMatcher),
+        ...createDispatchOptions(store, sessionPinner, hydraMatcher, {
+          operatorConfig,
+        }),
         lifecycleHookState,
       }),
       modelRegistry,

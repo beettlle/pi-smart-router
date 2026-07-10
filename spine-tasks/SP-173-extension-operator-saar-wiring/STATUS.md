@@ -1,7 +1,7 @@
 # SP-173: Extension Operator SAAR Wiring — Status
 
 **Current Step:** 1
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,11 +12,11 @@
 
 ## Step 1: Load operator config into runtime
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Resolve operator config via `resolveOperatorConfigFromEnv` (and optional operator-config.json if a loader already exists)
-- [ ] Construct `SessionPinner` with `saarConfig` and `pinOnlyFallback` from resolved config
-- [ ] Pass SAAR / planning / pin-only / catalog fields through `createDispatchOptions`
+- [x] Resolve operator config via `resolveOperatorConfigFromEnv` (and optional operator-config.json if a loader already exists)
+- [x] Construct `SessionPinner` with `saarConfig` and `pinOnlyFallback` from resolved config
+- [x] Pass SAAR / planning / pin-only / catalog fields through `createDispatchOptions`
 
 ## Step 2: Tests for live wiring
 
@@ -48,19 +48,19 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-10 | 1 | plan | skipped (engine post-.DONE; SP-195) |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-07-10 | No operator-config.json loader exists in extension; wire via `resolveOperatorConfigFromEnv` only. `pin_only_fallback` is config-field (not env); tests pass base override. | Use extras.operatorConfig for pin-only tests |
 
 ## Execution Log
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-10 | start | Step 1 in progress — wire operator config into SessionPinner + createDispatchOptions |
 
 ## Blockers
 

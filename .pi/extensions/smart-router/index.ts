@@ -24,6 +24,7 @@ import {
 } from './dataset-export.js';
 import {
   createDispatchOptions,
+  createOperatorAwareSessionPinner,
   discoverFleet,
   formatLmuStatus,
   initHydraMatcher,
@@ -62,6 +63,7 @@ export {
   createDispatchOptions,
   createExtensionDatasetRecorder,
   createExtensionOutcomeRecorder,
+  createOperatorAwareSessionPinner,
   createSmartRouterRuntime,
   createStreamSimple,
   deriveTurnType,
