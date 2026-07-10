@@ -1,4 +1,7 @@
 {
+  "_documentation": {
+    "pin_only_fallback": "EMERGENCY ONLY — default false. When true, the router pins on the first turn and reuses that model for all subsequent turns, skipping turn_envelope, triage, HyDRA, and sub-routing. Use when shadow quality retention regresses (>5% vs baseline) or as a manual operator fallback. See docs/routing-roadmap.md §1 and GitHub #83. Automated trigger wiring is SP-162."
+  },
   "frugality": {
     "lambda_cost": 0.5,
     "lambda_latency": 0.1,
@@ -51,5 +54,6 @@
       "max_tokens": 16384,
       "exclude_execution_history": true
     }
-  }
+  },
+  "pin_only_fallback": false
 }

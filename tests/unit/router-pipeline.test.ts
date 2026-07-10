@@ -392,6 +392,56 @@ describe('RouterPipeline', () => {
 
       expect(decision.stage).toBe('fallback');
     });
+
+    it('pin_only_fallback on warm session skips planning delegate (SP-161)', async () => {
+      const pinner = new SessionPinner({ pinOnlyFallback: true });
+      const pipeline = new RouterPipeline(pinFleet, {
+        sessionPinner: pinner,
+        pinOnlyFallback: true,
+      });
+
+      const first = await pipeline.route(makeRequest({ request_id: 'turn-0' }));
+      expect(first.stage).not.toBe('session_pin');
+
+      const planning = await pipeline.route(
+        makeRequest({ request_id: 'turn-1', turn_type: 'planning' }),
+      );
+
+      expect(planning.stage).toBe('session_pin');
+      expect(planning.reason_code).toBe('pin_only_fallback');
+      expect(planning.selected_model_id).toBe(first.selected_model_id);
+    });
+
+    it('pin_only_fallback off preserves planning delegate on warm economical pin (SP-161)', async () => {
+      const pinner = new SessionPinner();
+      pinner.recordPin('sess-1', 'econ-a', 'initial');
+
+      const pipeline = new RouterPipeline(pinFleet, {
+        sessionPinner: pinner,
+        pinOnlyFallback: false,
+      });
+      const decision = await pipeline.route(makeRequest({ turn_type: 'planning' }));
+
+      expect(decision.stage).toBe('turn_envelope');
+      expect(decision.reason_code).toBe('planning_delegate');
+    });
+
+    it('pin_only_fallback disables tool_result sub-routing on warm sessions (SP-161)', async () => {
+      const pinner = new SessionPinner({ pinOnlyFallback: true });
+      pinner.recordPin('sess-1', 'frontier-a', 'initial');
+
+      const pipeline = new RouterPipeline(pinFleet, {
+        sessionPinner: pinner,
+        pinOnlyFallback: true,
+      });
+      const decision = await pipeline.route(
+        makeRequest({ turn_type: 'tool_result', estimated_input_tokens: 50 }),
+      );
+
+      expect(decision.stage).toBe('session_pin');
+      expect(decision.reason_code).toBe('pin_only_fallback');
+      expect(decision.selected_model_id).toBe('frontier-a');
+    });
   });
 
   describe('pipeline error telemetry (SP-053)', () => {

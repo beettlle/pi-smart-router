@@ -194,6 +194,11 @@ export interface PipelineOptions {
   readonly quotaWindowPosition?: QuotaWindowPosition;
   /** Virtual cost v2 operator knobs (SP-149). */
   readonly virtualCostV2Config?: VirtualCostV2Config;
+  /**
+   * Emergency pin-only fallback (#83, SP-161). When true, warm sessions skip
+   * turn_envelope and multi-stage routing; session_pin use_pin path handles them.
+   */
+  readonly pinOnlyFallback?: boolean;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -789,7 +794,9 @@ export class RouterPipeline {
             ? 'saar_hard_lock'
             : result.saarReason === 'saar_tier_upgrade'
               ? 'saar_tier_upgrade'
-              : 'session_pinned';
+              : this.isPinOnlyFallbackActive(request)
+                ? 'pin_only_fallback'
+                : 'session_pinned';
         return {
           decided: true,
           stage: 'session_pin',
@@ -876,6 +883,7 @@ export class RouterPipeline {
 
     if (decision.reason_code === 'tool_result_sub_route') return;
     if (decision.reason_code === 'session_pinned') return;
+    if (decision.reason_code === 'pin_only_fallback') return;
     if (decision.reason_code === 'saar_buffer_active') return;
     if (decision.reason_code === 'saar_hard_lock') return;
 
@@ -968,6 +976,10 @@ export class RouterPipeline {
   };
 
   private async turnEnvelope(request: RoutingRequest): Promise<StageResult> {
+    if (this.isPinOnlyFallbackActive(request)) {
+      return { decided: false, stage: 'turn_envelope' };
+    }
+
     const turnType = request.turn_type ?? classifyTurnEnvelope(request.messages);
     const targetTier = RouterPipeline.TURN_TIER_MAP[turnType] ?? null;
 
@@ -1141,6 +1153,10 @@ export class RouterPipeline {
    * the active fleet for subsequent HyDRA matching when confidence is high.
    */
   private async lowIntensityGate(request: RoutingRequest): Promise<StageResult> {
+    if (this.isPinOnlyFallbackActive(request)) {
+      return { decided: false, stage: 'low_intensity' };
+    }
+
     const config =
       this.options.lowIntensityConfig ?? DEFAULT_OPERATOR_CONFIG.low_intensity;
     const alpha = config.p_success_alpha;
@@ -1313,6 +1329,20 @@ export class RouterPipeline {
         ? { virtualCostV2Config: this.options.virtualCostV2Config }
         : {}),
     };
+  }
+
+  /** True when pin-only emergency fallback is active for a warm session (SP-161). */
+  private isPinOnlyFallbackActive(request: RoutingRequest): boolean {
+    if (!this.options.pinOnlyFallback) {
+      return false;
+    }
+
+    const pinner = this.options.sessionPinner;
+    if (!pinner) {
+      return false;
+    }
+
+    return pinner.getPin(request.session_id) !== null;
   }
 
   private resolvePSuccessWeights(): PSuccessWeights {
