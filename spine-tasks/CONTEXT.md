@@ -1,8 +1,8 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-07-09
+**Last Updated:** 2026-07-10
 **Status:** Active
-**Next Task ID:** SP-154
+**Next Task ID:** SP-165
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -397,7 +397,37 @@
 | B | SP-147, SP-149, SP-152 | After respective part 1s |
 | C | SP-150, SP-153 | Parallel — docs/CI disjoint |
 
-**Excluded:** #80–#84 (v0.6.0), #1/#25/#26 (hardware).
+**Excluded:** #1/#25/#26 (hardware).
+
+### Phase 34 — Backlog Orchestrator v0.6.0 Security & Encoder (SP-154–SP-164)
+
+| Task | Summary | Size | Deps | Maps |
+|------|---------|------|------|------|
+| SP-154 | Entropy anomaly on prompt tail in triage | M | — | #82 (part 1) |
+| SP-155 | Flip-flop shadow log + session tier pin | S | SP-154 | #82 (part 2) |
+| SP-156 | Feature-flag encoder + Granite ONNX embedder | M | — | #80 (part 1) |
+| SP-157 | Granite latency benchmark + integration test + docs | S | SP-156 | #80 (part 2) |
+| SP-158 | ModernBERT K=4 capability heads module | M | SP-157 | #81 (part 1) |
+| SP-159 | Wire K=4 into hydra matcher + SP-115 migration | M | SP-158 | #81 (part 2) |
+| SP-160 | K=4 head shape tests + offline eval | S | SP-159 | #81 (part 3) |
+| SP-161 | pin_only_fallback config + session_pin wiring | M | — | #83 (part 1) |
+| SP-162 | Eval harness trigger + telemetry + README | S | SP-161 | #83 (part 2) |
+| SP-163 | Rolling median throughput meter | M | — | #84 (part 1) |
+| SP-164 | Gate local_zero on tok/s threshold | M | SP-163, SP-161 | #84 (part 2) |
+
+**Source:** v0.6.0 Security & Encoder release plan (issues #80 Granite/ModernBERT, #82 entropy triage, #83 pin-only fallback, #84 tok/s gate). Decomposed from five P3 issues into eleven S/M tasks.
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-154, SP-156, SP-163 | Parallel — disjoint scopes |
+| B | SP-155, SP-157 | After respective part 1s |
+| C | SP-158, SP-161 | Parallel — disjoint scopes |
+| D | SP-159, SP-162 | Parallel — disjoint scopes |
+| E | SP-160, SP-164 | SP-164 after SP-161 + SP-163 |
+
+**Excluded:** #1/#25/#26 (hardware dogfooding).
 
 ---
 
