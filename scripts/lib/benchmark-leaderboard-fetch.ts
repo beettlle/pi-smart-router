@@ -1,29 +1,30 @@
 /**
- * Live leaderboard fetch + recorded snapshot I/O — SP-179 / GitHub #100.
+ * Live leaderboard fetch + recorded snapshot I/O — SP-179 / SP-181 / GitHub #100 / #104.
  *
- * Adapters pull fixture-shaped JSON from public (or override) URLs.
- * HTML leaderboard pages are rejected with a clear error — scores are never invented.
+ * Per-benchmark orchestration: live adapter → recorded dir → checked-in fixtures.
+ * One failing live source never aborts siblings; scores are never invented.
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
   BENCHMARK_IDS,
-  BENCHMARK_SOURCE_URLS,
   BenchmarkIngestError,
+  DEFAULT_BENCHMARK_FIXTURES_DIR,
   DEFAULT_RECORDED_LEADERBOARDS_DIR,
   parseBenchmarkLeaderboardFixture,
   type BenchmarkId,
   type BenchmarkLeaderboardFixture,
 } from '../ingest-benchmark-profiles.js';
+import {
+  getLeaderboardAdapter,
+  type LeaderboardFetchFn,
+  type LeaderboardLoadSource,
+} from './leaderboard-adapters/index.js';
 
 export { DEFAULT_RECORDED_LEADERBOARDS_DIR };
-
-export type LeaderboardFetchFn = (
-  url: string,
-  init?: RequestInit,
-) => Promise<Response>;
+export type { LeaderboardFetchFn, LeaderboardLoadSource };
 
 export interface LiveLeaderboardFetchOptions {
   readonly fetchFn?: LeaderboardFetchFn;
@@ -32,6 +33,23 @@ export interface LiveLeaderboardFetchOptions {
   readonly sourceUrls?: Readonly<Partial<Record<BenchmarkId, string>>>;
   readonly signal?: AbortSignal;
   readonly timeoutMs?: number;
+  /** Recorded snapshots directory for per-benchmark fallback. */
+  readonly recordedDir?: string;
+  /** Checked-in fixtures directory for final fallback. */
+  readonly fixturesDir?: string;
+}
+
+export interface PerBenchmarkLeaderboardLoad {
+  readonly benchmark: BenchmarkId;
+  readonly fixture: BenchmarkLeaderboardFixture;
+  readonly source: LeaderboardLoadSource;
+  /** URL or filesystem path that supplied the snapshot. */
+  readonly detail: string;
+}
+
+export interface FetchAllLiveLeaderboardsResult {
+  readonly fixtures: BenchmarkLeaderboardFixture[];
+  readonly loads: readonly PerBenchmarkLeaderboardLoad[];
 }
 
 const DEFAULT_LIVE_TIMEOUT_MS = 30_000;
@@ -40,94 +58,157 @@ function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function resolveLiveFetchUrl(
+  benchmark: BenchmarkId,
+  sourceUrls: Readonly<Partial<Record<BenchmarkId, string>>> | undefined,
+): string | undefined {
+  const override = sourceUrls?.[benchmark];
+  if (override !== undefined && override.length > 0) {
+    return override;
+  }
+  return getLeaderboardAdapter(benchmark).liveFetchUrl;
+}
+
 /**
- * Fetch one benchmark leaderboard as fixture-shaped JSON.
+ * Fetch one benchmark leaderboard via its registry adapter.
  * Network and parse failures throw {@link BenchmarkIngestError}.
+ * Requires a live URL (adapter default or `--live-url` override).
  */
 export async function fetchLiveLeaderboardSnapshot(
   benchmark: BenchmarkId,
   options: LiveLeaderboardFetchOptions = {},
 ): Promise<BenchmarkLeaderboardFixture> {
-  const url = options.sourceUrls?.[benchmark] ?? BENCHMARK_SOURCE_URLS[benchmark];
+  const adapter = getLeaderboardAdapter(benchmark);
+  const url = resolveLiveFetchUrl(benchmark, options.sourceUrls);
+  if (url === undefined) {
+    throw new BenchmarkIngestError(
+      `No live fetch URL for ${benchmark}: pass --live-url ${benchmark}=URL ` +
+        '(stub adapter has no default until the native SP-182+ adapter lands)',
+    );
+  }
+
   const fetchFn = options.fetchFn ?? globalThis.fetch.bind(globalThis);
   const scrapeDate = options.scrapeDate ?? todayIsoDate();
   const timeoutMs = options.timeoutMs ?? DEFAULT_LIVE_TIMEOUT_MS;
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  const onOuterAbort = (): void => {
-    controller.abort();
-  };
-  options.signal?.addEventListener('abort', onOuterAbort, { once: true });
+  return adapter.fetchAndNormalize({
+    url,
+    fetchFn,
+    scrapeDate,
+    timeoutMs,
+    ...(options.signal !== undefined ? { signal: options.signal } : {}),
+  });
+}
 
-  let response: Response;
-  try {
-    response = await fetchFn(url, {
-      signal: controller.signal,
-      headers: { Accept: 'application/json, text/plain;q=0.9, */*;q=0.8' },
-    });
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    throw new BenchmarkIngestError(
-      `Live fetch failed for ${benchmark} (${url}): ${detail}`,
-      { cause: err },
-    );
-  } finally {
-    clearTimeout(timeout);
-    options.signal?.removeEventListener('abort', onOuterAbort);
+function tryLoadBenchmarkSnapshotFromDir(
+  dir: string,
+  benchmark: BenchmarkId,
+): { fixture: BenchmarkLeaderboardFixture; path: string } | undefined {
+  const path = join(dir, `${benchmark}.json`);
+  if (!existsSync(path)) {
+    return undefined;
   }
-
-  if (!response.ok) {
-    throw new BenchmarkIngestError(
-      `Live fetch HTTP ${response.status} for ${benchmark} (${url})`,
-    );
-  }
-
-  let body: string;
-  try {
-    body = await response.text();
-  } catch (err) {
-    throw new BenchmarkIngestError(
-      `Live fetch body read failed for ${benchmark} (${url})`,
-      { cause: err },
-    );
-  }
-
-  const trimmed = body.trim();
-  if (trimmed.length === 0) {
-    throw new BenchmarkIngestError(`Live fetch returned empty body for ${benchmark} (${url})`);
-  }
-  if (trimmed.startsWith('<!') || trimmed.toLowerCase().startsWith('<html')) {
-    throw new BenchmarkIngestError(
-      `Live fetch for ${benchmark} returned HTML, not fixture-shaped JSON (${url}). ` +
-        'Point --live-url at a JSON mirror matching the leaderboard fixture schema, ' +
-        'or place recorded snapshots under --record-dir / --recorded.',
-    );
-  }
-
-  const fixture = parseBenchmarkLeaderboardFixture(trimmed, `live:${benchmark}`);
+  const text = readFileSync(path, 'utf8');
+  const fixture = parseBenchmarkLeaderboardFixture(text, path);
   if (fixture.benchmark !== benchmark) {
     throw new BenchmarkIngestError(
-      `Live snapshot benchmark mismatch for ${benchmark}: got ${fixture.benchmark}`,
+      `Snapshot benchmark mismatch in ${path}: expected ${benchmark}, got ${fixture.benchmark}`,
+    );
+  }
+  return { fixture, path };
+}
+
+/**
+ * Resolve one benchmark: live adapter → recorded → checked-in fixture.
+ * Live failures are swallowed so siblings can still succeed; missing all
+ * three sources throws.
+ */
+export async function resolveBenchmarkLeaderboardWithFallback(
+  benchmark: BenchmarkId,
+  options: LiveLeaderboardFetchOptions = {},
+): Promise<PerBenchmarkLeaderboardLoad> {
+  const scrapeDate = options.scrapeDate ?? todayIsoDate();
+  const recordedDir = options.recordedDir ?? DEFAULT_RECORDED_LEADERBOARDS_DIR;
+  const fixturesDir = options.fixturesDir ?? DEFAULT_BENCHMARK_FIXTURES_DIR;
+  const liveErrors: string[] = [];
+
+  const liveUrl = resolveLiveFetchUrl(benchmark, options.sourceUrls);
+  if (liveUrl !== undefined) {
+    try {
+      const fixture = await fetchLiveLeaderboardSnapshot(benchmark, options);
+      return {
+        benchmark,
+        fixture: { ...fixture, scrape_date: scrapeDate },
+        source: 'live',
+        detail: liveUrl,
+      };
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      liveErrors.push(detail);
+    }
+  } else {
+    liveErrors.push(
+      `No live fetch URL for ${benchmark} (stub default unset; pass --live-url to attempt live)`,
+    );
+  }
+
+  const recorded = tryLoadBenchmarkSnapshotFromDir(recordedDir, benchmark);
+  if (recorded !== undefined) {
+    return {
+      benchmark,
+      fixture: { ...recorded.fixture, scrape_date: scrapeDate },
+      source: 'recorded',
+      detail: recorded.path,
+    };
+  }
+
+  const checkedIn = tryLoadBenchmarkSnapshotFromDir(fixturesDir, benchmark);
+  if (checkedIn !== undefined) {
+    return {
+      benchmark,
+      fixture: { ...checkedIn.fixture, scrape_date: scrapeDate },
+      source: 'fixture',
+      detail: checkedIn.path,
+    };
+  }
+
+  const liveNote =
+    liveErrors.length > 0 ? ` Live attempts: ${liveErrors.join('; ')}` : '';
+  throw new BenchmarkIngestError(
+    `No leaderboard snapshot for ${benchmark}: live failed or skipped, ` +
+      `recorded missing under ${recordedDir}, fixture missing under ${fixturesDir}.${liveNote}`,
+  );
+}
+
+/**
+ * Fetch/resolve all four benchmark leaderboards independently.
+ * Fail-fast-all-four behavior is removed — one live failure does not block siblings.
+ */
+export async function fetchAllLiveLeaderboards(
+  options: LiveLeaderboardFetchOptions = {},
+): Promise<FetchAllLiveLeaderboardsResult> {
+  const loads: PerBenchmarkLeaderboardLoad[] = [];
+  const errors: string[] = [];
+
+  for (const benchmark of BENCHMARK_IDS) {
+    try {
+      loads.push(await resolveBenchmarkLeaderboardWithFallback(benchmark, options));
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      errors.push(detail);
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new BenchmarkIngestError(
+      `Failed to resolve ${errors.length} benchmark leaderboard(s):\n- ${errors.join('\n- ')}`,
     );
   }
 
   return {
-    ...fixture,
-    source_url: fixture.source_url || url,
-    scrape_date: scrapeDate,
+    fixtures: loads.map((load) => load.fixture),
+    loads,
   };
-}
-
-/** Fetch all four benchmark leaderboards; fails fast on the first error. */
-export async function fetchAllLiveLeaderboards(
-  options: LiveLeaderboardFetchOptions = {},
-): Promise<BenchmarkLeaderboardFixture[]> {
-  const fixtures: BenchmarkLeaderboardFixture[] = [];
-  for (const benchmark of BENCHMARK_IDS) {
-    fixtures.push(await fetchLiveLeaderboardSnapshot(benchmark, options));
-  }
-  return fixtures;
 }
 
 /** Serialize a leaderboard fixture with stable formatting. */

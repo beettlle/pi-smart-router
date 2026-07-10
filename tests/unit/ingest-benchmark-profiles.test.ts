@@ -25,9 +25,15 @@ import {
   type SkippedToolCallEntry,
 } from '../../scripts/ingest-benchmark-profiles.js';
 import {
+  fetchAllLiveLeaderboards,
   fetchLiveLeaderboardSnapshot,
   writeRecordedLeaderboardSnapshots,
 } from '../../scripts/lib/benchmark-leaderboard-fetch.js';
+import {
+  getDefaultLiveFetchUrls,
+  getLeaderboardAdapter,
+  LEADERBOARD_ADAPTERS,
+} from '../../scripts/lib/leaderboard-adapters/index.js';
 
 function fixture(
   benchmark: BenchmarkLeaderboardFixture['benchmark'],
@@ -277,7 +283,7 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
   });
 });
 
-describe('ingest-benchmark-profiles live/recorded (SP-179)', () => {
+describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
   it('documents --live, --recorded, and --record-dir in CLI help', () => {
     const help = buildUsageText();
     expect(help).toContain('--live');
@@ -285,6 +291,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179)', () => {
     expect(help).toContain('--record-dir');
     expect(help).toContain('--live-url');
     expect(help).toMatch(/default = checked-in fixtures/i);
+    expect(help).toMatch(/fallback/i);
   });
 
   it('defaults CLI mode to fixtures with no network flags', () => {
@@ -325,26 +332,93 @@ describe('ingest-benchmark-profiles live/recorded (SP-179)', () => {
     }
   });
 
-  it('live success records snapshots then writes profiles; HTML live fails without corrupting output', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'sp179-live-'));
+  it('stub registry has four adapters with provenance URLs and no default live URLs', () => {
+    expect(Object.keys(LEADERBOARD_ADAPTERS).sort()).toEqual([...BENCHMARK_IDS].sort());
+    expect(getDefaultLiveFetchUrls()).toEqual({});
+    for (const benchmark of BENCHMARK_IDS) {
+      const adapter = getLeaderboardAdapter(benchmark);
+      expect(adapter.id).toBe(benchmark);
+      expect(adapter.provenanceUrl).toBe(BENCHMARK_SOURCE_URLS[benchmark]);
+      expect(adapter.liveFetchUrl).toBeUndefined();
+    }
+  });
+
+  it('HTML live falls back to recorded/fixtures without corrupting output when all live fails', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sp181-html-fallback-'));
     const outputPath = join(dir, 'benchmark-profiles.json');
     const recordDir = join(dir, 'recorded');
     writeFileSync(outputPath, '{"sentinel":true}\n', 'utf8');
 
     try {
-      await expect(
-        runIngestCli(['--live', '--record-dir', recordDir, '--output', outputPath], {
+      await runIngestCli(
+        [
+          '--live',
+          '--record-dir',
+          recordDir,
+          '--output',
+          outputPath,
+          '--catalog-freeze-date',
+          '2026-07-10',
+          '--scrape-date',
+          '2026-07-10',
+        ],
+        {
           fetchFn: async () =>
             new Response('<!DOCTYPE html><html><body>leaderboard</body></html>', {
               status: 200,
             }),
-        }),
-      ).rejects.toThrow(/HTML/);
+        },
+      );
+
+      const artifact = parseBenchmarkProfilesArtifact(JSON.parse(readFileSync(outputPath, 'utf8')));
+      expect(artifact.provenance.scrape_date).toBe('2026-07-10');
+      expect(artifact.models.length).toBeGreaterThan(0);
+      const recordedFiles = readdirSync(recordDir).filter((name) => name.endsWith('.json')).sort();
+      expect(recordedFiles).toEqual([
+        'bfcl.json',
+        'livecodebench.json',
+        'swebench_verified.json',
+        'terminal_bench.json',
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('live with --live-url records snapshots; empty fallback dirs fail without corrupting output', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sp181-live-'));
+    const outputPath = join(dir, 'benchmark-profiles.json');
+    const recordDir = join(dir, 'recorded');
+    const emptyFallback = join(dir, 'empty-fallback');
+    writeFileSync(outputPath, '{"sentinel":true}\n', 'utf8');
+
+    const mirrorBase = 'https://mirror.example/leaderboards';
+    const liveUrlArgs = BENCHMARK_IDS.flatMap((benchmark) => [
+      '--live-url',
+      `${benchmark}=${mirrorBase}/${benchmark}.json`,
+    ]);
+
+    try {
+      await expect(
+        runIngestCli(
+          ['--live', '--record-dir', recordDir, '--output', outputPath, ...liveUrlArgs],
+          {
+            fetchFn: async () =>
+              new Response('<!DOCTYPE html><html><body>leaderboard</body></html>', {
+                status: 200,
+              }),
+            liveFetchOptions: {
+              recordedDir: emptyFallback,
+              fixturesDir: emptyFallback,
+            },
+          },
+        ),
+      ).rejects.toThrow(/No leaderboard snapshot|HTML|Failed to resolve/);
 
       expect(readFileSync(outputPath, 'utf8')).toContain('sentinel');
       expect(() => readdirSync(recordDir)).toThrow();
 
-      const bodies = new Map(
+      const bodies = new Map<string, string>(
         BENCHMARK_IDS.map((benchmark) => {
           const payload: BenchmarkLeaderboardFixture = {
             benchmark,
@@ -355,7 +429,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179)', () => {
               { model_id: 'gpt-5.3-codex', score: 82 },
             ],
           };
-          return [BENCHMARK_SOURCE_URLS[benchmark], JSON.stringify(payload)] as const;
+          return [`${mirrorBase}/${benchmark}.json`, JSON.stringify(payload)];
         }),
       );
 
@@ -370,6 +444,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179)', () => {
           '2026-07-10',
           '--scrape-date',
           '2026-07-10',
+          ...liveUrlArgs,
         ],
         {
           fetchFn: async (url) => {
@@ -381,6 +456,10 @@ describe('ingest-benchmark-profiles live/recorded (SP-179)', () => {
               status: 200,
               headers: { 'Content-Type': 'application/json' },
             });
+          },
+          liveFetchOptions: {
+            recordedDir: emptyFallback,
+            fixturesDir: emptyFallback,
           },
         },
       );
@@ -408,9 +487,63 @@ describe('ingest-benchmark-profiles live/recorded (SP-179)', () => {
     }
   });
 
+  it('mixed live success + live fail falls back per benchmark; siblings still present', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sp181-mixed-'));
+    const recordDir = join(dir, 'out-recorded');
+    const mirrorBase = 'https://mirror.example/mixed';
+
+    try {
+      const result = await fetchAllLiveLeaderboards({
+        scrapeDate: '2026-07-10',
+        sourceUrls: {
+          swebench_verified: `${mirrorBase}/swebench_verified.json`,
+          livecodebench: `${mirrorBase}/livecodebench.json`,
+          bfcl: `${mirrorBase}/bfcl.json`,
+          terminal_bench: `${mirrorBase}/terminal_bench.json`,
+        },
+        recordedDir: DEFAULT_RECORDED_LEADERBOARDS_DIR,
+        fixturesDir: DEFAULT_BENCHMARK_FIXTURES_DIR,
+        fetchFn: async (url) => {
+          if (url.endsWith('/swebench_verified.json')) {
+            const payload: BenchmarkLeaderboardFixture = {
+              benchmark: 'swebench_verified',
+              source_url: BENCHMARK_SOURCE_URLS.swebench_verified,
+              scrape_date: '2026-07-10',
+              entries: [{ model_id: 'claude-opus-4-5', score: 91 }],
+            };
+            return new Response(JSON.stringify(payload), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+          return new Response('<!DOCTYPE html><html></html>', { status: 200 });
+        },
+      });
+
+      expect(result.fixtures).toHaveLength(4);
+      expect(result.loads.map((load) => load.benchmark).sort()).toEqual([...BENCHMARK_IDS].sort());
+
+      const byId = Object.fromEntries(
+        result.loads.map((load) => [load.benchmark, load] as const),
+      );
+      expect(byId.swebench_verified?.source).toBe('live');
+      expect(byId.swebench_verified?.fixture.entries[0]?.score).toBe(91);
+      expect(byId.livecodebench?.source).not.toBe('live');
+      expect(byId.bfcl?.source).not.toBe('live');
+      expect(byId.terminal_bench?.source).not.toBe('live');
+      expect(byId.livecodebench?.fixture.entries.length).toBeGreaterThan(0);
+
+      writeRecordedLeaderboardSnapshots(result.fixtures, recordDir);
+      expect(readdirSync(recordDir).filter((n) => n.endsWith('.json'))).toHaveLength(4);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('fetchLiveLeaderboardSnapshot rejects network errors clearly', async () => {
     await expect(
       fetchLiveLeaderboardSnapshot('bfcl', {
+        sourceUrls: { bfcl: 'https://mirror.example/bfcl.json' },
         fetchFn: async () => {
           throw new Error('ECONNREFUSED');
         },

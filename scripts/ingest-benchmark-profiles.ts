@@ -4,8 +4,8 @@
  *
  * Modes:
  * 1. Fixtures (default, CI-safe) — checked-in leaderboard snapshots, no network.
- * 2. Live + record — fetch fixture-shaped JSON from public/override URLs, write
- *    recorded snapshots, then ingest (operator refresh; fails fast on network/HTML).
+ * 2. Live + record — per-benchmark live adapter → recorded → checked-in fixtures,
+ *    write assembled snapshots, then ingest (one live failure does not block siblings).
  * 3. Recorded replay — ingest from recorded live snapshots offline (CI/unit path).
  *
  * Fixture layout: `tests/fixtures/benchmark-leaderboards/<benchmark>.json`
@@ -61,13 +61,24 @@ export const DEFAULT_RECORDED_LEADERBOARDS_DIR = resolve(
 );
 export const DEFAULT_BENCHMARK_PROFILES_PATH = resolve('config', 'benchmark-profiles.json');
 
-/** Public leaderboard URLs recorded in provenance (fixtures mirror these sources). */
+/**
+ * Human-facing provenance URLs (HTML docs / leaderboard pages).
+ * Distinct from machine-readable live fetch endpoints on adapters (`liveFetchUrl`).
+ * Artifact provenance and fixture `source_url` fields use these values.
+ */
 export const BENCHMARK_SOURCE_URLS: Readonly<Record<BenchmarkId, string>> = {
   swebench_verified: 'https://www.swebench.com/',
   terminal_bench: 'https://www.tbench.ai/leaderboard',
   livecodebench: 'https://livecodebench.github.io/leaderboard.html',
   bfcl: 'https://gorilla.cs.berkeley.edu/leaderboard.html',
 };
+
+/**
+ * Default live fetch URL overrides are empty while stub adapters are in use
+ * (SP-181). Native adapters (SP-182–SP-185) set `liveFetchUrl` on the registry;
+ * operators may still pass `--live-url BENCHMARK=URL` for JSON mirrors.
+ */
+export const BENCHMARK_LIVE_FETCH_URLS: Readonly<Partial<Record<BenchmarkId, string>>> = {};
 
 /**
  * HyDRA K=3 dimension weights per benchmark source.
@@ -515,11 +526,12 @@ export function buildUsageText(): string {
     `                              (default: ${DEFAULT_BENCHMARK_FIXTURES_DIR})`,
     '  --recorded [DIR]            Ingest from recorded live snapshots (offline)',
     `                              (default DIR: ${DEFAULT_RECORDED_LEADERBOARDS_DIR})`,
-    '  --live                      Fetch live fixture-shaped JSON snapshots (network),',
-    '                              write recorded files, then ingest',
-    '  --record-dir DIR            With --live: directory for recorded snapshots',
+    '  --live                      Per-benchmark live adapter fetch with fallback to',
+    '                              recorded then checked-in fixtures; write --record-dir, ingest',
+    '  --record-dir DIR            With --live: directory for written snapshots',
     `                              (default: ${DEFAULT_RECORDED_LEADERBOARDS_DIR})`,
-    '  --live-url BENCHMARK=URL    Override live fetch URL for one benchmark (repeatable)',
+    '  --live-url BENCHMARK=URL    Override live fetch URL for one benchmark (repeatable;',
+    '                              required for stub adapters until native parsers land)',
     '',
     'Common:',
     '  --output PATH               Profiles artifact path',
@@ -528,9 +540,10 @@ export function buildUsageText(): string {
     '  --scrape-date DATE          YYYY-MM-DD scrape provenance (also stamps live records)',
     '  -h, --help                  Show this help',
     '',
-    'Live adapters require fixture-shaped JSON (same schema as checked-in fixtures).',
-    'HTML leaderboard pages fail fast — scores are never invented. On live/parse',
-    'failure the profiles output file is left unchanged.',
+    'Stub live adapters require fixture-shaped JSON (same schema as checked-in fixtures).',
+    'HTML pages fail the live attempt for that benchmark only, then fall back — scores',
+    'are never invented. If every source fails for a benchmark, the profiles output',
+    'file is left unchanged.',
   ].join('\n');
 }
 
@@ -707,15 +720,21 @@ export async function runIngestCli(
       fetchAllLiveLeaderboards,
       writeRecordedLeaderboardSnapshots,
     } = await import('./lib/benchmark-leaderboard-fetch.js');
-    const liveFixtures = await fetchAllLiveLeaderboards({
+    // Fallback reads checked-in recorded/fixtures (defaults); --record-dir is write-only.
+    const { fixtures: liveFixtures, loads } = await fetchAllLiveLeaderboards({
       ...(options.fetchFn !== undefined ? { fetchFn: options.fetchFn } : {}),
       ...(parsed.scrapeDate !== undefined ? { scrapeDate: parsed.scrapeDate } : {}),
       sourceUrls: parsed.liveSourceUrls,
       ...options.liveFetchOptions,
     });
+    for (const load of loads) {
+      console.error(
+        `ingest-benchmark-profiles: ${load.benchmark} source=${load.source} (${load.detail})`,
+      );
+    }
     const written = writeRecordedLeaderboardSnapshots(liveFixtures, parsed.recordDir);
     console.error(
-      `ingest-benchmark-profiles: recorded ${written.length} live snapshot(s) under ${parsed.recordDir}`,
+      `ingest-benchmark-profiles: recorded ${written.length} snapshot(s) under ${parsed.recordDir}`,
     );
     artifact = ingestBenchmarkProfilesFromFixtures(liveFixtures, ingestOptions);
   } else {
