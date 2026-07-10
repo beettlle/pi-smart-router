@@ -690,6 +690,57 @@ describe('createStreamSimple', () => {
     }
   });
 
+  it('ends with aborted and does not failover when signal aborts mid-stream', async () => {
+    const controller = new AbortController();
+    const target = registryModels[0]!;
+
+    mockDelegateStreamSimple.mockImplementation((model: Model<Api>) => {
+      const stream = createAssistantMessageEventStream();
+      const partial = makeAssistantPartial(model);
+      void (async () => {
+        stream.push({ type: 'start', partial });
+        await Promise.resolve();
+        controller.abort();
+        await Promise.resolve();
+        stream.push({ type: 'done', reason: 'stop', message: partial });
+        stream.end(partial);
+      })();
+      return stream;
+    });
+
+    const router = createMockRouter(
+      vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' })),
+    );
+    const selectFailover = vi.spyOn(router.dispatch, 'selectFailover');
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router,
+        modelRegistry: createMockRegistry(registryModels),
+        fleet,
+        executionLedger: new ExecutionLedger(),
+      }),
+    );
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')]), {
+        signal: controller.signal,
+      }),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(1);
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]).toEqual(target);
+    expect(selectFailover).not.toHaveBeenCalled();
+
+    const errorEvent = events.find((event) => event.type === 'error');
+    expect(errorEvent?.type).toBe('error');
+    if (errorEvent?.type === 'error') {
+      expect(errorEvent.reason).toBe('aborted');
+      expect(errorEvent.error.stopReason).toBe('aborted');
+    }
+    expect(events.some((event) => event.type === 'done')).toBe(false);
+  });
+
   it('rewrites virtual router history before delegating to preserve replay identity', async () => {
     const target = registryModels[1]!;
     const signature = 'dGhvdWdodC1zaWduYXR1cmU=';
