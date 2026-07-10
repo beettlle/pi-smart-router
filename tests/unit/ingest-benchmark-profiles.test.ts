@@ -332,38 +332,29 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
     }
   });
 
-<<<<<<< HEAD
-  it('registry has four adapters; swebench + livecodebench have native live URLs', () => {
+  it('registry has four native adapters; terminal_bench omits default live URL', () => {
     expect(Object.keys(LEADERBOARD_ADAPTERS).sort()).toEqual([...BENCHMARK_IDS].sort());
     expect(getDefaultLiveFetchUrls()).toEqual({
       swebench_verified:
         'https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json',
       livecodebench:
         'https://raw.githubusercontent.com/LiveCodeBench/livecodebench.github.io/main/src/mocks/performances_generation.json',
-=======
-  it('registry has four adapters with provenance URLs; bfcl has native live URL (SP-184)', () => {
-    expect(Object.keys(LEADERBOARD_ADAPTERS).sort()).toEqual([...BENCHMARK_IDS].sort());
-    expect(getDefaultLiveFetchUrls()).toEqual({
       bfcl: 'https://raw.githubusercontent.com/ShishirPatil/gorilla/gh-pages/data_overall.csv',
->>>>>>> task/spine-lane-3-20260710T232232
     });
     for (const benchmark of BENCHMARK_IDS) {
       const adapter = getLeaderboardAdapter(benchmark);
       expect(adapter.id).toBe(benchmark);
       expect(adapter.provenanceUrl).toBe(BENCHMARK_SOURCE_URLS[benchmark]);
-<<<<<<< HEAD
       if (benchmark === 'swebench_verified') {
         expect(adapter.liveFetchUrl).toBe(
           'https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json',
         );
       } else if (benchmark === 'livecodebench') {
         expect(adapter.liveFetchUrl).toMatch(/performances_generation\.json$/);
-=======
-      if (benchmark === 'bfcl') {
+      } else if (benchmark === 'bfcl') {
         expect(adapter.liveFetchUrl).toBe(
           'https://raw.githubusercontent.com/ShishirPatil/gorilla/gh-pages/data_overall.csv',
         );
->>>>>>> task/spine-lane-3-20260710T232232
       } else {
         expect(adapter.liveFetchUrl).toBeUndefined();
       }
@@ -447,7 +438,6 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
 
       const bodies = new Map<string, string>(
         BENCHMARK_IDS.map((benchmark) => {
-<<<<<<< HEAD
           if (benchmark === 'livecodebench') {
             // Native SP-183 adapter expects performances_generation.json shape.
             // Only emit models also present in stub mirrors so ingest covers all dims.
@@ -461,7 +451,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
               ],
             };
             return [`${mirrorBase}/${benchmark}.json`, JSON.stringify(lcbPayload)];
-=======
+          }
           if (benchmark === 'bfcl') {
             // SP-184 native adapter expects Gorilla CSV, not fixture-shaped JSON
             const csv = [
@@ -470,7 +460,6 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
               '2,82%,gpt-5.3-codex (FC),OpenAI',
             ].join('\n');
             return [`${mirrorBase}/${benchmark}.json`, csv];
->>>>>>> task/spine-lane-3-20260710T232232
           }
           const payload: BenchmarkLeaderboardFixture = {
             benchmark,

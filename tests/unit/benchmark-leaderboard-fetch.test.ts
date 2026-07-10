@@ -33,21 +33,14 @@ function loadsById(
 }
 
 describe('benchmark-leaderboard-fetch (SP-181)', () => {
-<<<<<<< HEAD
-  it('exposes adapter registry; swebench + livecodebench have default live URLs', () => {
+  it('exposes adapter registry; swebench + LCB + bfcl have default live URLs', () => {
     expect(Object.keys(LEADERBOARD_ADAPTERS)).toHaveLength(4);
     expect(getDefaultLiveFetchUrls()).toEqual({
       swebench_verified:
         'https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json',
       livecodebench:
         'https://raw.githubusercontent.com/LiveCodeBench/livecodebench.github.io/main/src/mocks/performances_generation.json',
-=======
-  it('exposes an adapter registry for all four benchmarks', () => {
-    expect(Object.keys(LEADERBOARD_ADAPTERS)).toHaveLength(4);
-    // SP-184 registers bfcl live URL; remaining stubs omit defaults until SP-182/183/185
-    expect(getDefaultLiveFetchUrls()).toEqual({
       bfcl: 'https://raw.githubusercontent.com/ShishirPatil/gorilla/gh-pages/data_overall.csv',
->>>>>>> task/spine-lane-3-20260710T232232
     });
   });
 
