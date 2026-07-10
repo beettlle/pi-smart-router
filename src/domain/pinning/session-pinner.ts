@@ -41,6 +41,11 @@ import {
   evaluateCacheBreakevenForPrefix,
   type CacheBreakevenResult,
 } from './cache-breakeven.js';
+import {
+  FlipFlopGuard,
+  type FlipFlopObservation,
+  type FlipFlopSessionState,
+} from './flip-flop-guard.js';
 import { SaarSessionStateTracker } from './saar-session-state.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -53,12 +58,15 @@ export type PinSaarReason =
   | 'saar_idle_reopen'
   | 'saar_tier_upgrade';
 
+export type PinFlipFlopReason = 'flip_flop_tier_pinned';
+
 export interface PinLookupResult {
   readonly action: PinAction;
   readonly pinnedModel?: ModelProfile;
   readonly subRouteModel?: ModelProfile;
   readonly saarRouteModel?: ModelProfile;
   readonly saarReason?: PinSaarReason;
+  readonly flipFlopReason?: PinFlipFlopReason;
   readonly breakReason?: PinReason;
 }
 
@@ -85,6 +93,8 @@ export interface SessionPinnerConfig {
    * max_input_tokens multiplied by this margin. Default 0.90.
    */
   readonly contextOverflowSafetyMargin?: number;
+  /** Flip-flop tier pin guard (SP-155, #82). Injectable for tests. */
+  readonly flipFlopGuard?: FlipFlopGuard;
 }
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
@@ -303,6 +313,7 @@ export function evaluateModelSwitchBreakeven(
 export class SessionPinner {
   private readonly pins = new Map<string, SessionPin>();
   private readonly saarTrackers = new Map<string, SaarSessionStateTracker>();
+  private readonly flipFlopGuard: FlipFlopGuard;
   private readonly toolResultSizeThreshold: number;
   private readonly store: StorePort | undefined;
   private readonly cacheEconomicsConfig: CacheEconomicsConfig | undefined;
@@ -310,6 +321,8 @@ export class SessionPinner {
   private readonly saarClock: (() => number) | undefined;
   private readonly pinOnlyFallback: boolean;
   private readonly contextOverflowSafetyMargin: number;
+  private lastFleet: readonly ModelProfile[] | undefined;
+  private lastFlipFlopObservation: FlipFlopObservation | null = null;
 
   constructor(config?: SessionPinnerConfig) {
     this.toolResultSizeThreshold =
@@ -321,6 +334,7 @@ export class SessionPinner {
     this.pinOnlyFallback = config?.pinOnlyFallback ?? false;
     this.contextOverflowSafetyMargin =
       config?.contextOverflowSafetyMargin ?? DEFAULT_CONTEXT_OVERFLOW_SAFETY_MARGIN;
+    this.flipFlopGuard = config?.flipFlopGuard ?? new FlipFlopGuard();
   }
 
   /**
@@ -346,6 +360,21 @@ export class SessionPinner {
     request: RoutingRequest,
     fleet: readonly ModelProfile[],
   ): PinLookupResult {
+    this.lastFleet = fleet;
+    this.observeShadowTier(request, fleet);
+
+    const flipFlopPinned = this.flipFlopGuard.isTierPinned(request.session_id);
+    if (flipFlopPinned) {
+      const flipFlopResult = this.resolveFlipFlopPin(
+        request.session_id,
+        flipFlopPinned,
+        fleet,
+      );
+      if (flipFlopResult) {
+        return flipFlopResult;
+      }
+    }
+
     const pin = this.pins.get(request.session_id);
 
     if (!pin) {
@@ -436,6 +465,7 @@ export class SessionPinner {
   breakPin(sessionId: string): void {
     this.pins.delete(sessionId);
     this.saarTrackers.delete(sessionId);
+    this.flipFlopGuard.clearSession(sessionId);
     this.deletePersistedPin(sessionId);
   }
 
@@ -470,6 +500,96 @@ export class SessionPinner {
    */
   getPin(sessionId: string): SessionPin | null {
     return this.pins.get(sessionId) ?? null;
+  }
+
+  /** Read-only flip-flop guard state for telemetry (SP-155). */
+  getFlipFlopState(sessionId: string): FlipFlopSessionState | null {
+    return this.flipFlopGuard.getState(sessionId);
+  }
+
+  /** Last shadow observation from the most recent lookupPin call (SP-155). */
+  getLastFlipFlopObservation(): FlipFlopObservation | null {
+    return this.lastFlipFlopObservation;
+  }
+
+  // ─── Flip-flop guard (SP-155) ─────────────────────────────────────────────
+
+  private observeShadowTier(
+    request: RoutingRequest,
+    fleet: readonly ModelProfile[],
+  ): void {
+    const shadowTier = this.resolveShadowTier(request, fleet);
+    if (!shadowTier) {
+      return;
+    }
+
+    this.lastFlipFlopObservation = this.flipFlopGuard.observeTier(
+      request.session_id,
+      shadowTier,
+    );
+  }
+
+  private resolveShadowTier(
+    request: RoutingRequest,
+    fleet: readonly ModelProfile[],
+  ): Tier | null {
+    if (!request.candidate_model_id) {
+      return null;
+    }
+
+    const candidate = fleet.find(
+      (model) =>
+        model.id === request.candidate_model_id && model.healthy !== false,
+    );
+    return candidate?.tier ?? null;
+  }
+
+  private resolveFlipFlopPin(
+    sessionId: string,
+    pinnedTier: Tier,
+    fleet: readonly ModelProfile[],
+  ): PinLookupResult | null {
+    const pin = this.pins.get(sessionId);
+    const pinnedModel = pin
+      ? fleet.find(
+          (model) => model.id === pin.pinned_model_id && model.healthy !== false,
+        )
+      : undefined;
+
+    if (pinnedModel?.tier === pinnedTier) {
+      return {
+        action: 'use_pin',
+        pinnedModel,
+        flipFlopReason: 'flip_flop_tier_pinned',
+      };
+    }
+
+    const tierModel = fleet.find(
+      (model) => model.tier === pinnedTier && model.healthy !== false,
+    );
+    if (!tierModel) {
+      return null;
+    }
+
+    if (pin) {
+      this.recordPin(sessionId, tierModel.id, pin.pin_reason);
+    } else {
+      this.recordPin(sessionId, tierModel.id, 'initial');
+    }
+
+    return {
+      action: 'use_pin',
+      pinnedModel: tierModel,
+      flipFlopReason: 'flip_flop_tier_pinned',
+    };
+  }
+
+  private isFlipFlopTierChangeBlocked(
+    sessionId: string,
+    targetTier: Tier,
+  ): boolean {
+    const pinnedTier = this.flipFlopGuard.isTierPinned(sessionId);
+    return pinnedTier !== null && pinnedTier !== targetTier;
   }
 
   // ─── SAAR policy (SP-122) ─────────────────────────────────────────────────
@@ -522,7 +642,10 @@ export class SessionPinner {
       : undefined;
 
     if (tracker.isInBufferWindow() && candidate) {
-      if (isTierUpgrade(pinnedModel.tier, candidate.tier)) {
+      if (
+        isTierUpgrade(pinnedModel.tier, candidate.tier) &&
+        !this.isFlipFlopTierChangeBlocked(request.session_id, candidate.tier)
+      ) {
         return {
           action: 'saar_route',
           pinnedModel,
@@ -536,7 +659,8 @@ export class SessionPinner {
       if (
         isToolLoopTurn(request.turn_type) &&
         candidate &&
-        isTierUpgrade(pinnedModel.tier, candidate.tier)
+        isTierUpgrade(pinnedModel.tier, candidate.tier) &&
+        !this.isFlipFlopTierChangeBlocked(request.session_id, candidate.tier)
       ) {
         this.recordPin(request.session_id, candidate.id, pin.pin_reason);
         const upgraded = fleet.find((m) => m.id === candidate.id)!;
@@ -658,6 +782,10 @@ export class SessionPinner {
       return null;
     }
 
+    if (this.isFlipFlopTierChangeBlocked(request.session_id, candidate.tier)) {
+      return null;
+    }
+
     const tokenEstimate =
       request.estimated_input_tokens ?? request.prompt_text.length;
 
@@ -761,6 +889,10 @@ export class SessionPinner {
     );
 
     if (!econModel) {
+      return null;
+    }
+
+    if (this.isFlipFlopTierChangeBlocked(request.session_id, econModel.tier)) {
       return null;
     }
 

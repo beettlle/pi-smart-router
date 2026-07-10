@@ -17,6 +17,10 @@ import {
 import { CLUSTER_REASON_CODE_PREFIX } from '../../config/routing-clusters-loader.js';
 import type { ClusterMatcher } from '../../domain/matching/cluster-matcher.js';
 import { evaluateModelSwitchBreakeven } from '../../domain/pinning/session-pinner.js';
+import {
+  FLIP_FLOP_SHADOW_TIER_FLIP,
+  FLIP_FLOP_SHADOW_TIER_PINNED,
+} from '../../domain/pinning/flip-flop-guard.js';
 import { selectLowestCostModel } from '../../domain/pinning/sub-route-policy.js';
 import type { SessionPinner } from '../../domain/pinning/session-pinner.js';
 import type {
@@ -68,6 +72,9 @@ export const BREAKEVEN_BLOCKED = 'breakeven_blocked' as const;
 export const BREAKEVEN_PASS = 'breakeven_pass' as const;
 export const SAAR_BUFFER_ACTIVE = 'saar_buffer_active' as const;
 export const SAAR_HARD_LOCK = 'saar_hard_lock' as const;
+
+export const FLIP_FLOP_TIER_FLIP = FLIP_FLOP_SHADOW_TIER_FLIP;
+export const FLIP_FLOP_TIER_PINNED = FLIP_FLOP_SHADOW_TIER_PINNED;
 
 export const PLANNING_DELEGATE = 'planning_delegate' as const;
 export const PLANNING_DIRECT_FRONTIER = 'planning_direct_frontier' as const;
@@ -604,6 +611,13 @@ export function enrichRoutingDecisionWithPlanningDelegate(
   };
 }
 
+/** Flip-flop shadow log observability (SP-155, #82). */
+export interface FlipFlopObservability {
+  readonly consecutive_tier_flips: number;
+  readonly tier_pinned: Tier | null;
+  readonly shadow_event: string | null;
+}
+
 /** Build privacy-safe SAAR pin state for explain and telemetry (SP-126). */
 export function buildSaarObservability(
   input: PinEconomicsObservabilityInput,
@@ -630,6 +644,29 @@ export function buildSaarObservability(
     planning_turn_buffer: saarConfig.planning_turn_buffer,
     idle_timeout_seconds: saarConfig.idle_timeout_seconds,
     saar_reason_code: resolveSaarReasonCode(decision),
+  };
+}
+
+/** Build flip-flop shadow log observability from session pinner state (SP-155). */
+export function buildFlipFlopObservability(
+  input: PinEconomicsObservabilityInput,
+): FlipFlopObservability | null {
+  const { request, sessionPinner } = input;
+  if (!sessionPinner) {
+    return null;
+  }
+
+  const observation = sessionPinner.getLastFlipFlopObservation();
+  const state = sessionPinner.getFlipFlopState(request.session_id);
+  if (!observation && !state) {
+    return null;
+  }
+
+  return {
+    consecutive_tier_flips:
+      observation?.consecutive_tier_flips ?? state?.consecutive_tier_flips ?? 0,
+    tier_pinned: observation?.tier_pinned ?? state?.tier_pinned ?? null,
+    shadow_event: observation?.shadow_event ?? null,
   };
 }
 
@@ -737,6 +774,20 @@ function defaultSaarTelemetry(): Pick<
   };
 }
 
+type FlipFlopTelemetryFields = {
+  readonly flip_flop_consecutive_tier_flips: number | null;
+  readonly flip_flop_tier_pinned: Tier | null;
+  readonly flip_flop_shadow_event: string | null;
+};
+
+function defaultFlipFlopTelemetry(): FlipFlopTelemetryFields {
+  return {
+    flip_flop_consecutive_tier_flips: null,
+    flip_flop_tier_pinned: null,
+    flip_flop_shadow_event: null,
+  };
+}
+
 /** Default breakeven telemetry scalars for tests and legacy store reads. */
 export const DEFAULT_BREAKEVEN_TELEMETRY_FIELDS = defaultBreakevenTelemetry();
 
@@ -793,9 +844,11 @@ function planningDelegateTelemetryFromDecision(
 function pinEconomicsTelemetryFromInput(
   input: PinEconomicsObservabilityInput,
 ): ReturnType<typeof defaultBreakevenTelemetry> &
-  ReturnType<typeof defaultSaarTelemetry> {
+  ReturnType<typeof defaultSaarTelemetry> &
+  FlipFlopTelemetryFields {
   const breakeven = buildBreakevenObservability(input);
   const saar = buildSaarObservability(input);
+  const flipFlop = buildFlipFlopObservability(input);
 
   return {
     ...(breakeven
@@ -811,6 +864,13 @@ function pinEconomicsTelemetryFromInput(
     saar_hard_lock: saar?.hard_lock ?? false,
     turn_index_in_session: saar?.turn_index_in_session ?? null,
     saar_reason_code: saar?.saar_reason_code ?? null,
+    ...(flipFlop
+      ? {
+          flip_flop_consecutive_tier_flips: flipFlop.consecutive_tier_flips,
+          flip_flop_tier_pinned: flipFlop.tier_pinned,
+          flip_flop_shadow_event: flipFlop.shadow_event,
+        }
+      : defaultFlipFlopTelemetry()),
   };
 }
 
@@ -832,8 +892,9 @@ export function enrichRoutingDecisionWithPinEconomics(
 
   const breakeven = buildBreakevenObservability(input);
   const saar = buildSaarObservability(input);
+  const flipFlop = buildFlipFlopObservability(input);
 
-  if (!breakeven && !saar) {
+  if (!breakeven && !saar && !flipFlop) {
     return decision;
   }
 
@@ -1016,6 +1077,17 @@ export function buildRoutingDecisionLogPayload(
   const breakeven = enriched.features?.breakeven as BreakevenObservabilityV2 | undefined;
   const saar = enriched.features?.saar;
   const planningDelegate = enriched.features?.planning_delegate;
+  const flipFlop = buildFlipFlopObservability({
+    request,
+    decision,
+    ...(fleet !== undefined ? { fleet } : {}),
+    ...(pinEconomics?.sessionPinner !== undefined
+      ? { sessionPinner: pinEconomics.sessionPinner }
+      : {}),
+    ...(pinEconomics?.saarConfig !== undefined
+      ? { saarConfig: pinEconomics.saarConfig }
+      : {}),
+  });
 
   return {
     request_id: enriched.request_id,
@@ -1065,6 +1137,13 @@ export function buildRoutingDecisionLogPayload(
           compressed_context: planningDelegate.compressed_context,
           planning_delegate_reason_code: planningDelegate.planning_delegate_reason_code,
           fallback_reason: planningDelegate.fallback_reason,
+        }
+      : null,
+    flip_flop_summary: flipFlop
+      ? {
+          consecutive_tier_flips: flipFlop.consecutive_tier_flips,
+          tier_pinned: flipFlop.tier_pinned,
+          shadow_event: flipFlop.shadow_event,
         }
       : null,
     delegate,
@@ -1267,7 +1346,7 @@ export class RoutingTelemetryEmitter {
     });
     const planningDelegateFields = planningDelegateTelemetryFromDecision(decision);
 
-    const record: RoutingTelemetry = {
+    const record: RoutingTelemetry & FlipFlopTelemetryFields = {
       timestamp: this.clock(),
       session_id: request.session_id,
       request_id: decision.request_id,
@@ -1301,6 +1380,10 @@ export class RoutingTelemetryEmitter {
       saar_hard_lock: pinEconomicsFields.saar_hard_lock,
       turn_index_in_session: pinEconomicsFields.turn_index_in_session,
       saar_reason_code: pinEconomicsFields.saar_reason_code,
+      flip_flop_consecutive_tier_flips:
+        pinEconomicsFields.flip_flop_consecutive_tier_flips,
+      flip_flop_tier_pinned: pinEconomicsFields.flip_flop_tier_pinned,
+      flip_flop_shadow_event: pinEconomicsFields.flip_flop_shadow_event,
       ...planningDelegateFields,
     };
 
