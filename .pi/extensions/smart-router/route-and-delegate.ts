@@ -27,6 +27,7 @@ import {
 import { shouldFailoverOnProviderError } from '../../../src/infrastructure/gateway/gateway-dispatch.js';
 import { delegateWithOutcome } from './delegate-stream.js';
 import {
+  createErrorMessage,
   findFleetProfile,
   flushDelegatedEvents,
   injectFailoverNotice,
@@ -39,6 +40,7 @@ import {
   resolvePlanningDelegatePath,
 } from './planning-delegate.js';
 import type { StreamDelegationDeps } from './types.js';
+import { isAbortError } from './utils.js';
 
 function isRoutingLogEnabled(): boolean {
   return process.env.SMART_ROUTER_LOG_ROUTING === '1';
@@ -512,6 +514,13 @@ export async function routeAndDelegate(
       });
       return;
     } catch (error) {
+      if (isAbortError(error, options)) {
+        const abortMessage = createErrorMessage(targetModel, options, error);
+        outer.push({ type: 'error', reason: 'aborted', error: abortMessage });
+        outer.end(abortMessage);
+        return;
+      }
+
       deps.router.dispatch.recordOutcome(targetModel.id, { code: 'STREAM_DELEGATION_ERROR' });
 
       if (!failedModelIds.includes(targetModel.id)) {

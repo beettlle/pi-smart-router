@@ -1,7 +1,7 @@
 # SP-169: Abort Must Not Trigger Failover — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
+**Current Step:** 1
+**Status:** 🟡 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,11 +12,11 @@
 
 ## Step 1: Abort helper and catch path
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Add shared helper e.g. `isAbortError(error, options)` and/or `throwIfAborted(options)`
-- [ ] In `routeAndDelegate` catch: if abort, push aborted error, `outer.end()`, no `selectFailover`
-- [ ] Keep STREAM_DELEGATION_ERROR failover path for non-abort failures
+- [x] Add shared helper e.g. `isAbortError(error, options)` and/or `throwIfAborted(options)`
+- [x] In `routeAndDelegate` catch: if abort, push aborted error, `outer.end()`, no `selectFailover`
+- [x] Keep STREAM_DELEGATION_ERROR failover path for non-abort failures
 
 ## Step 2: Mid-stream abort tests
 
@@ -40,7 +40,7 @@
 - [ ] Abort never triggers failover retry
 - [ ] Mid-stream abort unit test passes
 - [ ] Pre-aborted regression still passes
-- [ ] Shared abort helper in place
+- [x] Shared abort helper in place
 
 ---
 
@@ -48,7 +48,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-10 | 1 | plan | skipped (engine post-.DONE; SP-195) |
 
 ## Discoveries
 
@@ -60,7 +60,8 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-10 | step_start | Step 1 — Abort helper and catch path |
+| 2026-07-10 | outcomes | Abort helpers + catch path wired; STREAM_DELEGATION_ERROR failover preserved |
 
 ## Blockers
 
