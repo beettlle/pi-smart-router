@@ -32,6 +32,7 @@ import {
 import { collectDelegatedStream } from './delegate-stream.js';
 import { findFleetProfile, resolveRegistryModel } from './delegation-runtime.js';
 import type { StreamDelegationDeps } from './types.js';
+import { throwIfAborted } from './utils.js';
 
 /** Prefix for injected planning observations visible to the primary model. */
 export const PLANNING_DELEGATE_OBSERVATION_PREFIX =
@@ -230,6 +231,9 @@ export async function resolvePlanningDelegatePath(
   options: SimpleStreamOptions | undefined,
   deps: StreamDelegationDeps,
 ): Promise<PlanningDelegateResolution> {
+  // Abort before planning sub-call work (SP-171 phase boundary).
+  throwIfAborted(options);
+
   const observability = decision.features!.planning_delegate!;
   const delegateModelId = observability.delegate_model_id!;
   const primaryModelId = decision.selected_model_id;
@@ -257,6 +261,7 @@ export async function resolvePlanningDelegatePath(
     context,
     observability.compressed_context,
   );
+  throwIfAborted(options);
   const spawnFn = deps.spawnPlanningDelegate ?? defaultSpawnPlanningDelegate;
   const spawnResult = await spawnFn(frontierModel, compressedContext, options, deps);
 

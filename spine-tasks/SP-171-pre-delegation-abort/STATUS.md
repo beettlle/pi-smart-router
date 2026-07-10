@@ -1,7 +1,7 @@
 # SP-171: Pre-Delegation Abort Checks — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
+**Current Step:** 1
+**Status:** 🟡 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,12 +12,12 @@
 
 ## Step 1: Phase-boundary abort checks
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] throwIfAborted at top of routeAndDelegate
-- [ ] Before ensureFleetFresh, dispatch, planning delegate
-- [ ] At each failover loop iteration
-- [ ] Document HyDRA mid-ONNX cancel limitation
+- [x] throwIfAborted at top of routeAndDelegate
+- [x] Before ensureFleetFresh, dispatch, planning delegate
+- [x] At each failover loop iteration
+- [x] Document HyDRA mid-ONNX cancel limitation
 
 ## Step 2: Pre-delegation abort test
 
@@ -48,19 +48,20 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-10 | 1 | plan | skipped (engine-owned after .DONE) |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-07-10 | Abort inside dispatch try must rethrow via isAbortError — otherwise safe-cloud failover swallows cancel | Fixed in route-and-delegate catch |
 
 ## Execution Log
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-10 | Step 1 started | Phase-boundary abort checks |
+| 2026-07-10 | Step 1 outcomes done | throwIfAborted wired; HyDRA limitation in README + JSDoc |
 
 ## Blockers
 
