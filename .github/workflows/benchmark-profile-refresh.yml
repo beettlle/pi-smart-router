@@ -1,6 +1,10 @@
-# Monthly refresh of config/benchmark-profiles.json from checked-in leaderboard fixtures.
-# PR smoke: re-ingest fixtures and assert the committed artifact stays in sync.
-# Scheduled / manual refresh: regenerate profiles and open a PR when model scores change.
+# Monthly refresh of config/benchmark-profiles.json from live leaderboards
+# (with fixture fallback) or checked-in fixtures.
+# PR smoke: re-ingest fixtures and assert the committed artifact stays in sync
+# (offline — no network).
+# Scheduled / manual refresh: attempt live ingest, fall back to fixtures when
+# live is unavailable, rewrite profiles with provenance, and open a PR when
+# scores change (including recorded snapshots when live succeeds).
 
 name: Benchmark Profile Refresh
 
@@ -9,11 +13,17 @@ on:
     # 1st of each month, 06:00 UTC
     - cron: '0 6 1 * *'
   workflow_dispatch:
+    inputs:
+      use_live:
+        description: 'Attempt live leaderboard fetch (falls back to fixtures on failure)'
+        type: boolean
+        default: true
   pull_request:
     paths:
       - 'config/benchmark-profiles.json'
       - 'scripts/ingest-benchmark-profiles.ts'
       - 'scripts/lib/ast-tool-validation.ts'
+      - 'scripts/lib/benchmark-leaderboard-fetch.ts'
       - 'tests/fixtures/benchmark-leaderboards/**'
       - '.github/workflows/benchmark-profile-refresh.yml'
       - 'package.json'
@@ -43,14 +53,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify benchmark profiles from fixtures
+      - name: Verify benchmark profiles from fixtures (offline)
         run: npm run routing:verify-benchmark-profiles
 
   refresh:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     name: Monthly profile refresh
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -74,22 +84,66 @@ jobs:
             import { readFileSync, writeFileSync } from 'node:fs';
             const artifact = JSON.parse(readFileSync('config/benchmark-profiles.json', 'utf8'));
             writeFileSync('/tmp/benchmark-models-before.json', JSON.stringify(artifact.models, null, 2));
+            writeFileSync('/tmp/benchmark-provenance-before.json', JSON.stringify(artifact.provenance, null, 2));
           "
 
-      - name: Regenerate benchmark profiles
+      - name: Regenerate benchmark profiles (live with fixture fallback)
+        id: ingest
         run: |
           set -euo pipefail
           FREEZE_DATE="$(date -u +%Y-%m-%d)"
-          npm run routing:ingest-benchmarks -- --catalog-freeze-date "$FREEZE_DATE"
+          SCRAPE_DATE="$FREEZE_DATE"
+          echo "freeze_date=$FREEZE_DATE" >> "$GITHUB_OUTPUT"
+
+          # Schedule always attempts live; workflow_dispatch respects use_live (default true).
+          USE_LIVE="true"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            USE_LIVE="${{ inputs.use_live }}"
+          fi
+
+          INGEST_MODE="fixtures"
+          LIVE_ATTEMPTED="false"
+          LIVE_SUCCEEDED="false"
+
+          if [ "$USE_LIVE" = "true" ]; then
+            LIVE_ATTEMPTED="true"
+            echo "Attempting live leaderboard ingest (SP-179 --live)…"
+            if npm run routing:ingest-benchmarks -- \
+              --live \
+              --catalog-freeze-date "$FREEZE_DATE" \
+              --scrape-date "$SCRAPE_DATE"; then
+              LIVE_SUCCEEDED="true"
+              INGEST_MODE="live"
+              echo "Live ingest succeeded; recorded snapshots updated under tests/fixtures/benchmark-leaderboards/recorded/."
+            else
+              echo "Live ingest failed or unavailable; falling back to checked-in fixtures."
+              npm run routing:ingest-benchmarks -- --catalog-freeze-date "$FREEZE_DATE"
+              INGEST_MODE="fixtures_fallback"
+            fi
+          else
+            echo "use_live=false; ingesting from checked-in fixtures only."
+            npm run routing:ingest-benchmarks -- --catalog-freeze-date "$FREEZE_DATE"
+            INGEST_MODE="fixtures"
+          fi
+
+          echo "ingest_mode=$INGEST_MODE" >> "$GITHUB_OUTPUT"
+          echo "live_attempted=$LIVE_ATTEMPTED" >> "$GITHUB_OUTPUT"
+          echo "live_succeeded=$LIVE_SUCCEEDED" >> "$GITHUB_OUTPUT"
 
       - name: Diff model scores
         id: diff
+        env:
+          INGEST_MODE: ${{ steps.ingest.outputs.ingest_mode }}
+          LIVE_ATTEMPTED: ${{ steps.ingest.outputs.live_attempted }}
+          LIVE_SUCCEEDED: ${{ steps.ingest.outputs.live_succeeded }}
+          FREEZE_DATE: ${{ steps.ingest.outputs.freeze_date }}
         run: |
           set -euo pipefail
           node --input-type=module -e "
             import { readFileSync, writeFileSync } from 'node:fs';
             const artifact = JSON.parse(readFileSync('config/benchmark-profiles.json', 'utf8'));
             writeFileSync('/tmp/benchmark-models-after.json', JSON.stringify(artifact.models, null, 2));
+            writeFileSync('/tmp/benchmark-provenance-after.json', JSON.stringify(artifact.provenance, null, 2));
           "
           if diff -q /tmp/benchmark-models-before.json /tmp/benchmark-models-after.json > /dev/null 2>&1; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -99,10 +153,28 @@ jobs:
             {
               echo "## Summary"
               echo ""
-              echo "Monthly benchmark profile refresh from checked-in leaderboard fixtures."
+              echo "Monthly benchmark profile refresh (SP-180)."
               echo "Updates \`config/benchmark-profiles.json\` with a new \`catalog_freeze_date\` and any score changes."
+              if [ "$LIVE_SUCCEEDED" = "true" ]; then
+                echo "Also updates recorded live snapshots under \`tests/fixtures/benchmark-leaderboards/recorded/\`."
+              fi
               echo ""
               echo "Triggered by: \`${{ github.event_name }}\` (run [${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}))."
+              echo ""
+              echo "## Ingest mode"
+              echo ""
+              echo "| Field | Value |"
+              echo "|-------|-------|"
+              echo "| ingest_mode | \`$INGEST_MODE\` |"
+              echo "| live_attempted | \`$LIVE_ATTEMPTED\` |"
+              echo "| live_succeeded | \`$LIVE_SUCCEEDED\` |"
+              echo "| catalog_freeze_date | \`$FREEZE_DATE\` |"
+              echo ""
+              echo "## Provenance"
+              echo ""
+              echo '```json'
+              cat /tmp/benchmark-provenance-after.json
+              echo '```'
               echo ""
               echo "## Model score diff"
               echo ""
@@ -110,7 +182,14 @@ jobs:
               diff -u /tmp/benchmark-models-before.json /tmp/benchmark-models-after.json | tail -n 80 || true
               echo '```'
               echo ""
-              echo "Provenance: SWE-bench Verified, Terminal-Bench, LiveCodeBench, BFCL (fixture snapshots)."
+              echo "Sources: SWE-bench Verified, Terminal-Bench, LiveCodeBench, BFCL."
+              if [ "$INGEST_MODE" = "live" ]; then
+                echo "Path: live fetch → recorded snapshots → profiles (SP-179)."
+              elif [ "$INGEST_MODE" = "fixtures_fallback" ]; then
+                echo "Path: live unavailable → checked-in fixture snapshots (fallback)."
+              else
+                echo "Path: checked-in fixture snapshots only."
+              fi
               echo ""
               echo "🤖 Opened by \`.github/workflows/benchmark-profile-refresh.yml\`."
             } > /tmp/pr_body.md
@@ -120,6 +199,7 @@ jobs:
         if: steps.diff.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LIVE_SUCCEEDED: ${{ steps.ingest.outputs.live_succeeded }}
         run: |
           set -euo pipefail
           BRANCH="bot/benchmark-profile-refresh-$(date -u +%Y-%m-%d)-${{ github.run_id }}"
@@ -127,7 +207,10 @@ jobs:
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git checkout -b "$BRANCH"
           git add config/benchmark-profiles.json
-          git commit -m "chore(SP-137): refresh benchmark capability profiles" -m "Monthly ingest from leaderboard fixture snapshots with updated catalog_freeze_date and provenance metadata. Auto-generated by benchmark-profile-refresh.yml."
+          if [ "$LIVE_SUCCEEDED" = "true" ]; then
+            git add tests/fixtures/benchmark-leaderboards/recorded/
+          fi
+          git commit -m "chore(SP-180): refresh benchmark capability profiles" -m "Monthly ingest (live with fixture fallback) with updated catalog_freeze_date, provenance metadata, and recorded snapshots when live succeeds. Auto-generated by benchmark-profile-refresh.yml."
           git push origin "$BRANCH"
           gh pr create \
             --title "chore: refresh benchmark capability profiles ($(date -u +%Y-%m-%d))" \
