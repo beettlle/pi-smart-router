@@ -1,0 +1,29 @@
+{
+  "baseline_version": "0.6.0",
+  "captured_at": "2026-07-10",
+  "harness_version": "1.0.0",
+  "fixture_count": 4,
+  "catalog_id": "pi-smart-router-v0.5.0-eval",
+  "checkpoint_date": "2026-07-01",
+  "tracks": {
+    "capability": {
+      "mean_capability_adequacy_rate": 0.875,
+      "mean_quality_retention": 0.75,
+      "mean_over_routing_rate": 0.125,
+      "total_under_routing_steps": 0
+    },
+    "cost": {
+      "total_actual_cost_usd": 0.031897,
+      "total_hindsight_cost_usd": 0.042037,
+      "total_cumulative_regret_usd": -0.01014,
+      "mean_cost_savings_ratio": 1.075589,
+      "mean_cost_savings_vs_frontier": 0.673945
+    },
+    "continuity": {
+      "total_pin_breaks": 2,
+      "total_justified_pin_breaks": 2,
+      "total_cache_miss_proxy": 2,
+      "mean_pin_preserved_rate": 0.625
+    }
+  }
+}

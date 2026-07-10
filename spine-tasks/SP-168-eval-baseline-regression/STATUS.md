@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,10 +10,10 @@
 
 ## Step 1: Baseline capture
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Add `scripts/eval/capture-baseline.ts` — `--version 0.6.0` writes `tests/eval/baselines/v0.6.0.json`
-- [ ] Capture current fixture aggregate metrics from main and commit baseline file
+- [x] Add `scripts/eval/capture-baseline.ts` — `--version 0.6.0` writes `tests/eval/baselines/v0.6.0.json`
+- [x] Capture current fixture aggregate metrics from main and commit baseline file
 
 ## Step 2: Baseline regression in assert-release-gates
 
