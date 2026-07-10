@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-10
 **Status:** Active
-**Next Task ID:** SP-169
+**Next Task ID:** SP-173
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -447,6 +447,27 @@
 | A | SP-165, SP-167 | Parallel — disjoint scopes |
 | B | SP-166 | After SP-165 |
 | C | SP-168 | After SP-165 + SP-166 |
+
+### Phase 36 — Release v0.6.1 Stream Abort (SP-169–SP-172)
+
+| Task | Summary | Size | Deps | Maps |
+|------|---------|------|------|------|
+| SP-169 | Abort must not trigger failover | S | — | #89 |
+| SP-170 | Live stream event piping | M | SP-169 | #88 |
+| SP-171 | Pre-delegation abort checks | S | SP-170 | #90 |
+| SP-172 | Slash commands honor ctx.signal | S | — | #91 |
+
+**Source:** GitHub stream-abort issues #87–#91 (operator-approved backlog for v0.6.1). Ratio: 3 bugs + 1 feature; parent #87 closes when children land.
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-169, SP-172 | Parallel — disjoint scopes (route vs commands) |
+| B | SP-170 | After SP-169 |
+| C | SP-171 | After SP-170 |
+
+**Deferred:** #1/#25/#26 hardware dogfooding.
 
 ---
 
