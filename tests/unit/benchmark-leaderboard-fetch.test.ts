@@ -35,7 +35,10 @@ function loadsById(
 describe('benchmark-leaderboard-fetch (SP-181)', () => {
   it('exposes a stub adapter registry for all four benchmarks', () => {
     expect(Object.keys(LEADERBOARD_ADAPTERS)).toHaveLength(4);
-    expect(getDefaultLiveFetchUrls()).toEqual({});
+    expect(getDefaultLiveFetchUrls()).toEqual({
+      swebench_verified:
+        'https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json',
+    });
   });
 
   it('fetchLiveLeaderboardSnapshot requires a live URL when stub has none', async () => {

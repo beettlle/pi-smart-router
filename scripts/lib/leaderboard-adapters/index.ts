@@ -12,7 +12,7 @@ import {
 
 import { bfclStubAdapter } from './bfcl-stub.js';
 import { livecodebenchStubAdapter } from './livecodebench-stub.js';
-import { swebenchVerifiedStubAdapter } from './swebench-stub.js';
+import { swebenchVerifiedAdapter } from './swebench-verified.js';
 import { terminalBenchStubAdapter } from './terminal-bench-stub.js';
 import type { LeaderboardAdapter } from './types.js';
 
@@ -23,9 +23,12 @@ export type {
   LeaderboardLoadSource,
 } from './types.js';
 
-/** Registry of adapters keyed by benchmark id (stubs until SP-182–SP-185). */
+/**
+ * Registry of adapters keyed by benchmark id.
+ * swebench_verified: native (SP-182); others remain stubs until SP-183–SP-185.
+ */
 export const LEADERBOARD_ADAPTERS: Readonly<Record<BenchmarkId, LeaderboardAdapter>> = {
-  swebench_verified: swebenchVerifiedStubAdapter,
+  swebench_verified: swebenchVerifiedAdapter,
   livecodebench: livecodebenchStubAdapter,
   bfcl: bfclStubAdapter,
   terminal_bench: terminalBenchStubAdapter,
