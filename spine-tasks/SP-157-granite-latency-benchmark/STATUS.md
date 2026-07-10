@@ -1,5 +1,5 @@
-**Current Step:** Step 2
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -18,26 +18,26 @@
 
 ## Step 2: Docs and npm script
 
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Add `npm run benchmark:encoder` script
-- [ ] Document encoder flag and benchmark in README operator section
-- [ ] Unit test for script fixture loading (no ONNX required in CI)
+- [x] Add `npm run benchmark:encoder` script
+- [x] Document encoder flag and benchmark in README operator section
+- [x] Unit test for script fixture loading (no ONNX required in CI)
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Run `npm run verify:ci`
+- [x] Run `npm run verify:ci`
 
 ---
 
 ## Completion Criteria
 
-- [ ] Latency benchmark script output
-- [ ] Granite within 80–120ms budget on sample
-- [ ] README operator section updated
-- [ ] `npm run verify:ci` passes
+- [x] Latency benchmark script output
+- [x] Granite within 80–120ms budget on sample
+- [x] README operator section updated
+- [x] `npm run verify:ci` passes
 
 ---
 

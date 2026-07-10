@@ -48,7 +48,7 @@ describe('benchmark-encoder-latency (SP-157)', () => {
 
     expect(texts).toHaveLength(fixture.samples.length);
     for (const text of texts) {
-      expect(text).toMatch(/^\[turns:\d+\|tools:[01]\|tokens:\d+\|type:[^\|]+\|compact:[01]\|loop:[01]\|attach:[01]\] /);
+      expect(text).toMatch(/^\[turns:\d+\|tools:[01]\|tokens:\d+\|type:[^|]+\|compact:[01]\|loop:[01]\|attach:[01]\] /);
     }
 
     const toolResultIndex = fixture.samples.findIndex((sample) => sample.id === 'tool_result_pytest');
