@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-10
 **Status:** Active
-**Next Task ID:** SP-181
+**Next Task ID:** SP-186
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -524,6 +524,28 @@
 | B | SP-180 | After SP-179 (workflow + README) |
 
 **Deferred:** #101/#102 (P2), #103 (P3), #95 dogfood protocol, #96 modernbert_k4 enablement, #1/#25/#26 hardware.
+
+### Phase 40 — Live Leaderboard Native Adapters (SP-181–SP-185)
+
+| Task | Summary | Size | Deps | Maps |
+|------|---------|------|------|------|
+| SP-181 | Per-benchmark live fallback + adapter registry stubs | M | — | #104 |
+| SP-182 | SWE-bench Verified native JSON adapter | M | SP-181 | #104 |
+| SP-183 | LiveCodeBench native JSON adapter | M | SP-181 | #104 |
+| SP-184 | BFCL gh-pages CSV adapter | M | SP-181 | #104 |
+| SP-185 | Terminal-Bench source lock + adapter + README | M | SP-181 | #104 |
+
+**Source:** GitHub #104 (live adapters follow-on to #100). Root bug: HTML URLs + fail-fast blocked all four benches.
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-181 | Foundation — must land first |
+| B | SP-182, SP-183, SP-184 | Parallel — disjoint adapter files |
+| C | SP-185 | After B preferred for e2e docs |
+
+**Authoring notes:** `spine-tasks/_authoring/live-leaderboard-adapters-20260710.md`
 
 ---
 
