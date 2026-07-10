@@ -332,14 +332,22 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
     }
   });
 
-  it('stub registry has four adapters with provenance URLs and no default live URLs', () => {
+  it('registry has four adapters with provenance URLs; bfcl has native live URL (SP-184)', () => {
     expect(Object.keys(LEADERBOARD_ADAPTERS).sort()).toEqual([...BENCHMARK_IDS].sort());
-    expect(getDefaultLiveFetchUrls()).toEqual({});
+    expect(getDefaultLiveFetchUrls()).toEqual({
+      bfcl: 'https://raw.githubusercontent.com/ShishirPatil/gorilla/gh-pages/data_overall.csv',
+    });
     for (const benchmark of BENCHMARK_IDS) {
       const adapter = getLeaderboardAdapter(benchmark);
       expect(adapter.id).toBe(benchmark);
       expect(adapter.provenanceUrl).toBe(BENCHMARK_SOURCE_URLS[benchmark]);
-      expect(adapter.liveFetchUrl).toBeUndefined();
+      if (benchmark === 'bfcl') {
+        expect(adapter.liveFetchUrl).toBe(
+          'https://raw.githubusercontent.com/ShishirPatil/gorilla/gh-pages/data_overall.csv',
+        );
+      } else {
+        expect(adapter.liveFetchUrl).toBeUndefined();
+      }
     }
   });
 

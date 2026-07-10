@@ -33,9 +33,12 @@ function loadsById(
 }
 
 describe('benchmark-leaderboard-fetch (SP-181)', () => {
-  it('exposes a stub adapter registry for all four benchmarks', () => {
+  it('exposes an adapter registry for all four benchmarks', () => {
     expect(Object.keys(LEADERBOARD_ADAPTERS)).toHaveLength(4);
-    expect(getDefaultLiveFetchUrls()).toEqual({});
+    // SP-184 registers bfcl live URL; remaining stubs omit defaults until SP-182/183/185
+    expect(getDefaultLiveFetchUrls()).toEqual({
+      bfcl: 'https://raw.githubusercontent.com/ShishirPatil/gorilla/gh-pages/data_overall.csv',
+    });
   });
 
   it('fetchLiveLeaderboardSnapshot requires a live URL when stub has none', async () => {

@@ -1,6 +1,6 @@
 # SP-184: BFCL CSV Native Live Adapter — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Parse data_overall.csv → fixture entries
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] CSV + Overall Acc
 - [x] Model mapping
@@ -20,10 +20,10 @@
 
 ## Step 2: Offline unit sample + tests
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Truncated CSV sample
-- [ ] Unit tests
+- [x] Truncated CSV sample
+- [x] Unit tests
 
 ## Step 3: Testing and verification
 
@@ -47,6 +47,7 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine-owned; spawnFailed=false) |
+| 2026-07-10 | 2 | plan | skipped (engine-owned; spawnFailed=false) |
 
 ## Discoveries
 
@@ -59,8 +60,8 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| 2026-07-10 | Step 1 started | Plan review skipped; implementing native CSV adapter |
-| 2026-07-10 | Step 1 outcomes | `bfcl.ts` + registry wire-up |
+| 2026-07-10 | Step 1 complete | Native `bfcl.ts` + registry; commit 98af0ac |
+| 2026-07-10 | Step 2 outcomes | Offline sample + 6 unit tests passing |
 
 ## Blockers
 
