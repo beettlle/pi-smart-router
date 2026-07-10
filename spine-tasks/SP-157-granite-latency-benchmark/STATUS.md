@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Pending
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,34 +10,34 @@
 
 ## Step 1: Benchmark script
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Create `scripts/benchmark-encoder-latency.ts` comparing MiniLM vs Granite
-- [ ] Use held-out agent turn sample fixtures
-- [ ] Report p50/p95 latency; assert Granite within 80–120ms budget
+- [x] Create `scripts/benchmark-encoder-latency.ts` comparing MiniLM vs Granite
+- [x] Use held-out agent turn sample fixtures
+- [x] Report p50/p95 latency; assert Granite within 80–120ms budget
 
 ## Step 2: Docs and npm script
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Add `npm run benchmark:encoder` script
-- [ ] Document encoder flag and benchmark in README operator section
-- [ ] Unit test for script fixture loading (no ONNX required in CI)
+- [x] Add `npm run benchmark:encoder` script
+- [x] Document encoder flag and benchmark in README operator section
+- [x] Unit test for script fixture loading (no ONNX required in CI)
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Run `npm run verify:ci`
+- [x] Run `npm run verify:ci`
 
 ---
 
 ## Completion Criteria
 
-- [ ] Latency benchmark script output
-- [ ] Granite within 80–120ms budget on sample
-- [ ] README operator section updated
-- [ ] `npm run verify:ci` passes
+- [x] Latency benchmark script output
+- [x] Granite within 80–120ms budget on sample
+- [x] README operator section updated
+- [x] `npm run verify:ci` passes
 
 ---
 

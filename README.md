@@ -544,7 +544,34 @@ Additional operator defaults:
 
 ### HyDRA model cache
 
-The embedding matcher uses `@huggingface/transformers` with the `Xenova/all-MiniLM-L6-v2` ONNX model (384-dim embeddings). Artifacts are downloaded at runtime and cached under `.pi-smart-router/models/` (configurable via `hydra.artifact_cache_path`). This directory is gitignored.
+The embedding matcher uses `@huggingface/transformers` with ONNX models (384-dim embeddings). Artifacts are downloaded at runtime and cached under `.pi-smart-router/models/` (configurable via `hydra.artifact_cache_path`). This directory is gitignored.
+
+| Encoder | Model | Context | Default |
+|---------|-------|---------|---------|
+| `minilm` | `Xenova/all-MiniLM-L6-v2` | 512 tokens | yes |
+| `granite` | `ibm-granite/granite-embedding-97m-multilingual-r2` (ONNX) | long context | trial (#80) |
+
+Set the encoder in operator config:
+
+```json
+{
+  "hydra": {
+    "artifact_cache_path": ".pi-smart-router/models/",
+    "encoder": "granite"
+  }
+}
+```
+
+MiniLM remains the default fallback when `encoder` is omitted. Both encoders produce 384-dim vectors compatible with the SP-115 learned projection head.
+
+**Latency budget:** the HyDRA embedding stage targets ~80–120 ms per turn. Compare MiniLM vs Granite on held-out agent turn samples:
+
+```bash
+npm run benchmark:encoder
+# optional: --fixtures path --cache .pi-smart-router/models/
+```
+
+The script reports p50/p95 latency for each encoder and asserts Granite p50/p95 stay within the 120 ms budget ceiling. Requires `@huggingface/transformers` and a one-time ONNX artifact download.
 
 ## Architecture
 
@@ -684,6 +711,7 @@ Contributors must run `npm run build` before publishing or consuming the library
 | `npm run routing:eval-replay` | Counterfactual replay on eval trace fixtures |
 | `npm run routing:eval-harness` | Three-track eval harness (capability, cost, continuity) on fixture traces |
 | `npm run routing:eval-harness:smoke` | Harness summary JSON only (CI smoke; no network) |
+| `npm run benchmark:encoder` | Compare MiniLM vs Granite encoder latency on held-out agent turns |
 
 ### Offline eval harness (agent-native routing)
 

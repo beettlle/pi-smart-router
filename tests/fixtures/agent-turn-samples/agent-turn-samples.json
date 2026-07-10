@@ -1,0 +1,236 @@
+{
+  "version": 1,
+  "description": "Held-out agent turn samples for encoder latency benchmark (SP-157). Not used in calibration training.",
+  "samples": [
+    {
+      "id": "main_loop_auth_fix",
+      "request": {
+        "request_id": "bench-001",
+        "session_id": "sess-bench-001",
+        "prompt_text": "Fix the failing test in auth module — the JWT expiry assertion fails when clock skew is simulated.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 820
+      }
+    },
+    {
+      "id": "main_loop_migration",
+      "request": {
+        "request_id": "bench-002",
+        "session_id": "sess-bench-002",
+        "prompt_text": "Update the database migration script to add a partial index on session_id for the routing telemetry table.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 1450
+      }
+    },
+    {
+      "id": "tool_result_pytest",
+      "request": {
+        "request_id": "bench-003",
+        "session_id": "sess-bench-003",
+        "prompt_text": "The test still fails — see traceback below.",
+        "turn_type": "tool_result",
+        "estimated_input_tokens": 3200,
+        "messages": [
+          { "role": "user", "content": "Run the integration tests for session pinning." },
+          { "role": "assistant", "content": "I'll run vitest on the session pinning suite." },
+          { "role": "tool", "content": "FAILED tests/integration/session-pinning.test.ts\nAssertionError: expected pin to break after compaction\n  at line 142" },
+          { "role": "user", "content": "The test still fails — see traceback below." }
+        ]
+      }
+    },
+    {
+      "id": "main_loop_slow_query",
+      "request": {
+        "request_id": "bench-004",
+        "session_id": "sess-bench-004",
+        "prompt_text": "Investigate the slow query on the dashboard — EXPLAIN shows a sequential scan on routing_events despite the session_id index.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 2100
+      }
+    },
+    {
+      "id": "planning_delegate",
+      "request": {
+        "request_id": "bench-005",
+        "session_id": "sess-bench-005",
+        "prompt_text": "Design a migration plan for splitting the monolithic router config into operator vs fleet artifacts without breaking session pins.",
+        "turn_type": "planning",
+        "estimated_input_tokens": 4800,
+        "compaction_flag": false
+      }
+    },
+    {
+      "id": "tool_result_large_diff",
+      "request": {
+        "request_id": "bench-006",
+        "session_id": "sess-bench-006",
+        "prompt_text": "Apply the suggested refactor to hydra-input.ts and re-run typecheck.",
+        "turn_type": "tool_result",
+        "estimated_input_tokens": 8900,
+        "messages": [
+          { "role": "user", "content": "Refactor buildHydraInput to expose flag parsing separately." },
+          { "role": "assistant", "content": "I'll extract resolveHydraPromptText and the flag builders." },
+          { "role": "tool", "content": "diff --git a/src/domain/matching/hydra-input.ts b/src/domain/matching/hydra-input.ts\nindex abc123..def456\n--- a/src/domain/matching/hydra-input.ts\n+++ b/src/domain/matching/hydra-input.ts\n@@ -90,6 +90,14 @@ function resolveHydraPromptText(request: RoutingRequest): string {\n+export function resolveHydraPromptTextForTests(request: RoutingRequest): string {\n+  return resolveHydraPromptText(request);\n+}\n" },
+          { "role": "user", "content": "Apply the suggested refactor to hydra-input.ts and re-run typecheck." }
+        ]
+      }
+    },
+    {
+      "id": "main_loop_ci_pipeline",
+      "request": {
+        "request_id": "bench-007",
+        "session_id": "sess-bench-007",
+        "prompt_text": "Set up the CI pipeline configuration so benchmark profile refresh runs monthly and opens a PR when scores drift.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 1650
+      }
+    },
+    {
+      "id": "main_loop_payment_edge",
+      "request": {
+        "request_id": "bench-008",
+        "session_id": "sess-bench-008",
+        "prompt_text": "Handle the edge case in the payment flow where webhook retries arrive out of order and idempotency keys collide across regions.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 2400
+      }
+    },
+    {
+      "id": "tool_result_loop_pressure",
+      "request": {
+        "request_id": "bench-009",
+        "session_id": "sess-bench-009",
+        "prompt_text": "Why does the gateway still return 503 after the circuit breaker half-open probe?",
+        "turn_type": "tool_result",
+        "estimated_input_tokens": 5200,
+        "messages": [
+          { "role": "user", "content": "Debug the circuit breaker failover for claude-opus." },
+          { "role": "tool", "content": "Error: ECONNREFUSED connect to api.anthropic.com:443\nCircuit state: OPEN (failures: 5)" },
+          { "role": "user", "content": "Why does the gateway still return 503 after the circuit breaker half-open probe?" }
+        ]
+      }
+    },
+    {
+      "id": "main_loop_search_index",
+      "request": {
+        "request_id": "bench-010",
+        "session_id": "sess-bench-010",
+        "prompt_text": "Optimize the search indexing process — batch embedding writes and avoid loading the full fleet catalog on each turn.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 1900
+      }
+    },
+    {
+      "id": "main_loop_merge_conflict",
+      "request": {
+        "request_id": "bench-011",
+        "session_id": "sess-bench-011",
+        "prompt_text": "Resolve the merge conflict in the API layer — both branches changed GatewayDispatch error mapping.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 1100
+      }
+    },
+    {
+      "id": "main_loop_logging",
+      "request": {
+        "request_id": "bench-012",
+        "session_id": "sess-bench-012",
+        "prompt_text": "Configure structured logging for routing decisions with reason_code, stage, and latency fields without logging raw prompts.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 980
+      }
+    },
+    {
+      "id": "compaction_turn",
+      "request": {
+        "request_id": "bench-013",
+        "session_id": "sess-bench-013",
+        "prompt_text": "Continue from the compacted summary — finish wiring the isotonic calibrator lookup in verify-routing-calibration.ts.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 12000,
+        "compaction_flag": true,
+        "messages": [
+          { "role": "user", "content": "[compacted session context omitted for privacy]" },
+          { "role": "assistant", "content": "I'll add applyIsotonicLookup to the verify path." },
+          { "role": "user", "content": "Continue from the compacted summary — finish wiring the isotonic calibrator lookup in verify-routing-calibration.ts." }
+        ]
+      }
+    },
+    {
+      "id": "main_loop_flaky_tests",
+      "request": {
+        "request_id": "bench-014",
+        "session_id": "sess-bench-014",
+        "prompt_text": "Troubleshoot the flaky integration tests — timing assumptions in routing-latency.test.ts fail on CI runners.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 1750
+      }
+    },
+    {
+      "id": "main_loop_cache_strategy",
+      "request": {
+        "request_id": "bench-015",
+        "session_id": "sess-bench-015",
+        "prompt_text": "Evaluate the caching strategy for the feed — prefix cache hits drop when system prompts include dynamic timestamps.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 2600
+      }
+    },
+    {
+      "id": "main_loop_api_auth_docs",
+      "request": {
+        "request_id": "bench-016",
+        "session_id": "sess-bench-016",
+        "prompt_text": "Document the API authentication flow for operators, including rate-limit headers and explain endpoint parity with live routing.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 1300
+      }
+    },
+    {
+      "id": "tool_result_attachment",
+      "request": {
+        "request_id": "bench-017",
+        "session_id": "sess-bench-017",
+        "prompt_text": "The screenshot shows the wrong model selected — compare explain output with telemetry.",
+        "turn_type": "tool_result",
+        "estimated_input_tokens": 4100,
+        "messages": [
+          { "role": "user", "content": "Route this turn and capture explain output." },
+          { "role": "tool", "content": "{\"selected_model_id\":\"gpt-4o\",\"stage\":\"hydra_match\"}" },
+          { "role": "user", "content": "See attached screenshot of the pi UI.\n![ui](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==)" },
+          { "role": "user", "content": "The screenshot shows the wrong model selected — compare explain output with telemetry." }
+        ]
+      }
+    },
+    {
+      "id": "main_loop_schema_migration",
+      "request": {
+        "request_id": "bench-018",
+        "session_id": "sess-bench-018",
+        "prompt_text": "Migrate the legacy endpoints to the new schema version while keeping backward-compatible telemetry contrib rows.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 2200
+      }
+    },
+    {
+      "id": "main_loop_data_consistency",
+      "request": {
+        "request_id": "bench-019",
+        "session_id": "sess-bench-019",
+        "prompt_text": "Validate data consistency after the migration — spot-check cluster assignments and P(success) scores against the frozen catalog.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 3400
+      }
+    },
+    {
+      "id": "main_loop_perf_middleware",
+      "request": {
+        "request_id": "bench-020",
+        "session_id": "sess-bench-020",
+        "prompt_text": "Assess the performance impact of the new middleware on ambiguous prompts — median routing_latency_ms should stay under 200ms.",
+        "turn_type": "main_loop",
+        "estimated_input_tokens": 1550
+      }
+    }
+  ]
+}
