@@ -1,7 +1,7 @@
 # SP-174: Fleet Capability Profiles — Status
 
 **Current Step:** 3
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -28,12 +28,12 @@
 
 ## Step 3: Testing and verification
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Run scoped vitest for mapper + ingest
 - [x] Run `routing:verify-benchmark-profiles` if needed
-- [ ] Run full `npm test`
-- [ ] Run coverage gate
+- [x] Run full `npm test`
+- [x] Run coverage gate
 
 ---
 
@@ -52,6 +52,8 @@
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine-owned; SP-195) |
 | 2026-07-10 | 1 | plan | skipped at complete (engine-owned; SP-195) |
+| 2026-07-10 | 2 | plan | skipped (engine-owned; SP-195) |
+| 2026-07-10 | 3 | plan | skipped (engine-owned; SP-195) |
 
 ## Discoveries
 
@@ -60,6 +62,7 @@
 | 2026-07-10 | Checked-in artifact has 5 model_ids only; live fleet IDs miss rows | Alias map in artifact + mapper |
 | 2026-07-10 | ModelProfile / telemetry / explain outside File Scope | `capability_source` on MappedModelProfile + getCapabilitySource() |
 | 2026-07-10 | gemini-2.5-pro has no fixture row — left pattern_default (no invented scores) | Document; add fixtures later |
+| 2026-07-10 | Integration test expected sonnet pattern 0.95 | Amended PROMPT; updated pi-extension.test.ts |
 
 ## Execution Log
 
@@ -67,7 +70,8 @@
 |------|-------|--------|
 | 2026-07-10 | start | Resume from Step 1; plan review skipped by engine |
 | 2026-07-10 | step1 | Aliases in artifact; ingest preserves; mapper resolves; committed |
-| 2026-07-10 | step2 | capability_source + tests + README landed with Step 1 commit |
+| 2026-07-10 | step2 | capability_source + tests + README; committed |
+| 2026-07-10 | step3 | typecheck + scoped vitest + verify + npm test (1472) + coverage:check (mapper 95.91% lines) |
 
 ## Blockers
 
@@ -76,3 +80,9 @@
 | | | |
 
 ## Notes
+
+Verification evidence:
+- `npm run typecheck && npx vitest run tests/unit/pi-model-mapper.test.ts tests/unit/ingest-benchmark-profiles.test.ts` — pass
+- `npm run routing:verify-benchmark-profiles` — pass
+- `npm test` — 1472 passed
+- `npm run coverage:check` — All files 92.5% lines; pi-model-mapper.ts 95.91% lines
