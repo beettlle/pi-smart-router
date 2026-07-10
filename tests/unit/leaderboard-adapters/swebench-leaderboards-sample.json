@@ -1,0 +1,86 @@
+{
+  "leaderboards": [
+    {
+      "name": "Lite",
+      "results": [
+        {
+          "name": "noise",
+          "resolved": 99.0,
+          "tags": [
+            "Model: should-ignore"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Verified",
+      "results": [
+        {
+          "name": "Agent + Claude 4.5 Opus",
+          "resolved": 79.2,
+          "tags": [
+            "Model: claude-opus-4-5",
+            "Org: Example"
+          ]
+        },
+        {
+          "name": "mini-SWE-agent + Claude 4.5 Opus medium",
+          "resolved": 74.4,
+          "tags": [
+            "Model: claude-opus-4-5-20251101"
+          ]
+        },
+        {
+          "name": "Tools + Claude 4 Sonnet",
+          "resolved": 72.4,
+          "tags": [
+            "Model: claude-4-sonnet-20250514"
+          ]
+        },
+        {
+          "name": "multi-model agent",
+          "resolved": 90.0,
+          "tags": [
+            "Model: claude-opus-4-5",
+            "Model: gpt-5"
+          ]
+        },
+        {
+          "name": "unknown model only",
+          "resolved": 88.0,
+          "tags": [
+            "Model: Doubao-Seed-Code"
+          ]
+        },
+        {
+          "name": "mini-SWE-agent + GPT-5 (medium)",
+          "resolved": 65.0,
+          "tags": [
+            "Model: gpt-5-2025-08-07"
+          ]
+        },
+        {
+          "name": "mini-SWE-agent + Gemini 2.5 Flash",
+          "resolved": 28.73,
+          "tags": [
+            "Model: gemini-2.5-flash"
+          ]
+        },
+        {
+          "name": "Tools + Claude 3.5 Haiku",
+          "resolved": 40.6,
+          "tags": [
+            "Model: claude-3.5-haiku"
+          ]
+        },
+        {
+          "name": "missing score",
+          "resolved": null,
+          "tags": [
+            "Model: claude-opus-4-5"
+          ]
+        }
+      ]
+    }
+  ]
+}

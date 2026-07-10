@@ -1,6 +1,6 @@
 # SP-182: SWE-bench Verified Native Live Adapter — Status
 
-**Current Step:** 2
+**Current Step:** 3
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -20,14 +20,14 @@
 
 ## Step 2: Offline unit fixtures + tests
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
-- [ ] Truncated sample for CI
-- [ ] Unit tests (extract, map, skip)
+- [x] Truncated sample for CI
+- [x] Unit tests (extract, map, skip)
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Contract testCommand
 - [ ] Full suite + coverage ≥77%
@@ -37,7 +37,7 @@
 ## Completion Criteria
 
 - [ ] Native adapter live
-- [ ] Offline unit coverage
+- [x] Offline unit coverage
 - [ ] No invented scores
 
 ---
@@ -47,6 +47,7 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine-owned; SP-195) |
+| 2026-07-10 | 2 | plan | skipped (engine-owned; SP-195) |
 
 ## Discoveries
 
@@ -61,6 +62,8 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-10 | start | Resume: Step 1 in progress; plan review skipped by engine |
+| 2026-07-10 | step1 | Native adapter + registry + SP-181 assertion updates committed |
+| 2026-07-10 | step2 | Offline sample + 11 unit tests passing |
 
 ## Blockers
 
@@ -70,4 +73,5 @@
 
 ## Notes
 
-Plan review for Step 1 returned skipped (batch engine runs reviews after `.DONE`). Proceeding with implementation.
+Plan reviews return skipped (batch engine runs reviews after `.DONE`). Proceeding with implementation.
+
