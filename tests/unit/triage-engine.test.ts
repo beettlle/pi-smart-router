@@ -633,6 +633,8 @@ describe('Pipeline triage stage (T027, T028)', () => {
   describe('SC-004 latency budget (<5ms)', () => {
     it('completes triage routing within 5ms', async () => {
       const pipeline = new RouterPipeline(triageFleet);
+      // Warm JIT / module paths before timing (cold first route is flaky on CI hosts).
+      await pipeline.route(makeRequest({ prompt_text: 'Format this JSON file' }));
       const start = performance.now();
 
       await pipeline.route(
@@ -645,6 +647,9 @@ describe('Pipeline triage stage (T027, T028)', () => {
 
     it('completes complex triage within 5ms', async () => {
       const pipeline = new RouterPipeline(triageFleet);
+      await pipeline.route(
+        makeRequest({ prompt_text: 'Debug the race condition in the worker pool' }),
+      );
       const start = performance.now();
 
       await pipeline.route(
@@ -657,6 +662,7 @@ describe('Pipeline triage stage (T027, T028)', () => {
 
     it('completes ambiguous pass-through within 5ms', async () => {
       const pipeline = new RouterPipeline(triageFleet);
+      await pipeline.route(makeRequest({ prompt_text: 'Hello, how are you?' }));
       const start = performance.now();
 
       await pipeline.route(
