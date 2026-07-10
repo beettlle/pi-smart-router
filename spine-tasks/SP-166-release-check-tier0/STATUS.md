@@ -1,5 +1,5 @@
-**Current Step:** Step 2
-**Status:** In Progress
+**Current Step:** Step 3
+**Status:** Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -24,20 +24,20 @@
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Run `npm run release:check` locally on main
-- [ ] Confirm failure when gate thresholds intentionally violated (via SP-165 unit test)
+- [x] Run `npm run release:check` locally on main
+- [x] Confirm failure when gate thresholds intentionally violated (via SP-165 unit test)
 
 ---
 
 ## Completion Criteria
 
-- [ ] `release:functional-smoke` script added
-- [ ] `release:check` includes Tier 0 functional smoke
-- [ ] `release.yml` updated
-- [ ] README documents gate chain
-- [ ] `npm run release:check` passes on main
+- [x] `release:functional-smoke` script added
+- [x] `release:check` includes Tier 0 functional smoke
+- [x] `release.yml` updated
+- [x] README documents gate chain
+- [x] `npm run release:check` passes on main
 
 ---
 
@@ -45,7 +45,9 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-10 | Step 3 | plan | Skipped (engine runs after .DONE) |
+| 2026-07-10 | Step 2 | plan | Skipped (engine runs after .DONE) |
+| 2026-07-10 | Step 1 | plan | Skipped (engine runs after .DONE) |
 
 ## Discoveries
 
@@ -57,7 +59,7 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-10 | release:check | `npm run release:check` exit 0 (~31s); SP-165 fail-path tests pass |
 
 ## Blockers
 
