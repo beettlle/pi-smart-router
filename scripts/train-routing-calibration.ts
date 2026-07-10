@@ -718,6 +718,13 @@ async function main(): Promise<void> {
   parseRoutingCalibrationBundleJson(serializeRoutingCalibrationBundle(bundle));
   writeFileSync(outputPath, serializeRoutingCalibrationBundle(bundle), 'utf8');
 
+  // Also refresh standalone dogfood weights when the P(success) gate is met (SP-175).
+  const pSuccessOut = resolve('config', 'p-success-weights.json');
+  if (bundle.p_success_weights.trained_sample_count >= bundle.p_success_weights.min_training_samples) {
+    writeFileSync(pSuccessOut, `${JSON.stringify(bundle.p_success_weights, null, 2)}\n`, 'utf8');
+    console.error(`train-routing-calibration: also wrote standalone P(success) weights to ${pSuccessOut}`);
+  }
+
   console.error(
     `train-routing-calibration: wrote bundle v${bundle.version} (${records.length} training row(s)) to ${outputPath}`,
   );

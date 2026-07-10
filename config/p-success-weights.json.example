@@ -15,5 +15,8 @@
   ],
   "intercept": 0,
   "coefficients": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  "trained_sample_count": 0
+  "trained_sample_count": 0,
+  "provenance": {
+    "note": "Untrained template. Prefer npm run routing:train-p-success (or copy from config/p-success-weights.json after training). Never commit prompt text."
+  }
 }

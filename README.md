@@ -464,12 +464,40 @@ When `SMART_ROUTER_DATASET=1`, the router records privacy-safe dataset rows and 
 
 Each JSONL row joins dataset features with `success_label` and `outcome_signals`. Success means no negative outcome signals were recorded for that `request_id` (for example `model_override` or `feedback_bad` mark failure). Prompt plaintext is never included.
 
-Train a baseline logistic scorer offline from the export (see `src/domain/routing/p-success-classifier.ts`):
+**Dogfood artifact (SP-175):** the repo ships a non-example `config/p-success-weights.json` trained on the synthetic fixture at `scripts/fixtures/p-success-synthetic-train.jsonl` (**provenance: synthetic/fixture**, not community contrib — 40 labeled feature-vector rows, no prompt text). With `trained_sample_count ≥ 30`, the low-intensity gate uses trained logistic scores instead of neutral `0.5`. Missing or invalid artifacts still fall back safely to neutral defaults.
+
+**Operator train / reload (no prompt text):**
+
+```bash
+# 1) Opt in + dogfood, then export privacy-safe labeled JSONL (features + labels only)
+SMART_ROUTER_DATASET=1
+# …run sessions with /model smart-router/auto and /smart-router feedback…
+/smart-router export dataset --limit 200
+
+# 2) Train standalone weights (≥30 labeled rows required)
+npm run routing:train-p-success -- --input path/to/export.jsonl --output config/p-success-weights.json
+
+# Or regenerate the checked-in dogfood weights from the synthetic fixture:
+npm run routing:train-p-success
+
+# 3) Optional: merge isotonic into an existing calibration bundle (does not rewrite hydra/centroids)
+npm run routing:train-p-success -- --input path/to/export.jsonl \
+  --calibration-output config/routing-calibration.json
+
+# Full Phase-3 bundle (also refreshes standalone p-success-weights.json when the gate is met):
+npm run routing:train-calibration -- --input path/to/aggregated.jsonl
+```
+
+Reload is file-based: replace `config/p-success-weights.json` (and optionally `config/routing-calibration.json` for isotonic) and restart the host agent — no prompt text is ever written into training artifacts.
+
+**Isotonic gap:** serve-time isotonic calibration loads from `config/routing-calibration.json` (`isotonic_calibrator`). The checked-in dogfood path ships trained **logistic** weights only; isotonic is produced when you pass `--calibration-output` or run `routing:train-calibration` with ≥30 labeled samples. Until that bundle exists, the pipeline uses raw logistic `P(success)` (identity / no-op calibrator) and still exposes `p_success_raw` vs `p_success_calibrated` / `p_success_cheap` on explain and telemetry.
+
+Library helpers (see `src/domain/routing/p-success-classifier.ts`):
 
 - `trainFromExportJsonl(exportContent)` — fit coefficients from labeled JSONL
 - `predictPSuccessCheap(features, weights)` — returns `P_success_cheap` in `[0, 1]`
 
-Copy `config/p-success-weights.json.example` to `config/p-success-weights.json` and replace coefficients after training. **Minimum sample guidance:** collect at least **30** labeled economical-tier rows before relying on non-neutral predictions; below that threshold the classifier returns neutral `P_success_cheap = 0.5`. **Online inference** is active in the low-intensity gate; without trained weights the router uses neutral defaults until you add `config/p-success-weights.json`.
+**Minimum sample guidance:** collect at least **30** labeled economical-tier rows before relying on non-neutral predictions; below that threshold the classifier returns neutral `P_success_cheap = 0.5`. **Online inference** is active in the low-intensity gate; without trained weights the router uses neutral defaults until you add `config/p-success-weights.json`.
 
 ### Community telemetry contribution (calibration)
 
@@ -744,6 +772,7 @@ Contributors must run `npm run build` before publishing or consuming the library
 | `npm run routing:bootstrap-centroids` | Regenerate `config/routing-centroids.json` from cluster catalog |
 | `npm run routing:calibration-aggregate` | Aggregate community telemetry for calibration |
 | `npm run routing:train-calibration` | Train routing calibration artifact bundle |
+| `npm run routing:train-p-success` | Train standalone `config/p-success-weights.json` (synthetic fixture by default) |
 | `npm run routing:verify-calibration` | Verify calibration bundle against benchmark prompts |
 | `npm run routing:ingest-benchmarks` | Regenerate `config/benchmark-profiles.json` from leaderboard fixtures |
 | `npm run routing:verify-benchmark-profiles` | CI smoke: assert checked-in profiles match fixture ingest |

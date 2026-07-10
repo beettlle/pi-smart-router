@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "min_training_samples": 30,
+  "feature_names": [
+    "prompt_length_norm",
+    "estimated_input_tokens_norm",
+    "triage_cyclomatic_score",
+    "requirement_reasoning",
+    "requirement_code_gen",
+    "requirement_tool_use",
+    "has_tool_context",
+    "compaction_flag",
+    "routing_latency_norm",
+    "economical_tier"
+  ],
+  "intercept": 4.101841550841884,
+  "coefficients": [
+    -3.9458158506645473,
+    -3.9458158506645473,
+    -4.6221357618419106,
+    -4.702014247565688,
+    -1.9442887494123497,
+    -2.945430358303044,
+    -2.8373347243581435,
+    0,
+    0.09441030879566878,
+    4.101841550841884
+  ],
+  "trained_sample_count": 40,
+  "provenance": {
+    "source": "synthetic_fixture",
+    "task": "SP-175",
+    "note": "Privacy-safe feature vectors + labels only; no prompt text.",
+    "trained_at": "2026-07-10"
+  }
+}
