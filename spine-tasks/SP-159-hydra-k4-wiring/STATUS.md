@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,9 +12,9 @@
 
 **Status:** Pending
 
-- [ ] Branch `extractRequirements` on `hydra_heads` config
-- [ ] Route `modernbert_k4` to ModernBERT heads module
-- [ ] Keep `learned_projection` (SP-115) and placeholder paths
+- [x] Branch `extractRequirements` on `hydra_heads` config
+- [x] Route `modernbert_k4` to ModernBERT heads module
+- [x] Keep `learned_projection` (SP-115) and placeholder paths
 
 ## Step 2: Migration documentation
 

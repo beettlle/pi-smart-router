@@ -23,8 +23,13 @@ import {
   EMBEDDING_DIM,
   type TextEmbedder,
 } from './embedding-provider.js';
-import type { Encoder, HydraConfig } from '../types/schemas.js';
-import { DEFAULT_ENCODER } from '../types/schemas.js';
+import {
+  createModernBertHeadsPredictor,
+  type K4CapabilityVector,
+  type ModernBertHeadsPredictor,
+} from './modernbert-heads.js';
+import type { Encoder, HydraConfig, HydraHeads } from '../types/schemas.js';
+import { DEFAULT_ENCODER, DEFAULT_HYDRA_HEADS } from '../types/schemas.js';
 import {
   scoreMultiObjective,
   type FrugalityWeights,
@@ -66,9 +71,11 @@ export interface MatchResult {
 export interface HydraMatcherConfig {
   readonly artifactCachePath: string;
   readonly encoder?: Encoder;
+  readonly hydraHeads?: HydraHeads;
   readonly budgetMs?: number;
   readonly frugality?: FrugalityWeights;
   readonly projectionWeightsPath?: string;
+  readonly k4HeadWeightsPath?: string;
 }
 
 const DEFAULT_BUDGET_MS = 100;
@@ -294,6 +301,23 @@ export function projectToRequirements(
   return projectToRequirementsPlaceholder(embedding);
 }
 
+// ─── K=4 → requirement vector (catalog shortfall uses 3 dims only) ───────────
+
+/**
+ * Map ModernBERT K=4 head output to the 3-dim requirement vector used by the
+ * catalog-decoupled shortfall gate. The debugging dimension is predicted for
+ * HyDRA fidelity but excluded from shortfall matching (SP-159, routing-roadmap §2 P3).
+ */
+export function k4CapabilityVectorToRequirements(
+  vector: K4CapabilityVector,
+): RequirementVector {
+  return {
+    reasoning: vector.reasoning,
+    code_gen: vector.code_gen,
+    tool_use: vector.tool_use,
+  };
+}
+
 // ─── HyDRA embedding adapter ─────────────────────────────────────────────────
 
 /**
@@ -316,12 +340,32 @@ export function wrapHydraEmbeddingProvider(
   };
 }
 
+/**
+ * Adapts a ModernBERT K=4 heads predictor for HyDRA requirement extraction.
+ * Debugging dimension is dropped before shortfall gate evaluation.
+ */
+export function wrapModernBertHeadsEmbeddingProvider(
+  predictor: ModernBertHeadsPredictor,
+): EmbeddingProvider {
+  return {
+    async extractRequirements(text: string): Promise<RequirementVector> {
+      const k4 = await predictor.predictCapabilities(text);
+      return k4CapabilityVectorToRequirements(k4);
+    },
+
+    async dispose(): Promise<void> {
+      await predictor.dispose();
+    },
+  };
+}
+
 // ─── HydraMatcher ────────────────────────────────────────────────────────────
 
 export class HydraMatcher {
   private readonly provider: EmbeddingProvider;
   private readonly budgetMs: number;
   private readonly frugality: FrugalityWeights;
+  private readonly hydraHeads: HydraHeads;
   private readonly projectionWeights: HydraProjectionWeights | null;
 
   constructor(provider: EmbeddingProvider, config: HydraMatcherConfig) {
@@ -334,14 +378,28 @@ export class HydraMatcher {
     this.provider = provider;
     this.budgetMs = budget;
     this.frugality = config.frugality ?? DEFAULT_OPERATOR_CONFIG.frugality;
-    this.projectionWeights = resolveHydraProjectionWeights(
-      config.projectionWeightsPath ? { filePath: config.projectionWeightsPath } : undefined,
-    );
+    this.hydraHeads = config.hydraHeads ?? DEFAULT_HYDRA_HEADS;
+    this.projectionWeights =
+      this.hydraHeads === 'learned_projection'
+        ? resolveHydraProjectionWeights(
+            config.projectionWeightsPath ? { filePath: config.projectionWeightsPath } : undefined,
+          )
+        : null;
   }
 
-  /** Whether learned projection weights were loaded at init. */
+  /** Active requirement head mode from operator hydra config. */
+  hydraHeadsMode(): HydraHeads {
+    return this.hydraHeads;
+  }
+
+  /** Whether ModernBERT K=4 heads mode is active. */
+  usesModernBertK4(): boolean {
+    return this.hydraHeads === 'modernbert_k4';
+  }
+
+  /** Whether learned SP-115 projection weights were loaded at init. */
   usesLearnedProjection(): boolean {
-    return this.projectionWeights !== null;
+    return this.hydraHeads === 'learned_projection' && this.projectionWeights !== null;
   }
 
   async match(
@@ -441,6 +499,11 @@ export interface CreateOnnxEmbeddingProviderOptions {
   readonly projectionWeightsPath?: string;
 }
 
+export interface CreateHydraEmbeddingProviderOptions extends CreateOnnxEmbeddingProviderOptions {
+  readonly hydraHeads?: HydraHeads;
+  readonly k4HeadWeightsPath?: string;
+}
+
 /**
  * Creates an EmbeddingProvider backed by the shared ONNX text embedder.
  * For multi-matcher setups, create one TextEmbedder via createTextEmbedder
@@ -459,22 +522,55 @@ export async function createOnnxEmbeddingProvider(
 }
 
 /**
- * Bootstrap HyDRA matcher from operator hydra config (encoder + artifact path).
+ * Creates an EmbeddingProvider for the configured hydra_heads mode:
+ * - `learned_projection` — MiniLM/Granite embedder + SP-115 linear projection (or placeholder)
+ * - `modernbert_k4` — ModernBERT-base [CLS] with K=4 sigmoid heads (debugging excluded from shortfall)
+ */
+export async function createHydraEmbeddingProvider(
+  artifactCachePath: string,
+  options?: CreateHydraEmbeddingProviderOptions,
+): Promise<EmbeddingProvider> {
+  const hydraHeads = options?.hydraHeads ?? DEFAULT_HYDRA_HEADS;
+
+  if (hydraHeads === 'modernbert_k4') {
+    const predictorOptions =
+      options?.k4HeadWeightsPath === undefined
+        ? undefined
+        : { headWeightsPath: options.k4HeadWeightsPath };
+    const predictor = await createModernBertHeadsPredictor(
+      artifactCachePath,
+      predictorOptions,
+    );
+    return wrapModernBertHeadsEmbeddingProvider(predictor);
+  }
+
+  return createOnnxEmbeddingProvider(artifactCachePath, options);
+}
+
+/**
+ * Bootstrap HyDRA matcher from operator hydra config (encoder, heads, artifact path).
  */
 export async function createHydraMatcherFromHydraConfig(
-  hydraConfig: Pick<HydraConfig, 'artifact_cache_path' | 'encoder'>,
-  options?: Omit<HydraMatcherConfig, 'artifactCachePath' | 'encoder'>,
+  hydraConfig: Pick<HydraConfig, 'artifact_cache_path'> &
+    Partial<Pick<HydraConfig, 'encoder' | 'hydra_heads'>>,
+  options?: Omit<HydraMatcherConfig, 'artifactCachePath' | 'encoder' | 'hydraHeads'>,
 ): Promise<HydraMatcher> {
   const encoder = hydraConfig.encoder ?? DEFAULT_ENCODER;
-  const provider = await createOnnxEmbeddingProvider(
-    hydraConfig.artifact_cache_path,
-    options?.projectionWeightsPath === undefined
-      ? { encoder }
-      : { encoder, projectionWeightsPath: options.projectionWeightsPath },
-  );
+  const hydraHeads = hydraConfig.hydra_heads ?? DEFAULT_HYDRA_HEADS;
+  const provider = await createHydraEmbeddingProvider(hydraConfig.artifact_cache_path, {
+    encoder,
+    hydraHeads,
+    ...(options?.projectionWeightsPath === undefined
+      ? {}
+      : { projectionWeightsPath: options.projectionWeightsPath }),
+    ...(options?.k4HeadWeightsPath === undefined
+      ? {}
+      : { k4HeadWeightsPath: options.k4HeadWeightsPath }),
+  });
   return new HydraMatcher(provider, {
     artifactCachePath: hydraConfig.artifact_cache_path,
     encoder,
+    hydraHeads,
     ...options,
   });
 }
