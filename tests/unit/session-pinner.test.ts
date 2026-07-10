@@ -536,6 +536,37 @@ describe('SessionPinner', () => {
     });
   });
 
+  describe('lookupPin — pin_only_fallback (SP-161)', () => {
+    it('returns use_pin instead of sub_route when pinOnlyFallback is enabled', () => {
+      const pinner = new SessionPinner({ pinOnlyFallback: true });
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const result = pinner.lookupPin(
+        makeRequest({
+          turn_type: 'tool_result',
+          estimated_input_tokens: 100,
+        }),
+        fleet,
+      );
+
+      expect(result.action).toBe('use_pin');
+      expect(result.pinnedModel?.id).toBe('claude-opus');
+    });
+
+    it('still honors compaction break when pinOnlyFallback is enabled', () => {
+      const pinner = new SessionPinner({ pinOnlyFallback: true });
+      pinner.recordPin('sess-1', 'claude-opus', 'initial');
+
+      const result = pinner.lookupPin(
+        makeRequest({ compaction_flag: true }),
+        fleet,
+      );
+
+      expect(result.action).toBe('break');
+      expect(result.breakReason).toBe('compaction');
+    });
+  });
+
   describe('recordPin', () => {
     it('creates a new pin with initial values', () => {
       const pinner = new SessionPinner();

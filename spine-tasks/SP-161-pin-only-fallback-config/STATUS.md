@@ -1,5 +1,5 @@
-**Current Step:** Step 2
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -17,7 +17,7 @@
 
 ## Step 2: Session pin and pipeline wiring
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] When `pin_only_fallback` enabled, pin on first turn and short-circuit later stages
 - [x] Integrate with session pinner `use_pin` path
@@ -25,19 +25,19 @@
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Integration test: config on → pin-only behavior; config off → normal routing
-- [ ] Run `npm run verify:ci`
+- [x] Integration test: config on → pin-only behavior; config off → normal routing
+- [x] Run `npm run verify:ci`
 
 ---
 
 ## Completion Criteria
 
-- [ ] `pin_only_fallback` config toggles behavior
-- [ ] Integration test for pin-only mode
-- [ ] Documented as emergency mode, not default
-- [ ] `npm run verify:ci` passes
+- [x] `pin_only_fallback` config toggles behavior
+- [x] Integration test for pin-only mode
+- [x] Documented as emergency mode, not default
+- [x] `npm run verify:ci` passes
 
 ---
 

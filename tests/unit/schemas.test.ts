@@ -205,3 +205,46 @@ describe('OperatorConfigSchema SAAR section', () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe('OperatorConfigSchema pin_only_fallback (SP-161)', () => {
+  it('defaults pin_only_fallback to false when omitted', () => {
+    const result = OperatorConfigSchema.parse({
+      frugality: {
+        lambda_cost: 0.5,
+        lambda_latency: 0.1,
+        lambda_verbosity: 0.15,
+      },
+      loop_escalation: { threshold: 3 },
+      pricing: { staleness_days: 14 },
+      local: {
+        min_memory_gb_full: 16,
+        min_memory_gb_classification: 8,
+        battery_threshold_pct: 20,
+      },
+      hydra: { artifact_cache_path: '.pi-smart-router/models/' },
+      low_intensity: {
+        weights: {
+          prompt_shortness: 0.1,
+          token_shortness: 0.1,
+          cyclomatic_low: 0.1,
+          trivial_signal: 0.1,
+          complex_inverse: 0.1,
+          triage_verdict: 0.1,
+          turn_type: 0.1,
+          no_tool_context: 0.1,
+          message_shallow: 0.1,
+          prose_ratio: 0.1,
+          requirement_low: 0.1,
+          cluster_signal: 0.1,
+        },
+        high_threshold: 0.65,
+        low_threshold: 0.35,
+        p_success_alpha: 0.5,
+      },
+      saar: validSaarConfig,
+      planning_delegate: validPlanningDelegateConfig,
+    });
+
+    expect(result.pin_only_fallback).toBe(false);
+  });
+});
