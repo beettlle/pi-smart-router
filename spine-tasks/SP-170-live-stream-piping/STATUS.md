@@ -51,7 +51,7 @@
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine post-.DONE) |
 | 2026-07-10 | 2 | plan | skipped (engine post-.DONE) |
-| 2026-07-10 | 3 | plan | pending |
+| 2026-07-10 | 3 | plan | skipped (engine post-.DONE) |
 
 ## Discoveries
 
