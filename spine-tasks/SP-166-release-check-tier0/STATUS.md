@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,10 +10,10 @@
 
 ## Step 1: package.json scripts
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Add `release:functional-smoke` chaining calibration verify, benchmark profiles, assert-release-gates --fixtures
-- [ ] Extend `release:check` to include `release:functional-smoke` after consumer-pack
+- [x] Add `release:functional-smoke` chaining calibration verify, benchmark profiles, assert-release-gates --fixtures
+- [x] Extend `release:check` to include `release:functional-smoke` after consumer-pack
 
 ## Step 2: Release workflow and docs
 
