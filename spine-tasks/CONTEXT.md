@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-10
 **Status:** Active
-**Next Task ID:** SP-176
+**Next Task ID:** SP-179
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -485,6 +485,25 @@
 |------|-------|-------|
 | A | SP-173, SP-174 | Parallel — disjoint scopes (extension vs mapper/profiles) |
 | B | SP-175 | After SP-174 (README serialization) |
+
+**Deferred:** #95 (operator skip), #96 (modernbert_k4 enablement epic), #1/#25/#26 hardware dogfooding.
+
+### Phase 38 — Release v0.8.0 Dogfood Routing Fixes (SP-176–SP-178)
+
+| Task | Summary | Size | Deps | Maps |
+|------|---------|------|------|------|
+| SP-176 | Triage/turn-envelope repo-cleanup ≠ zero-tier | M | — | #97 |
+| SP-177 | Pre-local_zero tool_use capability gate | M | SP-176 | #98 |
+| SP-178 | SAAR pin-break + delegated model in history | M | — | #99 |
+
+**Source:** GitHub dogfood routing issues #97–#99 (operator-approved backlog for v0.8.0). Ratio: 1 bug + 2 features (docs empty; only one open bug; #98/#99 sibling cluster; #95 skipped).
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-176, SP-178 | Parallel — triage vs pinning/history |
+| B | SP-177 | After SP-176 (pipeline serialization) |
 
 **Deferred:** #95 (operator skip), #96 (modernbert_k4 enablement epic), #1/#25/#26 hardware dogfooding.
 
