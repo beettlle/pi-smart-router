@@ -19,6 +19,7 @@ import {
   SAAR_HARD_LOCK,
   PLANNING_DELEGATE,
   PLANNING_DIRECT_FRONTIER,
+  PIN_ONLY_FALLBACK,
   RoutingTelemetryEmitter,
   buildBreakevenObservability,
   buildContextFitObservability,
@@ -34,7 +35,14 @@ import {
   enrichRoutingDecisionWithPlanningDelegate,
   enrichRoutingDecisionWithTierSelection,
   resolveTierSelectionReasonCode,
+  resolvePinOnlyFallbackActive,
 } from '../../src/infrastructure/telemetry/routing-telemetry.js';
+import {
+  computeQualityRetentionRegression,
+  DEFAULT_QR_REGRESSION_THRESHOLD,
+  evaluatePinOnlyFallbackFromHarness,
+  evaluatePinOnlyFallbackTrigger,
+} from '../../scripts/eval/quality-retention.js';
 import { DEFAULT_PLANNING_DELEGATE_CONFIG, DEFAULT_SAAR_CONFIG } from '../../src/domain/types/schemas.js';
 import { TELEMETRY_MAX_ENTRIES } from '../../src/infrastructure/telemetry/telemetry-limits.js';
 
@@ -792,5 +800,106 @@ describe('planning delegate observability (SP-142)', () => {
       path: 'delegate',
       primary_model_id: 'warm-econ',
     });
+  });
+
+  it('sets pin_only_fallback_active when reason_code is pin_only_fallback', () => {
+    const onRecord = vi.fn();
+    const emitter = new RoutingTelemetryEmitter({ onRecord });
+    const decision = makeDecision({
+      stage: 'session_pin',
+      reason_code: PIN_ONLY_FALLBACK,
+      pin_reason: 'session_pinned',
+    });
+
+    emitter.emit(makeRequest(), decision);
+
+    expect(onRecord.mock.calls[0]?.[0]).toMatchObject({
+      reason_code: PIN_ONLY_FALLBACK,
+      pin_only_fallback_active: true,
+    });
+  });
+
+  it('defaults pin_only_fallback_active to false for normal routing', () => {
+    const onRecord = vi.fn();
+    const emitter = new RoutingTelemetryEmitter({ onRecord });
+
+    emitter.emit(makeRequest(), makeDecision({ reason_code: 'session_pinned' }));
+
+    expect(onRecord.mock.calls[0]?.[0]).toMatchObject({
+      pin_only_fallback_active: false,
+    });
+  });
+
+  it('includes pin_only_fallback_active in routing log payload', () => {
+    const payload = buildRoutingDecisionLogPayload(
+      makeRequest(),
+      makeDecision({ reason_code: PIN_ONLY_FALLBACK, stage: 'session_pin' }),
+    );
+
+    expect(payload.pin_only_fallback_active).toBe(true);
+    expect(resolvePinOnlyFallbackActive(makeDecision({ reason_code: PIN_ONLY_FALLBACK }))).toBe(
+      true,
+    );
+  });
+});
+
+describe('quality retention pin-only trigger (SP-162)', () => {
+  it('detects regression when shadow QR drops more than threshold', () => {
+    const result = computeQualityRetentionRegression({
+      shadowQualityRetention: 0.89,
+      baselineQualityRetention: 0.95,
+    });
+
+    expect(result.regression_delta).toBeCloseTo(0.06);
+    expect(result.quality_regressed).toBe(true);
+    expect(result.regression_threshold).toBe(DEFAULT_QR_REGRESSION_THRESHOLD);
+  });
+
+  it('does not regress when shadow QR is within threshold', () => {
+    const result = computeQualityRetentionRegression({
+      shadowQualityRetention: 0.92,
+      baselineQualityRetention: 0.95,
+    });
+
+    expect(result.regression_delta).toBeCloseTo(0.03);
+    expect(result.quality_regressed).toBe(false);
+  });
+
+  it('auto-enables pin_only_fallback on eval regression', () => {
+    const result = evaluatePinOnlyFallbackTrigger({
+      shadowQualityRetention: 0.88,
+      baselineQualityRetention: 0.95,
+    });
+
+    expect(result.pin_only_fallback).toBe(true);
+    expect(result.trigger_source).toBe('eval_regression');
+  });
+
+  it('honors manual operator override over auto trigger', () => {
+    const enabled = evaluatePinOnlyFallbackTrigger({
+      shadowQualityRetention: 0.99,
+      baselineQualityRetention: 0.95,
+      manualOverride: true,
+    });
+    expect(enabled.pin_only_fallback).toBe(true);
+    expect(enabled.trigger_source).toBe('manual');
+
+    const disabled = evaluatePinOnlyFallbackTrigger({
+      shadowQualityRetention: 0.8,
+      baselineQualityRetention: 0.95,
+      manualOverride: false,
+    });
+    expect(disabled.pin_only_fallback).toBe(false);
+    expect(disabled.trigger_source).toBe('none');
+  });
+
+  it('evaluates harness aggregate metrics', () => {
+    const result = evaluatePinOnlyFallbackFromHarness(
+      { mean_quality_retention: 0.84 },
+      { mean_quality_retention: 0.9 },
+    );
+
+    expect(result.pin_only_fallback).toBe(true);
+    expect(result.quality_check.quality_regressed).toBe(true);
   });
 });

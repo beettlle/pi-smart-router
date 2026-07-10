@@ -13,7 +13,7 @@ import {
   toCommunityTelemetryRecord,
   toHydraCalibrationRecord,
 } from '../../src/infra/telemetry.js';
-import { DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS, DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS, DEFAULT_BREAKEVEN_TELEMETRY_FIELDS, DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS, DEFAULT_SAAR_TELEMETRY_FIELDS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
+import { DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS, DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS, DEFAULT_BREAKEVEN_TELEMETRY_FIELDS, DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS, DEFAULT_PIN_ONLY_FALLBACK_TELEMETRY_FIELDS, DEFAULT_SAAR_TELEMETRY_FIELDS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 
 function makeTelemetry(overrides?: Partial<RoutingTelemetry>): RoutingTelemetry {
   return {
@@ -32,6 +32,7 @@ function makeTelemetry(overrides?: Partial<RoutingTelemetry>): RoutingTelemetry 
     ...DEFAULT_BREAKEVEN_TELEMETRY_FIELDS,
     ...DEFAULT_SAAR_TELEMETRY_FIELDS,
     ...DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS,
+    ...DEFAULT_PIN_ONLY_FALLBACK_TELEMETRY_FIELDS,
     ...overrides,
   };
 }
