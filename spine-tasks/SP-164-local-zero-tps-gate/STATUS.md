@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,18 +10,18 @@
 
 ## Step 1: Pipeline integration
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Inject throughput meter into router pipeline
-- [ ] In `localZeroTierStage`, check median tok/s before dispatch
-- [ ] Skip local_zero when below threshold; return economical cloud path
+- [x] Inject throughput meter into router pipeline
+- [x] In `localZeroTierStage`, check median tok/s before dispatch
+- [x] Skip local_zero when below threshold; return economical cloud path
 
 ## Step 2: Telemetry and tests
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Add `throughput_below_threshold` to local_zero skip reasons
-- [ ] Unit tests with mocked throughput meter (above/below threshold)
+- [x] Add `throughput_below_threshold` to local_zero skip reasons
+- [x] Unit tests with mocked throughput meter (above/below threshold)
 
 ## Step 3: Testing and verification
 

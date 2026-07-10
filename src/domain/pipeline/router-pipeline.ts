@@ -24,6 +24,7 @@ import type {
 import type { QuotaWindowPosition } from '../types/entities.js';
 import type { LowIntensityConfig, VirtualCostV2Config } from '../types/schemas.js';
 import type { HardwareProbeConfig, HardwareProbeResult, SystemInfo } from '../../infrastructure/hardware/hardware-probe.js';
+import type { ThroughputMeter } from '../../infrastructure/hardware/throughput-meter.js';
 import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
 import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
 import { pingLocalServices } from '../../infrastructure/local/local-zero-tier.js';
@@ -59,6 +60,7 @@ import {
   PLANNING_DELEGATE,
   PLANNING_DELEGATE_DISABLED,
   PLANNING_DIRECT_FRONTIER,
+  THROUGHPUT_BELOW_THRESHOLD,
 } from '../../infrastructure/telemetry/routing-telemetry.js';
 import type { HydraMatcher as HydraMatcherType, MatchResult } from '../matching/hydra-matcher.js';
 import type { ClusterMatcher, ClusterMatchResult } from '../matching/cluster-matcher.js';
@@ -199,6 +201,8 @@ export interface PipelineOptions {
    * turn_envelope and multi-stage routing; session_pin use_pin path handles them.
    */
   readonly pinOnlyFallback?: boolean;
+  /** Rolling median tok/s gate for local_zero dispatch (SP-164, #84). */
+  readonly throughputMeter?: ThroughputMeter;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -240,6 +244,8 @@ export class RouterPipeline {
   private currentBreakevenReason: string | null = null;
   /** Planning delegate observability for SP-143 explain/telemetry wiring. */
   private currentPlanningDelegate: PlanningDelegateObservability | null = null;
+  /** Explicit local_zero gate skip reasons for tier-selection telemetry (SP-164). */
+  private currentLocalZeroGateSkipReasons: readonly string[] = [];
 
   constructor(fleet: readonly ModelProfile[], options?: PipelineOptions) {
     this.fleet = fleet;
@@ -289,6 +295,7 @@ export class RouterPipeline {
     this.contextOverflowTriggered = false;
     this.currentBreakevenReason = null;
     this.currentPlanningDelegate = null;
+    this.currentLocalZeroGateSkipReasons = [];
 
     let currentStage: NamedPipelineStage | undefined;
 
@@ -395,7 +402,51 @@ export class RouterPipeline {
       this.fullFleet,
       this.options.contextFitConfig,
     );
-    return enrichRoutingDecisionWithTierSelection(withContextFit);
+    return this.attachLocalZeroGateSkipReasons(
+      enrichRoutingDecisionWithTierSelection(withContextFit),
+    );
+  }
+
+  /** Merge pipeline-recorded local_zero gate skip reasons into tier_selection (SP-164). */
+  private attachLocalZeroGateSkipReasons(decision: RoutingDecision): RoutingDecision {
+    if (this.currentLocalZeroGateSkipReasons.length === 0) {
+      return decision;
+    }
+
+    const tierSelection = decision.features?.tier_selection;
+    if (!tierSelection) {
+      return decision;
+    }
+
+    const mergedSkipReasons = [
+      ...tierSelection.local_zero_skip_reasons,
+      ...this.currentLocalZeroGateSkipReasons.filter(
+        (reason) => !tierSelection.local_zero_skip_reasons.includes(reason),
+      ),
+    ];
+
+    return {
+      ...decision,
+      features: {
+        ...(decision.features ?? {
+          triage: null,
+          requirements: null,
+          candidates: null,
+          tier_hint: null,
+          tier_hint_reason_code: null,
+          low_intensity_score: null,
+          p_success_cheap: null,
+          p_success_raw: null,
+          p_success_calibrated: null,
+          p_success_alpha: null,
+          local_eligible_reason: null,
+        }),
+        tier_selection: {
+          ...tierSelection,
+          local_zero_skip_reasons: mergedSkipReasons,
+        },
+      },
+    };
   }
 
   private mergeFeatureCandidates(): readonly CandidateScore[] | null {
@@ -668,6 +719,33 @@ export class RouterPipeline {
 
     if (this.currentHardwareResult !== 'full_local') {
       return { decided: false, stage: 'local_zero' };
+    }
+
+    const throughputMeter = this.options.throughputMeter;
+    if (throughputMeter && !throughputMeter.isAboveThreshold()) {
+      const economicalModel = this.activeFleet.find(
+        (m) => m.tier === 'economical-cloud' && m.healthy !== false,
+      );
+      if (!economicalModel) {
+        return { decided: false, stage: 'local_zero' };
+      }
+
+      this.currentLocalEligibleReason = eligibility.reason;
+      this.currentLocalZeroGateSkipReasons = [THROUGHPUT_BELOW_THRESHOLD];
+
+      return {
+        decided: true,
+        stage: 'local_zero',
+        decision: {
+          request_id: request.request_id,
+          selected_model_id: economicalModel.id,
+          tier: 'economical-cloud',
+          stage: 'local_zero',
+          reason_code: THROUGHPUT_BELOW_THRESHOLD,
+          routing_latency_ms: 0,
+          pin_reason: null,
+        },
+      };
     }
 
     const readiness = await pingLocalServices(

@@ -81,6 +81,8 @@ export const PLANNING_DIRECT_FRONTIER = 'planning_direct_frontier' as const;
 export const PLANNING_DELEGATE_DISABLED = 'planning_delegate_disabled' as const;
 export const PLANNING_DELEGATE_UNAVAILABLE = 'planning_delegate_unavailable' as const;
 
+export const THROUGHPUT_BELOW_THRESHOLD = 'throughput_below_threshold' as const;
+
 const TURN_ENVELOPE_TIER_MAP: Readonly<Record<string, Tier | null>> = {
   planning: 'frontier-cloud',
   tool_result: 'economical-cloud',
@@ -426,6 +428,9 @@ export function buildLocalZeroSkipReasons(
   features: RoutingDecision['features'],
 ): readonly string[] {
   if (decision.stage === 'local_zero') {
+    if (decision.reason_code === THROUGHPUT_BELOW_THRESHOLD) {
+      return [THROUGHPUT_BELOW_THRESHOLD];
+    }
     return [];
   }
 

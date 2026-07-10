@@ -13,6 +13,8 @@ import { RoutingTelemetryEmitter } from '../../src/infrastructure/telemetry/rout
 import { CONTEXT_FIT_EXCEEDED } from '../../src/domain/routing/context-fit.js';
 import type { HttpFetchPort } from '../../src/infrastructure/local/local-zero-tier.js';
 import type { SystemInfo } from '../../src/infrastructure/hardware/hardware-probe.js';
+import type { ThroughputMeter } from '../../src/infrastructure/hardware/throughput-meter.js';
+import { THROUGHPUT_BELOW_THRESHOLD } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 import type { ModelProfile, PriceCatalog, RoutingRequest } from '../../src/domain/types/index.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
 import { DEFAULT_SAAR_CONFIG } from '../../src/domain/types/schemas.js';
@@ -1421,6 +1423,111 @@ describe('RouterPipeline', () => {
       expect(decision.stage).not.toBe('local_zero');
       expect(decision.tier).not.toBe('zero-tier');
       expect(decision.features?.local_eligible_reason).toBeNull();
+    });
+  });
+
+  describe('local_zero throughput gate (SP-164)', () => {
+    const HARDWARE_CONFIG = {
+      min_memory_gb_full: 16,
+      min_memory_gb_classification: 8,
+      battery_threshold_pct: 20,
+    } as const;
+
+    const LOCAL_TEST_CONFIG = {
+      lmStudioBaseUrl: 'http://127.0.0.1:1234',
+      ollamaBaseUrl: 'http://127.0.0.1:11434',
+      pingTimeoutMs: 500,
+    } as const;
+
+    const READY_FETCH: HttpFetchPort = {
+      fetch: vi.fn(async (url: string) => {
+        if (url.includes('/v1/models')) {
+          return { ok: true, json: async () => ({ data: [{ id: 'local-model' }] }) };
+        }
+        if (url.includes('/api/tags')) {
+          return { ok: true, json: async () => ({ models: [] }) };
+        }
+        throw new Error('ECONNREFUSED');
+      }),
+    };
+
+    function makeSystemInfo(overrides?: Partial<SystemInfo>): SystemInfo {
+      return {
+        totalMemoryGb: 16,
+        arch: 'arm64',
+        platform: 'darwin',
+        batteryLevel: 80,
+        isOnAcPower: true,
+        ...overrides,
+      };
+    }
+
+    function makeThroughputMeter(aboveThreshold: boolean): ThroughputMeter {
+      return {
+        recordSample: vi.fn(),
+        getMedianTps: vi.fn(() => (aboveThreshold ? 30 : 10)),
+        isAboveThreshold: vi.fn(() => aboveThreshold),
+        getSampleCount: vi.fn(() => 1),
+        clear: vi.fn(),
+      };
+    }
+
+    const localReadyFleet: ModelProfile[] = [
+      makeModel({ id: 'local-llama', tier: 'zero-tier' }),
+      makeModel({ id: 'gpt-4o-mini', tier: 'economical-cloud' }),
+    ];
+
+    const localReadyOptions = {
+      hardwareConfig: HARDWARE_CONFIG,
+      localConfig: LOCAL_TEST_CONFIG,
+      systemInfoProvider: () => Promise.resolve(makeSystemInfo()),
+      httpFetchPort: READY_FETCH,
+    };
+
+    it('dispatches local_zero when throughput meter is above threshold', async () => {
+      const pipeline = new RouterPipeline(localReadyFleet, {
+        ...localReadyOptions,
+        throughputMeter: makeThroughputMeter(true),
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Format this JSON file' }),
+      );
+
+      expect(decision.stage).toBe('local_zero');
+      expect(decision.tier).toBe('zero-tier');
+      expect(decision.reason_code).toBe('local_model_ready');
+    });
+
+    it('falls through to economical cloud when throughput is below threshold', async () => {
+      const pipeline = new RouterPipeline(localReadyFleet, {
+        ...localReadyOptions,
+        throughputMeter: makeThroughputMeter(false),
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Format this JSON file' }),
+      );
+
+      expect(decision.stage).toBe('local_zero');
+      expect(decision.tier).toBe('economical-cloud');
+      expect(decision.selected_model_id).toBe('gpt-4o-mini');
+      expect(decision.reason_code).toBe(THROUGHPUT_BELOW_THRESHOLD);
+      expect(decision.features?.local_eligible_reason).toBe('triage_trivial');
+      expect(decision.features?.tier_selection?.local_zero_skip_reasons).toContain(
+        THROUGHPUT_BELOW_THRESHOLD,
+      );
+    });
+
+    it('preserves local_zero routing when throughput meter is not configured', async () => {
+      const pipeline = new RouterPipeline(localReadyFleet, localReadyOptions);
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Format this JSON file' }),
+      );
+
+      expect(decision.stage).toBe('local_zero');
+      expect(decision.tier).toBe('zero-tier');
     });
   });
 

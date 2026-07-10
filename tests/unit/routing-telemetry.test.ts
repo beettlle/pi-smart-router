@@ -28,6 +28,7 @@ import {
   buildSaarObservability,
   buildTierSelectionObservability,
   createPlanningDelegateObservability,
+  THROUGHPUT_BELOW_THRESHOLD,
   enrichRoutingDecisionWithContextFit,
   enrichRoutingDecisionWithPinEconomics,
   enrichRoutingDecisionWithPlanningDelegate,
@@ -508,6 +509,26 @@ describe('tier-selection observability (SP-113)', () => {
     expect(enriched.features?.tier_selection?.local_zero_skip_reasons).toContain(
       'hardware_or_local_unavailable',
     );
+  });
+
+  it('records throughput_below_threshold when local_zero gates to economical cloud (SP-164)', () => {
+    const decision = makeDecision({
+      stage: 'local_zero',
+      reason_code: THROUGHPUT_BELOW_THRESHOLD,
+      tier: 'economical-cloud',
+      features: {
+        ...makeTierFeatures(),
+        local_eligible_reason: 'triage_trivial',
+      },
+    });
+    const enriched = enrichRoutingDecisionWithTierSelection(decision);
+
+    expect(buildLocalZeroSkipReasons(decision, decision.features)).toEqual([
+      THROUGHPUT_BELOW_THRESHOLD,
+    ]);
+    expect(enriched.features?.tier_selection?.local_zero_skip_reasons).toEqual([
+      THROUGHPUT_BELOW_THRESHOLD,
+    ]);
   });
 });
 
