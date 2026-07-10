@@ -24,10 +24,23 @@ import {
   EXPORT_TELEMETRY_CONTRIB_COMMAND,
   UNPIN_SUBCOMMAND,
 } from '../../src/cli/smart-router-cli.js';
+import {
+  formatHistoryMessage,
+  resolveHistoryModelId,
+} from '../../.pi/extensions/smart-router/command-formatters.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
 import type { RoutingDatasetRecord, RoutingOutcomeRecord } from '../../src/domain/types/index.js';
-import { DEFAULT_CONTEXT_FIT_DATASET_FIELDS, DEFAULT_TIER_SELECTION_DATASET_FIELDS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
+import {
+  DEFAULT_BREAKEVEN_TELEMETRY_FIELDS,
+  DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
+  DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
+  DEFAULT_PIN_ONLY_FALLBACK_TELEMETRY_FIELDS,
+  DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS,
+  DEFAULT_SAAR_TELEMETRY_FIELDS,
+  DEFAULT_TIER_SELECTION_DATASET_FIELDS,
+  DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
+} from '../../src/infrastructure/telemetry/routing-telemetry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '../..');
@@ -305,5 +318,63 @@ describe('export telemetry-contrib (SP-118)', () => {
     expect(contrib).not.toHaveProperty('request_id');
     expect(contrib).not.toHaveProperty('prompt_text');
     expect(contrib.session_id_hash).toBe(hashSessionIdForContribExport('sess-secret'));
+  });
+});
+
+describe('history model id display (SP-178)', () => {
+  it('prefers planning-delegate primary over virtual auto', () => {
+    const display = resolveHistoryModelId({
+      selected_model_id: 'auto',
+      planning_delegate_primary_model_id: 'gpt-4o-mini',
+      planning_delegate_model_id: 'claude-opus',
+    });
+    expect(display).toBe('gpt-4o-mini');
+  });
+
+  it('qualifies bare auto via fleet provider', () => {
+    const display = resolveHistoryModelId(
+      {
+        selected_model_id: 'auto',
+        planning_delegate_primary_model_id: null,
+        planning_delegate_model_id: null,
+      },
+      [
+        {
+          id: 'auto',
+          provider: 'cursor',
+          tier: 'frontier-cloud',
+          capabilities: { reasoning: 0.9, code_gen: 0.9, tool_use: 0.9 },
+          pricing: { fallback_cost_per_1m: 0 },
+        },
+      ],
+    );
+    expect(display).toBe('cursor/auto');
+  });
+
+  it('formatHistoryMessage never shows bare auto', () => {
+    const message = formatHistoryMessage([
+      {
+        timestamp: '2026-07-10T12:00:00.000Z',
+        session_id: 'sess-1',
+        request_id: 'req-1',
+        turn_type: 'main_loop',
+        stage: 'hydra_match',
+        reason_code: 'hydra_embedding_match',
+        selected_model_id: 'auto',
+        estimated_cost_usd: 0,
+        routing_latency_ms: 5,
+        pin_reason: null,
+        ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
+        ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
+        ...DEFAULT_BREAKEVEN_TELEMETRY_FIELDS,
+        ...DEFAULT_SAAR_TELEMETRY_FIELDS,
+        ...DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS,
+        planning_delegate_primary_model_id: 'gemini-flash-latest',
+        ...DEFAULT_PIN_ONLY_FALLBACK_TELEMETRY_FIELDS,
+      },
+    ]);
+
+    expect(message).toContain('gemini-flash-latest');
+    expect(message).not.toMatch(/\|\s*auto\s*\|/);
   });
 });

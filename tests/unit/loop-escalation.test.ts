@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   evaluateLoopEscalation,
   extractToolFailureSignature,
+  isUnsupportedOrUnknownToolResult,
+  ZERO_TIER_TOOL_CHURN_SIGNATURE,
   type LoopEscalationConfig,
 } from '../../src/domain/pinning/loop-escalation.js';
 import type { ModelProfile, RoutingRequest, SessionPin } from '../../src/domain/types/index.js';
@@ -46,7 +48,9 @@ function makePin(overrides?: Partial<SessionPin>): SessionPin {
 
 const econModel = makeModel({ id: 'econ-model', tier: 'economical-cloud' });
 const frontierModel = makeModel({ id: 'frontier-model', tier: 'frontier-cloud' });
+const zeroTierModel = makeModel({ id: 'local-qwen', tier: 'zero-tier' });
 const fleet: readonly ModelProfile[] = [econModel, frontierModel];
+const zeroTierFleet: readonly ModelProfile[] = [zeroTierModel, econModel, frontierModel];
 
 const defaultConfig: LoopEscalationConfig = { threshold: 3 };
 
@@ -521,6 +525,140 @@ describe('evaluateLoopEscalation', () => {
         defaultConfig,
       );
       expect(result.updatedPin!.updated_at).not.toBe('2026-01-01T00:00:00.000Z');
+    });
+  });
+
+  describe('zero-tier observational pin-break (SP-178)', () => {
+    function makeZeroTierPin(overrides?: Partial<SessionPin>): SessionPin {
+      return makePin({
+        pinned_model_id: 'local-qwen',
+        ...overrides,
+      });
+    }
+
+    it('detects unsupported/unknown tool result content', () => {
+      expect(
+        isUnsupportedOrUnknownToolResult(
+          makeRequest({
+            messages: [{ role: 'tool', content: "Unknown tool: obsidian_plan" }],
+          }),
+        ),
+      ).toBe(true);
+      expect(
+        isUnsupportedOrUnknownToolResult(
+          makeRequest({
+            messages: [{ role: 'tool', content: 'File written successfully' }],
+          }),
+        ),
+      ).toBe(false);
+    });
+
+    it('escalates immediately on unsupported tool while pinned to zero-tier', () => {
+      const pin = makeZeroTierPin();
+      const result = evaluateLoopEscalation(
+        pin,
+        makeRequest({
+          turn_type: 'tool_result',
+          messages: [{ role: 'tool', content: 'Error: Unknown tool obsidian_plan' }],
+        }),
+        zeroTierFleet,
+        defaultConfig,
+      );
+      expect(result.shouldEscalate).toBe(true);
+      expect(result.reason).toBe('zero_tier_unsupported_tool');
+      expect(result.escalationTarget!.id).toBe('frontier-model');
+      expect(result.updatedPin!.last_tool_failure_signature).toBe('zt:unsupported_tool');
+    });
+
+    it('does not immediate-escalate unsupported tool on economical pin (identical-failure path)', () => {
+      const pin = makePin();
+      const result = evaluateLoopEscalation(
+        pin,
+        makeRequest({
+          turn_type: 'tool_result',
+          messages: [{ role: 'tool', content: 'Unknown tool: obsidian_plan' }],
+        }),
+        fleet,
+        defaultConfig,
+      );
+      // "unknown tool" also matches FAILURE_PATTERNS via "fail"/"error"? "Unknown tool" has neither
+      // "error" nor "fail" as substring... "Unknown" doesn't match. So no_failure unless pattern hits.
+      // "fail" is not in "Unknown tool: obsidian_plan". Expect no_failure or below_threshold.
+      expect(result.shouldEscalate).toBe(false);
+      expect(result.reason).not.toBe('zero_tier_unsupported_tool');
+    });
+
+    it('counts successful tool_result turns on zero-tier pin (churn)', () => {
+      const pin = makeZeroTierPin();
+      const result = evaluateLoopEscalation(
+        pin,
+        makeRequest({
+          turn_type: 'tool_result',
+          messages: [{ role: 'tool', content: 'File written successfully' }],
+        }),
+        zeroTierFleet,
+        defaultConfig,
+      );
+      expect(result.shouldEscalate).toBe(false);
+      expect(result.reason).toBe('zero_tier_below_threshold');
+      expect(result.updatedPin!.consecutive_tool_failures).toBe(1);
+      expect(result.updatedPin!.last_tool_failure_signature).toBe(ZERO_TIER_TOOL_CHURN_SIGNATURE);
+    });
+
+    it('escalates after N tool_result turns on zero-tier pin', () => {
+      const pin = makeZeroTierPin({
+        consecutive_tool_failures: 2,
+        last_tool_failure_signature: ZERO_TIER_TOOL_CHURN_SIGNATURE,
+      });
+      const result = evaluateLoopEscalation(
+        pin,
+        makeRequest({
+          turn_type: 'tool_result',
+          messages: [{ role: 'tool', content: 'grep matched 3 lines' }],
+        }),
+        zeroTierFleet,
+        defaultConfig,
+      );
+      expect(result.shouldEscalate).toBe(true);
+      expect(result.reason).toBe('zero_tier_tool_churn');
+      expect(result.escalationTarget!.tier).toBe('frontier-cloud');
+      expect(result.updatedPin!.consecutive_tool_failures).toBe(3);
+    });
+
+    it('respects custom zero_tier_tool_call_threshold', () => {
+      const pin = makeZeroTierPin({
+        consecutive_tool_failures: 1,
+        last_tool_failure_signature: ZERO_TIER_TOOL_CHURN_SIGNATURE,
+      });
+      const result = evaluateLoopEscalation(
+        pin,
+        makeRequest({
+          turn_type: 'tool_result',
+          messages: [{ role: 'tool', content: 'ok' }],
+        }),
+        zeroTierFleet,
+        { threshold: 3, zero_tier_tool_call_threshold: 2 },
+      );
+      expect(result.shouldEscalate).toBe(true);
+      expect(result.reason).toBe('zero_tier_tool_churn');
+    });
+
+    it('does not re-escalate zero-tier path after loop_escalation pin', () => {
+      const pin = makeZeroTierPin({
+        pin_reason: 'loop_escalation',
+        pinned_model_id: 'frontier-model',
+      });
+      const result = evaluateLoopEscalation(
+        pin,
+        makeRequest({
+          turn_type: 'tool_result',
+          messages: [{ role: 'tool', content: 'Unknown tool: foo' }],
+        }),
+        zeroTierFleet,
+        defaultConfig,
+      );
+      expect(result.shouldEscalate).toBe(false);
+      expect(result.reason).toBe('already_escalated');
     });
   });
 });

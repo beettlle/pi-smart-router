@@ -160,7 +160,10 @@ export function registerSmartRouterCommand(
           throwIfCommandAborted(signal);
           const rows = await runtime.store.listTelemetry({ limit: parsed.limit });
           throwIfCommandAborted(signal);
-          ctx.ui.notify(formatHistoryMessage(rows), 'info');
+          ctx.ui.notify(
+            formatHistoryMessage(rows, { fleet: runtime.streamDeps.fleet }),
+            'info',
+          );
           return;
         }
 
