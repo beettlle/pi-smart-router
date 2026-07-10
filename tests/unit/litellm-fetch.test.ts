@@ -185,4 +185,53 @@ describe('fetchLitellmPriceCatalog', () => {
     await expect(fetchLitellmPriceCatalog({ fetchFn, pricingUrl: 'https://example.com/prices.json' }))
       .rejects.toThrow('not valid JSON');
   });
+
+  it('rejects immediately when signal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const fetchFn = vi.fn(async () => Response.json({}));
+
+    await expect(
+      fetchLitellmPriceCatalog({
+        fetchFn,
+        pricingUrl: 'https://example.com/prices.json',
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it('aborts a slow fetch when the signal fires', async () => {
+    const controller = new AbortController();
+    const fetchFn = vi.fn(
+      (_url: Parameters<typeof fetch>[0], init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          const onAbort = () => {
+            const error = new Error('Aborted');
+            error.name = 'AbortError';
+            reject(error);
+          };
+          if (init?.signal?.aborted) {
+            onAbort();
+            return;
+          }
+          init?.signal?.addEventListener('abort', onAbort, { once: true });
+        }),
+    );
+
+    const pending = fetchLitellmPriceCatalog({
+      fetchFn: fetchFn as typeof fetch,
+      pricingUrl: 'https://example.com/prices.json',
+      signal: controller.signal,
+    });
+
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchFn).toHaveBeenCalledWith(
+      'https://example.com/prices.json',
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
 });

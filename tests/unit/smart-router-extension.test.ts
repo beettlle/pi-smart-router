@@ -18,6 +18,7 @@ import {
 } from '../../.pi/extensions/smart-router/fleet-bootstrap.js';
 import * as fleetBootstrap from '../../.pi/extensions/smart-router/fleet-bootstrap.js';
 import { registerSmartRouterCommand } from '../../.pi/extensions/smart-router/commands.js';
+import * as pricingLifecycle from '../../.pi/extensions/smart-router/pricing-lifecycle.js';
 import {
   isSmartRouterActive,
   setupSessionHooks,
@@ -1893,6 +1894,141 @@ describe('smart-router unpin command (SP-076)', () => {
       expect.stringContaining('Cleared session pin'),
       'info',
     );
+  });
+});
+
+describe('smart-router command abort signal (SP-172)', () => {
+  function createCommandHarness() {
+    const notify = vi.fn();
+    let handler: ((args: string, ctx: unknown) => Promise<void>) | undefined;
+
+    const pi = {
+      registerCommand: vi.fn((_name: string, spec: { handler: typeof handler }) => {
+        handler = spec.handler;
+      }),
+      appendEntry: vi.fn(),
+    };
+
+    const store = new MemoryStore([]);
+    const sessionPinner = new SessionPinner({ store });
+    const runtime = {
+      fleetMode: 'scoped' as const,
+      lastDecision: undefined,
+      priceCatalog: null,
+      modelRegistry: createMockRegistry(registryModels),
+      store,
+      sessionPinner,
+      executionLedger: new ExecutionLedger(),
+      lifecycleHookState: new LifecycleHookState(),
+      hydraMatcher: undefined,
+      sessionRouting: new Map(),
+      streamDeps: {
+        router: createMockRouter(vi.fn(async () => makeDecision())),
+        modelRegistry: createMockRegistry(registryModels),
+        fleet,
+        executionLedger: new ExecutionLedger(),
+        sessionPinner,
+        sessionRouting: new Map(),
+      },
+    } as unknown as SmartRouterRuntime;
+
+    registerSmartRouterCommand(pi as never, runtime);
+
+    return { handler: handler!, runtime, notify, pi, store };
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('skips fleet rebuild when pricing refresh is aborted mid-fetch', async () => {
+    const { handler, notify, runtime } = createCommandHarness();
+    const controller = new AbortController();
+    const rebuildSpy = vi.spyOn(fleetBootstrap, 'rebuildFleet').mockResolvedValue(undefined);
+
+    vi.spyOn(pricingLifecycle, 'refreshPricingCatalog').mockImplementation(async () => {
+      controller.abort();
+      const error = new Error('Aborted');
+      error.name = 'AbortError';
+      throw error;
+    });
+
+    await handler('pricing refresh', {
+      cwd: '/tmp',
+      modelRegistry: createMockRegistry(registryModels),
+      sessionManager: { getSessionId: () => 'sess-abort' },
+      ui: { notify },
+      signal: controller.signal,
+    });
+
+    expect(rebuildSpy).not.toHaveBeenCalled();
+    expect(runtime.fleetMode).toBe('scoped');
+    expect(notify).toHaveBeenCalledWith('Cancelled.', 'info');
+  });
+
+  it('does not rebuild fleet when signal is already aborted before pricing refresh', async () => {
+    const { handler, notify } = createCommandHarness();
+    const controller = new AbortController();
+    controller.abort();
+
+    const refreshSpy = vi.spyOn(pricingLifecycle, 'refreshPricingCatalog').mockResolvedValue({
+      modelCount: 1,
+      lastUpdated: '2026-07-10T00:00:00.000Z',
+    });
+    const rebuildSpy = vi.spyOn(fleetBootstrap, 'rebuildFleet').mockResolvedValue(undefined);
+
+    await handler('pricing refresh', {
+      cwd: '/tmp',
+      modelRegistry: createMockRegistry(registryModels),
+      sessionManager: { getSessionId: () => 'sess-abort' },
+      ui: { notify },
+      signal: controller.signal,
+    });
+
+    expect(refreshSpy).not.toHaveBeenCalled();
+    expect(rebuildSpy).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith('Cancelled.', 'info');
+  });
+
+  it('cancels export dataset when signal is already aborted', async () => {
+    const { handler, notify, store } = createCommandHarness();
+    const controller = new AbortController();
+    controller.abort();
+
+    const listSpy = vi.spyOn(store, 'listDatasetRecords');
+
+    await handler('export dataset', {
+      cwd: '/tmp',
+      modelRegistry: createMockRegistry(registryModels),
+      sessionManager: { getSessionId: () => 'sess-abort' },
+      ui: { notify },
+      signal: controller.signal,
+    });
+
+    expect(listSpy).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith('Cancelled.', 'info');
+  });
+
+  it('aborts fleet rebuild after pricing fetch when signal fires between steps', async () => {
+    const { handler, notify } = createCommandHarness();
+    const controller = new AbortController();
+
+    vi.spyOn(pricingLifecycle, 'refreshPricingCatalog').mockImplementation(async () => {
+      controller.abort();
+      return { modelCount: 3, lastUpdated: '2026-07-10T00:00:00.000Z' };
+    });
+    const rebuildSpy = vi.spyOn(fleetBootstrap, 'rebuildFleet').mockResolvedValue(undefined);
+
+    await handler('pricing refresh', {
+      cwd: '/tmp',
+      modelRegistry: createMockRegistry(registryModels),
+      sessionManager: { getSessionId: () => 'sess-abort' },
+      ui: { notify },
+      signal: controller.signal,
+    });
+
+    expect(rebuildSpy).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith('Cancelled.', 'info');
   });
 });
 

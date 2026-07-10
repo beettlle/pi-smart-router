@@ -105,6 +105,38 @@ export function getSmartRouterArgumentCompletions(prefix: string): CompletionIte
   return filtered.length > 0 ? filtered : null;
 }
 
+/** Throw AbortError when ESC / ctx.signal has cancelled the command. */
+export function throwIfCommandAborted(signal: AbortSignal | undefined): void {
+  if (!signal?.aborted) {
+    return;
+  }
+  const reason = signal.reason;
+  if (reason instanceof Error) {
+    throw reason;
+  }
+  const error = new Error(typeof reason === 'string' && reason.length > 0 ? reason : 'Aborted');
+  error.name = 'AbortError';
+  throw error;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
+/**
+ * Wrap fetch so LiteLLM pricing requests honor ctx.signal without changing
+ * refreshPricingCatalog's signature (out of File Scope for SP-172).
+ */
+export function createSignalAwareFetch(signal: AbortSignal | undefined): typeof fetch | undefined {
+  if (!signal) {
+    return undefined;
+  }
+  return ((input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    throwIfCommandAborted(signal);
+    return fetch(input, { ...init, signal });
+  }) as typeof fetch;
+}
+
 export function registerSmartRouterCommand(
   pi: ExtensionAPI,
   runtime: SmartRouterRuntime,
@@ -117,6 +149,7 @@ export function registerSmartRouterCommand(
       try {
         bindSharedModelRegistry(runtime, ctx.modelRegistry);
         const parsed = parseSmartRouterArgs(args);
+        const signal = ctx.signal;
 
         if (parsed.command === 'status') {
           ctx.ui.notify(formatStatusMessage(runtime, runtime.lastDecision), 'info');
@@ -124,13 +157,21 @@ export function registerSmartRouterCommand(
         }
 
         if (parsed.command === 'history') {
+          throwIfCommandAborted(signal);
           const rows = await runtime.store.listTelemetry({ limit: parsed.limit });
+          throwIfCommandAborted(signal);
           ctx.ui.notify(formatHistoryMessage(rows), 'info');
           return;
         }
 
         if (parsed.command === 'pricing') {
-          const { modelCount, lastUpdated } = await refreshPricingCatalog(runtime);
+          throwIfCommandAborted(signal);
+          const { modelCount, lastUpdated } = await refreshPricingCatalog(
+            runtime,
+            createSignalAwareFetch(signal),
+          );
+          // Abort before fleet mutation so cancel does not leave a half-rebuilt fleet.
+          throwIfCommandAborted(signal);
           await rebuildFleet(runtime, pi, ctx.cwd);
           ctx.ui.notify(
             `Pricing refreshed: ${modelCount} models loaded (last_updated: ${lastUpdated}). Fleet rebuilt (${runtime.streamDeps.fleet.length} models).`,
@@ -140,6 +181,7 @@ export function registerSmartRouterCommand(
         }
 
         if (parsed.command === 'export' && parsed.subcommand === 'dataset') {
+          throwIfCommandAborted(signal);
           const result = await exportDatasetToFile(runtime.store, ctx.cwd, parsed.limit);
           if (!result) {
             ctx.ui.notify('No routing dataset records to export.', 'info');
@@ -153,6 +195,7 @@ export function registerSmartRouterCommand(
         }
 
         if (parsed.command === 'export' && parsed.subcommand === 'telemetry-contrib') {
+          throwIfCommandAborted(signal);
           const result = await exportTelemetryContrib({
             store: runtime.store,
             cwd: ctx.cwd,
@@ -226,6 +269,7 @@ export function registerSmartRouterCommand(
           return;
         }
 
+        throwIfCommandAborted(signal);
         runtime.fleetMode = parsed.mode;
         await rebuildFleet(runtime, pi, ctx.cwd);
         pi.appendEntry(FLEET_MODE_ENTRY_TYPE, { mode: parsed.mode });
@@ -234,6 +278,10 @@ export function registerSmartRouterCommand(
           'info',
         );
       } catch (error) {
+        if (isAbortError(error) || ctx.signal?.aborted) {
+          ctx.ui.notify('Cancelled.', 'info');
+          return;
+        }
         const message = error instanceof Error ? error.message : String(error);
         ctx.ui.notify(message, 'error');
       }
