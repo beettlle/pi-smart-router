@@ -8,8 +8,20 @@
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { resolve, join } from 'node:path';
 
+import { EMBEDDING_DIM } from '../../src/domain/matching/embedding-provider.js';
+import {
+  MODERNBERT_CLS_DIM,
+  MODERNBERT_K4_HEAD_COUNT,
+  projectClsToK4Capabilities,
+  type K4CapabilityVector,
+} from '../../src/domain/matching/modernbert-heads.js';
+import {
+  projectToRequirements,
+  type RequirementVector,
+} from '../../src/domain/matching/hydra-matcher.js';
 import {
   cheapestModelForTier,
   estimateStepCostUsd,
@@ -21,6 +33,257 @@ import {
   type EvalTraceStep,
   type FrozenCatalog,
 } from './fixture-schema.js';
+
+/** HyDRA head modes supported by offline K=4 eval smoke (SP-160). */
+export type HydraHeadsEvalMode = 'learned_projection' | 'modernbert_k4';
+
+export interface HeadModeQrResult {
+  readonly hydra_heads: HydraHeadsEvalMode;
+  readonly fixture_count: number;
+  readonly mean_quality_retention: number;
+  readonly mean_capability_adequacy_rate: number;
+}
+
+export interface K4OfflineEvalComparison {
+  readonly catalog_id: string;
+  readonly checkpoint_date: string;
+  readonly fixture_ids: readonly string[];
+  readonly learned_projection: HeadModeQrResult;
+  readonly modernbert_k4: HeadModeQrResult;
+  readonly qr_delta: number;
+  readonly k4_retains_baseline: boolean;
+}
+
+/** Default fixture subset for K=4 offline smoke (debug + trivial-pin traces). */
+export const K4_OFFLINE_EVAL_FIXTURE_SUBSET = [
+  'debug-session-cheap-escalation.json',
+  'trivial-pin-session.json',
+] as const;
+
+function roundRate(value: number): number {
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
+
+function safeRate(numerator: number, denominator: number): number {
+  if (denominator === 0) {
+    return 1;
+  }
+  return roundRate(numerator / denominator);
+}
+
+/**
+ * Deterministic pseudo-embedding from a fixture prefix hash (no raw prompt text).
+ * Used for offline head-mode QR smoke on eval fixtures.
+ */
+export function hashPrefixToEmbedding(prefixHash: string, dim: number): Float32Array {
+  const embedding = new Float32Array(dim);
+  const digest = createHash('sha256').update(prefixHash).digest();
+
+  for (let i = 0; i < dim; i++) {
+    const byte = digest[i % digest.length] ?? 0;
+    embedding[i] = (byte / 127.5) - 1;
+  }
+
+  return embedding;
+}
+
+/** Derive K=4 capability vector from a fixture step prefix hash. */
+export function deriveK4CapabilitiesFromPrefix(prefixHash: string): K4CapabilityVector {
+  const cls = hashPrefixToEmbedding(prefixHash, MODERNBERT_CLS_DIM);
+  return projectClsToK4Capabilities(cls);
+}
+
+/** Map K=4 head output to 3-dim requirements (debugging excluded from shortfall). */
+function k4ToRequirements(vector: K4CapabilityVector): RequirementVector {
+  return {
+    reasoning: vector.reasoning,
+    code_gen: vector.code_gen,
+    tool_use: vector.tool_use,
+  };
+}
+
+/** Derive 3-dim requirements for an offline head mode from a prefix hash. */
+export function deriveRequirementsFromHeadMode(
+  prefixHash: string,
+  mode: HydraHeadsEvalMode,
+): RequirementVector {
+  if (mode === 'modernbert_k4') {
+    return k4ToRequirements(deriveK4CapabilitiesFromPrefix(prefixHash));
+  }
+
+  const embedding = hashPrefixToEmbedding(prefixHash, EMBEDDING_DIM);
+  return projectToRequirements(embedding);
+}
+
+/**
+ * Map requirement intensity to an implied eval tier for offline smoke scoring.
+ * Thresholds align with frozen catalog capability_score bands on eval fixtures.
+ */
+export function impliedTierFromRequirements(requirements: RequirementVector): EvalTier {
+  const intensity = Math.max(requirements.reasoning, requirements.code_gen, requirements.tool_use);
+  if (intensity < 0.45) {
+    return 'zero-tier';
+  }
+  if (intensity < 0.78) {
+    return 'economical-cloud';
+  }
+  return 'frontier-cloud';
+}
+
+export interface HeadModeFixtureScore {
+  readonly fixture_id: string;
+  readonly hydra_heads: HydraHeadsEvalMode;
+  readonly step_count: number;
+  readonly capability_adequate_steps: number;
+  readonly capability_adequacy_rate: number;
+  readonly quality_retention: number;
+  readonly task_success: boolean;
+}
+
+/** Score capability / QR for a fixture under a synthetic head mode. */
+export function scoreFixtureHeadModeQr(
+  fixture: EvalTraceFixture,
+  mode: HydraHeadsEvalMode,
+): HeadModeFixtureScore {
+  let adequateSteps = 0;
+  let successfulAdequate = 0;
+  let successfulSteps = 0;
+
+  for (const step of fixture.session.steps) {
+    const requirements = deriveRequirementsFromHeadMode(step.prefix_hash, mode);
+    const impliedTier = impliedTierFromRequirements(requirements);
+    const adequate = tierAtLeast(impliedTier, step.step_outcome.min_tier);
+
+    if (adequate) {
+      adequateSteps += 1;
+    }
+    if (step.step_outcome.success) {
+      successfulSteps += 1;
+      if (adequate) {
+        successfulAdequate += 1;
+      }
+    }
+  }
+
+  const stepCount = fixture.session.steps.length;
+  const stepQr = safeRate(successfulAdequate, successfulSteps);
+  const qualityRetention = fixture.outcome.task_success ? stepQr : 0;
+
+  return {
+    fixture_id: fixture.fixture_id,
+    hydra_heads: mode,
+    step_count: stepCount,
+    capability_adequate_steps: adequateSteps,
+    capability_adequacy_rate: safeRate(adequateSteps, stepCount),
+    quality_retention: qualityRetention,
+    task_success: fixture.outcome.task_success,
+  };
+}
+
+function aggregateHeadModeQr(
+  mode: HydraHeadsEvalMode,
+  scores: readonly HeadModeFixtureScore[],
+): HeadModeQrResult {
+  const meanQr =
+    scores.length === 0
+      ? 0
+      : roundRate(scores.reduce((sum, s) => sum + s.quality_retention, 0) / scores.length);
+  const meanAdequacy =
+    scores.length === 0
+      ? 0
+      : roundRate(
+          scores.reduce((sum, s) => sum + s.capability_adequacy_rate, 0) / scores.length,
+        );
+
+  return {
+    hydra_heads: mode,
+    fixture_count: scores.length,
+    mean_quality_retention: meanQr,
+    mean_capability_adequacy_rate: meanAdequacy,
+  };
+}
+
+/** Compare offline QR for modernbert_k4 vs learned_projection on a fixture subset. */
+export function compareK4HeadModeOfflineEval(
+  fixtures: readonly EvalTraceFixture[],
+): K4OfflineEvalComparison {
+  if (fixtures.length === 0) {
+    return {
+      catalog_id: '',
+      checkpoint_date: '',
+      fixture_ids: [],
+      learned_projection: aggregateHeadModeQr('learned_projection', []),
+      modernbert_k4: aggregateHeadModeQr('modernbert_k4', []),
+      qr_delta: 0,
+      k4_retains_baseline: true,
+    };
+  }
+
+  const learnedScores = fixtures.map((f) => scoreFixtureHeadModeQr(f, 'learned_projection'));
+  const k4Scores = fixtures.map((f) => scoreFixtureHeadModeQr(f, 'modernbert_k4'));
+  const learned = aggregateHeadModeQr('learned_projection', learnedScores);
+  const k4 = aggregateHeadModeQr('modernbert_k4', k4Scores);
+  const qrDelta = roundRate(k4.mean_quality_retention - learned.mean_quality_retention);
+
+  return {
+    catalog_id: fixtures[0]!.frozen_catalog.catalog_id,
+    checkpoint_date: fixtures[0]!.frozen_catalog.checkpoint_date,
+    fixture_ids: fixtures.map((f) => f.fixture_id),
+    learned_projection: learned,
+    modernbert_k4: k4,
+    qr_delta: qrDelta,
+    k4_retains_baseline: k4.mean_quality_retention >= learned.mean_quality_retention,
+  };
+}
+
+/** Load and compare K=4 offline eval on a named fixture subset. */
+export function runK4OfflineEvalSmoke(
+  dirPath: string,
+  fixtureNames: readonly string[] = K4_OFFLINE_EVAL_FIXTURE_SUBSET,
+): K4OfflineEvalComparison {
+  const abs = resolve(dirPath);
+  const fixtures = fixtureNames.map((name) => {
+    const raw = JSON.parse(readFileSync(join(abs, name), 'utf8')) as unknown;
+    return loadEvalTraceFixture(raw);
+  });
+
+  return compareK4HeadModeOfflineEval(fixtures);
+}
+
+/** Validate K=4 head output shape from fixture-derived smoke vectors. */
+export function validateK4SmokeHeadShapes(fixtures: readonly EvalTraceFixture[]): {
+  readonly step_count: number;
+  readonly all_valid: boolean;
+} {
+  let stepCount = 0;
+  let allValid = true;
+
+  for (const fixture of fixtures) {
+    for (const step of fixture.session.steps) {
+      stepCount += 1;
+      const vector = deriveK4CapabilitiesFromPrefix(step.prefix_hash);
+      const array = [
+        vector.reasoning,
+        vector.code_gen,
+        vector.tool_use,
+        vector.debugging,
+      ];
+
+      if (array.length !== MODERNBERT_K4_HEAD_COUNT) {
+        allValid = false;
+        continue;
+      }
+
+      for (const value of array) {
+        if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) {
+          allValid = false;
+        }
+      }
+    }
+  }
+
+  return { step_count: stepCount, all_valid: allValid };
+}
 
 export interface StepReplayResult {
   readonly step_index: number;

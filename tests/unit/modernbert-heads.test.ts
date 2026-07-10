@@ -20,6 +20,7 @@ import {
   type K4CapabilityVector,
   type ModernBertK4HeadWeights,
 } from '../../src/domain/matching/modernbert-heads.js';
+import { k4CapabilityVectorToRequirements } from '../../src/domain/matching/hydra-matcher.js';
 import { HydraConfigSchema, HydraHeadsSchema } from '../../src/domain/types/schemas.js';
 
 // ─── Test helpers ────────────────────────────────────────────────────────────
@@ -99,6 +100,55 @@ describe('projectClsToK4Capabilities', () => {
       /\[CLS\] shape mismatch/,
     );
   });
+
+  it('fires each K=4 head independently with learned weights', () => {
+    const cls = makeClsEmbedding(0);
+
+    for (const [dim, scaleKey] of [
+      ['reasoning', 'reasoningScale'],
+      ['code_gen', 'codeGenScale'],
+      ['tool_use', 'toolUseScale'],
+      ['debugging', 'debuggingScale'],
+    ] as const) {
+      cls.fill(0);
+      cls[0] = 1;
+      const weights = makeK4HeadWeights({
+        reasoningScale: 0,
+        codeGenScale: 0,
+        toolUseScale: 0,
+        debuggingScale: 0,
+        [scaleKey]: 1,
+      });
+      const vector = projectClsToK4Capabilities(cls, weights);
+      expect(vector[dim]).toBeCloseTo(1 / (1 + Math.exp(-1)), 6);
+      for (const other of K4_CAPABILITY_DIMENSIONS) {
+        if (other !== dim) {
+          expect(vector[other]).toBeCloseTo(0.5, 6);
+        }
+      }
+    }
+  });
+
+  it('returns k4CapabilityVectorToArray in K=4 dimension order', () => {
+    const vector: K4CapabilityVector = {
+      reasoning: 0.1,
+      code_gen: 0.2,
+      tool_use: 0.3,
+      debugging: 0.4,
+    };
+
+    expect(k4CapabilityVectorToArray(vector)).toEqual([0.1, 0.2, 0.3, 0.4]);
+    expect(k4CapabilityVectorToArray(vector)).toHaveLength(MODERNBERT_K4_HEAD_COUNT);
+  });
+
+  it('regresses placeholder head shape for extreme [CLS] values', () => {
+    for (const fill of [-2, 0, 2]) {
+      const vector = projectClsToK4CapabilitiesPlaceholder(makeClsEmbedding(fill));
+      expect(k4CapabilityVectorToArray(vector)).toHaveLength(MODERNBERT_K4_HEAD_COUNT);
+      assertVectorInUnitInterval(vector);
+      validateK4CapabilityVector(vector);
+    }
+  });
 });
 
 describe('projectClsToK4CapabilitiesPlaceholder', () => {
@@ -150,6 +200,63 @@ describe('ModernBertK4HeadWeights loading', () => {
 describe('K=4 enablement threshold', () => {
   it('documents ~10% calibration Top-1 error gate for modernbert_k4', () => {
     expect(MODERNBERT_K4_ENABLE_TOP1_ERROR_THRESHOLD).toBeCloseTo(0.1, 6);
+  });
+
+  it('documents enablement guidance in module constant and operator config', () => {
+    expect(MODERNBERT_K4_ENABLE_TOP1_ERROR_THRESHOLD).toBeGreaterThan(0);
+    expect(MODERNBERT_K4_ENABLE_TOP1_ERROR_THRESHOLD).toBeLessThanOrEqual(0.15);
+    expect(HydraHeadsSchema.safeParse('modernbert_k4').success).toBe(true);
+  });
+});
+
+// ─── Debugging dimension shortfall exclusion (SP-159/SP-160) ───────────────────
+
+describe('K=4 debugging shortfall exclusion', () => {
+  it('drops debugging from requirement vector before shortfall gate', () => {
+    const requirements = k4CapabilityVectorToRequirements({
+      reasoning: 0.4,
+      code_gen: 0.5,
+      tool_use: 0.6,
+      debugging: 0.99,
+    });
+
+    expect(requirements).toEqual({
+      reasoning: 0.4,
+      code_gen: 0.5,
+      tool_use: 0.6,
+    });
+    expect(requirements).not.toHaveProperty('debugging');
+  });
+
+  it('does not let high debugging alone inflate shortfall requirements', () => {
+    const lowDebug = k4CapabilityVectorToRequirements({
+      reasoning: 0.5,
+      code_gen: 0.5,
+      tool_use: 0.5,
+      debugging: 0.1,
+    });
+    const highDebug = k4CapabilityVectorToRequirements({
+      reasoning: 0.5,
+      code_gen: 0.5,
+      tool_use: 0.5,
+      debugging: 1.0,
+    });
+
+    expect(highDebug).toEqual(lowDebug);
+  });
+
+  it('maps projected K=4 output to 3-dim requirements for matcher smoke', () => {
+    const cls = makeClsEmbedding(0);
+    cls[0] = 3;
+    const weights = makeK4HeadWeights({ debuggingScale: 10 });
+    const vector = projectClsToK4Capabilities(cls, weights);
+    const requirements = k4CapabilityVectorToRequirements(vector);
+
+    expect(vector.debugging).toBeGreaterThan(0.99);
+    expect(requirements.reasoning).toBeCloseTo(vector.reasoning, 6);
+    expect(requirements.code_gen).toBeCloseTo(vector.code_gen, 6);
+    expect(requirements.tool_use).toBeCloseTo(vector.tool_use, 6);
+    expect(requirements).not.toHaveProperty('debugging');
   });
 });
 

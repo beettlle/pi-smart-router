@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Pending
+**Current Step:** Step 3
+**Status:** Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,32 +10,32 @@
 
 ## Step 1: Shape regression tests
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Extend head shape tests for all K=4 dimensions
-- [ ] Test debugging dimension shortfall exclusion behavior
+- [x] Extend head shape tests for all K=4 dimensions
+- [x] Test debugging dimension shortfall exclusion behavior
 
 ## Step 2: Offline eval smoke
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Add eval harness smoke path for K=4 heads mode
-- [ ] Compare QR vs learned projection baseline on fixture subset
+- [x] Add eval harness smoke path for K=4 heads mode
+- [x] Compare QR vs learned projection baseline on fixture subset
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Run `npm run verify:ci`
+- [x] Run `npm run verify:ci`
 
 ---
 
 ## Completion Criteria
 
-- [ ] Head output shape tests comprehensive
-- [ ] Offline QR on eval harness fixtures
-- [ ] K=4 enablement threshold documented
-- [ ] `npm run verify:ci` passes
+- [x] Head output shape tests comprehensive
+- [x] Offline QR on eval harness fixtures
+- [x] K=4 enablement threshold documented
+- [x] `npm run verify:ci` passes
 
 ---
 
@@ -55,7 +55,9 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-10 | Step 1 complete | K=4 shape regression + debugging shortfall exclusion tests |
+| 2026-07-10 | Step 2 complete | K=4 offline eval smoke + QR comparison on fixture subset |
+| 2026-07-10 | Step 3 complete | `npm run verify:ci` passed |
 
 ## Blockers
 
