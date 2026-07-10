@@ -1,6 +1,6 @@
 # SP-172: Slash Commands Honor ctx.signal — Status
 
-**Current Step:** 2
+**Current Step:** 3
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -20,13 +20,13 @@
 
 ## Step 2: Abort signal test
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Unit/integration test with aborted signal during mocked slow fetch
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Run scoped vitest
 - [ ] Run full `npm test`
@@ -49,6 +49,7 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine post-.DONE) |
+| 2026-07-10 | 2 | plan | skipped (engine post-.DONE) |
 
 ## Discoveries
 
@@ -64,6 +65,8 @@
 | 2026-07-10 | Step 1 started | Wire ctx.signal into long handlers |
 | 2026-07-10 | Step 1 complete | Signal-aware fetch + abort guards before fleet rebuild |
 | 2026-07-10 | Step 2 started | Abort signal unit tests |
+| 2026-07-10 | Step 2 complete | litellm-fetch + command handler abort tests |
+| 2026-07-10 | Step 3 started | Verification |
 
 ## Blockers
 
