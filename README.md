@@ -538,9 +538,43 @@ Additional operator defaults:
 | Key | Default | Purpose |
 |-----|---------|---------|
 | `loop_escalation.threshold` | 3 | Consecutive identical failures before escalating to frontier |
+| `pin_only_fallback` | `false` | Emergency pin-on-first-turn mode — see [Pin-only emergency fallback](#pin-only-emergency-fallback) |
 | `local.min_memory_gb_full` | 16 | Minimum RAM for full local inference |
 | `local.battery_threshold_pct` | 20 | Minimum battery to allow local inference |
 | `pricing.staleness_days` | 14 | Max age before re-fetching pricing data |
+
+### Pin-only emergency fallback
+
+**Not the default policy.** Multi-stage routing remains the design target. Enable `pin_only_fallback` only when shadow quality retention regresses or as a manual operator safety valve (GitHub [#83](https://github.com/beettlle/pi-smart-router/issues/83), [routing-roadmap.md](docs/routing-roadmap.md) §1).
+
+When `pin_only_fallback` is `true` in `config/operator-config.json`:
+
+1. **First turn** — normal multi-stage routing runs and establishes the session pin.
+2. **Subsequent turns** — the router reuses the pinned model, skipping `turn_envelope`, triage, HyDRA, and sub-routing (`reason_code: pin_only_fallback`).
+
+**Manual trigger:** set `"pin_only_fallback": true` in operator config and restart or reload config. Revert to `false` when shadow metrics recover.
+
+**Automated trigger (eval harness):** compare shadow QR from `npm run routing:eval-harness` against a frozen baseline aggregate. When mean quality retention drops more than **5 percentage points** (default threshold), enable pin-only fallback:
+
+```bash
+# Score current fixtures
+npm run routing:eval-harness:smoke > shadow-metrics.json
+
+# Compare against a saved baseline (same catalog_id + checkpoint_date)
+node --import tsx -e "
+import { readFileSync } from 'node:fs';
+import { evaluatePinOnlyFallbackFromHarness } from './scripts/eval/quality-retention.ts';
+const shadow = JSON.parse(readFileSync('shadow-metrics.json','utf8')).tracks.capability;
+const baseline = JSON.parse(readFileSync('baseline-metrics.json','utf8')).tracks.capability;
+const result = evaluatePinOnlyFallbackFromHarness(shadow, baseline);
+console.log(JSON.stringify(result, null, 2));
+if (result.pin_only_fallback) process.exit(2);
+"
+```
+
+Exit code `2` signals regression above threshold — operators can wire this into CI or a config reload hook. Override semantics: explicit `pin_only_fallback: true` in config always enables emergency mode; explicit `false` disables the automated recommendation.
+
+**Telemetry:** when fallback routes a request, telemetry rows include `pin_only_fallback_active: true` (and `reason_code: pin_only_fallback`). Filter operator audit logs on that field to confirm emergency mode is active.
 
 ### HyDRA model cache
 

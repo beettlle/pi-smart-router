@@ -74,6 +74,9 @@ export const PLANNING_DIRECT_FRONTIER = 'planning_direct_frontier' as const;
 export const PLANNING_DELEGATE_DISABLED = 'planning_delegate_disabled' as const;
 export const PLANNING_DELEGATE_UNAVAILABLE = 'planning_delegate_unavailable' as const;
 
+/** Emergency pin-on-first-turn fallback reason code (#83, SP-161/162). */
+export const PIN_ONLY_FALLBACK = 'pin_only_fallback' as const;
+
 const TURN_ENVELOPE_TIER_MAP: Readonly<Record<string, Tier | null>> = {
   planning: 'frontier-cloud',
   tool_result: 'economical-cloud',
@@ -769,6 +772,28 @@ function defaultPlanningDelegateTelemetry(): Pick<
 /** Default planning delegate telemetry scalars for tests and legacy store reads. */
 export const DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS = defaultPlanningDelegateTelemetry();
 
+function defaultPinOnlyFallbackTelemetry(): Pick<RoutingTelemetry, 'pin_only_fallback_active'> {
+  return {
+    pin_only_fallback_active: false,
+  };
+}
+
+/** Default pin-only fallback telemetry scalars for tests and legacy store reads. */
+export const DEFAULT_PIN_ONLY_FALLBACK_TELEMETRY_FIELDS = defaultPinOnlyFallbackTelemetry();
+
+/** True when routing used emergency pin-only fallback for this decision (SP-162). */
+export function resolvePinOnlyFallbackActive(decision: RoutingDecision): boolean {
+  return decision.reason_code === PIN_ONLY_FALLBACK;
+}
+
+function pinOnlyFallbackTelemetryFromDecision(
+  decision: RoutingDecision,
+): ReturnType<typeof defaultPinOnlyFallbackTelemetry> {
+  return {
+    pin_only_fallback_active: resolvePinOnlyFallbackActive(decision),
+  };
+}
+
 function planningDelegateTelemetryFromDecision(
   decision: RoutingDecision,
 ): ReturnType<typeof defaultPlanningDelegateTelemetry> {
@@ -1067,6 +1092,7 @@ export function buildRoutingDecisionLogPayload(
           fallback_reason: planningDelegate.fallback_reason,
         }
       : null,
+    pin_only_fallback_active: resolvePinOnlyFallbackActive(enriched),
     delegate,
   };
 }
@@ -1266,6 +1292,7 @@ export class RoutingTelemetryEmitter {
         : {}),
     });
     const planningDelegateFields = planningDelegateTelemetryFromDecision(decision);
+    const pinOnlyFallbackFields = pinOnlyFallbackTelemetryFromDecision(decision);
 
     const record: RoutingTelemetry = {
       timestamp: this.clock(),
@@ -1302,6 +1329,7 @@ export class RoutingTelemetryEmitter {
       turn_index_in_session: pinEconomicsFields.turn_index_in_session,
       saar_reason_code: pinEconomicsFields.saar_reason_code,
       ...planningDelegateFields,
+      ...pinOnlyFallbackFields,
     };
 
     this.entries.push(record);

@@ -504,4 +504,6 @@ export interface RoutingTelemetry {
   readonly planning_delegate_max_messages: number | null;
   readonly planning_delegate_max_tokens: number | null;
   readonly planning_delegate_exclude_execution_history: boolean | null;
+  /** True when emergency pin-only fallback routed this request (SP-162, #83). */
+  readonly pin_only_fallback_active: boolean;
 }
