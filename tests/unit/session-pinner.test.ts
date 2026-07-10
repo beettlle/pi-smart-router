@@ -1276,3 +1276,94 @@ describe('evaluateCacheEconomics', () => {
     expect(result.projectedSavingsUsd).toBe(0);
   });
 });
+
+describe('FlipFlopGuard integration (SP-155)', () => {
+  function observeTierFlips(
+    pinner: SessionPinner,
+    sessionId: string,
+    candidateIds: readonly string[],
+  ): void {
+    for (const candidateModelId of candidateIds) {
+      pinner.lookupPin(
+        makeRequest({ session_id: sessionId, candidate_model_id: candidateModelId }),
+        fleet,
+      );
+    }
+  }
+
+  it('does not pin after 2 consecutive tier flips', () => {
+    const pinner = new SessionPinner();
+    pinner.recordPin('sess-flip', 'claude-haiku', 'initial');
+
+    observeTierFlips(pinner, 'sess-flip', [
+      'claude-opus',
+      'gpt-4o-mini',
+      'claude-opus',
+    ]);
+
+    expect(pinner.getFlipFlopState('sess-flip')?.tier_pinned).toBeNull();
+    expect(pinner.getFlipFlopState('sess-flip')?.consecutive_tier_flips).toBe(2);
+    expect(pinner.getLastFlipFlopObservation()?.shadow_event).toBe('flip_flop_tier_flip');
+  });
+
+  it('pins tier after 3 consecutive tier flips', () => {
+    const pinner = new SessionPinner();
+    pinner.recordPin('sess-pin', 'claude-haiku', 'initial');
+
+    observeTierFlips(pinner, 'sess-pin', [
+      'claude-opus',
+      'gpt-4o-mini',
+      'claude-opus',
+      'gpt-4o-mini',
+    ]);
+
+    expect(pinner.getFlipFlopState('sess-pin')?.tier_pinned).toBe('economical-cloud');
+    expect(pinner.getLastFlipFlopObservation()?.shadow_event).toBe(
+      'flip_flop_tier_pinned',
+    );
+
+    const blocked = pinner.lookupPin(
+      makeRequest({
+        session_id: 'sess-pin',
+        candidate_model_id: 'claude-opus',
+      }),
+      fleet,
+    );
+
+    expect(blocked.action).toBe('use_pin');
+    expect(blocked.flipFlopReason).toBe('flip_flop_tier_pinned');
+    expect(blocked.pinnedModel?.tier).toBe('economical-cloud');
+  });
+
+  it('resets consecutive flips when shadow tier is stable', () => {
+    const pinner = new SessionPinner();
+    pinner.recordPin('sess-stable', 'claude-haiku', 'initial');
+
+    observeTierFlips(pinner, 'sess-stable', [
+      'claude-opus',
+      'claude-opus',
+      'gpt-4o-mini',
+    ]);
+
+    expect(pinner.getFlipFlopState('sess-stable')?.consecutive_tier_flips).toBe(1);
+    expect(pinner.getFlipFlopState('sess-stable')?.tier_pinned).toBeNull();
+  });
+
+  it('clears flip-flop state when pin breaks', () => {
+    const pinner = new SessionPinner();
+    pinner.recordPin('sess-break', 'claude-haiku', 'initial');
+
+    observeTierFlips(pinner, 'sess-break', [
+      'claude-opus',
+      'gpt-4o-mini',
+      'claude-opus',
+      'gpt-4o-mini',
+    ]);
+
+    expect(pinner.getFlipFlopState('sess-break')?.tier_pinned).toBe('economical-cloud');
+
+    pinner.breakPin('sess-break');
+
+    expect(pinner.getFlipFlopState('sess-break')).toBeNull();
+  });
+});
