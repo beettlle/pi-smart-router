@@ -44,6 +44,7 @@ export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
   },
   hydra: {
     artifact_cache_path: '.pi-smart-router/models/',
+    encoder: 'minilm',
   },
   low_intensity: {
     weights: DEFAULT_LOW_INTENSITY_WEIGHTS,

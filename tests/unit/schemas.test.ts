@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   OperatorConfigSchema,
+  EncoderSchema,
+  HydraConfigSchema,
   PlanningDelegateConfigSchema,
   CompressedContextSpecSchema,
   SaarConfigSchema,
@@ -122,6 +124,28 @@ describe('SaarSessionStateSchema', () => {
       hard_lock: false,
       last_activity_at: '2026-07-08T12:00:00.000Z',
     });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('HydraConfigSchema encoder (SP-156)', () => {
+  it('defaults encoder to minilm', () => {
+    const result = HydraConfigSchema.parse({
+      artifact_cache_path: '.pi-smart-router/models/',
+    });
+    expect(result.encoder).toBe('minilm');
+  });
+
+  it('accepts granite encoder', () => {
+    const result = HydraConfigSchema.safeParse({
+      artifact_cache_path: '.pi-smart-router/models/',
+      encoder: 'granite',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects unknown encoder values', () => {
+    const result = EncoderSchema.safeParse('modernbert');
     expect(result.success).toBe(false);
   });
 });
