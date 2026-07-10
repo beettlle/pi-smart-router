@@ -1,7 +1,7 @@
 # SP-178: SAAR Pin-Break + History Model ID — Status
 
-**Current Step:** 2
-**Status:** 🔄 In Progress
+**Current Step:** 3
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -20,7 +20,7 @@
 
 ## Step 2: History + LOG_ROUTING delegated model id
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] History shows delegated model id, not virtual `auto`
 - [x] Confirm LOG_ROUTING field checklist; document gaps
@@ -28,11 +28,11 @@
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run scoped vitest
-- [ ] Run full `npm test`
-- [ ] Run coverage gate
+- [x] Run scoped vitest
+- [x] Run full `npm test`
+- [x] Run coverage gate
 
 ---
 
@@ -52,6 +52,7 @@
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine-owned after .DONE; SP-195) |
 | 2026-07-10 | 2 | plan | skipped (engine-owned after .DONE; SP-195) |
+| 2026-07-10 | 3 | plan | skipped (engine-owned after .DONE; SP-195) |
 
 ## Discoveries
 
@@ -64,9 +65,9 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| 2026-07-10 | Step 1 started | Plan: zero-tier unsupported immediate escalate + N tool_result churn; reuse loop_escalation pin path |
 | 2026-07-10 | Step 1 complete | loop-escalation.ts + unit tests; commit ae9cb2e |
-| 2026-07-10 | Step 2 outcomes done | history model id resolver; LOG_ROUTING top-level fields; README checklist |
+| 2026-07-10 | Step 2 complete | history model id + LOG_ROUTING checklist; commit ed03490 |
+| 2026-07-10 | Step 3 verify | scoped 162 pass; full 1492 pass; coverage:check pass |
 
 ## Blockers
 
@@ -76,6 +77,7 @@
 
 ## Notes
 
-**Step 1:** Zero-tier unsupported → immediate escalate; N tool_result churn → escalate; SAAR-aligned via loop_escalation pin reason.
-
-**Step 2:** `resolveHistoryModelId` prefers planning-delegate primary over bare/`smart-router` auto; qualifies Cursor opaque `auto`. Payload builder exposes checklist fields top-level; extension slim logger gap documented.
+**Delivered:**
+- Zero-tier observational pin-break (unsupported tool immediate; N tool_result churn)
+- History resolves virtual `auto` to concrete delegated/primary model id
+- LOG_ROUTING checklist confirmed on payload builder; extension slim-logger gap documented
