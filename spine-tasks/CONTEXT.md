@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-07-10
 **Status:** Active
-**Next Task ID:** SP-165
+**Next Task ID:** SP-169
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 
@@ -428,6 +428,25 @@
 | E | SP-160, SP-164 | SP-164 after SP-161 + SP-163 |
 
 **Excluded:** #1/#25/#26 (hardware dogfooding).
+
+### Phase 35 — Pre-Release Functional Gates (SP-165–SP-168)
+
+| Task | Summary | Size | Deps | Maps |
+|------|---------|------|------|------|
+| SP-165 | assert-release-gates.ts + release-gates.json | M | — | Tier 0 gate CLI |
+| SP-166 | Expand release:check with Tier 0 scripts | S | SP-165 | release.yml wiring |
+| SP-167 | @release vitest matrix + test:release | S | — | Functional test matrix |
+| SP-168 | Semver baseline JSON + regression compare | M | SP-165, SP-166 | v0.6.0 baseline |
+
+**Source:** Post-v0.6.0 release functional gates epic (operator-approved infra; no GitHub issues).
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-165, SP-167 | Parallel — disjoint scopes |
+| B | SP-166 | After SP-165 |
+| C | SP-168 | After SP-165 + SP-166 |
 
 ---
 
