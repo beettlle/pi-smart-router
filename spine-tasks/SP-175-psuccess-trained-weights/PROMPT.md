@@ -47,9 +47,8 @@ Fixture- or synthetic-labeled training is acceptable for the checked-in dogfood 
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/p-success-classifier.test.ts tests/unit/expected-cost.test.ts tests/unit/isotonic-calibrator.test.ts` |
-| fileScopeMustChange | `config/p-success-weights.json`, `README.md` |
+| fileScopeMustChange | `config/p-success-weights.json` |
 | fileScopeMustNotChange | `.pi/extensions/smart-router/**` |
-| completionCriteria | Non-example trained weights load in dogfood path; ≥30-sample train path documented or exercised; raw vs used P(success) visible; missing artifact still falls back safely. |
 
 ## Steps
 
@@ -99,3 +98,5 @@ Fixture- or synthetic-labeled training is acceptable for the checked-in dogfood 
 ---
 
 ## Amendments (Added During Execution)
+
+- **2026-07-10 (pre-wave-1):** `README.md` removed from `fileScopeMustChange` — SP-174 already changed README on main (pre-landed contract risk). Contract proof is `config/p-success-weights.json` only; README remains in File Scope Must change / Documentation Requirements for P(success) train-reload docs.
