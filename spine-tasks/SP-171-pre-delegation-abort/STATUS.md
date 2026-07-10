@@ -1,6 +1,6 @@
 # SP-171: Pre-Delegation Abort Checks — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Phase-boundary abort checks
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] throwIfAborted at top of routeAndDelegate
 - [x] Before ensureFleetFresh, dispatch, planning delegate
@@ -21,9 +21,9 @@
 
 ## Step 2: Pre-delegation abort test
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Add `tests/unit/pre-delegation-abort.test.ts` — abort during mocked slow dispatch — no delegation
+- [x] Add `tests/unit/pre-delegation-abort.test.ts` — abort during mocked slow dispatch — no delegation
 
 ## Step 3: Testing and verification
 
@@ -37,9 +37,9 @@
 
 ## Completion Criteria
 
-- [ ] Abort checks at all listed phase boundaries
-- [ ] Slow-dispatch abort test passes in `tests/unit/pre-delegation-abort.test.ts`
-- [ ] HyDRA limitation documented
+- [x] Abort checks at all listed phase boundaries
+- [x] Slow-dispatch abort test passes in `tests/unit/pre-delegation-abort.test.ts`
+- [x] HyDRA limitation documented
 - [ ] Closes #90
 
 ---
@@ -49,6 +49,7 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine-owned after .DONE) |
+| 2026-07-10 | 2 | plan | skipped (engine-owned after .DONE) |
 
 ## Discoveries
 
@@ -61,7 +62,9 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-10 | Step 1 started | Phase-boundary abort checks |
-| 2026-07-10 | Step 1 outcomes done | throwIfAborted wired; HyDRA limitation in README + JSDoc |
+| 2026-07-10 | Step 1 complete | throwIfAborted wired; HyDRA limitation in README + JSDoc |
+| 2026-07-10 | Step 2 started | Pre-delegation abort test |
+| 2026-07-10 | Step 2 outcomes done | pre-delegation-abort.test.ts passes (2 tests) |
 
 ## Blockers
 
