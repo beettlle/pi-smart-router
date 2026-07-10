@@ -1,6 +1,6 @@
 # SP-170: Live Stream Event Piping — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Live pipe to outer
 
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 
 - [x] Refactor happy path to push events to outer as they arrive
 - [x] Adapt injectFailoverNotice for live piping

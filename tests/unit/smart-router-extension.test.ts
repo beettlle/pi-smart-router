@@ -254,6 +254,17 @@ async function collectEvents(stream: AssistantMessageEventStream): Promise<Assis
   return events;
 }
 
+/** Failover notice is a live synthetic text_delta (SP-170), not embedded in done.message. */
+function findFailoverNoticeDelta(events: AssistantMessageEvent[]): string | undefined {
+  for (const event of events) {
+    if (event.type === 'text_delta' && event.delta.includes('pi-smart-router failover')) {
+      return event.delta;
+    }
+  }
+  return undefined;
+}
+
+
 function userMessage(content: string, timestamp = 1): Message {
   return { role: 'user', content, timestamp };
 }
@@ -586,15 +597,8 @@ describe('createStreamSimple', () => {
     expect(mockDelegateStreamSimple.mock.calls[1]?.[0].id).not.toBe('claude-opus');
     expect(events.some((event) => event.type === 'done')).toBe(true);
 
-    const doneEvent = events.find((e) => e.type === 'done');
-    expect(doneEvent?.type).toBe('done');
-    if (doneEvent?.type === 'done') {
-      const textBlock = doneEvent.message?.content[0];
-      expect(textBlock?.type).toBe('text');
-      if (textBlock?.type === 'text') {
-        expect(textBlock.text).toContain('⚠️ **pi-smart-router failover:** `claude-opus` failed (stream broke). Retrying with');
-      }
-    }
+    const notice = findFailoverNoticeDelta(events);
+    expect(notice).toContain('⚠️ **pi-smart-router failover:** `claude-opus` failed (stream broke). Retrying with');
 
     expect(warnSpy).toHaveBeenCalledWith(
       '[smart-router] stream delegation failed, failing over',
@@ -740,6 +744,65 @@ describe('createStreamSimple', () => {
       expect(errorEvent.error.stopReason).toBe('aborted');
     }
     expect(events.some((event) => event.type === 'done')).toBe(false);
+  });
+
+  it('live-forwards start and text_delta before done on a slow delegated stream', async () => {
+    const target = registryModels[0]!;
+    let releaseDone!: () => void;
+    const doneGate = new Promise<void>((resolve) => {
+      releaseDone = resolve;
+    });
+
+    mockDelegateStreamSimple.mockImplementation((model: Model<Api>) => {
+      const stream = createAssistantMessageEventStream();
+      const partial = makeAssistantPartial(model);
+      void (async () => {
+        stream.push({ type: 'start', partial });
+        stream.push({
+          type: 'text_delta',
+          contentIndex: 0,
+          delta: 'hel',
+          partial,
+        });
+        await doneGate;
+        const final = { ...partial, content: [{ type: 'text' as const, text: 'hello' }] };
+        stream.push({ type: 'done', reason: 'stop', message: final });
+        stream.end(final);
+      })();
+      return stream;
+    });
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router: createMockRouter(
+          vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' })),
+        ),
+        modelRegistry: createMockRegistry(registryModels),
+        fleet,
+        executionLedger: new ExecutionLedger(),
+      }),
+    );
+
+    const outer = streamSimple(makeAutoModel(), makeContext([userMessage('hello')]));
+    const iter = outer[Symbol.asyncIterator]();
+
+    const first = await iter.next();
+    expect(first.done).toBe(false);
+    expect(first.value?.type).toBe('start');
+
+    const second = await iter.next();
+    expect(second.done).toBe(false);
+    expect(second.value?.type).toBe('text_delta');
+    if (second.value?.type === 'text_delta') {
+      expect(second.value.delta).toBe('hel');
+    }
+
+    // Prove events arrived before the inner stream emitted done (not collect-then-flush).
+    releaseDone();
+    const third = await iter.next();
+    expect(third.done).toBe(false);
+    expect(third.value?.type).toBe('done');
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]).toEqual(target);
   });
 
   it('rewrites virtual router history before delegating to preserve replay identity', async () => {
@@ -1108,17 +1171,10 @@ describe('createStreamSimple', () => {
       expect.objectContaining({ statusCode: 503 }),
     );
     expect(events.some((event) => event.type === 'done')).toBe(true);
-    
-    const doneEvent = events.find((e) => e.type === 'done');
-    expect(doneEvent?.type).toBe('done');
-    if (doneEvent?.type === 'done') {
-      const textBlock = doneEvent.message?.content[0];
-      expect(textBlock?.type).toBe('text');
-      if (textBlock?.type === 'text') {
-        expect(textBlock.text).toContain('⚠️ **pi-smart-router failover:** `gpt-4o-mini` failed');
-        expect(textBlock.text).toContain('Retrying with `gemini-flash`...');
-      }
-    }
+
+    const notice = findFailoverNoticeDelta(events);
+    expect(notice).toContain('⚠️ **pi-smart-router failover:** `gpt-4o-mini` failed');
+    expect(notice).toContain('Retrying with `gemini-flash`...');
 
     expect(warnSpy).toHaveBeenCalledWith(
       '[smart-router] infra error, failing over to alternate model',
@@ -1195,18 +1251,11 @@ describe('createStreamSimple', () => {
     expect(failoverResult?.reason_code).toBe('cursor_quota_exhausted');
     expect(events.some((event) => event.type === 'done')).toBe(true);
 
-    const doneEvent = events.find((event) => event.type === 'done');
-    expect(doneEvent?.type).toBe('done');
-    if (doneEvent?.type === 'done') {
-      const textBlock = doneEvent.message?.content[0];
-      expect(textBlock?.type).toBe('text');
-      if (textBlock?.type === 'text') {
-        expect(textBlock.text).toContain(
-          '⚠️ **pi-smart-router failover:** `composer-latest` failed',
-        );
-        expect(textBlock.text).toContain('Retrying with `cursor/auto`...');
-      }
-    }
+    const notice = findFailoverNoticeDelta(events);
+    expect(notice).toContain(
+      '⚠️ **pi-smart-router failover:** `composer-latest` failed',
+    );
+    expect(notice).toContain('Retrying with `cursor/auto`...');
 
     expect(warnSpy).toHaveBeenCalledWith(
       '[smart-router] infra error, failing over to alternate model',
