@@ -4,7 +4,7 @@
  * Exercises the complete Request → Pipeline → Decision → Dispatch path
  * across all routing stages: triage (trivial/complex), turn envelope,
  * session pinning with sub-routing, loop escalation, and safe-default
- * fallback. Validates decision shape, stage correctness, and resilience.
+ * Release matrix: full pipeline E2E — triage, turn envelope, session pin, loop escalation, safe-default.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -81,6 +81,7 @@ const e2eFleet: ModelProfile[] = [
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
+describe('@release', () => {
 describe('Full pipeline E2E (T060)', () => {
   describe('triage stage: trivial prompts → economical tier', () => {
     const trivialPrompts = [
@@ -621,4 +622,5 @@ describe('Full pipeline E2E (T060)', () => {
       }
     });
   });
+});
 });

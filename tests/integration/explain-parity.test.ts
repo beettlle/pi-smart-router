@@ -6,7 +6,7 @@
  *
  * The contract (explain-endpoint.md) states:
  *   "Must be bit-for-bit equivalent to the decision the live pipeline would
- *    produce for the same input and session state at request time."
+ * Release matrix: explain vs live routing parity (SC-010).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -59,6 +59,7 @@ function decisionsEquivalent(a: RoutingDecision, b: RoutingDecision): void {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
+describe('@release', () => {
 describe('SC-010: explain vs live parity', () => {
   it('explain and live pipeline produce identical decisions for minimal request', async () => {
     const pipeline = new RouterPipeline(parityFleet);
@@ -227,4 +228,5 @@ describe('SC-010: explain vs live parity', () => {
     expect(decision.routing_latency_ms).toBeGreaterThanOrEqual(0);
     expect(decision.routing_latency_ms).toBeLessThan(100);
   });
+});
 });

@@ -6,7 +6,7 @@
  *
  * Validates that the router's tier assignments produce lower total
  * estimated cost than routing everything to frontier-cloud, using
- * the price broker to resolve per-model pricing.
+ * Release matrix: cost baseline vs always-frontier (SC-009).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -120,6 +120,7 @@ function estimateCost(
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
+describe('@release', () => {
 describe('Cost baseline (T062, SC-009)', () => {
   describe('SC-009: routed cost < always-frontier baseline', () => {
     it('mixed workload routed cost is measurably less than frontier-only', async () => {
@@ -326,4 +327,5 @@ describe('Cost baseline (T062, SC-009)', () => {
       }
     });
   });
+});
 });

@@ -4,7 +4,7 @@
  * End-to-end verification that cache-preserving planning delegate:
  * - Keeps primary inference on the pinned economical model when delegate path is active
  * - Survives multi-turn planning sessions without switching the primary model
- * - Surfaces delegate vs direct route in explain output (features.planning_delegate)
+ * Release matrix: cache-preserving planning delegate (SP-145, #71).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -85,6 +85,7 @@ function explainBody(overrides?: Partial<RoutingRequest>): Record<string, unknow
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
+describe('@release', () => {
 describe('Planning delegate integration (SP-145, #71)', () => {
   describe('multi-turn primary model preservation', () => {
     it('planning turn keeps primary on pinned economical model when delegate path active', async () => {
@@ -247,4 +248,5 @@ describe('Planning delegate integration (SP-145, #71)', () => {
       );
     });
   });
+});
 });

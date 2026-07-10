@@ -6,7 +6,7 @@
  *
  * Contract sources:
  *   - specs/001-build-smart-router/contracts/routing-request.schema.json
- *   - specs/001-build-smart-router/contracts/routing-decision.schema.json
+ * Release matrix: routing-request and routing-decision JSON schema contracts.
  */
 
 import { readFileSync } from 'node:fs';
@@ -107,6 +107,7 @@ function fullRoutingDecision(): Record<string, unknown> {
 
 // ─── Test suites ─────────────────────────────────────────────────────────────
 
+describe('@release', () => {
 describe('routing-request.schema.json', () => {
   let validate: ValidateFn;
 
@@ -372,4 +373,5 @@ describe('schema cross-validation', () => {
     expect(RoutingRequestSchema.safeParse(empty).success).toBe(false);
     expect(RoutingDecisionSchema.safeParse(empty).success).toBe(false);
   });
+});
 });

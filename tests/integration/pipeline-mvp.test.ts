@@ -3,7 +3,7 @@
  *
  * Validates the full Request → Decision → Dispatch path through
  * the router pipeline. Verifies that every request receives a tier
- * assignment without manual model selection (SC-001).
+ * Release matrix: MVP Request → Decision → Dispatch path (SC-001).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -43,6 +43,7 @@ const mvpFleet: ModelProfile[] = [
 
 // ─── Integration: Request → Decision → Dispatch ──────────────────────────────
 
+describe('@release', () => {
 describe('MVP Integration: pipeline-mvp', () => {
   describe('SC-001: automatic model selection without manual picking', () => {
     it('routes a request and returns a tier assignment via GatewayDispatch', async () => {
@@ -218,4 +219,5 @@ describe('MVP Integration: pipeline-mvp', () => {
       ).resolves.toBeDefined();
     });
   });
+});
 });

@@ -1,5 +1,5 @@
-**Current Step:** Step 1
-**Status:** Pending
+**Current Step:** Step 2
+**Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,17 +10,17 @@
 
 ## Step 1: @release wrappers
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Wrap 8 integration test files in top-level `describe('@release', ...)`
-- [ ] Wrap `tests/contract/routing-schemas.test.ts` and `tests/eval/harness-tracks.test.ts`
-- [ ] Add optional scenario matrix comment at file top where helpful
+- [x] Wrap 8 integration test files in top-level `describe('@release', ...)`
+- [x] Wrap `tests/contract/routing-schemas.test.ts` and `tests/eval/harness-tracks.test.ts`
+- [x] Add optional scenario matrix comment at file top where helpful
 
 ## Step 2: test:release script
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Add `"test:release": "vitest run --testNamePattern '@release'"` to package.json
+- [x] Add `"test:release": "vitest run --testNamePattern '@release'"` to package.json
 
 ## Step 3: Testing and verification
 

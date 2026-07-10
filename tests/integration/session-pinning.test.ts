@@ -6,7 +6,7 @@
  * - Pin hit skips downstream stages like triage/HyDRA (FR-007)
  * - Same-provider sub-routing does not break the pin (SC-006)
  * - Break events trigger re-routing correctly (FR-008)
- * - Cache markers are preserved on same-provider paths (FR-023)
+ * Release matrix: session pin stability, sub-routing, break events, cache markers.
  */
 
 import { join } from 'node:path';
@@ -147,6 +147,7 @@ function createHookCapture(): {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
+describe('@release', () => {
 describe('Session pinning integration', () => {
   describe('SC-006: multi-turn pin stability', () => {
     it('pin holds across multiple non-sub-routable turns', async () => {
@@ -1053,4 +1054,5 @@ describe('Session pinning integration', () => {
       storeB.close();
     });
   });
+});
 });

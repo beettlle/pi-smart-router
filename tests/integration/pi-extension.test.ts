@@ -3,7 +3,7 @@
  *
  * Exercises the extension entry-point flow without a running pi instance:
  * mock registry models → pi-model-mapper → createRouterFromFleet → routing
- * decision → stream delegation to the resolved registry target.
+ * Release matrix: pi extension entry-point — mapper, fleet routing, stream delegation.
  */
 
 import {
@@ -178,6 +178,7 @@ function fleetIds(fleet: readonly ModelProfile[]): string[] {
 
 // ─── Mapper integration ──────────────────────────────────────────────────────
 
+describe('@release', () => {
 describe('Pi extension integration (SP-043)', () => {
   describe('mapPiModelToProfile classifies major model families', () => {
     it('maps Claude sonnet to frontier-cloud', () => {
@@ -968,4 +969,5 @@ describe('Pi extension integration (SP-043)', () => {
       );
     });
   });
+});
 });
