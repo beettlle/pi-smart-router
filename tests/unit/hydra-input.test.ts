@@ -179,6 +179,9 @@ describe('buildHydraInput', () => {
       complex_hits: 1,
       cyclomatic_score: 5,
       sanitized_length_delta: 0,
+      entropy_score: 0,
+      entropy_tail_delta: 0,
+      entropy_tail_stripped_length: 0,
     });
 
     expect(withTriage).toBe(withoutTriage);

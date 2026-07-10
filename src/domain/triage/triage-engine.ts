@@ -4,9 +4,11 @@
  * Deterministic fast-path classifier: obvious-trivial → economical tier,
  * obvious-complex → frontier tier, otherwise ambiguous for deeper stages.
  *
- * Pipeline: sanitize (T026, FR-004) → Aho-Corasick keyword scan (T025) →
- *           cyclomatic scan (T025b) → verdict.
+ * Pipeline: sanitize (T026, FR-004) → entropy tail check (SP-154) →
+ *           Aho-Corasick keyword scan (T025) → cyclomatic scan (T025b) → verdict.
  */
+
+import { checkEntropyTail } from './entropy-check.js';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -19,6 +21,12 @@ export interface TriageResult {
   readonly complex_hits: number;
   readonly cyclomatic_score: number;
   readonly sanitized_length_delta: number;
+  /** Length-normalized Shannon entropy of the analyzed tail window (0–1). */
+  readonly entropy_score: number;
+  /** Tail entropy minus prefix entropy; large positive values indicate adversarial suffixes. */
+  readonly entropy_tail_delta: number;
+  /** Characters removed by entropy tail stripping (0 when none). */
+  readonly entropy_tail_stripped_length: number;
 }
 
 // ─── Thresholds ───────────────────────────────────────────────────────────────
@@ -320,6 +328,12 @@ export function cyclomaticScan(text: string): number {
  *
  * Deterministic and synchronous — runs in the triage pipeline stage (FR-003).
  * Sanitizes adversarial content before scoring (FR-004).
+ * Strips high-entropy tail suffixes after sanitization (SP-154, #82).
+ *
+ * False-positive mitigation for entropy stripping:
+ * - Requires both relative tail-vs-prefix delta AND absolute tail entropy threshold
+ * - Skips enforcement on short prompts and tails below MIN_TAIL_TOKENS
+ * - Prefix comparison preserves classification when entire prompt is uniformly high-entropy (e.g. code)
  */
 export function triage(promptText: string): TriageResult {
   if (!promptText || promptText.trim().length === 0) {
@@ -330,14 +344,33 @@ export function triage(promptText: string): TriageResult {
       complex_hits: 0,
       cyclomatic_score: 0,
       sanitized_length_delta: 0,
+      entropy_score: 0,
+      entropy_tail_delta: 0,
+      entropy_tail_stripped_length: 0,
     };
   }
 
   const sanitized = sanitize(promptText);
-  const delta = promptText.length - sanitized.length;
+  const entropy = checkEntropyTail(sanitized);
+  const scoredText = entropy.text;
+  const delta = promptText.length - scoredText.length;
 
-  const { trivialHits, complexHits } = MATCHER.search(sanitized);
-  const cyclomatic = cyclomaticScan(sanitized);
+  if (!scoredText || scoredText.trim().length === 0) {
+    return {
+      verdict: 'ambiguous',
+      reason_code: 'empty_prompt',
+      trivial_hits: 0,
+      complex_hits: 0,
+      cyclomatic_score: 0,
+      sanitized_length_delta: delta,
+      entropy_score: entropy.entropy_score,
+      entropy_tail_delta: entropy.tail_delta,
+      entropy_tail_stripped_length: entropy.tail_stripped_length,
+    };
+  }
+
+  const { trivialHits, complexHits } = MATCHER.search(scoredText);
+  const cyclomatic = cyclomaticScan(scoredText);
 
   let verdict: TriageVerdict;
   let reason: string;
@@ -369,5 +402,8 @@ export function triage(promptText: string): TriageResult {
     complex_hits: complexHits,
     cyclomatic_score: cyclomatic,
     sanitized_length_delta: delta,
+    entropy_score: entropy.entropy_score,
+    entropy_tail_delta: entropy.tail_delta,
+    entropy_tail_stripped_length: entropy.tail_stripped_length,
   };
 }
