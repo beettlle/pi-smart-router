@@ -110,6 +110,9 @@ jobs:
       - name: Consumer pack verify
         run: bash scripts/verify-consumer-pack.sh
 
+      - name: Tier 0 functional smoke
+        run: npm run release:functional-smoke
+
       - name: CLI help smoke
         run: node bin/pi-smart-router.mjs 2>&1 | grep -q 'export telemetry-contrib'
 

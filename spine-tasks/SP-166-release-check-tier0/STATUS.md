@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -17,10 +17,10 @@
 
 ## Step 2: Release workflow and docs
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Update `release.yml` to run `release:check` or `release:functional-smoke` on tag path
-- [ ] Document Tier 0 gate chain in README release section
+- [x] Update `release.yml` to run `release:check` or `release:functional-smoke` on tag path
+- [x] Document Tier 0 gate chain in README release section
 
 ## Step 3: Testing and verification
 
@@ -51,7 +51,7 @@
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-07-10 | Pre-existing `routing:verify-calibration` CLI import failure; `--skip-embed` routes to vitest smoke in package.json | Functional smoke passes without ONNX embed |
 
 ## Execution Log
 

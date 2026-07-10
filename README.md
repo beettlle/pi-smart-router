@@ -729,7 +729,8 @@ Contributors must run `npm run build` before publishing or consuming the library
 | Script | Purpose |
 |--------|---------|
 | `npm run build` | Compile library to `dist/` (`tsc --project tsconfig.build.json`) |
-| `npm run release:check` | Pre-release gate: `verify:ci` + consumer pack (`npm install --omit=dev` on tarball) |
+| `npm run release:check` | Pre-release gate: `verify:ci` + consumer pack + Tier 0 functional smoke |
+| `npm run release:functional-smoke` | Tier 0 functional smoke: calibration verify (`--skip-embed`), benchmark profiles, release gate assertions |
 | `npm run release:consumer-pack` | Pack tarball and verify production dependencies resolve (catches missing runtime deps) |
 | `npm run verify:ci` | Full CI parity: build, typecheck, lint, test, coverage |
 | `npm run typecheck` | TypeScript strict mode check (`tsc --noEmit`) |
@@ -794,10 +795,18 @@ npm run routing:verify-benchmark-profiles
 
 Tag-triggered publish via GitHub Actions (requires `NPMSECRET` repository secret). pi.dev gallery listing syncs automatically from npm (`pi-package` keyword); no separate submit step.
 
-1. `npm run release:check` (includes consumer pack verify)
+**Tier 0 functional smoke** (`release:functional-smoke`) runs before tag publish and chains:
+
+1. `routing:verify-calibration --skip-embed` — artifact shape + triage benchmark gates (no ONNX embedding)
+2. `routing:verify-benchmark-profiles` — checked-in capability profiles match fixture ingest
+3. `assert-release-gates --fixtures tests/eval/fixtures` — eval harness aggregate metrics vs `config/release-gates.json`
+
+`release:check` runs the full pre-release path: `verify:ci`, consumer pack verify, then Tier 0 functional smoke.
+
+1. `npm run release:check` (CI parity + consumer pack + Tier 0 functional smoke)
 2. `npm version 0.1.1` (creates commit + `v0.1.1` tag)
 3. `git push && git push --tags`
-4. Actions → **Release** runs pack smoke, consumer pack verify, `npm publish`, and creates a GitHub Release
+4. Actions → **Release** runs pack smoke, consumer pack verify, Tier 0 functional smoke, `npm publish`, and creates a GitHub Release
 
 Re-publish a failed release: Actions → Release → Run workflow with existing tag (e.g. `v0.1.1`).
 
