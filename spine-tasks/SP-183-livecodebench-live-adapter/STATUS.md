@@ -29,7 +29,7 @@
 
 **Status:** 🔄 In Progress
 
-- [ ] Contract testCommand
+- [x] Contract testCommand
 - [ ] Full suite + coverage ≥77%
 
 ---
