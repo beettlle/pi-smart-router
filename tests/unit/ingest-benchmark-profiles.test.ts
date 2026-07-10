@@ -427,6 +427,20 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
 
       const bodies = new Map<string, string>(
         BENCHMARK_IDS.map((benchmark) => {
+          if (benchmark === 'livecodebench') {
+            // Native SP-183 adapter expects performances_generation.json shape.
+            // Only emit models also present in stub mirrors so ingest covers all dims.
+            const lcbPayload = {
+              performances: [
+                { model: 'Claude-Opus-4', 'pass@1': 80 },
+                { model: 'Claude-Opus-4', 'pass@1': 80 },
+              ],
+              models: [
+                { model_name: 'claude-opus-4-20250514_nothink', model_repr: 'Claude-Opus-4' },
+              ],
+            };
+            return [`${mirrorBase}/${benchmark}.json`, JSON.stringify(lcbPayload)];
+          }
           const payload: BenchmarkLeaderboardFixture = {
             benchmark,
             source_url: BENCHMARK_SOURCE_URLS[benchmark],
