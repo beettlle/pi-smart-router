@@ -23,13 +23,13 @@
 
 **Status:** ⬜ Not Started
 
-- [ ] Unit test: abort during mocked slow dispatch — no delegation
+- [ ] Add `tests/unit/pre-delegation-abort.test.ts` — abort during mocked slow dispatch — no delegation
 
 ## Step 3: Testing and verification
 
 **Status:** ⬜ Not Started
 
-- [ ] Run scoped vitest for smart-router-extension
+- [ ] Run scoped vitest (pre-delegation-abort + smart-router-extension)
 - [ ] Run full `npm test`
 - [ ] Run coverage gate
 
@@ -38,7 +38,7 @@
 ## Completion Criteria
 
 - [ ] Abort checks at all listed phase boundaries
-- [ ] Slow-dispatch abort test passes
+- [ ] Slow-dispatch abort test passes in `tests/unit/pre-delegation-abort.test.ts`
 - [ ] HyDRA limitation documented
 - [ ] Closes #90
 
@@ -71,3 +71,4 @@
 ## Notes
 
 - 2026-07-10: Contract `fileScopeMustChange` redirected to `planning-delegate.ts` (SP-169 prelanded route-and-delegate).
+- 2026-07-10: Contract redirected again to `tests/unit/pre-delegation-abort.test.ts` (SP-170 prelanded planning-delegate).
