@@ -1,5 +1,5 @@
 **Current Step:** Step 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,11 +10,11 @@
 
 ## Step 1: ModernBERT heads module
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Implement `modernbert-heads.ts` with K=4 independent sigmoid heads on [CLS]
-- [ ] Dimensions: reasoning, code_gen, tool_use, debugging
-- [ ] ONNX/runtime integration following embedding-provider patterns
+- [x] Implement `modernbert-heads.ts` with K=4 independent sigmoid heads on [CLS]
+- [x] Dimensions: reasoning, code_gen, tool_use, debugging
+- [x] ONNX/runtime integration following embedding-provider patterns
 
 ## Step 2: Config and shape tests
 
