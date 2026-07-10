@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -10,7 +10,7 @@
 
 ## Step 1: Benchmark script
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Create `scripts/benchmark-encoder-latency.ts` comparing MiniLM vs Granite
 - [x] Use held-out agent turn sample fixtures
@@ -18,7 +18,7 @@
 
 ## Step 2: Docs and npm script
 
-**Status:** Pending
+**Status:** In Progress
 
 - [ ] Add `npm run benchmark:encoder` script
 - [ ] Document encoder flag and benchmark in README operator section
