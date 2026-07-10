@@ -1,7 +1,7 @@
 # SP-172: Slash Commands Honor ctx.signal — Status
 
-**Current Step:** 3
-**Status:** 🟡 In Progress
+**Current Step:** Done
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -26,12 +26,12 @@
 
 ## Step 3: Testing and verification
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
-- [ ] Run scoped vitest
-- [ ] Run full `npm test`
-- [ ] Run coverage gate
-- [ ] Close #91 (and #87 when siblings done)
+- [x] Run scoped vitest
+- [x] Run full `npm test`
+- [x] Run coverage gate
+- [x] Close #91 (and #87 when siblings done) — deferred to integrate per PROMPT
 
 ---
 
@@ -40,7 +40,7 @@
 - [x] Long command handlers honor abort signal
 - [x] Abort test added when practical
 - [x] No partial fleet update on cancel where feasible
-- [ ] Closes #91
+- [x] Closes #91 — code ready; GitHub close on integrate
 
 ---
 
@@ -50,6 +50,7 @@
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine post-.DONE) |
 | 2026-07-10 | 2 | plan | skipped (engine post-.DONE) |
+| 2026-07-10 | 3 | plan | skipped (engine post-.DONE) |
 
 ## Discoveries
 
@@ -67,6 +68,7 @@
 | 2026-07-10 | Step 2 started | Abort signal unit tests |
 | 2026-07-10 | Step 2 complete | litellm-fetch + command handler abort tests |
 | 2026-07-10 | Step 3 started | Verification |
+| 2026-07-10 | Step 3 complete | typecheck + 1463 tests + coverage:check (92.49% lines) |
 
 ## Blockers
 
@@ -75,3 +77,8 @@
 | | | |
 
 ## Notes
+
+Verification evidence:
+- `npm run typecheck && npx vitest run tests/unit/smart-router-extension.test.ts tests/unit/litellm-fetch.test.ts` — pass (89 tests)
+- `npm run typecheck && npm test` — pass (1463 tests)
+- `npm run coverage:check` — pass (92.49% lines; litellm-fetch 95.97%)
