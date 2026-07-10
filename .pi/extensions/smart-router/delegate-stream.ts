@@ -17,6 +17,7 @@ import {
   type DelegationHeadroomContext,
 } from './delegation-runtime.js';
 import type { StreamDelegationDeps } from './types.js';
+import { throwIfAborted } from './utils.js';
 
 export async function collectDelegatedStream(
   targetModel: Model<Api>,
@@ -25,9 +26,7 @@ export async function collectDelegatedStream(
   options: SimpleStreamOptions | undefined,
   headroomContext?: DelegationHeadroomContext,
 ): Promise<DelegatedStreamResult> {
-  if (options?.signal?.aborted) {
-    throw new Error('Request was aborted');
-  }
+  throwIfAborted(options);
 
   const delegationOptions = await resolveDelegationOptions(
     deps.modelRegistry,
@@ -41,9 +40,7 @@ export async function collectDelegatedStream(
   let finalMessage: AssistantMessage | undefined;
 
   for await (const event of inner) {
-    if (options?.signal?.aborted) {
-      throw new Error('Request was aborted');
-    }
+    throwIfAborted(options);
     events.push(event);
 
     if (event.type === 'done') {

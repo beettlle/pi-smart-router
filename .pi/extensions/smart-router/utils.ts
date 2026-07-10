@@ -56,3 +56,32 @@ export function resolveRateLimiter(store: StorePort): RateLimitPort | undefined 
   }
   return createSqliteRateLimiter(store);
 }
+
+/** True when the request was aborted via AbortSignal or an abort-shaped error. */
+export function isAbortError(
+  error: unknown,
+  options?: { signal?: AbortSignal },
+): boolean {
+  if (options?.signal?.aborted) {
+    return true;
+  }
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return true;
+  }
+  if (error instanceof Error) {
+    if (error.name === 'AbortError') {
+      return true;
+    }
+    if (error.message === 'Request was aborted') {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Throw if `options.signal` is already aborted. */
+export function throwIfAborted(options?: { signal?: AbortSignal }): void {
+  if (options?.signal?.aborted) {
+    throw new Error('Request was aborted');
+  }
+}
