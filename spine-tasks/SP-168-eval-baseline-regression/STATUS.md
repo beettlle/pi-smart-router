@@ -25,22 +25,22 @@
 
 ## Step 3: Wire release path and verify
 
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Update `release:functional-smoke` to pass baseline version from config
-- [ ] Document operator re-capture flow in README (post-tag v0.7.0)
-- [ ] Unit test: simulated regression fails gates
-- [ ] Run `npm run release:check`
+- [x] Update `release:functional-smoke` to pass baseline version from config
+- [x] Document operator re-capture flow in README (post-tag v0.7.0)
+- [x] Unit test: simulated regression fails gates
+- [x] Run `npm run release:check`
 
 ---
 
 ## Completion Criteria
 
-- [ ] `tests/eval/baselines/v0.6.0.json` frozen snapshot
-- [ ] `capture-baseline.ts` CLI
-- [ ] Baseline regression in assert-release-gates
-- [ ] `release:functional-smoke` uses baseline compare
-- [ ] `npm run release:check` passes
+- [x] `tests/eval/baselines/v0.6.0.json` frozen snapshot
+- [x] `capture-baseline.ts` CLI
+- [x] Baseline regression in assert-release-gates
+- [x] `release:functional-smoke` uses baseline compare
+- [x] `npm run release:check` passes
 
 ---
 
@@ -60,7 +60,9 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-10 | Step 1 complete | capture-baseline CLI + v0.6.0.json committed |
+| 2026-07-10 | Step 2 complete | baseline_regression in assert-release-gates + config |
+| 2026-07-10 | Step 3 complete | release:functional-smoke wired, tests pass, release:check OK |
 
 ## Blockers
 
