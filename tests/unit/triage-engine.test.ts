@@ -16,6 +16,11 @@ import {
   sanitize,
   triage,
 } from '../../src/domain/triage/triage-engine.js';
+import {
+  checkEntropyTail,
+  normalizedTokenEntropy,
+  tokenizeForEntropy,
+} from '../../src/domain/triage/entropy-check.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 
@@ -357,6 +362,9 @@ describe('TriageResult contract', () => {
     expect(result).toHaveProperty('complex_hits');
     expect(result).toHaveProperty('cyclomatic_score');
     expect(result).toHaveProperty('sanitized_length_delta');
+    expect(result).toHaveProperty('entropy_score');
+    expect(result).toHaveProperty('entropy_tail_delta');
+    expect(result).toHaveProperty('entropy_tail_stripped_length');
   });
 
   it('returns non-negative numeric fields', () => {
@@ -365,6 +373,99 @@ describe('TriageResult contract', () => {
     expect(result.complex_hits).toBeGreaterThanOrEqual(0);
     expect(result.cyclomatic_score).toBeGreaterThanOrEqual(0);
     expect(result.sanitized_length_delta).toBeGreaterThanOrEqual(0);
+    expect(result.entropy_score).toBeGreaterThanOrEqual(0);
+    expect(result.entropy_tail_stripped_length).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ─── SP-154: Entropy tail anomaly detection ──────────────────────────────────
+
+/** GCG-style high-entropy adversarial suffix (unique single-char tokens). */
+function makeAdversarialSuffix(tokenCount = 24): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const tokens: string[] = [];
+  for (let i = 0; i < tokenCount; i++) {
+    tokens.push(chars[i % chars.length]! + String(i));
+  }
+  return tokens.join(' ');
+}
+
+describe('entropy tail check (SP-154)', () => {
+  it('detects high normalized entropy on adversarial suffix tokens', () => {
+    const tokens = tokenizeForEntropy(makeAdversarialSuffix(24));
+    const entropy = normalizedTokenEntropy(tokens);
+    expect(entropy).toBeGreaterThan(0.85);
+  });
+
+  it('strips high-entropy suffix appended to trivial prompt', () => {
+    const suffix = makeAdversarialSuffix(24);
+    const prompt = `Format this JSON file please review ${suffix}`;
+    const result = checkEntropyTail(prompt);
+
+    expect(result.anomaly_detected).toBe(true);
+    expect(result.tail_stripped_length).toBeGreaterThan(0);
+    expect(result.text).toContain('Format this JSON file');
+    expect(result.text).not.toContain(suffix.slice(0, 8));
+  });
+
+  it('classifies trivial prompt correctly after adversarial suffix strip', () => {
+    const suffix = makeAdversarialSuffix(24);
+    const result = triage(`Format this JSON file ${suffix}`);
+    expect(result.verdict).toBe('trivial');
+    expect(result.reason_code).toBe('keyword_economical');
+    expect(result.entropy_tail_stripped_length).toBeGreaterThan(0);
+  });
+
+  it('classifies complex prompt correctly after adversarial suffix strip', () => {
+    const suffix = makeAdversarialSuffix(24);
+    const result = triage(`Debug the memory leak in handler ${suffix}`);
+    expect(result.verdict).toBe('complex');
+    expect(result.reason_code).toBe('keyword_frontier');
+    expect(result.entropy_tail_stripped_length).toBeGreaterThan(0);
+  });
+
+  it('does not strip normal English tail on typical prompts', () => {
+    const normalPrompts = [
+      'Format this JSON file',
+      'Lint the codebase',
+      'Debug the memory leak in the WebSocket handler',
+      'Architect a distributed caching system',
+      'Hello, how are you today?',
+      'Refactor the authentication module',
+      'Rename the variable from foo to bar',
+    ];
+
+    for (const prompt of normalPrompts) {
+      const entropy = checkEntropyTail(prompt);
+      expect(entropy.anomaly_detected, prompt).toBe(false);
+      expect(entropy.tail_stripped_length, prompt).toBe(0);
+      expect(entropy.text, prompt).toBe(prompt);
+    }
+  });
+
+  it('preserves triage verdicts on normal prompts corpus sample', () => {
+    const expectations: Array<[string, 'trivial' | 'complex' | 'ambiguous', string]> = [
+      ['Format this JSON file', 'trivial', 'keyword_economical'],
+      ['Lint the codebase', 'trivial', 'keyword_economical'],
+      ['Debug the memory leak in the WebSocket handler', 'complex', 'keyword_frontier'],
+      ['Architect a distributed caching system', 'complex', 'keyword_frontier'],
+      ['Hello, how are you today?', 'ambiguous', 'no_fast_path'],
+      ['Refactor the authentication module', 'complex', 'keyword_frontier'],
+    ];
+
+    for (const [prompt, verdict, reason] of expectations) {
+      const result = triage(prompt);
+      expect(result.verdict, prompt).toBe(verdict);
+      expect(result.reason_code, prompt).toBe(reason);
+      expect(result.entropy_tail_stripped_length, prompt).toBe(0);
+    }
+  });
+
+  it('exports entropy metrics on every triage result', () => {
+    const suffix = makeAdversarialSuffix(24);
+    const result = triage(`Format this file ${suffix}`);
+    expect(result.entropy_score).toBeGreaterThan(0);
+    expect(result.entropy_tail_delta).toBeGreaterThan(0);
   });
 });
 

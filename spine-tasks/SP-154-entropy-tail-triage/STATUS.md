@@ -1,4 +1,4 @@
-**Current Step:** Step 2
+**Current Step:** Step 3
 **Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -18,7 +18,7 @@
 
 ## Step 2: Triage integration
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Wire entropy check into triage pipeline after `sanitize()`
 - [x] Extend `TriageResult` with entropy fields when needed
@@ -26,21 +26,21 @@
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Unit tests with synthetic high-entropy suffix fixtures
-- [ ] Regression test on normal prompts corpus sample
-- [ ] Run `npm run verify:ci`
+- [x] Unit tests with synthetic high-entropy suffix fixtures
+- [x] Regression test on normal prompts corpus sample
+- [x] Run `npm run verify:ci`
 
 ---
 
 ## Completion Criteria
 
-- [ ] Entropy anomaly detection on prompt tail segments
-- [ ] Strip or flag adversarial suffixes in triage path
-- [ ] Unit tests with synthetic fixtures
-- [ ] No regression on normal prompts corpus
-- [ ] `npm run verify:ci` passes
+- [x] Entropy anomaly detection on prompt tail segments
+- [x] Strip or flag adversarial suffixes in triage path
+- [x] Unit tests with synthetic fixtures
+- [x] No regression on normal prompts corpus
+- [x] `npm run verify:ci` passes
 
 ---
 
