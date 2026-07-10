@@ -225,10 +225,24 @@ export type Encoder = z.infer<typeof EncoderSchema>;
 
 export const DEFAULT_ENCODER: Encoder = 'minilm';
 
+/** HyDRA requirement head mode (SP-158, #81). */
+export const HydraHeadsSchema = z.enum(['learned_projection', 'modernbert_k4']);
+
+export type HydraHeads = z.infer<typeof HydraHeadsSchema>;
+
+export const DEFAULT_HYDRA_HEADS: HydraHeads = 'learned_projection';
+
 export const HydraConfigSchema = z.object({
   artifact_cache_path: z.string(),
   /** ONNX encoder: MiniLM (default) or Granite 97M 384-dim long-context trial. */
   encoder: EncoderSchema.default(DEFAULT_ENCODER),
+  /**
+   * Requirement extraction mode:
+   * - `learned_projection` — SP-115 384×3 linear projection (default)
+   * - `modernbert_k4` — ModernBERT-base [CLS] with K=4 sigmoid heads (enable when
+   *   calibration Top-1 error exceeds ~10%; see routing-roadmap.md §2 P3)
+   */
+  hydra_heads: HydraHeadsSchema.default(DEFAULT_HYDRA_HEADS),
 });
 
 export const LowIntensityWeightsSchema = z.object({
