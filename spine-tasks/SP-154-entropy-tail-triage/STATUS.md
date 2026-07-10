@@ -1,4 +1,4 @@
-**Current Step:** Step 1
+**Current Step:** Step 2
 **Status:** In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -10,7 +10,7 @@
 
 ## Step 1: Entropy check module
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Implement `entropy-check.ts` with length-normalized token entropy on configurable tail window
 - [x] Define anomaly threshold and strip/flag behavior for high-entropy suffixes
@@ -18,11 +18,11 @@
 
 ## Step 2: Triage integration
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Wire entropy check into triage pipeline after `sanitize()`
-- [ ] Extend `TriageResult` with entropy fields when needed
-- [ ] Document false-positive mitigation approach
+- [x] Wire entropy check into triage pipeline after `sanitize()`
+- [x] Extend `TriageResult` with entropy fields when needed
+- [x] Document false-positive mitigation approach
 
 ## Step 3: Testing and verification
 
@@ -48,7 +48,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-10 | 1 | plan | skipped (engine post-.DONE) |
 
 ## Discoveries
 
