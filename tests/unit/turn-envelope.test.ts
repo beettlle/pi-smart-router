@@ -61,6 +61,18 @@ describe('classifyTurnEnvelope', () => {
       expect(classifyTurnEnvelope(messages)).toBe('planning');
     });
 
+    it('detects repo-cleanup / destructive-intent as planning (SP-176)', () => {
+      const fixtures: Message[][] = [
+        [msg('user', 'help me clean up mistakenly added files in the repo')],
+        [msg('user', 'Help me clean up the repo')],
+        [msg('user', 'Please unstage the accidental add and avoid force push')],
+        [msg('user', 'Do not run rm -rf on the workspace')],
+      ];
+      for (const messages of fixtures) {
+        expect(classifyTurnEnvelope(messages)).toBe('planning');
+      }
+    });
+
     it('detects "architecture" keyword', () => {
       const messages: Message[] = [
         msg('user', 'Review the architecture of the auth module'),

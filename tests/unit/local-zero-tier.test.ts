@@ -486,5 +486,39 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
       expect(decision.stage).not.toBe('local_zero');
       expect(decision.tier).not.toBe('zero-tier');
     });
+
+    it('never routes repo-cleanup fixture to zero-tier on turn 1 with local ready (SP-176)', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 16 })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({
+          prompt_text: 'help me clean up mistakenly added files in the repo',
+        }),
+      );
+
+      expect(decision.stage).not.toBe('local_zero');
+      expect(decision.tier).not.toBe('zero-tier');
+      expect(['economical-cloud', 'frontier-cloud']).toContain(decision.tier);
+    });
+
+    it('keeps format/lint prompts local-eligible when local is ready (SP-176 regression)', async () => {
+      const pipeline = new RouterPipeline(FLEET, {
+        hardwareConfig: HARDWARE_CONFIG,
+        localConfig: TEST_CONFIG,
+        systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 16 })),
+        httpFetchPort: READY_FETCH,
+      });
+
+      for (const prompt_text of ['Format this JSON file', 'Lint the source file']) {
+        const decision = await pipeline.route(makeRequest({ prompt_text }));
+        expect(decision.stage).toBe('local_zero');
+        expect(decision.tier).toBe('zero-tier');
+      }
+    });
   });
 });
