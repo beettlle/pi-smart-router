@@ -35,16 +35,16 @@ Long work runs before any events reach pi with no signal check: `ensureFleetFres
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `.pi/extensions/smart-router/planning-delegate.ts` |
-| May change | `.pi/extensions/smart-router/route-and-delegate.ts`, `.pi/extensions/smart-router/delegate-stream.ts`, `tests/unit/smart-router-extension.test.ts`, `README.md` |
+| Must change | `tests/unit/pre-delegation-abort.test.ts` |
+| May change | `.pi/extensions/smart-router/route-and-delegate.ts`, `.pi/extensions/smart-router/planning-delegate.ts`, `.pi/extensions/smart-router/delegate-stream.ts`, `tests/unit/smart-router-extension.test.ts`, `README.md` |
 | Must NOT change | `src/domain/pipeline/**` |
 
 ## Contract
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run typecheck && npx vitest run tests/unit/smart-router-extension.test.ts` |
-| fileScopeMustChange | `.pi/extensions/smart-router/planning-delegate.ts` |
+| testCommand | `npm run typecheck && npx vitest run tests/unit/pre-delegation-abort.test.ts tests/unit/smart-router-extension.test.ts` |
+| fileScopeMustChange | `tests/unit/pre-delegation-abort.test.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/**` |
 
 ## Steps
@@ -58,18 +58,18 @@ Long work runs before any events reach pi with no signal check: `ensureFleetFres
 
 ### Step 2: Pre-delegation abort test
 
-- [ ] Unit test: abort during mocked slow `dispatch` — delegation never starts
+- [ ] Add `tests/unit/pre-delegation-abort.test.ts` — abort during mocked slow `dispatch`; delegation never starts
 
 ### Step 3: Testing and verification
 
-- [ ] Run `npm run typecheck && npx vitest run tests/unit/smart-router-extension.test.ts`
+- [ ] Run `npm run typecheck && npx vitest run tests/unit/pre-delegation-abort.test.ts tests/unit/smart-router-extension.test.ts`
 - [ ] Run `npm run typecheck && npm test`
 - [ ] Run `npm run coverage:check` — ≥77% line coverage
 
 ## Completion Criteria
 
 - [ ] Abort checks at all listed phase boundaries
-- [ ] Slow-dispatch abort test passes
+- [ ] Slow-dispatch abort test passes in `tests/unit/pre-delegation-abort.test.ts`
 - [ ] HyDRA limitation documented
 - [ ] Parent #87 closable when #88–#91 done (this task closes #90)
 
@@ -91,3 +91,8 @@ Long work runs before any events reach pi with no signal check: `ensureFleetFres
 
 **Issue:** Preflight `prelanded-file-scope` — SP-169 already changed `route-and-delegate.ts` on main.
 **Resolution:** Redirected `fileScopeMustChange` to `.pi/extensions/smart-router/planning-delegate.ts` (abort wiring on planning sub-call). Worker may still edit `route-and-delegate.ts` under May change for phase-boundary `throwIfAborted`; contract proof is `planning-delegate.ts` diff.
+
+### Amendment 2 — 2026-07-10
+
+**Issue:** Preflight `prelanded-file-scope` again — SP-170 also changed `planning-delegate.ts` on main.
+**Resolution:** Redirected `fileScopeMustChange` to new delivery artifact `tests/unit/pre-delegation-abort.test.ts`. Implementation remains in `route-and-delegate.ts` / `planning-delegate.ts` under May change.
