@@ -23,6 +23,24 @@ export interface LitellmFetchResult {
 export interface LitellmFetchDeps {
   readonly fetchFn?: typeof fetch;
   readonly pricingUrl?: string;
+  /** When set, aborts the LiteLLM pricing HTTP request (ESC / ctx.signal). */
+  readonly signal?: AbortSignal;
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    const reason = signal.reason;
+    if (reason instanceof Error) {
+      throw reason;
+    }
+    const error = new Error(typeof reason === 'string' && reason.length > 0 ? reason : 'Aborted');
+    error.name = 'AbortError';
+    throw error;
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
 }
 
 export class LitellmFetchError extends Error {
@@ -174,16 +192,27 @@ export async function fetchLitellmPriceCatalog(
 ): Promise<LitellmPriceCatalogResult> {
   const fetchFn = deps.fetchFn ?? fetch;
   const url = deps.pricingUrl ?? getLitellmPricingUrl();
+  const { signal } = deps;
+
+  throwIfAborted(signal);
 
   let response: Response;
   try {
-    response = await fetchFn(url);
+    response = signal ? await fetchFn(url, { signal }) : await fetchFn(url);
   } catch (error) {
+    if (isAbortError(error) || signal?.aborted) {
+      throwIfAborted(signal);
+      if (isAbortError(error)) {
+        throw error;
+      }
+    }
     const detail = error instanceof Error ? error.message : String(error);
     throw new LitellmFetchError(
       `Failed to fetch LiteLLM pricing from ${url}: ${detail}`,
     );
   }
+
+  throwIfAborted(signal);
 
   if (!response.ok) {
     throw new LitellmFetchError(
@@ -194,11 +223,19 @@ export async function fetchLitellmPriceCatalog(
   let raw: unknown;
   try {
     raw = await response.json();
-  } catch {
+  } catch (error) {
+    if (isAbortError(error) || signal?.aborted) {
+      throwIfAborted(signal);
+      if (isAbortError(error)) {
+        throw error;
+      }
+    }
     throw new LitellmFetchError(
       `LiteLLM pricing response from ${url} is not valid JSON.`,
     );
   }
+
+  throwIfAborted(signal);
 
   const normalized = normalizeLitellmPricing(raw);
 
