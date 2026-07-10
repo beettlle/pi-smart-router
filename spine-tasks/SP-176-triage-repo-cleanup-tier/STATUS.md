@@ -1,7 +1,7 @@
 # SP-176: Triage Repo-Cleanup Tier — Status
 
-**Current Step:** 2
-**Status:** 🔄 In Progress
+**Current Step:** 3
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -20,7 +20,7 @@
 
 ## Step 2: Fixture + regression tests
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Cleanup fixture → tier ≥ economical-cloud; never zero-tier turn 1 with local ready
 - [x] Trivial format/lint still local-eligible
@@ -28,11 +28,11 @@
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run scoped vitest
-- [ ] Run full `npm test`
-- [ ] Run coverage gate
+- [x] Run scoped vitest
+- [x] Run full `npm test`
+- [x] Run coverage gate
 
 ---
 
@@ -50,6 +50,8 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine-owned after .DONE) |
+| 2026-07-10 | 2 | plan | skipped (engine-owned after .DONE) |
+| 2026-07-10 | 3 | plan | skipped (engine-owned after .DONE) |
 
 ## Discoveries
 
@@ -64,7 +66,8 @@
 |------|-------|--------|
 | 2026-07-10 | Step 1 started | Plan: add COMPLEX_KEYWORDS + PLANNING_PATTERNS for repo-hygiene/destructive; impact LOW |
 | 2026-07-10 | Step 1 complete | COMPLEX_KEYWORDS + PLANNING_PATTERNS landed; plan review skipped by engine |
-| 2026-07-10 | Step 2 in progress | Fixture + regression tests added; scoped vitest 157 passed |
+| 2026-07-10 | Step 2 complete | Fixture + regression tests; scoped vitest 157 passed |
+| 2026-07-10 | Step 3 complete | npm test 1491 passed; coverage:check 92.85% lines (≥77%) |
 
 ## Blockers
 
@@ -74,7 +77,7 @@
 
 ## Notes
 
-**Step 1 plan (pre-review):**
-1. Extend `COMPLEX_KEYWORDS` with repo-hygiene / destructive phrases (`clean up the repo`, `mistakenly added`, `accidentally added`, `rm -rf`, `force push`, etc.) so triage → `complex` → frontier (≥ economical-cloud), blocking `local_zero`.
-2. Extend `PLANNING_PATTERNS` in turn-envelope with matching regexes so message envelopes are not stuck on `main_loop`.
-3. Keep format/lint trivial keywords unchanged.
+**Delivered:**
+1. `COMPLEX_KEYWORDS` extended with repo-hygiene / destructive phrases.
+2. `PLANNING_PATTERNS` extended so cleanup envelopes leave `main_loop`.
+3. Fixture + format/lint regression tests; no `router-pipeline.ts` edits.
