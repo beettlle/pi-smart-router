@@ -828,7 +828,7 @@ npm run routing:eval-replay
 
 ### Benchmark profile refresh
 
-Capability scores in `config/benchmark-profiles.json` are grounded from public leaderboard snapshots under `tests/fixtures/benchmark-leaderboards/`. Each artifact records provenance (`source_urls`, `scrape_date`, `catalog_freeze_date`) in its header.
+Capability scores in `config/benchmark-profiles.json` are grounded from public leaderboard snapshots under `tests/fixtures/benchmark-leaderboards/` (and optional **recorded** live snapshots under `tests/fixtures/benchmark-leaderboards/recorded/`). Each artifact records provenance (`source_urls`, `scrape_date`, `catalog_freeze_date`) in its header.
 
 **Fleet ID aliases (SP-174):** live pi/Cursor scoped-fleet model IDs often differ from leaderboard `model_id` strings. The artifact’s optional `aliases` map sends those fleet IDs to an existing grounded row (never invents scores). `mapPiModelToProfile` sets `capability_source` to `benchmark` when a direct row or alias hits, otherwise `pattern_default`. Operators can also call `getCapabilitySource(modelId)` / `resolveBenchmarkModelId(modelId)`.
 
@@ -840,16 +840,36 @@ Capability scores in `config/benchmark-profiles.json` are grounded from public l
 4. Re-run ingest anytime — the CLI **preserves** existing `aliases` from the output file. Seed defaults live in `DEFAULT_FLEET_BENCHMARK_ALIASES` when no prior artifact exists.
 5. Confirm with `npm run routing:verify-benchmark-profiles` and a mapper unit test that `capability_source === 'benchmark'` for the fleet id.
 
+**Operator refresh command (SP-179 / SP-180):**
+
+| Mode | Command | Network? | When to use |
+|------|---------|----------|-------------|
+| **Fixtures (default)** | `npm run routing:ingest-benchmarks` | No | Local edits, CI, PR smoke |
+| **Recorded replay** | `npm run routing:ingest-benchmarks -- --recorded` | No | Replay last successful live snapshots offline |
+| **Live + record** | `npm run routing:ingest-benchmarks -- --live` | Yes | Operator refresh; writes `tests/fixtures/benchmark-leaderboards/recorded/` then regenerates profiles |
+
+Optional flags: `--catalog-freeze-date YYYY-MM-DD`, `--scrape-date YYYY-MM-DD`, `--record-dir DIR`, `--live-url BENCHMARK=URL`, `--output PATH`. See `npm run routing:ingest-benchmarks -- --help`. Live adapters require fixture-shaped JSON; HTML pages fail fast and leave `config/benchmark-profiles.json` unchanged.
+
+**Cadence (linked to CI):**
+
+| Trigger | Schedule / action | Behavior |
+|---------|-------------------|----------|
+| **Monthly** | cron `0 6 1 * *` (1st of each month, 06:00 UTC) in `.github/workflows/benchmark-profile-refresh.yml` | Attempt **live** ingest; on failure fall back to checked-in fixtures; open a bot PR when model scores change (includes updated recorded snapshots when live succeeds) |
+| **Manual dispatch** | Actions → *Benchmark Profile Refresh* → `workflow_dispatch` (`use_live` default `true`) | Same live-or-fixture path; set `use_live=false` for fixtures-only |
+| **PR smoke** | PRs touching fixtures / ingest / artifact / workflow | **Fixtures only** — `npm run routing:verify-benchmark-profiles` (offline, no network) |
+
 **Operator policy:**
 
-1. **PR smoke** — `.github/workflows/benchmark-profile-refresh.yml` runs on PRs that touch fixtures, ingest, or the checked-in artifact. It executes `npm run routing:verify-benchmark-profiles` so fixture edits cannot drift from `config/benchmark-profiles.json`.
-2. **Monthly refresh** — the same workflow runs on the 1st of each month (06:00 UTC) and via `workflow_dispatch`. It re-ingests fixtures, updates `catalog_freeze_date` to the run date, and opens a PR when model scores change.
-3. **Manual updates** — after editing fixture snapshots, run `npm run routing:ingest-benchmarks` (optionally `--catalog-freeze-date YYYY-MM-DD`) and commit the regenerated `config/benchmark-profiles.json` with the PR.
+1. **PR smoke** — fixture-only verify so PRs never require live network.
+2. **Monthly / dispatch refresh** — live with fixture fallback; provenance (`source_urls`, `scrape_date`, `catalog_freeze_date`) is preserved in the artifact header and echoed in the bot PR body.
+3. **Manual local updates** — prefer fixtures or `--recorded` for offline work; use `--live` when refreshing from public leaderboard JSON endpoints.
 
-Regenerate locally:
+Verify after any regenerate:
 
 ```bash
 npm run routing:ingest-benchmarks
+# or: npm run routing:ingest-benchmarks -- --live
+# or: npm run routing:ingest-benchmarks -- --recorded
 npm run routing:verify-benchmark-profiles
 ```
 

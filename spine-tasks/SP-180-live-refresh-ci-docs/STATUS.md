@@ -1,6 +1,6 @@
 # SP-180: Live Refresh CI + Operator Docs — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Monthly / dispatch live-capable refresh
 
-**Status:** 🔄 In Progress (outcomes done; plan review skipped by engine SP-195)
+**Status:** ✅ Complete
 
 - [x] Extend workflow scheduled + dispatch for live ingest with fixture fallback
 - [x] When live succeeds, update recorded snapshots + profiles in bot PR
@@ -21,11 +21,11 @@
 
 ## Step 2: Operator docs + mapper smoke
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] README: refresh command, live vs fixture, monthly cadence
-- [ ] Mapper smoke: fleet ID floors from ingested scores
-- [ ] Link cadence to workflow schedule
+- [x] README: refresh command, live vs fixture, monthly cadence
+- [x] Mapper smoke: fleet ID floors from ingested scores
+- [x] Link cadence to workflow schedule
 
 ## Step 3: Testing and verification
 
@@ -41,8 +41,8 @@
 
 ## Completion Criteria
 
-- [ ] Live-capable monthly/dispatch refresh with fixture fallback
-- [ ] PR smoke offline
+- [x] Live-capable monthly/dispatch refresh with fixture fallback
+- [x] PR smoke offline
 - [ ] README refresh docs
 - [ ] Mapper smoke for ingested floors
 - [ ] #100 closable
@@ -66,7 +66,8 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-10 | Step 1 started | Plan review skipped; extending workflow |
-| 2026-07-10 | Step 1 outcomes | Live+fallback refresh; recorded in PR; PR smoke offline; provenance in PR body |
+| 2026-07-10 | Step 1 complete | Live+fallback refresh committed |
+| 2026-07-10 | Step 2 started | README operator docs + mapper smoke |
 
 ## Blockers
 

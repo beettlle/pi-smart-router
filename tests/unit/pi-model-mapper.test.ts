@@ -458,3 +458,24 @@ describe('fleet benchmark aliases (SP-174)', () => {
     expect(getCapabilitySource('mystery-model-v9')).toBe('pattern_default');
   });
 });
+
+describe('ingested fleet floors smoke (SP-180)', () => {
+  it('scoped fleet ID frontier/tool_use floors reflect ingested benchmark scores', () => {
+    setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
+
+    // cursor/auto aliases → gpt-5.3-codex row in config/benchmark-profiles.json
+    const profile = mapPiModelToProfile(
+      makeInput({ provider: 'cursor', id: 'cursor/auto' }),
+    );
+
+    expect(profile.tier).toBe('frontier-cloud');
+    expect(profile.capability_source).toBe('benchmark');
+    // Pattern-default frontier floors are 0.95 / 0.9 — ingested scores must differ
+    expect(profile.capabilities.tool_use).toBeCloseTo(0.8215, 4);
+    expect(profile.capabilities.tool_use).not.toBe(0.95);
+    expect(profile.capabilities.reasoning).toBeCloseTo(0.796, 4);
+    expect(profile.capabilities.reasoning).not.toBe(0.9);
+    expect(profile.capabilities.code_gen).not.toBe(0.9);
+    expect(resolveBenchmarkModelId('cursor/auto')).toBe('gpt-5.3-codex');
+  });
+});
