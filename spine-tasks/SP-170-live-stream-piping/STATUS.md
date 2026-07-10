@@ -1,7 +1,7 @@
 # SP-170: Live Stream Event Piping — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
+**Current Step:** 1
+**Status:** 🟡 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,19 +12,19 @@
 
 ## Step 1: Live pipe to outer
 
-**Status:** ⬜ Not Started
+**Status:** 🟡 In Progress
 
-- [ ] Refactor happy path to push events to outer as they arrive
-- [ ] Adapt injectFailoverNotice for live piping
-- [ ] Keep delegateWithOutcome recording after stream ends
-- [ ] Document planning-delegate buffer vs discard choice
+- [x] Refactor happy path to push events to outer as they arrive
+- [x] Adapt injectFailoverNotice for live piping
+- [x] Keep delegateWithOutcome recording after stream ends
+- [x] Document planning-delegate buffer vs discard choice
 
 ## Step 2: Live-forwarding tests
 
-**Status:** ⬜ Not Started
+**Status:** 🟡 In Progress
 
-- [ ] Unit test: text_delta or start before done on slow stream
-- [ ] Update existing delegation/failover tests
+- [x] Unit test: text_delta or start before done on slow stream
+- [x] Update existing delegation/failover tests
 
 ## Step 3: Testing and verification
 

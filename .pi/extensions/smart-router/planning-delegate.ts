@@ -169,7 +169,12 @@ export function injectPlanningDelegateObservation(
   };
 }
 
-/** Default frontier sub-call via provider stream (ephemeral one-shot delegate). */
+/** Default frontier sub-call via provider stream (ephemeral one-shot delegate).
+ *
+ * SP-170: intentionally uses collectDelegatedStream (buffered), not live outer
+ * piping. Only the final observation text is injected into the primary context;
+ * intermediate frontier tokens must not reach the user-facing stream.
+ */
 export async function defaultSpawnPlanningDelegate(
   frontierModel: Model<Api>,
   compressedContext: Context,

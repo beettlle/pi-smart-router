@@ -271,6 +271,85 @@ export interface FlushDelegatedEventsOptions {
   readonly contextWindow?: number;
 }
 
+export interface FailoverNoticeInfo {
+  readonly failedModelId: string;
+  readonly alternateModelId: string;
+  readonly errorObj?: ReturnType<typeof parseAssistantMessageError>;
+}
+
+/** Build the operator-visible failover notice string. */
+export function buildFailoverNoticeText(
+  failedModelId: string,
+  alternateModelId: string,
+  errorObj?: ReturnType<typeof parseAssistantMessageError>,
+): string {
+  const reason = errorObj?.message || errorObj?.code || 'Unavailable';
+  return (
+    `> ⚠️ **pi-smart-router failover:** \`${failedModelId}\` failed (${reason}). ` +
+    `Retrying with \`${alternateModelId}\`...`
+  );
+}
+
+/**
+ * Push a synthetic failover `text_delta` to the live outer stream (SP-170).
+ * Call after the retry stream's `start` (or with a start partial) — no buffered-array mutation.
+ */
+export function pushFailoverNotice(
+  outer: AssistantMessageEventStream,
+  notice: FailoverNoticeInfo,
+  startPartial: AssistantMessage,
+): void {
+  const text = buildFailoverNoticeText(
+    notice.failedModelId,
+    notice.alternateModelId,
+    notice.errorObj,
+  );
+  const delta = `${text}\n\n`;
+  const partial: AssistantMessage = {
+    ...startPartial,
+    content: [{ type: 'text', text: delta }, ...startPartial.content],
+  };
+  outer.push({
+    type: 'text_delta',
+    contentIndex: 0,
+    delta,
+    partial,
+  });
+}
+
+/**
+ * Sanitize a single delegated event for live forwarding (length-stop + optional error UX).
+ */
+export function sanitizeDelegatedEvent(
+  event: AssistantMessageEvent,
+  options?: FlushDelegatedEventsOptions,
+): AssistantMessageEvent {
+  const lengthStopHints =
+    options?.contextWindow !== undefined
+      ? { contextWindow: options.contextWindow }
+      : undefined;
+  const events = [event];
+  sanitizeLengthStopEvents(events, lengthStopHints);
+  if (options?.sanitizeErrors) {
+    sanitizeDelegatedErrorEvents(events, lengthStopHints);
+  }
+  return events[0]!;
+}
+
+/** Push one sanitized event to the outer live stream (does not end the stream). */
+export function forwardDelegatedEvent(
+  outer: AssistantMessageEventStream,
+  event: AssistantMessageEvent,
+  options?: FlushDelegatedEventsOptions,
+): void {
+  outer.push(sanitizeDelegatedEvent(event, options));
+}
+
+/**
+ * Flush a buffered event list to outer and end the stream.
+ * Prefer live `forwardDelegatedEvent` / pipe paths for primary delegation (SP-170).
+ * Still used for terminal error-only buffers and legacy collect paths.
+ */
 export function flushDelegatedEvents(
   outer: AssistantMessageEventStream,
   events: readonly AssistantMessageEvent[],
@@ -291,15 +370,17 @@ export function flushDelegatedEvents(
   outer.end();
 }
 
+/**
+ * @deprecated SP-170 — prefer `pushFailoverNotice` on the live outer stream.
+ * Mutates a buffered event array (legacy collect-then-flush path only).
+ */
 export function injectFailoverNotice(
   events: AssistantMessageEvent[],
   failedModelId: string,
   alternateModelId: string,
   errorObj?: ReturnType<typeof parseAssistantMessageError>,
 ): void {
-  const reason = errorObj?.message || errorObj?.code || 'Unavailable';
-  const notice = `> ⚠️ **pi-smart-router failover:** \`${failedModelId}\` failed (${reason}). Retrying with \`${alternateModelId}\`...`;
-
+  const notice = buildFailoverNoticeText(failedModelId, alternateModelId, errorObj);
   let noticeInjected = false;
 
   for (let i = 0; i < events.length; i++) {

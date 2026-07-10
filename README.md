@@ -383,6 +383,8 @@ When a **planning** turn would route primary inference to frontier while a warm 
 2. **Pi extension** (`.pi/extensions/smart-router`) runs an ephemeral frontier sub-call with compressed context (tool execution history excluded by default), injects the result as an observation user message, then delegates **primary** streaming to the pinned economical model.
 3. **Fallback** — when delegate is disabled, spawn fails, or the delegate model is missing from the registry, the extension falls back to a **direct frontier** route with a documented `fallback_reason` in explain/telemetry.
 
+**Stream piping (SP-170):** Primary delegated inference **live-forwards** provider events to pi (`start` / `text_delta` / … as they arrive). The planning-delegate sub-call stays **buffered** — only the final observation text is injected into primary context; frontier tokens from the ephemeral sub-call are discarded and never reach the user-facing stream. On infra failover, a synthetic `text_delta` notice is pushed after the retry stream's `start` (no mutation of a buffered event array).
+
 | Knob | Env var | Default | Effect |
 |------|---------|---------|--------|
 | Delegate enabled | `SMART_ROUTER_PLANNING_DELEGATE_ENABLED` | `true` | When `false`, SAAR buffer allows direct frontier planning (`planning_direct_frontier` + `planning_delegate_disabled`) |
