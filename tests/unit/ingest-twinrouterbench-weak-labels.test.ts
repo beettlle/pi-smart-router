@@ -76,6 +76,27 @@ describe('ingest-twinrouterbench-weak-labels (SP-190)', () => {
     );
   });
 
+  it('ingests preferred ci-subset.json into schema-valid weak pack with ECE exclusion signals', () => {
+    // SP-201 / #106: ci-subset is the preferred weak input (≤150); no --limit.
+    const result = ingestTwinRouterBenchWeakFile(CORPUS_SUBSET);
+    expect(result.accepted).toBeGreaterThan(0);
+    expect(result.accepted).toBeLessThanOrEqual(150);
+    expect(result.limited).toBe(false);
+    expect(result.skipped).toBe(0);
+
+    const jsonl = formatLabelPackJsonl(result.rows);
+    expect(serializedPackContainsPromptLeakage(jsonl)).toBe(false);
+
+    const loaded = loadLabelPackJsonl(jsonl, 'trb-ci-subset-weak');
+    expect(loaded.accepted).toBe(result.accepted);
+    for (const row of loaded.rows) {
+      expect(row.source).toBe(TWINROUTERBENCH_WEAK_LABEL_SOURCE);
+      for (const signal of TWINROUTERBENCH_WEAK_OUTCOME_SIGNALS) {
+        expect(row.outcome_signals).toContain(signal);
+      }
+    }
+  });
+
   it('builds a pack row from a static record', () => {
     const record: TwinRouterBenchStaticRecord = {
       trace_id: 'unit_trace_1',
