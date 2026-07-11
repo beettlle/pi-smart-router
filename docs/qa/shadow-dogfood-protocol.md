@@ -144,4 +144,6 @@ Recommend relaxing frugality / flipping encoder defaults: no / yes (requires #96
 | [#108](https://github.com/beettlle/pi-smart-router/issues/108) | Dogfood fleet `benchmark` vs `pattern_default` coverage |
 | [#96](https://github.com/beettlle/pi-smart-router/issues/96) | Encoder / K=4 enablement after holdout evidence |
 
+**Coverage report:** which primary fleet IDs resolve `capability_source=benchmark` vs intentional `pattern_default` gaps — [`docs/capability-profile-coverage.md`](../capability-profile-coverage.md) (metric gated by `tests/unit/pi-model-mapper-coverage.test.ts`).
+
 Paste-ready GitHub bodies: [`spine-tasks/_authoring/issues/`](../../spine-tasks/_authoring/issues/).
