@@ -76,6 +76,7 @@
     "routing:community-bench": "tsx scripts/eval/community-bench.ts",
     "routing:ingest-twinrouterbench": "tsx scripts/eval/ingest-twinrouterbench-corpus.ts",
     "routing:ingest-llmrouterbench": "tsx scripts/eval/ingest-llmrouterbench-subset.ts",
+    "routing:llmrouterbench-regret": "tsx scripts/eval/llmrouterbench-regret-report.ts",
     "routing:ingest-swe-gym": "tsx scripts/ingest-swe-gym-labels.ts",
     "routing:ingest-fc-rewardbench": "tsx scripts/ingest-fc-rewardbench-labels.ts",
     "routing:ingest-twinrouterbench-weak": "tsx scripts/ingest-twinrouterbench-weak-labels.ts",
