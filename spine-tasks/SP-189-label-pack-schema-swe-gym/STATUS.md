@@ -1,6 +1,6 @@
 # SP-189: Label Pack Schema + SWE-Gym Ingest — Status
 
-**Current Step:** 2
+**Current Step:** 3
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-11
 **Review Level:** 1
@@ -20,16 +20,16 @@
 
 ## Step 2: SWE-Gym pin + converter
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
-- [ ] PROVENANCE.md pin + license
-- [ ] ingest-swe-gym-labels.ts with --limit
-- [ ] Tiny CI fixture
-- [ ] Unit test: synthetic row → valid pack
+- [x] PROVENANCE.md pin + license
+- [x] ingest-swe-gym-labels.ts with --limit
+- [x] Tiny CI fixture
+- [x] Unit test: synthetic row → valid pack
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Contract testCommand
 - [ ] Full npm test
@@ -40,9 +40,9 @@
 ## Completion Criteria
 
 - [x] Schema rejects prompt leakage
-- [ ] SWE-Gym converter offline
-- [ ] Provenance documented
-- [ ] Full corpus not vendored
+- [x] SWE-Gym converter offline
+- [x] Provenance documented
+- [x] Full corpus not vendored
 - [ ] Gates untouched
 
 ---
@@ -52,6 +52,7 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-11 | 1 | plan | skipped (engine-owned SP-195) |
+| 2026-07-11 | 2 | plan | skipped (engine-owned SP-195) |
 
 ## Discoveries
 
@@ -65,6 +66,7 @@
 |------|-------|--------|
 | 2026-07-11 | start | Step 1 in progress; plan review skipped by engine |
 | 2026-07-11 | step1 | Schema + unit tests green; advancing to Step 2 |
+| 2026-07-11 | step2 | Ingest + PROVENANCE + CI fixture; unit tests green |
 
 ## Blockers
 
