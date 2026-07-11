@@ -341,7 +341,8 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
         'utf8',
       );
       const recorded = parseBenchmarkLeaderboardFixture(text, `${benchmark}.json`);
-      expect(recorded.scrape_date).toBe('2026-07-10');
+      // Recorded scrape_date advances on live refresh — assert shape, not a frozen day
+      expect(recorded.scrape_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(recorded.source_url).toMatch(/^https?:\/\//);
       expect(recorded.entries.length).toBeGreaterThan(0);
     }

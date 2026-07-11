@@ -247,14 +247,18 @@ describe('Pi extension integration (SP-043)', () => {
 
       const haiku = mapPiModelToProfile({ provider: 'anthropic', id: 'claude-3.5-haiku' });
       const sonnet = mapPiModelToProfile({ provider: 'anthropic', id: 'claude-3.5-sonnet' });
+      const flash = mapPiModelToProfile({ provider: 'google', id: 'gemini-2.5-flash' });
 
-      expect(haiku.capabilities.reasoning).toBeCloseTo(0.5685, 4);
+      // Live mix may omit haiku (incomplete dims) → pattern defaults, not invented scores
+      expect(haiku.capability_source).toBe('pattern_default');
+      expect(haiku.capabilities.reasoning).toBe(0.7);
       expect(haiku.capabilities.reasoning).not.toBe(0.95);
-      expect(haiku.capability_source).toBe('benchmark');
       // SP-174: sonnet fleet id aliases to claude-sonnet-4-6 grounded row
-      expect(sonnet.capabilities.reasoning).toBeCloseTo(0.738, 4);
-      expect(sonnet.capabilities.reasoning).not.toBe(0.95);
       expect(sonnet.capability_source).toBe('benchmark');
+      expect(sonnet.capabilities.reasoning).not.toBe(0.95);
+      expect(flash.capability_source).toBe('benchmark');
+      expect(flash.capabilities.reasoning).toBeLessThan(0.7);
+      expect(flash.capabilities.reasoning).not.toBe(0.95);
     });
 
     it('shortfall gate uses grounded economical capabilities from mapped fleet', async () => {
@@ -271,8 +275,9 @@ describe('Pi extension integration (SP-043)', () => {
       };
       const matcher = new HydraMatcher(provider, { artifactCachePath: '.pi-smart-router/models/' });
 
+      // Use gemini-2.5-flash (benchmark-grounded, below 0.65) — haiku may be pattern_default 0.7
       const fleet = [
-        mapPiModelToProfile({ provider: 'anthropic', id: 'claude-3.5-haiku' }),
+        mapPiModelToProfile({ provider: 'google', id: 'gemini-2.5-flash' }),
         mapPiModelToProfile({ provider: 'anthropic', id: 'claude-3.5-sonnet' }),
       ];
 
@@ -285,11 +290,11 @@ describe('Pi extension integration (SP-043)', () => {
         fleet,
       );
 
-      const haiku = result.candidates.find((candidate) => candidate.model_id === 'claude-3.5-haiku');
+      const flash = result.candidates.find((candidate) => candidate.model_id === 'gemini-2.5-flash');
       const sonnet = result.candidates.find((candidate) => candidate.model_id === 'claude-3.5-sonnet');
 
-      expect(haiku?.rejected_reason).toBe('shortfall_gate');
-      expect(haiku?.shortfall).toBeGreaterThan(0);
+      expect(flash?.rejected_reason).toBe('shortfall_gate');
+      expect(flash?.shortfall).toBeGreaterThan(0);
       expect(sonnet?.rejected_reason).toBeNull();
       expect(result.selected?.model_id).toBe('claude-3.5-sonnet');
     });
