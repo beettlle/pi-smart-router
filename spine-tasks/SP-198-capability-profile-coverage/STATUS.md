@@ -1,6 +1,6 @@
 # SP-198: Capability Profile Coverage — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-11
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Coverage report + metric
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Fleet table
 - [x] Metric/test
@@ -20,10 +20,10 @@
 
 ## Step 2: Cross-links
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Protocol/README link
-- [ ] Roadmap note if needed
+- [x] Protocol/README link
+- [x] Roadmap note if needed
 
 ## Step 3: Testing & Verification
 
@@ -37,9 +37,9 @@
 
 ## Completion Criteria
 
-- [ ] Coverage doc
-- [ ] Metric/test
-- [ ] Gaps addressed
+- [x] Coverage doc
+- [x] Metric/test
+- [x] Gaps addressed
 - [ ] #75 closed
 - [ ] #108 closable
 
@@ -49,7 +49,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-11 | 1 | plan | skipped (engine post-.DONE; spawnFailed=false) |
 
 ## Discoveries
 
@@ -64,6 +64,7 @@
 |------|-------|--------|
 | 2026-07-11 | Step 1 started | Coverage doc + metric test |
 | 2026-07-11 | Plan review | spine_review_step skipped (engine owns reviews after .DONE; spawnFailed=false) |
+| 2026-07-11 | Step 1 complete | docs/capability-profile-coverage.md + pi-model-mapper-coverage.test.ts; coverage 20/20 |
 
 ## Blockers
 
