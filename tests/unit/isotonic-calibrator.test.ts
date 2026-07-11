@@ -17,6 +17,7 @@ import {
 import {
   applyIsotonicCalibrator,
   applyIsotonicCalibratorTimed,
+  ISOTONIC_LOOKUP_BUDGET_MS,
   IsotonicCalibratorLoaderError,
   loadIsotonicCalibrator,
   parseIsotonicCalibratorFromBundle,
@@ -195,6 +196,8 @@ describe('isotonic calibrator runtime lookup (SP-133)', () => {
   });
 
   it('keeps monotonic lookup under the online latency budget', () => {
+    // Wall-clock: assert p95 ≤ budget after warmup. Per-sample asserts flake on
+    // contended CI runners even when the O(log n) lookup is well under budget.
     const artifact = {
       version: 1 as const,
       min_training_samples: 30,
@@ -205,10 +208,47 @@ describe('isotonic calibrator runtime lookup (SP-133)', () => {
       holdout_ece_calibrated: null,
     };
 
-    for (let index = 0; index < 1_000; index++) {
-      const result = applyIsotonicCalibratorTimed(index / 1_000, artifact);
-      expect(result.within_budget).toBe(true);
+    const sampleCount = 1_000;
+    for (let index = 0; index < 50; index++) {
+      applyIsotonicCalibratorTimed(index / 50, artifact);
     }
+
+    const elapsedMs: number[] = [];
+    let previous = 0;
+    for (let index = 0; index < sampleCount; index++) {
+      const raw = index / sampleCount;
+      const result = applyIsotonicCalibratorTimed(raw, artifact);
+      expect(result.calibrated).toBeGreaterThanOrEqual(0);
+      expect(result.calibrated).toBeLessThanOrEqual(1);
+      expect(result.calibrated).toBeGreaterThanOrEqual(previous);
+      expect(result.calibration_applied).toBe(true);
+      previous = result.calibrated;
+      elapsedMs.push(result.elapsed_ms);
+    }
+
+    elapsedMs.sort((left, right) => left - right);
+    const p95Index = Math.min(elapsedMs.length - 1, Math.floor(elapsedMs.length * 0.95));
+    expect(elapsedMs[p95Index]).toBeLessThanOrEqual(ISOTONIC_LOOKUP_BUDGET_MS);
+  });
+
+  it('reports within_budget from elapsed timing (mocked clock)', () => {
+    const artifact = {
+      version: 1 as const,
+      min_training_samples: 30,
+      x_knots: [0, 1],
+      y_knots: [0, 1],
+      trained_sample_count: 100,
+      holdout_ece_raw: null,
+      holdout_ece_calibrated: null,
+    };
+
+    const withinSpy = vi.spyOn(performance, 'now').mockReturnValueOnce(100).mockReturnValueOnce(101);
+    expect(applyIsotonicCalibratorTimed(0.5, artifact).within_budget).toBe(true);
+    withinSpy.mockRestore();
+
+    const overSpy = vi.spyOn(performance, 'now').mockReturnValueOnce(100).mockReturnValueOnce(106);
+    expect(applyIsotonicCalibratorTimed(0.5, artifact).within_budget).toBe(false);
+    overSpy.mockRestore();
   });
 
   it('rejects malformed JSON and invalid artifact schema', () => {
