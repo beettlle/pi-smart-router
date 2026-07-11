@@ -26,7 +26,15 @@ import {
   PRIVACY_BLURB,
   SetupFingerprintSchema,
 } from '../../scripts/eval/community-bench-report.js';
-import type { AssertReleaseGatesResult } from '../../scripts/eval/assert-release-gates.js';
+import {
+  parseCommunityBenchArgs,
+  runTrackA,
+  usage,
+} from '../../scripts/eval/community-bench.js';
+import {
+  assertReleaseGates,
+  type AssertReleaseGatesResult,
+} from '../../scripts/eval/assert-release-gates.js';
 
 const SAMPLE_FLEET: readonly FleetIdEntry[] = [
   { provider: 'anthropic', id: 'claude-3.5-sonnet', tier: 'frontier-cloud' },
@@ -231,5 +239,46 @@ describe('community-bench report schema + email (SP-194)', () => {
         expect(key).not.toMatch(pattern);
       }
     }
+  });
+});
+
+describe('community-bench CLI wiring (SP-194)', () => {
+  it('parses --output / --email-file / --no-email-file / --print-issue-body / --mailto', () => {
+    const parsed = parseCommunityBenchArgs([
+      '--output',
+      '/tmp/out.json',
+      '--email-file',
+      '/tmp/out.txt',
+      '--print-issue-body',
+      '--mailto',
+      'ops@example.com',
+    ]);
+    expect(parsed.output).toContain('out.json');
+    expect(parsed.emailFile).toContain('out.txt');
+    expect(parsed.printIssueBody).toBe(true);
+    expect(parsed.mailto).toBe('ops@example.com');
+    expect(parsed.help).toBe(false);
+
+    const noEmail = parseCommunityBenchArgs(['--no-email-file']);
+    expect(noEmail.emailFile).toBeNull();
+  });
+
+  it('documents offline smoke path in --help usage', () => {
+    const text = usage();
+    expect(text).toContain('Offline smoke');
+    expect(text).toContain('routing:community-bench');
+    expect(text).toContain('twinrouterbench');
+    expect(text).toContain('No SMTP');
+  });
+
+  it('runTrackA gate embedding matches assertReleaseGates on corpus path', () => {
+    const corpus = 'tests/eval/corpus/twinrouterbench';
+    const trackA = runTrackA(corpus);
+    const viaAssert = assertReleaseGates({ fixturesDir: corpus });
+    expect(trackA.gates.passed).toBe(viaAssert.passed);
+    expect(trackA.gates.absolute_gates.passed).toBe(viaAssert.absolute_gates.passed);
+    expect(trackA.gates.absolute_gates.failed_gates).toEqual(viaAssert.absolute_gates.failed_gates);
+    expect(trackA.gates.baseline_regression?.passed).toBe(viaAssert.baseline_regression?.passed);
+    expect(trackA.metrics.mean_quality_retention).toBeTypeOf('number');
   });
 });

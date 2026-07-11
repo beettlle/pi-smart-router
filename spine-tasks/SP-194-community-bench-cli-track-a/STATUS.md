@@ -1,6 +1,6 @@
 # SP-194: Community Bench CLI Track A — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-07-11
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Fingerprint + report schema
 
-**Status:** 🟡 In Progress (outcomes done; awaiting commit + progress report)
+**Status:** ✅ Complete
 
 - [x] Privacy-safe fingerprint helpers
 - [x] JSON schema + email .txt formatter
@@ -20,7 +20,7 @@
 
 ## Step 2: Track A CLI wiring
 
-**Status:** ⬜ Not Started
+**Status:** 🟡 In Progress
 
 - [ ] community-bench.ts + npm script
 - [ ] Track A corpus gates embedded

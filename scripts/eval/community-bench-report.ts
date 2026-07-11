@@ -78,13 +78,13 @@ const AssertReleaseGatesResultSchema = z.object({
   passed: z.boolean(),
   absolute_gates: z.object({
     passed: z.boolean(),
-    failed_gates: z.array(FailedGateSchema),
+    failed_gates: z.array(FailedGateSchema).readonly(),
   }),
   baseline_regression: z
     .object({
       passed: z.boolean(),
       reference_version: z.string(),
-      failed_gates: z.array(FailedBaselineGateSchema),
+      failed_gates: z.array(FailedBaselineGateSchema).readonly(),
     })
     .optional(),
 });
@@ -176,7 +176,7 @@ function formatTierCounts(counts: Readonly<Record<string, number>>): string {
   return keys.map((k) => `${k}=${counts[k]}`).join(', ');
 }
 
-function formatFingerprintBlock(fp: SetupFingerprint): string {
+function formatFingerprintBlock(fp: CommunityBenchReport['fingerprint']): string {
   const pins = fp.corpus_pins;
   const lines = [
     `package_version: ${fp.package_version}`,
@@ -191,10 +191,10 @@ function formatFingerprintBlock(fp: SetupFingerprint): string {
     `corpus pin twinrouterbench_commit: ${pins.twinrouterbench_commit}`,
     `corpus pin twinrouterbench_ci_subset_sha256: ${pins.twinrouterbench_ci_subset_sha256}`,
   ];
-  if (pins.catalog_freeze_date) {
+  if (typeof pins.catalog_freeze_date === 'string') {
     lines.push(`catalog_freeze_date: ${pins.catalog_freeze_date}`);
   }
-  if (pins.benchmark_profiles_scrape_date) {
+  if (typeof pins.benchmark_profiles_scrape_date === 'string') {
     lines.push(`benchmark_profiles_scrape_date: ${pins.benchmark_profiles_scrape_date}`);
   }
   return lines.join('\n');
