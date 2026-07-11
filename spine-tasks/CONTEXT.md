@@ -5,7 +5,7 @@
 **Next Task ID:** SP-192
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.9.1 (2026-07-11) — TwinRouterBench static-track corpus (#101 → SP-186–SP-188); prior v0.9.0 live leaderboard ingest + native adapters (#100, #104). **Scope complete (awaiting publish):** v0.9.2 label packs (#102 → SP-189–SP-191).
+**Released:** v0.9.1 (2026-07-11) — TwinRouterBench static-track corpus (#101 → SP-186–SP-188); prior v0.9.0 live leaderboard ingest + native adapters (#100, #104). **v0.9.2 scope complete** (#102 → SP-189–SP-191; `release:check` green; awaiting publish approval).
 
 ---
 
@@ -580,7 +580,7 @@
 **Deferred:** #103 (P3), #95, #96, #105, #1/#25/#26 hardware.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.9.2/manifest.md`, `spine-tasks/_authoring/backlog-snapshot-20260711-v092.md`  
-**Status:** All SP-189–SP-191 `.DONE` on main; `release:check` / publish pending operator approval.
+**Status:** All SP-189–SP-191 `.DONE` on main; #102 closed; `release:check` green (`/tmp/pi-smart-router-v092-release-check.log`); **STOP for publish approval**.
 
 ---
 

@@ -38,9 +38,9 @@
 ## Publish checklist
 
 - [x] All release-scoped tasks `.DONE` (SP-189, SP-190, SP-191)
-- [ ] Issue #102 closed
-- [ ] `npm run release:check` exit 0 (running → `/tmp/pi-smart-router-v092-release-check.log`)
-- [ ] CI green on release commit
+- [x] Issue #102 closed
+- [x] `npm run release:check` exit 0 — monitor #29 exit 0; log `/tmp/pi-smart-router-v092-release-check.log` (coverage ~92.9%; consumer-pack + functional-smoke + release-gates PASS)
+- [ ] CI green on release commit — **requires `git push origin main` first** (local HEAD `cba5698`, ahead 19)
 - [ ] Operator approved publish — `npm version patch` → tag `v0.9.2` → push
 - [ ] Release workflow / npm publish
 
