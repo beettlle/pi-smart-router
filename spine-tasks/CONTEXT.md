@@ -5,7 +5,7 @@
 **Next Task ID:** SP-192
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.9.1 (2026-07-11) — TwinRouterBench static-track corpus (#101 → SP-186–SP-188); prior v0.9.0 live leaderboard ingest + native adapters (#100, #104). **In progress:** v0.9.2 label packs (#102 → SP-189–SP-191).
+**Released:** v0.9.1 (2026-07-11) — TwinRouterBench static-track corpus (#101 → SP-186–SP-188); prior v0.9.0 live leaderboard ingest + native adapters (#100, #104). **Scope complete (awaiting publish):** v0.9.2 label packs (#102 → SP-189–SP-191).
 
 ---
 
@@ -559,7 +559,7 @@
 **Authoring notes:** `spine-tasks/_authoring/release-v0.9.1/manifest.md`, `spine-tasks/_authoring/backlog-snapshot-20260710-v091.md`  
 **Upstream spine bug:** https://github.com/beettlle/pi-spine/issues/196
 
-### Phase 41 — Release v0.9.2 Label Packs (SP-189–SP-191)
+### Phase 41 — Release v0.9.2 Label Packs (SP-189–SP-191) — SCOPE COMPLETE
 
 | Task | Summary | Size | Deps | Maps |
 |------|---------|------|------|------|
@@ -569,17 +569,18 @@
 
 **Source:** GitHub #102 (P2). Operator-approved for **v0.9.2** (2026-07-11). Ratio: 0 bugs + 1 feature (docs empty; patch feature override; P2 focus).
 
-**Wave order (planned):**
+**Wave order (executed):**
 
 | Wave | Tasks | Notes |
 |------|-------|-------|
-| A | SP-189 | Schema + SWE-Gym |
-| B | SP-190 | After SP-189 |
-| C | SP-191 | After SP-190; closes #102 |
+| A | SP-189 | batch `20260711T034743` landed |
+| B | SP-190 | batch `20260711T035535` landed |
+| C | SP-191 | batch `20260711T040426` landed; closes #102 |
 
 **Deferred:** #103 (P3), #95, #96, #105, #1/#25/#26 hardware.
 
-**Authoring notes:** `spine-tasks/_authoring/release-v0.9.2/manifest.md`, `spine-tasks/_authoring/backlog-snapshot-20260711-v092.md`
+**Authoring notes:** `spine-tasks/_authoring/release-v0.9.2/manifest.md`, `spine-tasks/_authoring/backlog-snapshot-20260711-v092.md`  
+**Status:** All SP-189–SP-191 `.DONE` on main; `release:check` / publish pending operator approval.
 
 ---
 

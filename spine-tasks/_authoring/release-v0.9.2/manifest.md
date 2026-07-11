@@ -21,9 +21,9 @@
 
 | Wave | Tasks | Land notes |
 |------|-------|------------|
-| 0 / A | SP-189 | pending |
-| 1 / B | SP-190 | pending |
-| 2 / C | SP-191 | pending |
+| 0 / A | SP-189 | batch `20260711T034743` → integrate `36cfd6f`; lint fix `0f87f07` |
+| 1 / B | SP-190 | batch `20260711T035535` → integrate `7f96bec`; contract amend `58f6f01` |
+| 2 / C | SP-191 | batch `20260711T040426` → integrate `d085376` |
 
 ## Profile audit
 
@@ -37,13 +37,13 @@
 
 ## Publish checklist
 
-- [ ] All release-scoped tasks `.DONE`
+- [x] All release-scoped tasks `.DONE` (SP-189, SP-190, SP-191)
 - [ ] Issue #102 closed
-- [ ] `npm run release:check` exit 0
+- [ ] `npm run release:check` exit 0 (running → `/tmp/pi-smart-router-v092-release-check.log`)
 - [ ] CI green on release commit
 - [ ] Operator approved publish — `npm version patch` → tag `v0.9.2` → push
 - [ ] Release workflow / npm publish
 
 ## Recovery
 
-(none yet)
+SP-189 post-integrate: unused `readFileSync` lint → fixed on main (`0f87f07`). SP-190: prelanded `fileScopeMustChange` on PROVENANCE → amended (`58f6f01`).
