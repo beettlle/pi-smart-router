@@ -1,7 +1,7 @@
 # SP-190: FC-RewardBench + TwinRouterBench Weak Labels — Status
 
 **Current Step:** 3
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-11
 **Review Level:** 1
 **Review Counter:** 0
@@ -30,21 +30,21 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
-- [ ] Contract testCommand
-- [ ] Full npm test
-- [ ] Coverage ≥77%
+- [x] Contract testCommand
+- [x] Full npm test
+- [x] Coverage ≥77%
 
 ---
 
 ## Completion Criteria
 
-- [ ] FC-RewardBench ingest offline
-- [ ] Weak-label path present/documented
-- [ ] Provenance updated
-- [ ] No prompt leakage
-- [ ] Full datasets not vendored
+- [x] FC-RewardBench ingest offline
+- [x] Weak-label path present/documented
+- [x] Provenance updated
+- [x] No prompt leakage
+- [x] Full datasets not vendored
 
 ---
 
@@ -54,6 +54,7 @@
 |------|------|------|---------|
 | 2026-07-11 | 1 | plan | skipped (SP-195 engine-owned) |
 | 2026-07-11 | 2 | plan | skipped (SP-195 engine-owned) |
+| 2026-07-11 | 3 | plan | skipped (SP-195 engine-owned) |
 
 ## Discoveries
 
@@ -69,6 +70,8 @@
 |------|-------|--------|
 | 2026-07-11 | start | Step 1 in progress; plan review skipped by engine |
 | 2026-07-11 | step1 outcomes | Converter + fixture + tests green (6/6) |
+| 2026-07-11 | step2 complete | Weak-label converter + fixture + tests green (5/5) |
+| 2026-07-11 | step3 verify | typecheck + contract + weak tests; npm test 1596 passed; coverage All files 92.91% lines |
 
 ## Blockers
 
