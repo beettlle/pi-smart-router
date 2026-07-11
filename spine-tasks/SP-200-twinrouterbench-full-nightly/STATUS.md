@@ -29,8 +29,8 @@
 
 **Status:** 🔄 In Progress
 
-- [ ] Contract tests
-- [ ] functional-smoke
+- [x] Contract tests
+- [x] functional-smoke
 - [ ] verify:ci
 - [ ] Close #107
 
