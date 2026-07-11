@@ -29,6 +29,25 @@ import type { EvalTier, FrozenCatalog } from './fixture-schema.js';
 export const TWINROUTERBENCH_PINNED_COMMIT =
   '430acecac71141de77afd8e5e13690d236d58e93' as const;
 
+/**
+ * Max records for the vendored CI subset (`tests/eval/corpus/twinrouterbench/ci-subset.json`).
+ * Keep ≤50 so PR CI stays small; full corpus remains optional via converter without --limit.
+ */
+export const CI_SUBSET_MAX_RECORDS = 50 as const;
+
+/**
+ * Upstream `benchmark` values treated as code/tool workloads for CI subset selection.
+ * Chat-only / summarization (e.g. mtrag, qmsum) are skipped when `--prefer-code-tool` is set.
+ */
+export const CODE_TOOL_BENCHMARKS: ReadonlySet<string> = new Set([
+  'swebench',
+  'bfcl',
+  'pinchbench',
+]);
+
+/** Stable order for stratified CI subset quotas (insertion order of CODE_TOOL_BENCHMARKS). */
+export const CODE_TOOL_BENCHMARK_ORDER: readonly string[] = [...CODE_TOOL_BENCHMARKS];
+
 /** Upstream public tiers → our EvalTier (4→3 collapse; see PROVENANCE.md). */
 export const UPSTREAM_TIER_TO_EVAL_TIER: Readonly<Record<string, EvalTier>> = {
   low: 'zero-tier',
@@ -77,10 +96,39 @@ const MODEL_ID_FOR_TIER: Readonly<Record<EvalTier, string>> = {
   'frontier-cloud': 'claude-sonnet-4',
 };
 
+const UpstreamTextPartSchema = z.object({
+  type: z.literal('text'),
+  text: z.string(),
+});
+
 const UpstreamMessageSchema = z.object({
   role: z.string().min(1),
-  content: z.union([z.string(), z.null()]).optional(),
+  content: z
+    .union([z.string(), z.null(), z.array(z.unknown())])
+    .optional(),
 });
+
+/** Flatten upstream message content (string or multimodal text parts) to a single string. */
+export function flattenMessageContent(
+  content: string | null | undefined | readonly unknown[],
+): string {
+  if (content === null || content === undefined) {
+    return '';
+  }
+  if (typeof content === 'string') {
+    return content;
+  }
+  const parts: string[] = [];
+  for (const part of content) {
+    const parsed = UpstreamTextPartSchema.safeParse(part);
+    if (parsed.success) {
+      parts.push(parsed.data.text);
+    } else if (typeof part === 'string') {
+      parts.push(part);
+    }
+  }
+  return parts.join('\n');
+}
 
 /** Minimal upstream question_bank row schema (required conversion fields). */
 export const UpstreamQuestionBankRowSchema = z.object({
@@ -105,11 +153,37 @@ export class TwinRouterBenchIngestError extends Error {
   }
 }
 
+/**
+ * Split `limit` across code/tool benchmarks for a diversified CI subset.
+ * Remainder goes to earlier benchmarks in {@link CODE_TOOL_BENCHMARK_ORDER}.
+ */
+export function allocateCodeToolQuotas(limit: number): ReadonlyMap<string, number> {
+  if (limit < 1) {
+    throw new TwinRouterBenchIngestError(`Invalid quota limit ${limit}; expected positive integer`);
+  }
+  const benches = CODE_TOOL_BENCHMARK_ORDER;
+  const base = Math.floor(limit / benches.length);
+  const rem = limit % benches.length;
+  const map = new Map<string, number>();
+  for (let i = 0; i < benches.length; i++) {
+    map.set(benches[i]!, base + (i < rem ? 1 : 0));
+  }
+  return map;
+}
+
 export type ConvertSkipReason =
   | 'unmappable_tier'
   | 'tier_id_mismatch'
   | 'unsupported_pipeline_stage'
-  | 'schema_invalid';
+  | 'schema_invalid'
+  | 'non_code_tool_workload';
+
+/** True when upstream row is a code/tool workload (SWE-bench / BFCL / agent-like). */
+export function isCodeToolWorkload(
+  row: Pick<UpstreamQuestionBankRow, 'benchmark'> | { benchmark: string },
+): boolean {
+  return CODE_TOOL_BENCHMARKS.has(row.benchmark);
+}
 
 export interface ConvertedQuestionBankRow {
   readonly record: TwinRouterBenchStaticRecord;
@@ -137,21 +211,21 @@ export function hashSessionId(instanceId: string): string {
 
 /** Prefix hash from messages (roles + content only). */
 export function hashPrefixMessages(
-  messages: ReadonlyArray<{ role: string; content?: string | null | undefined }>,
+  messages: ReadonlyArray<{ role: string; content?: string | null | undefined | readonly unknown[] }>,
 ): string {
   const canonical = messages.map((m) => ({
     role: m.role,
-    content: m.content ?? '',
+    content: flattenMessageContent(m.content),
   }));
   return sha256Hex(JSON.stringify(canonical));
 }
 
 export function estimatePrefixTokens(
-  messages: ReadonlyArray<{ role: string; content?: string | null | undefined }>,
+  messages: ReadonlyArray<{ role: string; content?: string | null | undefined | readonly unknown[] }>,
 ): number {
   let chars = 0;
   for (const m of messages) {
-    chars += m.role.length + (m.content?.length ?? 0);
+    chars += m.role.length + flattenMessageContent(m.content).length;
   }
   return Math.ceil(chars / 4);
 }
@@ -315,6 +389,11 @@ export interface ParseJsonlOptions {
   readonly limit?: number;
   /** When true, first schema-invalid line throws (default). */
   readonly failOnSchemaMismatch?: boolean;
+  /**
+   * When true, skip chat-only / non-code benchmarks (mtrag, qmsum, …) and keep
+   * swebench / bfcl / pinchbench only — used for CI subset selection.
+   */
+  readonly preferCodeTool?: boolean;
 }
 
 /**
@@ -327,6 +406,10 @@ export function convertQuestionBankJsonl(
 ): ConvertQuestionBankResult {
   const failOnSchemaMismatch = options.failOnSchemaMismatch !== false;
   const limit = options.limit;
+  const preferCodeTool = options.preferCodeTool === true;
+  const codeToolQuotas =
+    preferCodeTool && limit !== undefined ? allocateCodeToolQuotas(limit) : undefined;
+  const codeToolTaken = new Map<string, number>();
   const lines = jsonlText.split(/\r?\n/);
   const drafts: ConvertedQuestionBankRow[] = [];
   const skipped: ConvertQuestionBankResult['skipped'] = [];
@@ -365,6 +448,25 @@ export function convertQuestionBankJsonl(
     }
 
     parsedRows += 1;
+
+    if (preferCodeTool && !isCodeToolWorkload(parsed.data)) {
+      skipped.push({
+        line: i + 1,
+        reason: 'non_code_tool_workload',
+        detail: parsed.data.benchmark,
+      });
+      continue;
+    }
+
+    if (codeToolQuotas) {
+      const bench = parsed.data.benchmark;
+      const quota = codeToolQuotas.get(bench) ?? 0;
+      const taken = codeToolTaken.get(bench) ?? 0;
+      if (taken >= quota) {
+        continue;
+      }
+    }
+
     const converted = convertUpstreamRow(parsed.data);
     if (!converted.ok) {
       skipped.push({
@@ -376,6 +478,10 @@ export function convertQuestionBankJsonl(
     }
 
     drafts.push(converted.draft);
+    if (codeToolQuotas) {
+      const bench = parsed.data.benchmark;
+      codeToolTaken.set(bench, (codeToolTaken.get(bench) ?? 0) + 1);
+    }
     if (limit !== undefined && drafts.length >= limit) {
       break;
     }
@@ -416,6 +522,7 @@ export interface IngestCliArgs {
   readonly inputPath?: string | undefined;
   readonly outputPath?: string | undefined;
   readonly limit?: number | undefined;
+  readonly preferCodeTool?: boolean | undefined;
   readonly help?: boolean | undefined;
 }
 
@@ -423,6 +530,7 @@ export function parseIngestCliArgs(argv: readonly string[]): IngestCliArgs {
   let inputPath: string | undefined;
   let outputPath: string | undefined;
   let limit: number | undefined;
+  let preferCodeTool = false;
   let help = false;
 
   for (let i = 0; i < argv.length; i++) {
@@ -442,19 +550,23 @@ export function parseIngestCliArgs(argv: readonly string[]): IngestCliArgs {
       }
       limit = n;
       i += 1;
+    } else if (arg === '--prefer-code-tool') {
+      preferCodeTool = true;
     } else {
       throw new TwinRouterBenchIngestError(`Unknown argument: ${arg}`);
     }
   }
 
-  return { inputPath, outputPath, limit, help };
+  return { inputPath, outputPath, limit, preferCodeTool, help };
 }
 
 export function ingestCliUsage(): string {
-  return `Usage: ingest-twinrouterbench-corpus --input question_bank.jsonl --output static-track.json [--limit N]
+  return `Usage: ingest-twinrouterbench-corpus --input question_bank.jsonl --output static-track.json [--limit N] [--prefer-code-tool]
 
 Converts TwinRouterBench upstream JSONL (pin ${TWINROUTERBENCH_PINNED_COMMIT}) into
 TwinRouterBenchStaticTrack JSON. Skips unmappable tiers; fails on schema mismatch.
+--prefer-code-tool keeps swebench/bfcl/pinchbench only (CI subset selection).
+CI subset bound: ≤${CI_SUBSET_MAX_RECORDS} records (see PROVENANCE.md).
 See tests/eval/corpus/twinrouterbench/PROVENANCE.md.`;
 }
 
@@ -484,6 +596,7 @@ export function runIngestCli(argv: readonly string[]): number {
   try {
     track = ingestQuestionBankToStaticTrack(jsonlText, {
       ...(parsed.limit !== undefined ? { limit: parsed.limit } : {}),
+      ...(parsed.preferCodeTool ? { preferCodeTool: true } : {}),
     });
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
