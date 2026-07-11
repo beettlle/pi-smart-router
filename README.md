@@ -898,8 +898,9 @@ npm run routing:eval-replay
 | **Regenerate** | `npm run routing:ingest-twinrouterbench -- --input <question_bank.jsonl> --output tests/eval/corpus/twinrouterbench/ci-subset.json --limit 50 --prefer-code-tool` |
 | **Harness smoke** | `npm run routing:eval-harness:corpus-smoke` |
 | **Gate soft-feed** | `npm run routing:assert-release-gates:corpus-report` |
+| **Human QA protocol** | [`docs/qa/shadow-dogfood-protocol.md`](docs/qa/shadow-dogfood-protocol.md) · `npm run qa:shadow-dogfood` |
 
-**Absolute release gates stay on default fixtures.** `npm run release:functional-smoke` continues to assert `tests/eval/fixtures` against `config/release-gates.json` — do not point it at the corpus without operator review. Today the corpus subset fails `mean_over_routing_rate_max` (≈0.85 vs absolute max 0.15); that gap is intentional soft signal for the [#95](https://github.com/beettlle/pi-smart-router/issues/95) public static-track acceptance criteria alongside live dogfood traces. Use `--fixtures tests/eval/corpus/twinrouterbench` (or the corpus-report script) for #95 public-track scoring; keep absolute threshold edits out of band until operators approve.
+**Absolute release gates stay on default fixtures.** `npm run release:functional-smoke` continues to assert `tests/eval/fixtures` against `config/release-gates.json` — do not point it at the corpus without operator review. Today the corpus subset fails `mean_over_routing_rate_max` (≈0.85 vs absolute max 0.15); that gap is intentional soft signal for the [#95](https://github.com/beettlle/pi-smart-router/issues/95) public static-track acceptance criteria alongside live dogfood traces. Use `--fixtures tests/eval/corpus/twinrouterbench` (or the corpus-report script) for #95 public-track scoring; keep absolute threshold edits out of band until operators approve. For live shadow dogfood steps and sign-off, see the [shadow dogfood protocol](docs/qa/shadow-dogfood-protocol.md).
 
 **Deferred:** RouterBench classic (outcome-matrix) smoke is out of scope for SP-188; prefer TwinRouterBench static track + dogfood for #95.
 

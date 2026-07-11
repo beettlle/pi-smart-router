@@ -2,10 +2,11 @@
 
 **Last Updated:** 2026-07-11
 **Status:** Active
-**Next Task ID:** SP-196
+**Next Task ID:** SP-202
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** v0.9.3 (2026-07-11) — LLMRouterBench (#103 → SP-192–SP-193) + community bench (#105 → SP-194–SP-195); prior v0.9.2 label packs (#102).
+**Queued:** v0.10.0 — SP-196–SP-201 (#95 Partial, #109, #108, #107, #106).
 
 ---
 

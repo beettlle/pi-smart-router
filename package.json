@@ -83,6 +83,7 @@
     "routing:capture-baseline": "tsx scripts/eval/capture-baseline.ts",
     "routing:test-projection": "npm run build && node --experimental-strip-types scripts/test-hydra-projection.ts",
     "benchmark:encoder": "tsx scripts/benchmark-encoder-latency.ts",
+    "qa:shadow-dogfood": "bash scripts/qa/shadow-dogfood-session.sh",
     "verify:ci": "npm run build && npm run typecheck && npm run lint && npm test && npm run coverage:check"
   },
   "peerDependencies": {
