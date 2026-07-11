@@ -22,7 +22,7 @@
 | Wave | Tasks | Land notes |
 |------|-------|------------|
 | 0 / A | SP-192, SP-194 | batch `20260711T181634` → integrate `59b556f`; `release:check` exit 0; pushed |
-| 1 / B | SP-193 | pending (plan wave 0 after .DONE renumber) |
+| 1 / B | SP-193 | batch `20260711T182552` → integrate `939f7f5`; #103 closed; `release:check` pending |
 | 2 / C | SP-195 | pending |
 
 ## Profile audit

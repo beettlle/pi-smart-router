@@ -43,7 +43,7 @@ Closes #105 — Extend SP-194 community-bench CLI with (1) **Track B (optional):
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `scripts/eval/community-bench.ts`, `README.md` |
+| Must change | `scripts/eval/community-bench.ts`, `README.md`, `tests/unit/community-bench-track-bc.test.ts` |
 | May change | `package.json`, `tests/unit/community-bench.test.ts`, `scripts/eval/llmrouterbench-regret-report.ts`, `docs/routing-roadmap.md` |
 | Must NOT change | `config/release-gates.json`, `src/domain/pipeline/router-pipeline.ts`, `.pi/extensions/smart-router/**` |
 
@@ -51,8 +51,8 @@ Closes #105 — Extend SP-194 community-bench CLI with (1) **Track B (optional):
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run typecheck && npx vitest run tests/unit/community-bench.test.ts` |
-| fileScopeMustChange | `README.md` |
+| testCommand | `npm run typecheck && npx vitest run tests/unit/community-bench.test.ts tests/unit/community-bench-track-bc.test.ts` |
+| fileScopeMustChange | `tests/unit/community-bench-track-bc.test.ts` |
 | fileScopeMustNotChange | `config/release-gates.json`, `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | Track B skips with reason when #95 adapter missing; Track C optional offline on vendored LLMRouterBench subset; README contribute section + matching maintainer contact; PR CI does not download full corpora; #105 closable. |
 
@@ -62,7 +62,7 @@ Closes #105 — Extend SP-194 community-bench CLI with (1) **Track B (optional):
 
 - [ ] `--dogfood-export PATH`: if #95 adapter incomplete, skip Track B with reason string in report (never invent labels)
 - [ ] `--llmrouterbench` / `--full`: run SP-193 regret path on vendored subset; omit network downloads
-- [ ] Unit tests: Track B skip reason; Track C runs offline on fixture when flagged
+- [ ] Unit tests in **new** `tests/unit/community-bench-track-bc.test.ts`: Track B skip reason; Track C runs offline on fixture when flagged
 
 ### Step 2: README contribute + contact parity
 
@@ -112,3 +112,4 @@ Closes #105 — Extend SP-194 community-bench CLI with (1) **Track B (optional):
 ## Amendments
 
 - **2026-07-11:** Redirected Contract `fileScopeMustChange` away from `scripts/eval/community-bench.ts` (already changed on main by SP-194) to delivery artifact `README.md`. `community-bench.ts` remains in File Scope Must change for Track B/C wiring; unit tests may also change.
+- **2026-07-11 (post SP-193):** `README.md` also changed on main by SP-193. Redirected `fileScopeMustChange` to new delivery artifact `tests/unit/community-bench-track-bc.test.ts`. README remains in File Scope Must change / Documentation Must Update; `community-bench.ts` still Must change for Track B/C flags.
