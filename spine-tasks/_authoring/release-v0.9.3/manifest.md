@@ -42,8 +42,8 @@
 - [x] `npm run release:check` exit 0 — `/tmp/pi-smart-router-v093-final-release-check.log` + prebump recheck exit 0
 - [x] CI green on `57f6ce2` — [run 29163821696](https://github.com/beettlle/pi-smart-router/actions/runs/29163821696) success
 - [x] Operator approved publish (wait for CI first) — `npm version patch` → tag `v0.9.3` → push
-- [ ] Release workflow / npm publish
+- [x] Release workflow / npm publish — retag `v0.9.3`→`55a1cc6`; [run 29167313709](https://github.com/beettlle/pi-smart-router/actions/runs/29167313709) success; `npm view` = **0.9.3**
 
 ## Recovery
 
-(none yet)
+- 2026-07-11: First release [29166666434](https://github.com/beettlle/pi-smart-router/actions/runs/29166666434) failed on flaky isotonic `<5ms` assert. Fix `55a1cc6` (p95 + mocked clock); CI [29166754127](https://github.com/beettlle/pi-smart-router/actions/runs/29166754127) green. Operator approved force-move tag `v0.9.3` onto fix; republish succeeded.
