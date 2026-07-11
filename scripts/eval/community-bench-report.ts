@@ -104,6 +104,30 @@ const SkippedTrackSchema = z.object({
   reason: z.string().min(1),
 });
 
+/** Track B: dogfood export (#95). Adapter incomplete → always skip with reason. */
+export const TRACK_B_SKIP_REASON_ADAPTER_INCOMPLETE =
+  'Track B dogfood export→harness adapter incomplete (#95 still open); no dogfood labels invented' as const;
+
+/** Default Track C skip when --llmrouterbench / --full not passed. */
+export const TRACK_C_SKIP_REASON_NOT_REQUESTED =
+  'Track C LLMRouterBench optional; pass --llmrouterbench or --full to run offline on vendored subset (no full HF download)' as const;
+
+const TrackCRanSchema = z.object({
+  name: z.literal('LLMRouterBench'),
+  status: z.literal('ran'),
+  subset_path: z.string().min(1),
+  offline: z.literal(true),
+  downloads_corpus: z.literal(false),
+  fixture_count: z.number().int().nonnegative(),
+  catalog_id: z.string().min(1),
+  checkpoint_date: z.string().min(1),
+  cumulative_regret_usd: z.number(),
+  mean_cost_savings_ratio: z.number(),
+  mean_quality_retention: z.number(),
+});
+
+const TrackCSchema = z.union([SkippedTrackSchema, TrackCRanSchema]);
+
 export const CommunityBenchReportSchema = z.object({
   version: z.literal(COMMUNITY_BENCH_REPORT_VERSION),
   generated_at: z.string().min(1),
@@ -111,13 +135,16 @@ export const CommunityBenchReportSchema = z.object({
   tracks: z.object({
     A: TrackASchema,
     B: SkippedTrackSchema.optional(),
-    C: SkippedTrackSchema.optional(),
+    C: TrackCSchema.optional(),
   }),
   overall_passed: z.boolean(),
 });
 
 export type CommunityBenchReport = z.infer<typeof CommunityBenchReportSchema>;
 export type TrackAResult = z.infer<typeof TrackASchema>;
+export type TrackBResult = z.infer<typeof SkippedTrackSchema>;
+export type TrackCResult = z.infer<typeof TrackCSchema>;
+export type TrackCRanResult = z.infer<typeof TrackCRanSchema>;
 
 export interface BuildReportInput {
   readonly fingerprint: SetupFingerprint;
@@ -125,6 +152,8 @@ export interface BuildReportInput {
   readonly metrics: HarnessGateMetrics;
   readonly gates: AssertReleaseGatesResult;
   readonly generatedAt?: string;
+  readonly trackB?: TrackBResult;
+  readonly trackC?: TrackCResult;
 }
 
 /** Validate and return a typed community-bench report. */
@@ -154,13 +183,13 @@ export function buildCommunityBenchReport(input: BuildReportInput): CommunityBen
         gates: input.gates,
         passed,
       },
-      B: {
+      B: input.trackB ?? {
         status: 'skipped',
-        reason: 'Track B dogfood adapter deferred to SP-195 / #95',
+        reason: TRACK_B_SKIP_REASON_ADAPTER_INCOMPLETE,
       },
-      C: {
+      C: input.trackC ?? {
         status: 'skipped',
-        reason: 'Track C LLMRouterBench deferred to SP-195 / #103',
+        reason: TRACK_C_SKIP_REASON_NOT_REQUESTED,
       },
     },
     overall_passed: passed,
@@ -231,6 +260,27 @@ function formatTrackABlock(track: TrackAResult): string {
   return lines.join('\n');
 }
 
+function formatTrackCBlock(track: TrackCResult | undefined): string {
+  if (!track) {
+    return '';
+  }
+  if (track.status === 'skipped') {
+    return `Track C: SKIPPED — ${track.reason}`;
+  }
+  return [
+    `Track C (${track.name}): ran (offline)`,
+    `  subset_path: ${track.subset_path}`,
+    `  offline: ${track.offline}`,
+    `  downloads_corpus: ${track.downloads_corpus}`,
+    `  fixture_count: ${track.fixture_count}`,
+    `  catalog_id: ${track.catalog_id}`,
+    `  checkpoint_date: ${track.checkpoint_date}`,
+    `  cumulative_regret_usd: ${track.cumulative_regret_usd}`,
+    `  mean_cost_savings_ratio: ${track.mean_cost_savings_ratio}`,
+    `  mean_quality_retention: ${track.mean_quality_retention}`,
+  ].join('\n');
+}
+
 /**
  * Email-ready `.txt` body with Subject: line, privacy blurb, fingerprint,
  * pins, Track A metrics, PASS/FAIL, and maintainer footer.
@@ -239,12 +289,10 @@ export function formatCommunityBenchEmail(report: CommunityBenchReport): string 
   const overall = report.overall_passed ? 'PASS' : 'FAIL';
   const subject = `pi-smart-router community-bench ${overall} v${report.fingerprint.package_version}`;
 
-  const skipB = report.tracks.B
+  const trackBLine = report.tracks.B
     ? `Track B: SKIPPED — ${report.tracks.B.reason}`
     : '';
-  const skipC = report.tracks.C
-    ? `Track C: SKIPPED — ${report.tracks.C.reason}`
-    : '';
+  const trackCLine = formatTrackCBlock(report.tracks.C);
 
   const parts = [
     `Subject: ${subject}`,
@@ -259,8 +307,8 @@ export function formatCommunityBenchEmail(report: CommunityBenchReport): string 
     '',
     '=== Tracks ===',
     formatTrackABlock(report.tracks.A),
-    skipB,
-    skipC,
+    trackBLine,
+    trackCLine,
     '',
     '=== Footer ===',
     'Attach or paste the companion community-bench-report.json for machine-readable metrics.',
