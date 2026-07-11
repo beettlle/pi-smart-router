@@ -1,7 +1,7 @@
 # SP-192: LLMRouterBench Pin + Code/Tool Subset — Status
 
-**Current Step:** 2
-**Status:** 🟡 In Progress
+**Current Step:** 3
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-11
 **Review Level:** 1
 **Review Counter:** 0
@@ -28,11 +28,11 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 
-- [ ] Contract testCommand
-- [ ] Full npm test
-- [ ] Coverage ≥77%
+- [x] Contract testCommand
+- [x] Full npm test
+- [x] Coverage ≥77%
 
 ---
 
@@ -42,7 +42,7 @@
 - [x] Converter offline
 - [x] Chat-only excluded
 - [x] Full corpus not vendored
-- [ ] Gates untouched
+- [x] Gates untouched
 
 ---
 
@@ -51,7 +51,8 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-11 | 1 | plan | SKIPPED (engine-owned after .DONE; nested spawn blocked) |
-| 2026-07-11 | 2 | plan | pending |
+| 2026-07-11 | 2 | plan | SKIPPED (engine-owned after .DONE; nested spawn blocked) |
+| 2026-07-11 | 3 | plan | SKIPPED (engine-owned after .DONE; nested spawn blocked) |
 
 ## Discoveries
 
@@ -68,6 +69,8 @@
 | 2026-07-11 | resume | Step 1 started; plan review skipped per SP-195 engine ownership |
 | 2026-07-11 | step1 | PROVENANCE.md written with HF/git pins, slice filter, catalog map |
 | 2026-07-11 | step2 | ingest + adapter + synthetic CI fixture (5 records) + unit tests green |
+| 2026-07-11 | step3 | contract + npm test (1613) + coverage:check (92.91% lines) green; gates untouched |
+| 2026-07-11 | commit | feat(SP-192): complete Step 2 — Subset converter + CI fixture (51b7835) |
 
 ## Blockers
 
