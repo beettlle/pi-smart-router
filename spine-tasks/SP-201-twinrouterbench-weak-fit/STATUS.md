@@ -1,6 +1,6 @@
 # SP-201: TwinRouterBench Weak Packs + Fit CLI — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-07-11
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Corpus → weak pack path
 
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 
 - [x] Ingest from ci-subset
 - [x] PROVENANCE note
@@ -20,11 +20,11 @@
 
 ## Step 2: CLI `--include-excluded-in-fit`
 
-**Status:** ⬜ Not Started
+**Status:** 🟡 In Progress
 
-- [ ] Flag wiring
-- [ ] Unit tests fit vs ECE
-- [ ] README / PROVENANCE
+- [x] Flag wiring
+- [x] Unit tests fit vs ECE
+- [x] README / PROVENANCE
 
 ## Step 3: Testing & Verification
 
@@ -39,7 +39,7 @@
 
 ## Completion Criteria
 
-- [ ] Weak pack path
+- [x] Weak pack path
 - [ ] CLI flag
 - [ ] ECE boundary
 - [ ] #106 closable
@@ -51,12 +51,13 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-11 | 1 | plan | skipped (engine post-.DONE; SP-195) |
+| 2026-07-11 | 2 | plan | pending |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| 2026-07-11 | `includeExcludedInFit` already on `runCalibrationDryRunFromRows`; CLI does not parse `--include-excluded-in-fit` yet | Step 2 wires flag + tests |
+| 2026-07-11 | `includeExcludedInFit` already on `runCalibrationDryRunFromRows`; CLI did not parse `--include-excluded-in-fit` | Wired + tests; fit path includes weak in isotonic fit only |
 | 2026-07-11 | Smoke ingest from `ci-subset.json` accepted 50/50 schema-valid weak rows with `weak_tier_proxy` + `exclude_from_holdout_ece` | Step 1 path verified |
 
 ## Execution Log
@@ -64,6 +65,7 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-11 | start | Resume Step 1; plan review skipped by engine |
+| 2026-07-11 | step1 done | Commit `feat(SP-201): complete Step 1 — Corpus → weak pack path` |
 
 ## Blockers
 
