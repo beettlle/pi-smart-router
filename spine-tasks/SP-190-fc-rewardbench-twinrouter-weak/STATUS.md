@@ -75,3 +75,5 @@
 ## Notes
 
 Review Level 1: engine runs plan/code/final reviews after `.DONE` (SP-195).
+
+**Amendment 2026-07-11:** Contract `fileScopeMustChange` redirected to `scripts/ingest-fc-rewardbench-labels.ts` + `tests/unit/ingest-fc-rewardbench-labels.test.ts` (PROVENANCE already landed by SP-189).

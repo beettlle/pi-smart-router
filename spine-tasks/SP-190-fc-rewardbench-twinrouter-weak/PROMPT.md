@@ -50,7 +50,7 @@ Partial #102 — Using the SP-189 label-pack schema, add an offline converter fo
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/ingest-fc-rewardbench-labels.test.ts tests/unit/label-pack-schema.test.ts` |
-| fileScopeMustChange | `scripts/ingest-fc-rewardbench-labels.ts`, `tests/eval/corpus/label-packs/PROVENANCE.md` |
+| fileScopeMustChange | `scripts/ingest-fc-rewardbench-labels.ts`, `tests/unit/ingest-fc-rewardbench-labels.test.ts` |
 | fileScopeMustNotChange | `config/release-gates.json`, `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | FC-RewardBench converter emits valid pack rows; optional TwinRouterBench weak-label path documented/tested; provenance updated; no prompt leakage; no full corpus vendored. |
 
@@ -109,4 +109,4 @@ Partial #102 — Using the SP-189 label-pack schema, add an offline converter fo
 
 ## Amendments
 
-None.
+- **2026-07-11:** Redirected Contract `fileScopeMustChange` away from `tests/eval/corpus/label-packs/PROVENANCE.md` (already changed on main by SP-189) to delivery artifacts `scripts/ingest-fc-rewardbench-labels.ts` + `tests/unit/ingest-fc-rewardbench-labels.test.ts`. PROVENANCE remains in File Scope Must change / Documentation Must Update.
