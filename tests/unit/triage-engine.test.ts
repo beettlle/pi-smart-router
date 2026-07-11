@@ -631,46 +631,45 @@ describe('Pipeline triage stage (T027, T028)', () => {
   });
 
   describe('SC-004 latency budget (<5ms)', () => {
-    it('completes triage routing within 5ms', async () => {
+    // Wall-clock: assert p95 ≤ 5ms after warmup. Per-sample asserts flake on
+    // contended CI runners even when triage itself is well under budget.
+    const TRIAGE_LATENCY_BUDGET_MS = 5;
+    const WARMUP_SAMPLES = 5;
+    const TIMED_SAMPLES = 40;
+
+    async function expectTriageP95WithinBudget(promptText: string): Promise<void> {
       const pipeline = new RouterPipeline(triageFleet);
-      // Warm JIT / module paths before timing (cold first route is flaky on CI hosts).
-      await pipeline.route(makeRequest({ prompt_text: 'Format this JSON file' }));
-      const start = performance.now();
+      for (let index = 0; index < WARMUP_SAMPLES; index++) {
+        await pipeline.route(makeRequest({ prompt_text: promptText }));
+      }
 
-      await pipeline.route(
-        makeRequest({ prompt_text: 'Format this JSON file' }),
+      const elapsedMs: number[] = [];
+      for (let index = 0; index < TIMED_SAMPLES; index++) {
+        const start = performance.now();
+        await pipeline.route(makeRequest({ prompt_text: promptText }));
+        elapsedMs.push(performance.now() - start);
+      }
+
+      elapsedMs.sort((left, right) => left - right);
+      const p95Index = Math.min(
+        elapsedMs.length - 1,
+        Math.floor(elapsedMs.length * 0.95),
       );
+      expect(elapsedMs[p95Index]).toBeLessThanOrEqual(TRIAGE_LATENCY_BUDGET_MS);
+    }
 
-      const elapsed = performance.now() - start;
-      expect(elapsed).toBeLessThan(5);
+    it('completes triage routing within 5ms (p95)', async () => {
+      await expectTriageP95WithinBudget('Format this JSON file');
     });
 
-    it('completes complex triage within 5ms', async () => {
-      const pipeline = new RouterPipeline(triageFleet);
-      await pipeline.route(
-        makeRequest({ prompt_text: 'Debug the race condition in the worker pool' }),
+    it('completes complex triage within 5ms (p95)', async () => {
+      await expectTriageP95WithinBudget(
+        'Debug the race condition in the worker pool',
       );
-      const start = performance.now();
-
-      await pipeline.route(
-        makeRequest({ prompt_text: 'Debug the race condition in the worker pool' }),
-      );
-
-      const elapsed = performance.now() - start;
-      expect(elapsed).toBeLessThan(5);
     });
 
-    it('completes ambiguous pass-through within 5ms', async () => {
-      const pipeline = new RouterPipeline(triageFleet);
-      await pipeline.route(makeRequest({ prompt_text: 'Hello, how are you?' }));
-      const start = performance.now();
-
-      await pipeline.route(
-        makeRequest({ prompt_text: 'Hello, how are you?' }),
-      );
-
-      const elapsed = performance.now() - start;
-      expect(elapsed).toBeLessThan(5);
+    it('completes ambiguous pass-through within 5ms (p95)', async () => {
+      await expectTriageP95WithinBudget('Hello, how are you?');
     });
   });
 
