@@ -2,10 +2,11 @@
 
 **Last Updated:** 2026-07-10
 **Status:** Active
-**Next Task ID:** SP-186
+**Next Task ID:** SP-189
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** v0.9.0 (2026-07-10) — live leaderboard ingest + native adapters (#100, #104)
+**In progress:** v0.9.1 — TwinRouterBench static-track corpus (#101 → SP-186–SP-188)
 
 ---
 
@@ -535,6 +536,28 @@
 **Deferred:** #101/#102 (P2), #103 (P3), #95 dogfood protocol, #96 modernbert_k4 enablement, #1/#25/#26 hardware.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.9.0/manifest.md`, `spine-tasks/_authoring/live-leaderboard-adapters-20260710.md`
+
+### Phase 40 — Release v0.9.1 TwinRouterBench Corpus (SP-186–SP-188)
+
+| Task | Summary | Size | Deps | Maps |
+|------|---------|------|------|------|
+| SP-186 | Pin TwinRouterBench + convert question_bank → static-track schema | M | — | #101 |
+| SP-187 | Vendor CI-sized corpus subset + checksums | M | SP-186 | #101 |
+| SP-188 | Wire corpus CI/gates path + README; close #101 | M | SP-187 | #101 |
+
+**Source:** GitHub #101 (P2). Operator-approved for **v0.9.1** (2026-07-10). Ratio: 0 bugs + 1 feature (docs empty; patch feature override).
+
+**Recommended wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-186 | Pin + converter |
+| B | SP-187 | After SP-186 |
+| C | SP-188 | After SP-187 |
+
+**Deferred:** #102 (P2), #103 (P3), #95, #96, #1/#25/#26 hardware.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.9.1/manifest.md`, `spine-tasks/_authoring/backlog-snapshot-20260710-v091.md`
 
 ---
 
