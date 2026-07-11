@@ -1,7 +1,7 @@
 # SP-187: TwinRouterBench CI-Sized Corpus Subset — Status
 
 **Current Step:** 3
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -29,21 +29,21 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 
-- [ ] Contract testCommand
-- [ ] Harness on corpus path
-- [ ] Full npm test + coverage ≥77%
+- [x] Contract testCommand
+- [x] Harness on corpus path
+- [x] Full npm test + coverage ≥77%
 
 ---
 
 ## Completion Criteria
 
-- [ ] Bounded subset vendored
-- [ ] Checksums documented
-- [ ] Sample fixtures unchanged
-- [ ] Fixtures tree not polluted
-- [ ] Gate thresholds untouched
+- [x] Bounded subset vendored
+- [x] Checksums documented
+- [x] Sample fixtures unchanged
+- [x] Fixtures tree not polluted
+- [x] Gate thresholds untouched
 
 ---
 
@@ -53,6 +53,7 @@
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine-owned after .DONE; SP-195) |
 | 2026-07-10 | 2 | plan | skipped (engine-owned after .DONE; SP-195) |
+| 2026-07-10 | 3 | plan | skipped (engine-owned after .DONE; SP-195) |
 
 ## Discoveries
 
@@ -68,7 +69,7 @@
 | 2026-07-10 | Step 1 started | Plan review skipped by engine; generating ≤50-record CI subset preferring code/tool workloads |
 | 2026-07-10 | Step 1 complete | Vendored `ci-subset.json` (50 records, SHA-256 ec0b1e70…); PROVENANCE updated; adapter load OK |
 | 2026-07-10 | Step 2 complete | Offline corpus load/score + size-bound tests; adapter sample fixtures still pass |
-| 2026-07-10 | Step 3 started | Running contract tests, harness, full suite, coverage |
+| 2026-07-10 | Step 3 complete | Contract + harness (23 fixtures) + full npm test + coverage 92.91% line |
 
 ## Blockers
 
