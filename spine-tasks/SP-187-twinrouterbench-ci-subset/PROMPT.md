@@ -40,8 +40,8 @@ Partial #101 — Using SP-186’s converter and pin, vendor a **CI-sized** TwinR
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `tests/eval/corpus/twinrouterbench/**`, `tests/eval/corpus/twinrouterbench/PROVENANCE.md` |
-| May change | `scripts/eval/ingest-twinrouterbench-corpus.ts`, `tests/unit/ingest-twinrouterbench-corpus.test.ts`, `package.json` |
+| Must change | `tests/eval/corpus/twinrouterbench/ci-subset.json`, `tests/eval/corpus/twinrouterbench/PROVENANCE.md` |
+| May change | `tests/eval/corpus/twinrouterbench/**`, `scripts/eval/ingest-twinrouterbench-corpus.ts`, `tests/unit/ingest-twinrouterbench-corpus.test.ts`, `package.json` |
 | Must NOT change | `config/release-gates.json`, `tests/eval/fixtures/twinrouterbench/*.json`, `src/domain/pipeline/router-pipeline.ts` |
 
 ## Contract
@@ -49,7 +49,7 @@ Partial #101 — Using SP-186’s converter and pin, vendor a **CI-sized** TwinR
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/ingest-twinrouterbench-corpus.test.ts tests/eval/twinrouterbench-adapter.test.ts` |
-| fileScopeMustChange | `tests/eval/corpus/twinrouterbench/**` |
+| fileScopeMustChange | `tests/eval/corpus/twinrouterbench/ci-subset.json` |
 | fileScopeMustNotChange | `config/release-gates.json`, `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | Bounded subset checked in with checksum + size documented; harness loads subset via --fixtures path; sample fixtures untouched; no absolute gate threshold edits. |
 
@@ -107,4 +107,7 @@ Partial #101 — Using SP-186’s converter and pin, vendor a **CI-sized** TwinR
 
 ## Amendments (Added During Execution)
 
-(none yet)
+### Amendment 1 — 2026-07-10 18:41
+
+**Issue:** Preflight pre-landed risk — `tests/eval/corpus/twinrouterbench/**` / `PROVENANCE.md` already exist on main from SP-186.
+**Resolution:** Redirect `fileScopeMustChange` to new delivery artifact `tests/eval/corpus/twinrouterbench/ci-subset.json` (vendored CI subset JSON). Still update PROVENANCE.md checksums/size in File Scope Must change.

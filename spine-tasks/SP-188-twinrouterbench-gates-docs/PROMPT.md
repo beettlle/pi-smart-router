@@ -43,8 +43,8 @@ Closes #101 — Wire the SP-187 vendored TwinRouterBench corpus subset into eval
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `.github/workflows/eval-harness-smoke.yml`, `README.md`, `package.json` |
-| May change | `scripts/eval/assert-release-gates.ts`, `tests/eval/assert-release-gates.test.ts`, `scripts/eval/run-harness.ts` |
+| Must change | `.github/workflows/eval-harness-smoke.yml`, `README.md` |
+| May change | `package.json`, `scripts/eval/assert-release-gates.ts`, `tests/eval/assert-release-gates.test.ts`, `scripts/eval/run-harness.ts` |
 | Must NOT change | `config/release-gates.json` absolute gate numbers, `src/domain/pipeline/router-pipeline.ts` |
 
 ## Contract
@@ -52,7 +52,7 @@ Closes #101 — Wire the SP-187 vendored TwinRouterBench corpus subset into eval
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/eval/assert-release-gates.test.ts tests/eval/twinrouterbench-adapter.test.ts` |
-| fileScopeMustChange | `.github/workflows/eval-harness-smoke.yml`, `README.md`, `package.json` |
+| fileScopeMustChange | `.github/workflows/eval-harness-smoke.yml`, `README.md` |
 | fileScopeMustNotChange | `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | CI smoke runs corpus subset offline and stays bounded; assert-release-gates or npm script documents corpus path; README covers pin/subset/#95 feed; absolute thresholds unchanged; `npm run verify:ci` green. |
 
@@ -112,4 +112,7 @@ Closes #101 — Wire the SP-187 vendored TwinRouterBench corpus subset into eval
 
 ## Amendments (Added During Execution)
 
-(none yet)
+### Amendment 1 — 2026-07-10 18:41
+
+**Issue:** Preflight pre-landed risk — `package.json` already changed on main (SP-186 added `routing:ingest-twinrouterbench`).
+**Resolution:** Drop `package.json` from `fileScopeMustChange`; keep as May change for corpus smoke script. Contract proof is workflow + README edits.

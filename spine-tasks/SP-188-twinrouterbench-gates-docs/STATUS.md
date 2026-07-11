@@ -73,4 +73,4 @@
 
 ## Notes
 
-(none)
+2026-07-10: Amendment 1 — dropped package.json from fileScopeMustChange (pre-landed by SP-186).

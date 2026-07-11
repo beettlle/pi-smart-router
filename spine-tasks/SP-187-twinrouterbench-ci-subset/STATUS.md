@@ -73,4 +73,4 @@
 
 ## Notes
 
-(none)
+2026-07-10: Amendment 1 — contract redirected to `ci-subset.json` (PROVENANCE.md pre-landed by SP-186).
