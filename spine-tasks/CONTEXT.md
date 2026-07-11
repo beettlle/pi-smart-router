@@ -6,7 +6,7 @@
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** v0.9.0 (2026-07-10) — live leaderboard ingest + native adapters (#100, #104)
-**In progress:** v0.9.1 — TwinRouterBench static-track corpus (#101 → SP-186–SP-188)
+**Ready to publish:** v0.9.1 — TwinRouterBench static-track corpus (#101 → SP-186–SP-188); awaiting operator publish approval
 
 ---
 
@@ -537,7 +537,7 @@
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.9.0/manifest.md`, `spine-tasks/_authoring/live-leaderboard-adapters-20260710.md`
 
-### Phase 40 — Release v0.9.1 TwinRouterBench Corpus (SP-186–SP-188)
+### Phase 40 — Release v0.9.1 TwinRouterBench Corpus (SP-186–SP-188) — READY TO PUBLISH
 
 | Task | Summary | Size | Deps | Maps |
 |------|---------|------|------|------|
@@ -547,17 +547,18 @@
 
 **Source:** GitHub #101 (P2). Operator-approved for **v0.9.1** (2026-07-10). Ratio: 0 bugs + 1 feature (docs empty; patch feature override).
 
-**Recommended wave order:**
+**Wave order (executed):**
 
 | Wave | Tasks | Notes |
 |------|-------|-------|
-| A | SP-186 | Pin + converter |
-| B | SP-187 | After SP-186 |
-| C | SP-188 | After SP-187 |
+| A | SP-186 | Pin + converter — landed via FF-merge after state_drift |
+| B | SP-187 | After SP-186 — same recovery |
+| C | SP-188 | After SP-187 — same recovery; closes #101 |
 
 **Deferred:** #102 (P2), #103 (P3), #95, #96, #1/#25/#26 hardware.
 
-**Authoring notes:** `spine-tasks/_authoring/release-v0.9.1/manifest.md`, `spine-tasks/_authoring/backlog-snapshot-20260710-v091.md`
+**Authoring notes:** `spine-tasks/_authoring/release-v0.9.1/manifest.md`, `spine-tasks/_authoring/backlog-snapshot-20260710-v091.md`  
+**Upstream spine bug:** https://github.com/beettlle/pi-spine/issues/196
 
 ---
 

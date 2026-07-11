@@ -19,11 +19,11 @@
 
 ## Waves
 
-| Wave | Tasks |
-|------|-------|
-| 0 / A | SP-186 |
-| 1 / B | SP-187 |
-| 2 / C | SP-188 |
+| Wave | Tasks | Land notes |
+|------|-------|------------|
+| 0 / A | SP-186 | Manual FF-merge after state_drift (#196) |
+| 1 / B | SP-187 | Manual FF-merge after state_drift (#196) |
+| 2 / C | SP-188 | Manual FF-merge after state_drift (#196) |
 
 ## Profile audit
 
@@ -37,9 +37,13 @@
 
 ## Publish checklist
 
-- [ ] All release-scoped tasks `.DONE`
-- [ ] Issue #101 closed
-- [ ] `npm run release:check` exit 0
-- [ ] CI green on release commit
+- [x] All release-scoped tasks `.DONE`
+- [x] Issue #101 closed
+- [x] `npm run release:check` exit 0 (`/tmp/pi-smart-router-release-check-v091.log`)
+- [ ] CI green on release commit (push `main` first — not yet pushed)
 - [ ] Operator approved publish — `npm version patch` → tag → push
 - [ ] Release workflow / npm publish verified
+
+## Recovery
+
+All three waves hit pi-spine `state_drift` after `engine.orphan_terminated` (SIGTERM) mid-final-review. Detached `resume --force` failed (`phase running`); attached refused (#163). Landed via FF-merge of `task/spine-lane-1-*` + `.DONE` copy. Upstream: https://github.com/beettlle/pi-spine/issues/196
