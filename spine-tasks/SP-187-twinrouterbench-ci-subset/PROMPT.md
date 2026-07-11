@@ -57,10 +57,10 @@ Partial #101 — Using SP-186’s converter and pin, vendor a **CI-sized** TwinR
 
 ### Step 1: Generate and vendor subset
 
-- [ ] Produce CI-sized subset (document exact max record/file count — prefer ≤50 records / small MB) into `tests/eval/corpus/twinrouterbench/`
+- [ ] Produce CI-sized subset as `tests/eval/corpus/twinrouterbench/ci-subset.json` (document exact max record count — prefer ≤50 records / small MB)
 - [ ] Prefer code/tool workloads (SWE-bench / BFCL / terminal-like) when selecting rows; skip chat-only if present
 - [ ] Record SHA-256 (or equivalent) checksums and regeneration command in PROVENANCE.md
-- [ ] Ensure each vendored JSON validates via `loadTwinRouterBenchStaticTrack` / harness load
+- [ ] Ensure vendored JSON validates via `loadTwinRouterBenchStaticTrack` / harness load
 
 ### Step 2: Offline unit coverage
 
