@@ -1,6 +1,6 @@
 # SP-186: TwinRouterBench Pin + Convert Script — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Pin upstream + provenance
 
-**Status:** 🔄 In Progress (outcomes done; awaiting plan-review / commit)
+**Status:** ✅ Complete
 
 - [x] Pin commit/tag + license in PROVENANCE.md
 - [x] Document upstream fields + hashing policy
@@ -20,11 +20,11 @@
 
 ## Step 2: Converter CLI
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress (outcomes done; awaiting commit)
 
-- [ ] ingest-twinrouterbench-corpus.ts with --limit
-- [ ] Skip unmappable rows; no invented labels
-- [ ] Unit test: synthetic row → loadTwinRouterBenchStaticTrack
+- [x] ingest-twinrouterbench-corpus.ts with --limit
+- [x] Skip unmappable rows; no invented labels
+- [x] Unit test: synthetic row → loadTwinRouterBenchStaticTrack
 
 ## Step 3: Testing & Verification
 
@@ -38,11 +38,11 @@
 
 ## Completion Criteria
 
-- [ ] Pin + license documented
+- [x] Pin + license documented
 - [ ] Converter produces valid static-track JSON
-- [ ] Tier map explicit
-- [ ] Full corpus not vendored
-- [ ] Gate thresholds untouched
+- [x] Tier map explicit
+- [x] Full corpus not vendored
+- [x] Gate thresholds untouched
 
 ---
 
@@ -64,7 +64,8 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-10 | Start Step 1 | Plan review skipped by engine; begin PROVENANCE.md |
-| 2026-07-10 | Step 1 outcomes | PROVENANCE.md written with pin, fields, hashing, tier map |
+| 2026-07-10 | Step 1 complete | PROVENANCE committed; plan review skipped; advance to Step 2 |
+| 2026-07-10 | Start Step 2 | Converter CLI + unit tests |
 
 ## Blockers
 

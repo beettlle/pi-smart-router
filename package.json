@@ -70,6 +70,7 @@
     "routing:eval-replay": "tsx scripts/eval/counterfactual-replay.ts",
     "routing:eval-harness": "tsx scripts/eval/run-harness.ts",
     "routing:eval-harness:smoke": "tsx scripts/eval/run-harness.ts --summary-only",
+    "routing:ingest-twinrouterbench": "tsx scripts/eval/ingest-twinrouterbench-corpus.ts",
     "routing:capture-baseline": "tsx scripts/eval/capture-baseline.ts",
     "routing:test-projection": "npm run build && node --experimental-strip-types scripts/test-hydra-projection.ts",
     "benchmark:encoder": "tsx scripts/benchmark-encoder-latency.ts",
