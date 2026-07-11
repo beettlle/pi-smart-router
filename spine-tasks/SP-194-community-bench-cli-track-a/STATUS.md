@@ -1,6 +1,6 @@
 # SP-194: Community Bench CLI Track A — Status
 
-**Current Step:** 2
+**Current Step:** 3
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-07-11
 **Review Level:** 1
@@ -20,28 +20,28 @@
 
 ## Step 2: Track A CLI wiring
 
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 
-- [ ] community-bench.ts + npm script
-- [ ] Track A corpus gates embedded
-- [ ] --output / --email-file / --print-issue-body / --mailto
+- [x] community-bench.ts + npm script
+- [x] Track A corpus gates embedded
+- [x] --output / --email-file / --print-issue-body / --mailto
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🟡 In Progress
 
-- [ ] Contract testCommand
-- [ ] Offline CLI smoke
-- [ ] Full npm test
+- [x] Contract testCommand
+- [x] Offline CLI smoke
+- [x] Full npm test
 - [ ] Coverage ≥77%
 
 ---
 
 ## Completion Criteria
 
-- [ ] Track A CLI + artifacts
+- [x] Track A CLI + artifacts
 - [x] Fingerprint privacy-safe
-- [ ] Gates match assert-release-gates
+- [x] Gates match assert-release-gates
 - [x] Thresholds untouched
 - [x] No SMTP/upload
 
@@ -52,12 +52,14 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-11 | 1 | plan | skipped (engine-owned after .DONE) |
+| 2026-07-11 | 2 | plan | skipped (engine-owned after .DONE) |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
 | 2026-07-11 | spine_review_step returns skipped in real-pi worker; engine runs reviews after .DONE | Continue; do not block |
+| 2026-07-11 | TwinRouterBench corpus soft-fails over_routing gate (same as assert-release-gates --report-only); CLI reports FAIL without changing thresholds | Expected; artifacts still written, exit 0 |
 
 ## Execution Log
 
@@ -65,6 +67,7 @@
 |------|-------|--------|
 | 2026-07-11 | start | Step 1 in progress — fingerprint + report schema |
 | 2026-07-11 | step1 | fingerprint + report modules + 8 unit tests green |
+| 2026-07-11 | step2 | CLI + npm script; offline smoke writes JSON+txt; 11 unit tests |
 
 ## Blockers
 
