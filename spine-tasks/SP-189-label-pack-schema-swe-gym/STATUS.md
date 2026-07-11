@@ -31,8 +31,8 @@
 
 **Status:** 🔄 In Progress
 
-- [ ] Contract testCommand
-- [ ] Full npm test
+- [x] Contract testCommand
+- [x] Full npm test
 - [ ] Coverage ≥77%
 
 ---

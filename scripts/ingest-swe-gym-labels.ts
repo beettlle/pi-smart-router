@@ -301,7 +301,11 @@ export function parseSweGymIngestArgs(argv: readonly string[]): SweGymCliArgs {
   if (!input) {
     throw new SweGymIngestError('Missing --input path');
   }
-  return { input, output, limit };
+  return {
+    input,
+    ...(output !== undefined ? { output } : {}),
+    ...(limit !== undefined ? { limit } : {}),
+  };
 }
 
 export function sweGymIngestUsage(): string {
@@ -330,7 +334,10 @@ export function runSweGymIngestCli(argv: readonly string[]): number {
   }
 
   const inputPath = resolve(args.input);
-  const result = ingestSweGymVerifierFile(inputPath, { limit: args.limit });
+  const result = ingestSweGymVerifierFile(
+    inputPath,
+    args.limit !== undefined ? { limit: args.limit } : {},
+  );
   const jsonl = formatLabelPackJsonl(result.rows);
 
   if (args.output) {
