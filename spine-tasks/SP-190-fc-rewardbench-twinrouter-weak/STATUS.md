@@ -1,7 +1,7 @@
 # SP-190: FC-RewardBench + TwinRouterBench Weak Labels — Status
 
 **Current Step:** 1
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 **Last Updated:** 2026-07-11
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,12 +12,12 @@
 
 ## Step 1: FC-RewardBench converter + fixture
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] PROVENANCE pin for FC-RewardBench
-- [ ] ingest-fc-rewardbench-labels.ts
-- [ ] Tiny CI fixture
-- [ ] Unit tests
+- [x] PROVENANCE pin for FC-RewardBench
+- [x] ingest-fc-rewardbench-labels.ts
+- [x] Tiny CI fixture
+- [x] Unit tests
 
 ## Step 2: Optional TwinRouterBench weak labels
 
@@ -52,19 +52,21 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-11 | 1 | plan | skipped (SP-195 engine-owned) |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-07-11 | FC-RewardBench HF pin `269929c3329e603e87ed3203de42896cc03ddbf3`, license apache-2.0; preference pairs (chosen/rejected) | Map each pair → two pack rows (correct/incorrect) |
+| 2026-07-11 | Extra feature keys with `tool_call` substring fail label-pack taint scan | Stick to P_SUCCESS_FEATURE_NAMES allowlist only |
 
 ## Execution Log
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-11 | start | Step 1 in progress; plan review skipped by engine |
+| 2026-07-11 | step1 outcomes | Converter + fixture + tests green (6/6) |
 
 ## Blockers
 

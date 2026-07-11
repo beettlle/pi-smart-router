@@ -81,3 +81,72 @@ npm run routing:ingest-swe-gym -- \
   --input tests/eval/corpus/label-packs/swe-gym/ci-fixture.jsonl \
   --output /tmp/swe-gym-pack.jsonl
 ```
+
+---
+
+## FC-RewardBench (SP-190)
+
+Tool-call correct/incorrect preference pairs for function-calling reward models,
+from [FC-RewardBench](https://huggingface.co/datasets/ibm-research/fc-reward-bench)
+([ToolRM / arXiv:2509.11963](https://arxiv.org/abs/2509.11963)). Each upstream row
+pairs a BFCL-derived **chosen** (correct) tool call with a model-generated
+**rejected** (incorrect) call.
+
+### Upstream pins
+
+| Field | Value |
+|-------|-------|
+| Dataset (HF) | [`ibm-research/fc-reward-bench`](https://huggingface.co/datasets/ibm-research/fc-reward-bench) |
+| **Pinned revision** | `269929c3329e603e87ed3203de42896cc03ddbf3` (2025-09-22) |
+| License | **Apache-2.0** (`license:apache-2.0` on the dataset card) |
+| Paper | [arXiv:2509.11963](https://arxiv.org/abs/2509.11963) (ToolRM) |
+| Upstream fields | `tools`, `conversation`, `chosen_output`, `rejected_output`, `error_type`, `model_name`, `test_category`, `test_id` |
+
+### Field map (preference / flat → label pack)
+
+| Upstream / intermediate | Pack field | Notes |
+|-------------------------|------------|-------|
+| `chosen_output` arm | `success=true` | Emits one pack row per preference pair |
+| `rejected_output` arm | `success=false` | Same pair; `outcome_signals` may include `error_type:…` |
+| `label` / `success` / `correct` (flat) | `success` | Flattened rows; missing label → **skipped** (never invented) |
+| `test_id` or `sample_id` | `sample_id` | Prefixed `fc-rewardbench:`; arms suffix `:chosen` / `:rejected` |
+| `features` (optional) | `features` | Finite numbers only; preferred when present |
+| `conversation`, `tools`, outputs | *(derived only)* | Length / count stats → numeric features; **text discarded** |
+| `tier` (optional) | `tier` | `zero-tier` \| `economical-cloud` \| `frontier-cloud` |
+| — | `source` | Always `fc-rewardbench` |
+| `conversation`, `prompt`, `messages`, `content`, call bodies | **rejected** | Must not appear in pack JSONL |
+
+### Privacy rules
+
+1. Pack rows must pass `assertLabelPackRecordSafe` / `parseLabelPackRow`.
+2. Converter never writes conversation turns, tool schemas, or call JSON bodies.
+3. Do **not** check in the full HF arrow dump (`data/data-00000-of-00001.arrow`).
+
+### CI fixture
+
+| Field | Value |
+|-------|-------|
+| Path | `tests/eval/corpus/label-packs/fc-rewardbench/ci-fixture.jsonl` |
+| Rows | 2 synthetic preference pairs + 2 flat labeled rows (+ 2 unmappable skips) |
+| Purpose | Offline unit tests for `scripts/ingest-fc-rewardbench-labels.ts` |
+
+### Regenerate pack from local JSONL (authoring only)
+
+```bash
+# Optional: download locally (not for CI / not committed)
+# huggingface-cli download ibm-research/fc-reward-bench \
+#   --revision 269929c3329e603e87ed3203de42896cc03ddbf3
+
+npm run routing:ingest-fc-rewardbench -- \
+  --input /path/to/fc-rewardbench-style.jsonl \
+  --output /tmp/fc-rewardbench-label-pack.jsonl \
+  --limit 50
+```
+
+Offline CI path (checked-in fixture only):
+
+```bash
+npm run routing:ingest-fc-rewardbench -- \
+  --input tests/eval/corpus/label-packs/fc-rewardbench/ci-fixture.jsonl \
+  --output /tmp/fc-rewardbench-pack.jsonl
+```
