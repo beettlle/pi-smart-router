@@ -1,6 +1,6 @@
 # SP-201: TwinRouterBench Weak Packs + Fit CLI — Status
 
-**Current Step:** 2
+**Current Step:** 3
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-07-11
 **Review Level:** 1
@@ -20,7 +20,7 @@
 
 ## Step 2: CLI `--include-excluded-in-fit`
 
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 
 - [x] Flag wiring
 - [x] Unit tests fit vs ECE
@@ -28,10 +28,10 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🟡 In Progress
 
-- [ ] Contract tests
-- [ ] Smoke dry-run
+- [x] Contract tests
+- [x] Smoke dry-run
 - [ ] verify:ci
 - [ ] Close #106
 
@@ -40,8 +40,8 @@
 ## Completion Criteria
 
 - [x] Weak pack path
-- [ ] CLI flag
-- [ ] ECE boundary
+- [x] CLI flag
+- [x] ECE boundary
 - [ ] #106 closable
 
 ---
@@ -51,7 +51,8 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-11 | 1 | plan | skipped (engine post-.DONE; SP-195) |
-| 2026-07-11 | 2 | plan | pending |
+| 2026-07-11 | 2 | plan | skipped (engine post-.DONE; SP-195) |
+| 2026-07-11 | 3 | plan | pending |
 
 ## Discoveries
 
@@ -66,6 +67,7 @@
 |------|-------|--------|
 | 2026-07-11 | start | Resume Step 1; plan review skipped by engine |
 | 2026-07-11 | step1 done | Commit `feat(SP-201): complete Step 1 — Corpus → weak pack path` |
+| 2026-07-11 | step2 done | Commit `feat(SP-201): complete Step 2 — CLI --include-excluded-in-fit` |
 
 ## Blockers
 
