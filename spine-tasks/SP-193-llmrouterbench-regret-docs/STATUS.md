@@ -20,11 +20,11 @@
 
 ## Step 2: Staleness docs + operator path
 
-**Status:** 🔵 In Progress
+**Status:** 🔵 In Progress (outcomes done; commit pending)
 
-- [ ] PROVENANCE refresh cadence
-- [ ] README operator section
-- [ ] PR CI remains TwinRouterBench-only for smoke
+- [x] PROVENANCE refresh cadence
+- [x] README operator section
+- [x] PR CI remains TwinRouterBench-only for smoke
 
 ## Step 3: Testing & Verification
 
@@ -52,6 +52,7 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-11 | 1 | plan | skipped (engine-owned after .DONE) |
+| 2026-07-11 | 2 | plan | skipped (engine-owned after .DONE) |
 
 ## Discoveries
 
@@ -65,7 +66,8 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-11 | Start Step 1 | Offline regret/CS report; GitNexus impact LOW on harness helpers |
-| 2026-07-11 | Step 1 outcomes | Script + npm `routing:llmrouterbench-regret` + 3 unit tests green |
+| 2026-07-11 | Step 1 complete | Script + npm `routing:llmrouterbench-regret` + 3 unit tests; committed |
+| 2026-07-11 | Step 2 outcomes | PROVENANCE + README + routing-roadmap §5 Phase 4 note |
 
 ## Blockers
 
