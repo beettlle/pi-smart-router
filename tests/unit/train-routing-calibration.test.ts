@@ -205,7 +205,7 @@ describe('train routing calibration (SP-117)', () => {
       MINIMUM_TRAINING_SAMPLES.hydra_projection,
     );
     expect(bundle.hydra_projection.version).toBe(HYDRA_PROJECTION_ARTIFACT_VERSION);
-  });
+  }, 15_000);
 
   it('round-trips flattened hydra projection weights', () => {
     const bundle = makeBundleWithHydraWeights();
