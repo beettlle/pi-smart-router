@@ -1,24 +1,36 @@
+import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
 import {
+  CI_SUBSET_MAX_RECORDS,
   DEFAULT_TRB_FROZEN_CATALOG,
   TWINROUTERBENCH_PINNED_COMMIT,
   TwinRouterBenchIngestError,
   UPSTREAM_TIER_TO_EVAL_TIER,
+  allocateCodeToolQuotas,
   convertUpstreamRow,
+  flattenMessageContent,
   hashPrefixMessages,
   hashSessionId,
   ingestQuestionBankToStaticTrack,
+  isCodeToolWorkload,
   mapUpstreamTier,
   parseIngestCliArgs,
   runIngestCli,
   type UpstreamQuestionBankRow,
 } from '../../scripts/eval/ingest-twinrouterbench-corpus.js';
+import { scoreFixtureHarness } from '../../scripts/eval/harness-tracks.js';
 import { loadTwinRouterBenchStaticTrack } from '../../scripts/eval/twinrouterbench-adapter.js';
+
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
+const CI_SUBSET_PATH = join(REPO_ROOT, 'tests/eval/corpus/twinrouterbench/ci-subset.json');
+const CI_SUBSET_SHA256 =
+  'ec0b1e70709718956824b6d06092273a49171d48add019a15f2bc2772df1b265';
 
 function syntheticRow(
   overrides: Partial<UpstreamQuestionBankRow> = {},
@@ -204,5 +216,87 @@ describe('ingest-twinrouterbench-corpus (SP-186)', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it('flattens multimodal message content for hashing', () => {
+    expect(flattenMessageContent('plain')).toBe('plain');
+    expect(
+      flattenMessageContent([
+        { type: 'text', text: 'hello' },
+        { type: 'text', text: 'world' },
+      ]),
+    ).toBe('hello\nworld');
+    const hash = hashPrefixMessages([
+      { role: 'user', content: [{ type: 'text', text: 'tool call' }] },
+    ]);
+    expect(hash).toHaveLength(64);
+  });
+
+  it('classifies code/tool workloads and allocates stratified quotas', () => {
+    expect(isCodeToolWorkload({ benchmark: 'swebench' })).toBe(true);
+    expect(isCodeToolWorkload({ benchmark: 'bfcl' })).toBe(true);
+    expect(isCodeToolWorkload({ benchmark: 'pinchbench' })).toBe(true);
+    expect(isCodeToolWorkload({ benchmark: 'mtrag' })).toBe(false);
+    expect(isCodeToolWorkload({ benchmark: 'qmsum' })).toBe(false);
+
+    const quotas = allocateCodeToolQuotas(50);
+    expect(quotas.get('swebench')).toBe(17);
+    expect(quotas.get('bfcl')).toBe(17);
+    expect(quotas.get('pinchbench')).toBe(16);
+    expect([...quotas.values()].reduce((a, b) => a + b, 0)).toBe(50);
+  });
+
+  it('skips chat-only rows when preferCodeTool is set', () => {
+    const code = syntheticRow({ id: 'code_1', benchmark: 'swebench' });
+    const chat = syntheticRow({
+      id: 'chat_1',
+      instance_id: 'chat-inst',
+      benchmark: 'qmsum',
+      scenario: 'meeting_query_summarization',
+    });
+    const track = ingestQuestionBankToStaticTrack(
+      `${JSON.stringify(chat)}\n${JSON.stringify(code)}\n`,
+      { preferCodeTool: true, limit: 10 },
+    );
+    expect(track.records).toHaveLength(1);
+    expect(track.records[0]!.trace_id).toBe('code_1');
+    expect(parseIngestCliArgs(['--prefer-code-tool']).preferCodeTool).toBe(true);
+  });
+});
+
+describe('TwinRouterBench CI subset (SP-187)', () => {
+  it('vendors a bounded offline subset that loads and scores without network', () => {
+    expect(CI_SUBSET_MAX_RECORDS).toBe(50);
+
+    const buf = readFileSync(CI_SUBSET_PATH);
+    const sha = createHash('sha256').update(buf).digest('hex');
+    expect(sha).toBe(CI_SUBSET_SHA256);
+
+    const track = JSON.parse(buf.toString('utf8')) as { records: unknown[] };
+    expect(track.records.length).toBeGreaterThan(0);
+    expect(track.records.length).toBeLessThanOrEqual(CI_SUBSET_MAX_RECORDS);
+
+    const fixtures = loadTwinRouterBenchStaticTrack(track);
+    expect(fixtures.length).toBeGreaterThan(0);
+
+    for (const fixture of fixtures) {
+      const scored = scoreFixtureHarness(fixture);
+      expect(scored.capability.step_count).toBeGreaterThan(0);
+    }
+  });
+
+  it('fails the size-bound assertion if the subset exceeds CI_SUBSET_MAX_RECORDS', () => {
+    const track = JSON.parse(readFileSync(CI_SUBSET_PATH, 'utf8')) as {
+      records: unknown[];
+    };
+    // Documented contract: CI subset must stay ≤ CI_SUBSET_MAX_RECORDS.
+    expect(track.records.length).toBeLessThanOrEqual(CI_SUBSET_MAX_RECORDS);
+    expect(() => {
+      if (track.records.length > CI_SUBSET_MAX_RECORDS) {
+        throw new Error(
+          `CI subset exceeds bound: ${track.records.length} > ${CI_SUBSET_MAX_RECORDS}`,
+        );
+      }
+    }).not.toThrow();
   });
 });
