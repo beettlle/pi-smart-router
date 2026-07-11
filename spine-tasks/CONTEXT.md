@@ -1,12 +1,11 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-07-10
+**Last Updated:** 2026-07-11
 **Status:** Active
 **Next Task ID:** SP-189
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.9.0 (2026-07-10) — live leaderboard ingest + native adapters (#100, #104)
-**Ready to publish:** v0.9.1 — TwinRouterBench static-track corpus (#101 → SP-186–SP-188); awaiting operator publish approval
+**Released:** v0.9.1 (2026-07-11) — TwinRouterBench static-track corpus (#101 → SP-186–SP-188); prior v0.9.0 live leaderboard ingest + native adapters (#100, #104)
 
 ---
 
@@ -537,7 +536,7 @@
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.9.0/manifest.md`, `spine-tasks/_authoring/live-leaderboard-adapters-20260710.md`
 
-### Phase 40 — Release v0.9.1 TwinRouterBench Corpus (SP-186–SP-188) — READY TO PUBLISH
+### Phase 40 — Release v0.9.1 TwinRouterBench Corpus (SP-186–SP-188) — SHIPPED
 
 | Task | Summary | Size | Deps | Maps |
 |------|---------|------|------|------|
