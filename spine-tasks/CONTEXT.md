@@ -5,8 +5,7 @@
 **Next Task ID:** SP-202
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.9.3 (2026-07-11) — LLMRouterBench (#103 → SP-192–SP-193) + community bench (#105 → SP-194–SP-195); prior v0.9.2 label packs (#102).
-**Queued complete:** v0.10.0 scope SP-196–SP-201 landed on main (2026-07-11) — #95 Partial, #109/#108/#107/#106 closed; publish bump pending operator-approved release.
+**Released:** v0.10.0 (2026-07-11) — SP-196–SP-201: #95 Partial protocol/QA, #109 roadmap sync, #108 profile coverage, #107 TwinRouterBench 150+full/nightly, #106 weak packs + `--include-excluded-in-fit`. Prior v0.9.3 LLMRouterBench + community bench.
 
 ---
 
