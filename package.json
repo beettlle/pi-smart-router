@@ -74,6 +74,7 @@
     "routing:eval-harness:corpus-smoke": "tsx scripts/eval/run-harness.ts --fixtures tests/eval/corpus/twinrouterbench --summary-only",
     "routing:assert-release-gates:corpus-report": "tsx scripts/eval/assert-release-gates.ts --fixtures tests/eval/corpus/twinrouterbench --report-only",
     "routing:ingest-twinrouterbench": "tsx scripts/eval/ingest-twinrouterbench-corpus.ts",
+    "routing:ingest-llmrouterbench": "tsx scripts/eval/ingest-llmrouterbench-subset.ts",
     "routing:ingest-swe-gym": "tsx scripts/ingest-swe-gym-labels.ts",
     "routing:ingest-fc-rewardbench": "tsx scripts/ingest-fc-rewardbench-labels.ts",
     "routing:ingest-twinrouterbench-weak": "tsx scripts/ingest-twinrouterbench-weak-labels.ts",
