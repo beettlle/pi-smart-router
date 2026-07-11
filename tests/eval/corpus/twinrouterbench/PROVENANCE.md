@@ -1,4 +1,4 @@
-# TwinRouterBench static-track provenance (SP-186 / SP-187 / SP-199)
+# TwinRouterBench static-track provenance (SP-186 / SP-187 / SP-199 / SP-200)
 
 Pinned public source for converting TwinRouterBench `question_bank.jsonl` into
 pi-smart-router `TwinRouterBenchStaticTrack` JSON (`scripts/eval/twinrouterbench-adapter.ts`).
@@ -7,6 +7,12 @@ pi-smart-router `TwinRouterBenchStaticTrack` JSON (`scripts/eval/twinrouterbench
 The full ~970-row corpus is **not** checked in; regenerate locally with the converter
 (`--limit` / no-limit). Sample fixtures under `tests/eval/fixtures/twinrouterbench/` are
 unchanged and remain the default release-gate smoke inputs.
+
+**Full static track (SP-200 / #107):** local / optional nightly path only — pin fetch → convert
+**without** `--limit` → harness + gates `--report-only`. Artifacts land under the gitignored
+cache `.pi-smart-router/eval-cache/twinrouterbench/` (or `$TRB_CACHE_DIR`). **Do not check
+the full JSON into git.** PR CI stays on the vendored ≤150 subset
+(`npm run routing:eval-harness:corpus-smoke`).
 
 ## Upstream pin
 
@@ -70,6 +76,31 @@ Offline harness smoke on the corpus directory (does not touch default fixtures):
 ```bash
 npm run routing:eval-harness -- --fixtures tests/eval/corpus/twinrouterbench --summary-only
 ```
+
+## Full static track — local / nightly (SP-200)
+
+**Do not vendor the full ~970-row JSON.** Use the scripted path below; outputs are
+gitignored under `.pi-smart-router/eval-cache/twinrouterbench/`.
+
+```bash
+# One-shot: fetch pin → convert (no --limit) → harness summary + gates --report-only
+npm run routing:twinrouterbench:full-track
+
+# Or stepwise (after placing question_bank.jsonl in the cache dir):
+#   curl … -o .pi-smart-router/eval-cache/twinrouterbench/question_bank.jsonl
+npm run routing:twinrouterbench:full-ingest
+npm run routing:twinrouterbench:full-report
+```
+
+Optional scheduled job: `.github/workflows/twinrouterbench-full-nightly.yml`
+(`schedule` + `workflow_dispatch`). Failures there do **not** gate PR CI or
+`release:functional-smoke`. Absolute thresholds in `config/release-gates.json`
+remain operator-owned and fixture-backed.
+
+For [#95](https://github.com/beettlle/pi-smart-router/issues/95) dual-gate protocol
+(live dogfood + public static-track), see
+[`docs/qa/shadow-dogfood-protocol.md`](../../../../docs/qa/shadow-dogfood-protocol.md)
+and the README TwinRouterBench section.
 
 ## Upstream fields used
 
@@ -162,4 +193,4 @@ stratifies across swebench / bfcl / pinchbench when a limit is set.
 - **SP-187** — vendor CI-sized subset + checksums under this directory (landed; bound was ≤50)
 - **SP-199** — raise CI subset bound 50→150 (this file)
 - **SP-188** — CI smoke / gates docs (do not change absolute `config/release-gates.json` thresholds here)
-- **SP-200** — full-track / nightly docs (owns README full-corpus guidance)
+- **SP-200** — full-track local/nightly path + README (#107; do not check in full JSON)

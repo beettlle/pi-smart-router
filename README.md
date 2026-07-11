@@ -853,6 +853,9 @@ Contributors must run `npm run build` before publishing or consuming the library
 | `npm run routing:eval-harness:smoke` | Harness summary JSON only (CI smoke; no network) |
 | `npm run routing:eval-harness:corpus-smoke` | Harness summary on TwinRouterBench CI corpus subset (`tests/eval/corpus/twinrouterbench`) |
 | `npm run routing:assert-release-gates:corpus-report` | Soft-feed: assert corpus vs absolute gates with `--report-only` (exit 0; does not gate releases) |
+| `npm run routing:twinrouterbench:full-track` | Local/nightly: pin fetch → full convert (no `--limit`) → harness + gates `--report-only` (gitignored cache) |
+| `npm run routing:twinrouterbench:full-ingest` | Convert cached `question_bank.jsonl` → full static-track JSON (no `--limit`) |
+| `npm run routing:twinrouterbench:full-report` | Harness summary + gates `--report-only` on cached full track |
 | `npm run routing:ingest-twinrouterbench` | Convert TwinRouterBench `question_bank.jsonl` → CI subset / full corpus JSON |
 | `npm run routing:ingest-llmrouterbench` | Convert LLMRouterBench BaselineRecord JSONL → static-track subset JSON |
 | `npm run routing:llmrouterbench-regret` | Offline regret / CS report on vendored LLMRouterBench subset (optional; not PR CI) |
@@ -874,7 +877,7 @@ npm run routing:eval-harness
 # CI-style summary only (default fixtures under tests/eval/fixtures)
 npm run routing:eval-harness:smoke
 
-# TwinRouterBench CI corpus subset (≤50 code/tool records; offline)
+# TwinRouterBench CI corpus subset (≤150 code/tool records; offline)
 npm run routing:eval-harness:corpus-smoke
 
 # Custom fixture directory (includes TwinRouterBench static track subdirs)
@@ -882,25 +885,44 @@ npm run routing:eval-harness -- --fixtures tests/eval/fixtures
 
 # Counterfactual replay only (SP-151)
 npm run routing:eval-replay
+
+# Full ~970-row static track (local / nightly only — do not check JSON into git)
+npm run routing:twinrouterbench:full-track
 ```
 
-**CI smoke:** `.github/workflows/eval-harness-smoke.yml` runs on PRs that touch eval scripts, fixtures, or the workflow. It executes `routing:eval-harness:smoke`, `routing:eval-harness:corpus-smoke`, and eval unit tests — fast, offline, no provider network calls. Job timeout stays at 10 minutes.
+**CI smoke:** `.github/workflows/eval-harness-smoke.yml` runs on PRs that touch eval scripts, fixtures, or the workflow. It executes `routing:eval-harness:smoke`, `routing:eval-harness:corpus-smoke`, and eval unit tests — fast, offline, no provider network calls. Job timeout stays at 10 minutes. The optional full-track nightly (`.github/workflows/twinrouterbench-full-nightly.yml`) is **not** required on PRs and does not gate `release:functional-smoke`.
 
 **TwinRouterBench static track:** import step-level router-visible prefixes with execution-verified target tiers (`track: "static"`). The adapter in `scripts/eval/twinrouterbench-adapter.ts` converts static track records into native eval fixtures for the three-track harness. See `docs/gemini-research.md` §9 for methodology context.
 
-#### TwinRouterBench CI corpus (SP-186 / SP-187 / SP-188)
+#### TwinRouterBench CI corpus (SP-186 / SP-187 / SP-188 / SP-199)
 
 | Item | Location / command |
 |------|--------------------|
 | **Pinned upstream** | CommonstackAI/TwinRouterBench `@430acecac71141de77afd8e5e13690d236d58e93` (Apache-2.0) |
-| **CI subset** | `tests/eval/corpus/twinrouterbench/ci-subset.json` (≤50 code/tool records) |
+| **CI subset** | `tests/eval/corpus/twinrouterbench/ci-subset.json` (≤150 code/tool records) |
 | **Provenance** | `tests/eval/corpus/twinrouterbench/PROVENANCE.md` |
-| **Regenerate** | `npm run routing:ingest-twinrouterbench -- --input <question_bank.jsonl> --output tests/eval/corpus/twinrouterbench/ci-subset.json --limit 50 --prefer-code-tool` |
+| **Regenerate** | `npm run routing:ingest-twinrouterbench -- --input <question_bank.jsonl> --output tests/eval/corpus/twinrouterbench/ci-subset.json --limit 150 --prefer-code-tool` |
 | **Harness smoke** | `npm run routing:eval-harness:corpus-smoke` |
 | **Gate soft-feed** | `npm run routing:assert-release-gates:corpus-report` |
 | **Human QA protocol** | [`docs/qa/shadow-dogfood-protocol.md`](docs/qa/shadow-dogfood-protocol.md) · `npm run qa:shadow-dogfood` |
 
 **Absolute release gates stay on default fixtures.** `npm run release:functional-smoke` continues to assert `tests/eval/fixtures` against `config/release-gates.json` — do not point it at the corpus without operator review. Today the corpus subset fails `mean_over_routing_rate_max` (≈0.85 vs absolute max 0.15); that gap is intentional soft signal for the [#95](https://github.com/beettlle/pi-smart-router/issues/95) public static-track acceptance criteria alongside live dogfood traces. Use `--fixtures tests/eval/corpus/twinrouterbench` (or the corpus-report script) for #95 public-track scoring; keep absolute threshold edits out of band until operators approve. For live shadow dogfood steps and sign-off, see the [shadow dogfood protocol](docs/qa/shadow-dogfood-protocol.md).
+
+#### TwinRouterBench full static track (SP-200 / #107)
+
+First-class **local / optional nightly** path for the pinned ~970-row bank. **Do not check the full JSON into git.**
+
+| Item | Location / command |
+|------|--------------------|
+| **One-shot** | `npm run routing:twinrouterbench:full-track` |
+| **Cache (gitignored)** | `.pi-smart-router/eval-cache/twinrouterbench/` (override with `TRB_CACHE_DIR`) |
+| **Steps** | pin fetch → `routing:ingest-twinrouterbench` **without** `--limit` → harness `--summary-only` + gates `--report-only` |
+| **Nightly** | `.github/workflows/twinrouterbench-full-nightly.yml` (`schedule` + `workflow_dispatch`) — advisory only |
+| **Provenance** | `tests/eval/corpus/twinrouterbench/PROVENANCE.md` |
+
+PR corpus smoke remains the vendored ≤150 subset. Absolute `config/release-gates.json` thresholds and `release:functional-smoke` stay fixture-backed.
+
+**[#95 dual-gate protocol](https://github.com/beettlle/pi-smart-router/issues/95):** (1) live shadow dogfood (`docs/qa/shadow-dogfood-protocol.md` · `npm run qa:shadow-dogfood`) and (2) public static-track soft-feed (CI subset report, or full-track report above). Neither path edits absolute release thresholds.
 
 **Deferred:** RouterBench classic (outcome-matrix) smoke is out of scope for SP-188; prefer TwinRouterBench static track + dogfood for #95.
 
