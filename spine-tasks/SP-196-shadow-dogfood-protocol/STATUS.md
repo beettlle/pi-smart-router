@@ -1,7 +1,7 @@
 # SP-196: Shadow Dogfood Protocol + QA Script — Status
 
 **Current Step:** 2
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-11
 **Review Level:** 0
 **Review Counter:** 0
@@ -20,20 +20,20 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
-- [ ] Script sanity
-- [ ] Full suite sanity
-- [ ] #95 comment
+- [x] Script sanity
+- [x] Full suite sanity
+- [x] #95 comment
 
 ---
 
 ## Completion Criteria
 
-- [ ] Protocol + script landed
-- [ ] README linked
-- [ ] Gates untouched
-- [ ] #95 Partial only
+- [x] Protocol + script landed
+- [x] README linked
+- [x] Gates untouched
+- [x] #95 Partial only
 
 ---
 
@@ -54,7 +54,8 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-11 | Step 1 verified | Confirmed protocol sections, executable script, package.json script, README link |
-| 2026-07-11 | Step 2 started | Script sanity + typecheck/test + #95 comment |
+| 2026-07-11 | Step 2 | bash -n OK; typecheck + 1637 tests passed; #95 comment https://github.com/beettlle/pi-smart-router/issues/95#issuecomment-4948704069 |
+| 2026-07-11 | Done | All completion criteria met; #95 remains open for human dogfood |
 
 ## Blockers
 
