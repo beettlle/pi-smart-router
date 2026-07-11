@@ -1,7 +1,7 @@
 # SP-186: TwinRouterBench Pin + Convert Script — Status
 
-**Current Step:** 2
-**Status:** 🟡 In Progress
+**Current Step:** 3
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -20,7 +20,7 @@
 
 ## Step 2: Converter CLI
 
-**Status:** 🔄 In Progress (outcomes done; awaiting commit)
+**Status:** ✅ Complete
 
 - [x] ingest-twinrouterbench-corpus.ts with --limit
 - [x] Skip unmappable rows; no invented labels
@@ -28,18 +28,18 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Contract testCommand
-- [ ] Full npm test
-- [ ] Coverage ≥77%
+- [x] Contract testCommand
+- [x] Full npm test
+- [x] Coverage ≥77%
 
 ---
 
 ## Completion Criteria
 
 - [x] Pin + license documented
-- [ ] Converter produces valid static-track JSON
+- [x] Converter produces valid static-track JSON
 - [x] Tier map explicit
 - [x] Full corpus not vendored
 - [x] Gate thresholds untouched
@@ -51,6 +51,8 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-10 | 1 | plan | skipped (engine post-.DONE; SP-195) |
+| 2026-07-10 | 2 | plan | skipped (engine post-.DONE; SP-195) |
+| 2026-07-10 | 3 | plan | skipped (engine post-.DONE; SP-195) |
 
 ## Discoveries
 
@@ -65,7 +67,9 @@
 |------|-------|--------|
 | 2026-07-10 | Start Step 1 | Plan review skipped by engine; begin PROVENANCE.md |
 | 2026-07-10 | Step 1 complete | PROVENANCE committed; plan review skipped; advance to Step 2 |
-| 2026-07-10 | Start Step 2 | Converter CLI + unit tests |
+| 2026-07-10 | Step 2 complete | Converter + unit tests committed; plan review skipped; advance to Step 3 |
+| 2026-07-10 | Step 3 complete | Contract + npm test + coverage:check (92.91% lines) passed |
+| 2026-07-10 | DONE | All completion criteria met |
 
 ## Blockers
 
@@ -76,3 +80,10 @@
 ## Notes
 
 Review Level 1: in-worker plan review spawn blocked (SP-195); engine runs reviews after `.DONE`.
+
+Verification evidence:
+- `npm run typecheck && npx vitest run tests/eval/twinrouterbench-adapter.test.ts tests/unit/ingest-twinrouterbench-corpus.test.ts` — 16 passed
+- `npm test` — passed
+- `npm run coverage:check` — All files lines 92.91% (≥77%)
+- Corpus dir contains only `PROVENANCE.md` (no full ~970-row vendor)
+- `config/release-gates.json` untouched
