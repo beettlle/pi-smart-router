@@ -856,6 +856,7 @@ Contributors must run `npm run build` before publishing or consuming the library
 | `npm run routing:ingest-twinrouterbench` | Convert TwinRouterBench `question_bank.jsonl` → CI subset / full corpus JSON |
 | `npm run routing:ingest-llmrouterbench` | Convert LLMRouterBench BaselineRecord JSONL → static-track subset JSON |
 | `npm run routing:llmrouterbench-regret` | Offline regret / CS report on vendored LLMRouterBench subset (optional; not PR CI) |
+| `npm run routing:community-bench` | Privacy-safe community bench report (Track A TwinRouterBench + optional Track B/C) |
 | `npm run benchmark:encoder` | Compare MiniLM vs Granite encoder latency on held-out agent turns |
 
 ### Offline eval harness (agent-native routing)
@@ -913,8 +914,45 @@ Optional local / nightly report on the **pinned code/tool subset** — not part 
 | **Provenance / refresh** | `tests/eval/corpus/llmrouterbench/PROVENANCE.md` (quarterly pin refresh; re-run report after catalog/subset changes) |
 | **Regenerate subset** | `npm run routing:ingest-llmrouterbench -- --input <jsonl> --output tests/eval/corpus/llmrouterbench/ci-subset.json --limit 20 --prefer-code-tool` |
 | **Regret / CS report** | `npm run routing:llmrouterbench-regret` |
+| **Community Track C** | `npm run routing:community-bench -- --llmrouterbench` (same vendored subset; optional) |
 
-PR CI continues to smoke TwinRouterBench only (`routing:eval-harness:corpus-smoke`). Absolute `config/release-gates.json` thresholds are unchanged. Community-bench CLI is SP-194/SP-195.
+PR CI continues to smoke TwinRouterBench only (`routing:eval-harness:corpus-smoke`). Absolute `config/release-gates.json` thresholds are unchanged. See [Contribute a community bench report](#contribute-a-community-bench-report) for Track A + optional Track C sharing.
+
+#### Contribute a community bench report
+
+Share a privacy-safe setup fingerprint + Track A (TwinRouterBench) gate result with maintainers. No SMTP auto-send and no upload server — you copy artifacts yourself.
+
+**Maintainer contact** (must match the CLI footer constant `COMMUNITY_BENCH_MAINTAINER_CONTACT`):
+
+`https://github.com/beettlle/pi-smart-router/issues/new?labels=community-bench`
+
+```bash
+# Track A offline smoke (vendored TwinRouterBench corpus — no network)
+npm run routing:community-bench -- \
+  --output /tmp/community-bench-report.json \
+  --email-file /tmp/community-bench-report.txt
+
+# Optional Track C: offline LLMRouterBench regret/CS on the vendored subset (no full HF download)
+npm run routing:community-bench -- \
+  --llmrouterbench \
+  --output /tmp/community-bench-report.json \
+  --email-file /tmp/community-bench-report.txt
+```
+
+**How to send:**
+
+1. **Email `.txt`** — open `/tmp/community-bench-report.txt` (or your `--email-file` path). It includes a `Subject:` line, privacy blurb, fingerprint, Track A PASS/FAIL, and optional Track C metrics. Paste into your mail client; attach `community-bench-report.json` if useful. Do **not** expect the CLI to send mail.
+2. **GitHub issue** — open the [maintainer contact](https://github.com/beettlle/pi-smart-router/issues/new?labels=community-bench) URL, or run with `--print-issue-body` and paste stdout into a new issue. Issues list: https://github.com/beettlle/pi-smart-router/issues
+
+**Tracks:**
+
+| Track | Corpus | When |
+|-------|--------|------|
+| **A (required)** | [TwinRouterBench CI corpus](#twinrouterbench-ci-corpus-sp-186--sp-187--sp-188) (`tests/eval/corpus/twinrouterbench`) | Always |
+| **B (optional)** | Dogfood export (`--dogfood-export PATH`) | Skips with an explicit reason until [#95](https://github.com/beettlle/pi-smart-router/issues/95) adapter lands — never invents labels |
+| **C (optional)** | [LLMRouterBench offline subset](#llmrouterbench-offline-regret-sp-192--sp-193) (`tests/eval/corpus/llmrouterbench`) | `--llmrouterbench` or `--full`; offline only |
+
+PR CI does **not** download full TwinRouterBench / LLMRouterBench corpora. Absolute gate thresholds in `config/release-gates.json` are unchanged by this CLI.
 
 Sample fixtures under `tests/eval/fixtures/twinrouterbench/` remain the small adapter unit-test inputs and are unchanged by corpus ingest.
 

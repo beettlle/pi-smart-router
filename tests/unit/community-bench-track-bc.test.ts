@@ -97,4 +97,15 @@ describe('community-bench Track C offline (SP-195)', () => {
     expect(text).toContain('no full HF download');
     expect(text).toContain('llmrouterbench');
   });
+
+  it('CLI usage footer maintainer contact matches COMMUNITY_BENCH_MAINTAINER_CONTACT', async () => {
+    const { COMMUNITY_BENCH_MAINTAINER_CONTACT: contact } = await import(
+      '../../scripts/eval/community-bench-report.js'
+    );
+    const { readFileSync } = await import('node:fs');
+    const readme = readFileSync('README.md', 'utf8');
+    expect(usage()).toContain(contact);
+    expect(readme).toContain(contact);
+    expect(readme).toContain('Contribute a community bench report');
+  });
 });
