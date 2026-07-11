@@ -2,10 +2,10 @@
 
 **Last Updated:** 2026-07-11
 **Status:** Active
-**Next Task ID:** SP-192
+**Next Task ID:** SP-196
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.9.2 (2026-07-11) — SWE-Gym + FC-RewardBench label packs (#102 → SP-189–SP-191); prior v0.9.1 TwinRouterBench corpus (#101); v0.9.0 live leaderboard ingest + native adapters (#100, #104).
+**Released:** v0.9.2 (2026-07-11) — SWE-Gym + FC-RewardBench label packs (#102 → SP-189–SP-191). **In flight:** v0.9.3 — LLMRouterBench (#103) + community bench (#105) → SP-192–SP-195.
 
 ---
 
@@ -581,6 +581,29 @@
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.9.2/manifest.md`, `spine-tasks/_authoring/backlog-snapshot-20260711-v092.md`  
 **Status:** Published as **v0.9.2** (`b937a7a` / tag `v0.9.2`); Release [run 29162774613](https://github.com/beettlle/pi-smart-router/actions/runs/29162774613) success; on npm as `0.9.2`.
+
+### Phase 42 — Release v0.9.3 LLMRouterBench + Community Bench (SP-192–SP-195)
+
+| Task | Summary | Size | Deps | Maps |
+|------|---------|------|------|------|
+| SP-192 | Pin LLMRouterBench + code/tool subset ingest | M | — | #103 |
+| SP-193 | Offline regret/CS report + staleness docs; close #103 | M | SP-192 | #103 |
+| SP-194 | Community-bench CLI Track A (fingerprint + JSON/email) | M | — | #105 |
+| SP-195 | Track B skip + Track C + README contribute; close #105 | M | SP-193, SP-194 | #105 |
+
+**Source:** GitHub #103 (P3) + #105 (P3). Operator-approved for **v0.9.3** (2026-07-11). Ratio: 0 bugs + 2 features (docs empty; feature-only override; P3 + #105).
+
+**Wave order (planned):**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| A | SP-192, SP-194 | Parallel (disjoint scopes) |
+| B | SP-193 | After SP-192 |
+| C | SP-195 | After SP-193 + SP-194; closes #105 |
+
+**Deferred:** #95, #96, #1/#25/#26 hardware.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.9.3/manifest.md`, `spine-tasks/_authoring/backlog-snapshot-20260711-v093.md`
 
 ---
 
