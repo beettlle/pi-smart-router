@@ -1,0 +1,8 @@
+{"dataset_id":"livecodebench","split":"test","model_name":"Claude-sonnet-4","record_index":0,"origin_query":"Write a function that returns the sum of two integers.","score":1.0,"cost":0.0021,"prompt_tokens":48,"completion_tokens":32}
+{"dataset_id":"swe-bench","split":"test","model_name":"gpt-4o-mini","record_index":1,"origin_query":"Fix the failing django queryset filter for nullable FK.","score":1.0,"cost":0.0004,"prompt_tokens":120,"completion_tokens":80}
+{"dataset_id":"humaneval","split":"test","model_name":"Llama-3.1-8B-Instruct","record_index":2,"origin_query":"Implement is_palindrome(s: str) -> bool.","score":0.0,"cost":0.0,"prompt_tokens":40,"completion_tokens":20}
+{"dataset_id":"tau2","split":"test","model_name":"Claude-sonnet-4","record_index":3,"origin_query":"Call the booking API to reserve a table for 2 at 19:00.","prompt":"You may use tools.","score":1.0,"cost":0.003,"prompt_tokens":90,"completion_tokens":60}
+{"dataset_id":"mtbench","split":"test","model_name":"Claude-sonnet-4","record_index":4,"origin_query":"Write a witty short story about a router.","score":1.0,"cost":0.001}
+{"dataset_id":"aime","split":"test","model_name":"Claude-sonnet-4","record_index":5,"origin_query":"Compute the remainder when 2^100 is divided by 101.","score":1.0,"cost":0.001}
+{"dataset_id":"livecodebench","split":"test","model_name":"Gemini-2.5-pro","record_index":6,"origin_query":"Solve the graph shortest-path coding problem.","score":1.0,"cost":0.005,"prompt_tokens":64,"completion_tokens":40}
+{"dataset_id":"mbpp","split":"test","model_name":"gpt-4o-mini","record_index":7,"origin_query":"Write a function to find the maximum of three numbers.","score":1.0,"cost":0.0002,"prompt_tokens":36,"completion_tokens":24}
