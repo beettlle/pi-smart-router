@@ -5,8 +5,10 @@ import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.j
 import { DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS, DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS, DEFAULT_BREAKEVEN_TELEMETRY_FIELDS, DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS, DEFAULT_PIN_ONLY_FALLBACK_TELEMETRY_FIELDS, DEFAULT_SAAR_TELEMETRY_FIELDS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 
 function makeTelemetry(overrides: Partial<RoutingTelemetry> = {}): RoutingTelemetry {
+  // Use a fresh timestamp so entries stay inside TELEMETRY_WINDOW_HOURS (168h).
+  // Fixed dates age out of the rolling window and get evicted on append.
   return {
-    timestamp: '2026-07-04T12:00:00.000Z',
+    timestamp: new Date().toISOString(),
     session_id: 'sess-1',
     request_id: 'req-1',
     turn_type: 'main_loop',
