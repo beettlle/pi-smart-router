@@ -1,7 +1,7 @@
 # SP-195: Community Bench Track B/C + Docs — Status
 
-**Current Step:** 2
-**Status:** 🟡 In Progress
+**Current Step:** 3
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-11
 **Review Level:** 1
 **Review Counter:** 0
@@ -20,7 +20,7 @@
 
 ## Step 2: README contribute + contact parity
 
-**Status:** 🔵 In Progress
+**Status:** ✅ Complete
 
 - [x] Contribute section
 - [x] Maintainer contact matches CLI
@@ -28,12 +28,12 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Contract testCommand
-- [ ] CLI Track A + Track C smoke
-- [ ] verify:ci
-- [ ] Coverage ≥77%
+- [x] Contract testCommand
+- [x] CLI Track A + Track C smoke
+- [x] verify:ci
+- [x] Coverage ≥77%
 
 ---
 
@@ -42,9 +42,9 @@
 - [x] Track B skip
 - [x] Track C optional
 - [x] README contribute
-- [ ] No full corpus in PR CI
-- [ ] Gates untouched
-- [ ] #105 closable
+- [x] No full corpus in PR CI
+- [x] Gates untouched
+- [x] #105 closable
 
 ---
 
@@ -54,6 +54,7 @@
 |------|------|------|---------|
 | 2026-07-11 | 1 | plan | skipped (engine-owned after .DONE) |
 | 2026-07-11 | 2 | plan | skipped (engine-owned after .DONE) |
+| 2026-07-11 | 3 | plan | skipped (engine-owned after .DONE) |
 
 ## Discoveries
 
@@ -69,6 +70,9 @@
 | 2026-07-11 | Step 1 started | Plan review skipped; implementing Track B/C flags |
 | 2026-07-11 | Step 1 complete | Track B skip + Track C offline + unit tests green; committed |
 | 2026-07-11 | Step 2 started | README contribute section + contact parity |
+| 2026-07-11 | Step 2 complete | Contribute section + contact parity + corpus cross-links; committed |
+| 2026-07-11 | Step 3 started | Contract tests, CLI smoke, verify:ci, coverage |
+| 2026-07-11 | Step 3 complete | verify:ci green; coverage 92.91% lines; gates untouched |
 
 ## Blockers
 
