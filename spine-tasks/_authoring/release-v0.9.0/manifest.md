@@ -41,6 +41,7 @@
 
 - [x] All release-scoped tasks `.DONE`
 - [x] Issues #100, #104 closed
-- [ ] `npm run release:check` exit 0
-- [ ] CI green on HEAD
-- [ ] Operator approved publish (bump 0.9.0 + push tags)
+- [x] `npm run release:check` exit 0 (`/tmp/pi-smart-router-release-check-v090.log`)
+- [x] CI green on `e2ef770` — https://github.com/beettlle/pi-smart-router/actions/runs/29133939099
+- [x] Operator approved publish — `npm version 0.9.0` → tag `v0.9.0` → push (`161a83d`)
+- [ ] Release workflow / npm publish — https://github.com/beettlle/pi-smart-router/actions/runs/29134010308

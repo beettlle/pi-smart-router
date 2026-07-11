@@ -5,6 +5,7 @@
 **Next Task ID:** SP-186
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
+**Released:** v0.9.0 (2026-07-10) — live leaderboard ingest + native adapters (#100, #104)
 
 ---
 
@@ -507,45 +508,33 @@
 
 **Deferred:** #95 (operator skip), #96 (modernbert_k4 enablement epic), #1/#25/#26 hardware dogfooding.
 
-### Phase 39 — Release v0.9.0 Live Leaderboard Ingest (SP-179–SP-180)
+### Phase 39 — Release v0.9.0 Live Leaderboard Ingest + Adapters (SP-179–SP-185) — SHIPPED
 
 | Task | Summary | Size | Deps | Maps |
 |------|---------|------|------|------|
 | SP-179 | Live/recorded leaderboard snapshot ingest CLI | M | — | #100 |
-| SP-180 | Monthly CI live refresh + operator docs + mapper smoke | M | SP-179 | #100 |
-
-**Source:** GitHub #100 (P1 live leaderboard ingest follow-on #75). Operator-approved v0.9.0 scope: P1 only. Ratio: 0 bugs + 1 feature (docs empty; no open bugs; feature-only override).
-
-**Recommended wave order:**
-
-| Wave | Tasks | Notes |
-|------|-------|-------|
-| A | SP-179 | Ingest CLI + recorded snapshot |
-| B | SP-180 | After SP-179 (workflow + README) |
-
-**Deferred:** #101/#102 (P2), #103 (P3), #95 dogfood protocol, #96 modernbert_k4 enablement, #1/#25/#26 hardware.
-
-### Phase 40 — Live Leaderboard Native Adapters (SP-181–SP-185)
-
-| Task | Summary | Size | Deps | Maps |
-|------|---------|------|------|------|
+| SP-180 | Release-tied CI live refresh + operator docs + mapper smoke | M | SP-179 | #100 |
 | SP-181 | Per-benchmark live fallback + adapter registry stubs | M | — | #104 |
 | SP-182 | SWE-bench Verified native JSON adapter | M | SP-181 | #104 |
 | SP-183 | LiveCodeBench native JSON adapter | M | SP-181 | #104 |
 | SP-184 | BFCL gh-pages CSV adapter | M | SP-181 | #104 |
 | SP-185 | Terminal-Bench source lock + adapter + README | M | SP-181 | #104 |
 
-**Source:** GitHub #104 (live adapters follow-on to #100). Root bug: HTML URLs + fail-fast blocked all four benches.
+**Source:** GitHub #100 (P1) + #104 (native adapters follow-on). Shipped as **v0.9.0** (2026-07-10). Ratio: 0 bugs + 2 features (docs empty; feature-only override).
 
-**Recommended wave order:**
+**Wave order (executed):**
 
 | Wave | Tasks | Notes |
 |------|-------|-------|
-| A | SP-181 | Foundation — must land first |
-| B | SP-182, SP-183, SP-184 | Parallel — disjoint adapter files |
-| C | SP-185 | After B preferred for e2e docs |
+| A | SP-179 | Ingest CLI + recorded snapshot |
+| B | SP-180 | Workflow + README |
+| C | SP-181 | Adapter registry + per-benchmark fallback |
+| D | SP-182, SP-183, SP-184 | Parallel native adapters |
+| E | SP-185 | Terminal-Bench + live sources table |
 
-**Authoring notes:** `spine-tasks/_authoring/live-leaderboard-adapters-20260710.md`
+**Deferred:** #101/#102 (P2), #103 (P3), #95 dogfood protocol, #96 modernbert_k4 enablement, #1/#25/#26 hardware.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.9.0/manifest.md`, `spine-tasks/_authoring/live-leaderboard-adapters-20260710.md`
 
 ---
 
