@@ -854,6 +854,8 @@ Contributors must run `npm run build` before publishing or consuming the library
 | `npm run routing:eval-harness:corpus-smoke` | Harness summary on TwinRouterBench CI corpus subset (`tests/eval/corpus/twinrouterbench`) |
 | `npm run routing:assert-release-gates:corpus-report` | Soft-feed: assert corpus vs absolute gates with `--report-only` (exit 0; does not gate releases) |
 | `npm run routing:ingest-twinrouterbench` | Convert TwinRouterBench `question_bank.jsonl` → CI subset / full corpus JSON |
+| `npm run routing:ingest-llmrouterbench` | Convert LLMRouterBench BaselineRecord JSONL → static-track subset JSON |
+| `npm run routing:llmrouterbench-regret` | Offline regret / CS report on vendored LLMRouterBench subset (optional; not PR CI) |
 | `npm run benchmark:encoder` | Compare MiniLM vs Granite encoder latency on held-out agent turns |
 
 ### Offline eval harness (agent-native routing)
@@ -899,6 +901,20 @@ npm run routing:eval-replay
 **Absolute release gates stay on default fixtures.** `npm run release:functional-smoke` continues to assert `tests/eval/fixtures` against `config/release-gates.json` — do not point it at the corpus without operator review. Today the corpus subset fails `mean_over_routing_rate_max` (≈0.85 vs absolute max 0.15); that gap is intentional soft signal for the [#95](https://github.com/beettlle/pi-smart-router/issues/95) public static-track acceptance criteria alongside live dogfood traces. Use `--fixtures tests/eval/corpus/twinrouterbench` (or the corpus-report script) for #95 public-track scoring; keep absolute threshold edits out of band until operators approve.
 
 **Deferred:** RouterBench classic (outcome-matrix) smoke is out of scope for SP-188; prefer TwinRouterBench static track + dogfood for #95.
+
+#### LLMRouterBench offline regret (SP-192 / SP-193)
+
+Optional local / nightly report on the **pinned code/tool subset** — not part of PR CI (no full HF corpus download).
+
+| Item | Location / command |
+|------|--------------------|
+| **Pinned upstream** | HF `NPULH/LLMRouterBench` `@0e5af1b84bf73437a01a1849c0f1d2468baa93fc` + git schema `@c77cb0506949d8f959e97967d2fefca0e8ff1b05` (MIT) |
+| **CI subset** | `tests/eval/corpus/llmrouterbench/ci-subset.json` (≤20 synthetic offline records) |
+| **Provenance / refresh** | `tests/eval/corpus/llmrouterbench/PROVENANCE.md` (quarterly pin refresh; re-run report after catalog/subset changes) |
+| **Regenerate subset** | `npm run routing:ingest-llmrouterbench -- --input <jsonl> --output tests/eval/corpus/llmrouterbench/ci-subset.json --limit 20 --prefer-code-tool` |
+| **Regret / CS report** | `npm run routing:llmrouterbench-regret` |
+
+PR CI continues to smoke TwinRouterBench only (`routing:eval-harness:corpus-smoke`). Absolute `config/release-gates.json` thresholds are unchanged. Community-bench CLI is SP-194/SP-195.
 
 Sample fixtures under `tests/eval/fixtures/twinrouterbench/` remain the small adapter unit-test inputs and are unchanged by corpus ingest.
 

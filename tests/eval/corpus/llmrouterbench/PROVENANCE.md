@@ -139,6 +139,30 @@ Optional npm script: `npm run routing:ingest-llmrouterbench -- --input … --out
 ## Related tasks
 
 - **SP-192** — pin + code/tool subset converter (this file)
-- **SP-193** — regret / CS report CLI (do not implement here)
+- **SP-193** — offline regret / CS report (`npm run routing:llmrouterbench-regret`)
 - **SP-194 / SP-195** — community-bench CLI (out of scope)
 - TwinRouterBench static track — SP-186 / SP-187 (`tests/eval/corpus/twinrouterbench/`)
+
+## Offline regret / cost-savings report (SP-193)
+
+Run against the **vendored** CI subset (or a locally regenerated static-track JSON). Never downloads the HF bundle:
+
+```bash
+npm run routing:llmrouterbench-regret
+# optional: --subset /path/to/static-track.json --include-fixtures
+```
+
+Summary fields cite `catalog_id` + `checkpoint_date` from the subset's frozen catalog. Costs come only from catalog sticker prices via the existing harness / counterfactual-replay path — never invent model costs missing from the catalog.
+
+**PR CI:** stays on TwinRouterBench smoke (`routing:eval-harness:corpus-smoke`). LLMRouterBench regret is **optional / offline** (local or nightly). Do not wire full-corpus download into PR CI. Absolute thresholds in `config/release-gates.json` are unchanged by this report.
+
+## Label / pool staleness + refresh cadence
+
+| Asset | Staleness signal | Refresh cadence | Command |
+|-------|------------------|-----------------|---------|
+| HF pin (`LLMROUTERBENCH_HF_REVISION`) | Upstream `main` moves past pin | **Quarterly** or when regenerating a published QR/CS | Update pin in `llmrouterbench-adapter.ts` + this file; re-fetch authoring extracts |
+| Git schema pin (`LLMROUTERBENCH_GIT_COMMIT`) | Upstream BaselineRecord schema changes | With HF pin refresh | Update commit SHA + re-validate converter |
+| `ci-subset.json` | Checksum drift after ingest | When synthetic upstream or filter policy changes | See regenerate commands above; update SHA-256 in this file |
+| Published regret/CS numbers | Catalog or subset changes | Re-run report after any catalog_id / checkpoint_date / subset change | `npm run routing:llmrouterbench-regret` |
+
+**Operator rule:** quote `catalog_id` + `checkpoint_date` + HF/git pins with any published QR/CS. Paper leaderboard figures are methodology references only (routing-roadmap §5 frozen catalog rule).
