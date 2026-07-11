@@ -23,7 +23,7 @@
 |------|-------|------------|
 | 0 / A | SP-192, SP-194 | batch `20260711T181634` → integrate `59b556f`; `release:check` exit 0; pushed |
 | 1 / B | SP-193 | batch `20260711T182552` → integrate `939f7f5`; #103 closed; `release:check` exit 0; pushed |
-| 2 / C | SP-195 | pending |
+| 2 / C | SP-195 | batch `20260711T183109` → integrate `b314fd1`; #105 closed |
 
 ## Profile audit
 
@@ -37,8 +37,8 @@
 
 ## Publish checklist
 
-- [ ] All release-scoped tasks `.DONE`
-- [ ] Issues #103 and #105 closed
+- [x] All release-scoped tasks `.DONE` (SP-192–SP-195)
+- [x] Issues #103 and #105 closed
 - [ ] `npm run release:check` exit 0
 - [ ] CI green on release commit
 - [ ] Operator approved publish — `npm version patch` → tag `v0.9.3` → push
