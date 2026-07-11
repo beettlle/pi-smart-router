@@ -1,7 +1,7 @@
 {
   "benchmark": "terminal_bench",
   "source_url": "https://www.tbench.ai/leaderboard",
-  "scrape_date": "2026-07-10",
+  "scrape_date": "2026-07-11",
   "entries": [
     {
       "model_id": "claude-opus-4-5",
