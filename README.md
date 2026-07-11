@@ -590,6 +590,11 @@ npm run routing:ingest-fc-rewardbench -- \
   --output /tmp/fc-rewardbench-pack.jsonl
 
 # Optional weak TwinRouterBench tier proxy (exclude from holdout ECE)
+# Preferred input: checked-in CI subset (SP-199/SP-201); full-track after SP-200 is local-only.
+npm run routing:ingest-twinrouterbench-weak -- \
+  --input tests/eval/corpus/twinrouterbench/ci-subset.json \
+  --output /tmp/trb-weak-from-ci-subset.jsonl
+
 npm run routing:ingest-twinrouterbench-weak -- \
   --input tests/eval/corpus/label-packs/twinrouterbench-weak/ci-fixture.jsonl \
   --output /tmp/trb-weak-pack.jsonl
@@ -604,6 +609,11 @@ npm run routing:calibration-dry-run
 # Operator packs (schema-valid JSONL)
 npm run routing:calibration-dry-run -- --packs /tmp/swe-gym-pack.jsonl /tmp/fc-rewardbench-pack.jsonl
 
+# Warm-start: weak / exclude_from_holdout_ece rows join the **fit** pool only
+npm run routing:calibration-dry-run -- \
+  --packs /tmp/swe-gym-pack.jsonl /tmp/trb-weak-from-ci-subset.jsonl \
+  --include-excluded-in-fit
+
 # Soft ECE advisory fail (threshold 0.25 calibrated ECE; not a release-gate absolute)
 npm run routing:calibration-dry-run -- --packs /tmp/swe-gym-pack.jsonl --enforce-soft-ece
 ```
@@ -615,9 +625,10 @@ Dry-run behavior:
 | &lt; 30 ECE-eligible rows | `SAMPLE_STARVED` report-only (exit 0); no soft pass/fail |
 | ≥ 30 ECE-eligible rows | Fit logistic + isotonic; report `holdout_ece_raw` / `holdout_ece_calibrated` |
 | Rows with `exclude_from_holdout_ece` | Counted separately; **never** enter holdout ECE metrics (weak TwinRouterBench) |
+| `--include-excluded-in-fit` | Weak rows may warm-start the fit pool; `ece_eligible` / holdout ECE stay verifier-grade |
 | Soft threshold | Advisory `0.25` calibrated ECE — **does not** change `config/release-gates.json` |
 
-**#96 / `modernbert_k4` advisory:** when deciding whether to enable ModernBERT K=4 heads, use **pack holdout ECE / Top-1 error on verifier-grade packs** (SWE-Gym + FC-RewardBench), not fixture-only QR. Weak TwinRouterBench rows are warm-start only. This task does **not** flip `modernbert_k4` defaults.
+**#96 / `modernbert_k4` advisory:** when deciding whether to enable ModernBERT K=4 heads, use **pack holdout ECE / Top-1 error on verifier-grade packs** (SWE-Gym + FC-RewardBench), not fixture-only QR and **not** weak-fit ECE. Weak TwinRouterBench rows are warm-start only. This task does **not** flip `modernbert_k4` defaults.
 
 ### Operator tuning (frugality slider)
 
@@ -842,10 +853,10 @@ Contributors must run `npm run build` before publishing or consuming the library
 | `npm run routing:train-calibration` | Train routing calibration artifact bundle |
 | `npm run routing:train-p-success` | Train standalone `config/p-success-weights.json` (synthetic fixture by default) |
 | `npm run routing:verify-calibration` | Verify calibration bundle against benchmark prompts |
-| `npm run routing:calibration-dry-run` | Pack-fed isotonic dry-run: holdout ECE on label packs (CI fixtures by default) |
+| `npm run routing:calibration-dry-run` | Pack-fed isotonic dry-run: holdout ECE on label packs (CI fixtures by default); optional `--include-excluded-in-fit` |
 | `npm run routing:ingest-swe-gym` | Convert SWE-Gym verifier-style JSONL → privacy-safe label pack |
 | `npm run routing:ingest-fc-rewardbench` | Convert FC-RewardBench JSONL → privacy-safe label pack |
-| `npm run routing:ingest-twinrouterbench-weak` | Convert TwinRouterBench weak tier labels → pack (exclude from ECE) |
+| `npm run routing:ingest-twinrouterbench-weak` | Convert TwinRouterBench weak tier labels → pack (prefer `ci-subset.json`; exclude from ECE) |
 | `npm run routing:ingest-benchmarks` | Regenerate `config/benchmark-profiles.json` from leaderboard fixtures |
 | `npm run routing:verify-benchmark-profiles` | CI smoke: assert checked-in profiles match fixture ingest |
 | `npm run routing:eval-replay` | Counterfactual replay on eval trace fixtures |

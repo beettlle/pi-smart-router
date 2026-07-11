@@ -10,6 +10,8 @@
  * holdout-splits, fits logistic + isotonic offline, and reports holdout ECE
  * (soft advisory threshold; report-only when sample-starved). Never writes
  * prompt text into artifacts.
+ * SP-201: `--include-excluded-in-fit` warm-starts fit with weak rows; holdout
+ * ECE / soft ECE pass-fail stay verifier-grade only (#96).
  */
 
 import { existsSync } from 'node:fs';
@@ -35,7 +37,12 @@ import {
 } from '../src/domain/routing/p-success-classifier.js';
 import {
   applyIsotonicLookup,
+  computeExpectedCalibrationError,
+  DEFAULT_ISOTONIC_ECE_BINS,
+  DEFAULT_ISOTONIC_HOLDOUT_FRACTION,
   fitIsotonicCalibratorFromSamples,
+  fitIsotonicPAV,
+  splitLabeledSamplesForIsotonic,
   validateIsotonicCalibratorArtifact,
 } from './lib/isotonic-calibrator.js';
 import {
@@ -608,14 +615,72 @@ export function runCalibrationDryRunFromRows(
     };
   }
 
-  const fitPool = includeExcludedInFit ? [...eceSamples, ...excludedSamples] : eceSamples;
-  const weights = trainFromLabeledSamples(fitPool);
-  // Holdout ECE is always computed on ECE-eligible rows only (weak labels excluded).
-  const isotonic = fitIsotonicCalibratorFromSamples(eceSamples, weights, {
-    minTrainingSamples,
-  });
+  // Default path: fit + holdout split over ECE-eligible rows only.
+  // With includeExcludedInFit: weak/excluded join the isotonic **fit** set and
+  // logistic training pool; holdout ECE stays verifier-grade (ECE-eligible holdout).
+  if (!includeExcludedInFit || excludedSamples.length === 0) {
+    const weights = trainFromLabeledSamples(eceSamples);
+    const isotonic = fitIsotonicCalibratorFromSamples(eceSamples, weights, {
+      minTrainingSamples,
+    });
 
-  const holdout_ece_calibrated = isotonic.artifact.holdout_ece_calibrated;
+    const holdout_ece_calibrated = isotonic.artifact.holdout_ece_calibrated;
+    const soft_ece_passed =
+      holdout_ece_calibrated === null ? null : holdout_ece_calibrated <= softEceThreshold;
+
+    return {
+      mode: 'evaluated',
+      total_rows: rows.length,
+      ece_eligible_rows: eceSamples.length,
+      excluded_from_ece_rows: excludedSamples.length,
+      fit_sample_count: isotonic.fit_sample_count,
+      holdout_sample_count: isotonic.holdout_sample_count,
+      holdout_ece_raw: isotonic.artifact.holdout_ece_raw,
+      holdout_ece_calibrated,
+      soft_ece_threshold: softEceThreshold,
+      soft_ece_passed,
+      min_training_samples: minTrainingSamples,
+      sources,
+    };
+  }
+
+  const { fit: eceFit, holdout } = splitLabeledSamplesForIsotonic(
+    eceSamples,
+    DEFAULT_ISOTONIC_HOLDOUT_FRACTION,
+  );
+  const fit = [...eceFit, ...excludedSamples];
+  const weights = trainFromLabeledSamples([...eceSamples, ...excludedSamples]);
+
+  const fitScores: number[] = [];
+  const fitLabels: boolean[] = [];
+  for (const sample of fit) {
+    fitScores.push(predictPSuccessCheap(sample.features, weights));
+    fitLabels.push(sample.success);
+  }
+  const holdoutScores: number[] = [];
+  const holdoutLabels: boolean[] = [];
+  for (const sample of holdout) {
+    holdoutScores.push(predictPSuccessCheap(sample.features, weights));
+    holdoutLabels.push(sample.success);
+  }
+
+  const { x_knots, y_knots } = fitIsotonicPAV(fitScores, fitLabels);
+  const holdoutCalibrated = holdoutScores.map((score) =>
+    applyIsotonicLookup(score, x_knots, y_knots),
+  );
+
+  const holdout_ece_raw =
+    holdout.length > 0
+      ? computeExpectedCalibrationError(holdoutScores, holdoutLabels, DEFAULT_ISOTONIC_ECE_BINS)
+      : null;
+  const holdout_ece_calibrated =
+    holdout.length > 0
+      ? computeExpectedCalibrationError(
+          holdoutCalibrated,
+          holdoutLabels,
+          DEFAULT_ISOTONIC_ECE_BINS,
+        )
+      : null;
   const soft_ece_passed =
     holdout_ece_calibrated === null ? null : holdout_ece_calibrated <= softEceThreshold;
 
@@ -624,9 +689,9 @@ export function runCalibrationDryRunFromRows(
     total_rows: rows.length,
     ece_eligible_rows: eceSamples.length,
     excluded_from_ece_rows: excludedSamples.length,
-    fit_sample_count: isotonic.fit_sample_count,
-    holdout_sample_count: isotonic.holdout_sample_count,
-    holdout_ece_raw: isotonic.artifact.holdout_ece_raw,
+    fit_sample_count: fit.length,
+    holdout_sample_count: holdout.length,
+    holdout_ece_raw,
     holdout_ece_calibrated,
     soft_ece_threshold: softEceThreshold,
     soft_ece_passed,
@@ -696,10 +761,11 @@ export function formatCalibrationDryRunReport(result: CalibrationDryRunResult): 
   return lines.join('\n');
 }
 
-function parseDryRunCliArgs(argv: readonly string[]): {
+export function parseDryRunCliArgs(argv: readonly string[]): {
   readonly dryRun: boolean;
   readonly ciFixtures: boolean;
   readonly enforceSoftEce: boolean;
+  readonly includeExcludedInFit: boolean;
   readonly packPaths: readonly string[];
   readonly bundlePath: string | undefined;
 } {
@@ -707,6 +773,7 @@ function parseDryRunCliArgs(argv: readonly string[]): {
   let dryRun = false;
   let ciFixtures = false;
   let enforceSoftEce = false;
+  let includeExcludedInFit = false;
   let bundlePath: string | undefined;
 
   for (let i = 0; i < argv.length; i++) {
@@ -722,6 +789,10 @@ function parseDryRunCliArgs(argv: readonly string[]): {
     }
     if (arg === '--enforce-soft-ece') {
       enforceSoftEce = true;
+      continue;
+    }
+    if (arg === '--include-excluded-in-fit') {
+      includeExcludedInFit = true;
       continue;
     }
     if (arg === '--packs' || arg === '--label-packs') {
@@ -744,7 +815,14 @@ function parseDryRunCliArgs(argv: readonly string[]): {
     }
   }
 
-  return { dryRun, ciFixtures, enforceSoftEce, packPaths, bundlePath };
+  return {
+    dryRun,
+    ciFixtures,
+    enforceSoftEce,
+    includeExcludedInFit,
+    packPaths,
+    bundlePath,
+  };
 }
 
 function usage(): void {
@@ -752,11 +830,13 @@ function usage(): void {
     [
       'Usage:',
       '  npm run routing:verify-calibration -- [bundle.json]',
-      '  npm run routing:calibration-dry-run -- [--ci-fixtures | --packs <jsonl...>]',
+      '  npm run routing:calibration-dry-run -- [--ci-fixtures | --packs <jsonl...>] [--include-excluded-in-fit]',
       '',
       'Validates routing-calibration.json artifact shapes and benchmark triage gates.',
       'Dry-run mode loads privacy-safe label packs, holdout-splits, and reports ECE',
       `(soft advisory threshold ${CALIBRATION_DRY_RUN_SOFT_ECE_THRESHOLD}; report-only when sample-starved).`,
+      'Optional --include-excluded-in-fit adds weak/excluded rows to the fit pool only',
+      '(never holdout ECE / soft ECE pass-fail used for #96 enablement).',
       'Exits non-zero when bundle assertions fail, or when --enforce-soft-ece and soft ECE fails.',
     ].join('\n'),
   );
@@ -769,13 +849,16 @@ function main(): void {
   }
 
   const args = parseDryRunCliArgs(process.argv.slice(2));
+  const dryRunOptions = args.includeExcludedInFit
+    ? { includeExcludedInFit: true as const }
+    : undefined;
 
   if (args.dryRun) {
     const result = args.ciFixtures
-      ? runCalibrationDryRunFromCiFixtures()
+      ? runCalibrationDryRunFromCiFixtures(dryRunOptions)
       : args.packPaths.length > 0
-        ? runCalibrationDryRunFromPackFiles(args.packPaths)
-        : runCalibrationDryRunFromCiFixtures();
+        ? runCalibrationDryRunFromPackFiles(args.packPaths, dryRunOptions)
+        : runCalibrationDryRunFromCiFixtures(dryRunOptions);
 
     console.log(formatCalibrationDryRunReport(result));
 

@@ -153,12 +153,38 @@ npm run routing:ingest-fc-rewardbench -- \
 
 ---
 
-## TwinRouterBench weak labels (SP-190)
+## TwinRouterBench weak labels (SP-190 / SP-201)
 
 Optional **weak** supervision derived from the landed TwinRouterBench static-track
-corpus (`tests/eval/corpus/twinrouterbench/`, SP-186/187 / #101). Records already
-store `prefix_hash` + `prefix_token_estimate` — **no prompt/prefix text** is
-copied into pack artifacts.
+corpus (`tests/eval/corpus/twinrouterbench/`, SP-186/187/199 / #101/#106). Records
+already store `prefix_hash` + `prefix_token_estimate` — **no prompt/prefix text**
+is copied into pack artifacts.
+
+### Preferred input (SP-201 / #106)
+
+| Input | When to use |
+|-------|-------------|
+| **`tests/eval/corpus/twinrouterbench/ci-subset.json`** | **Preferred** weak-pack source for CI / local dry-runs (SP-199 ≤150 code/tool records; checksummed) |
+| `tests/eval/corpus/label-packs/twinrouterbench-weak/ci-fixture.jsonl` | Tiny synthetic fixture for unit tests only |
+| Full static-track JSON (SP-200 / #107) | **Local / nightly only** after the full-track path lands — regenerate under `.pi-smart-router/eval-cache/twinrouterbench/` (or `$TRB_CACHE_DIR`). **Do not check in** the full HF / TwinRouterBench dump or full-track JSON |
+
+```bash
+# Preferred: real CI subset → schema-valid weak pack JSONL
+npm run routing:ingest-twinrouterbench-weak -- \
+  --input tests/eval/corpus/twinrouterbench/ci-subset.json \
+  --output /tmp/trb-weak-from-ci-subset.jsonl
+
+# Optional authoring cap:
+npm run routing:ingest-twinrouterbench-weak -- \
+  --input tests/eval/corpus/twinrouterbench/ci-subset.json \
+  --output /tmp/trb-weak-from-corpus.jsonl \
+  --limit 50
+
+# After SP-200 full-track (local cache only — never commit):
+# npm run routing:ingest-twinrouterbench-weak -- \
+#   --input .pi-smart-router/eval-cache/twinrouterbench/static-track.json \
+#   --output /tmp/trb-weak-from-full.jsonl
+```
 
 ### Weakness policy (read before using in calibration)
 
@@ -167,7 +193,8 @@ copied into pack artifacts.
 | **What it is** | `verified_target_tier` is a routing-floor / downgrade-cascade proxy |
 | **What it is not** | Not a SWE-Gym executable verifier grade; not FC-RewardBench tool-call correctness |
 | **Binary map** | `zero-tier` / `economical-cloud` → `success=true` (cheap path adequate); `frontier-cloud` → `success=false` |
-| **Holdout ECE** | **Exclude** these rows from holdout ECE / calibration dry-run metrics (SP-191). Pack rows carry `outcome_signals` including `weak_tier_proxy` and `exclude_from_holdout_ece` |
+| **Holdout ECE** | **Exclude** these rows from holdout ECE / soft ECE pass-fail (SP-191/SP-201). Pack rows always carry `outcome_signals` including `weak_tier_proxy` and `exclude_from_holdout_ece` |
+| **Warm-start fit** | Optional `--include-excluded-in-fit` on `routing:calibration-dry-run` may add weak rows to the **fit** pool only — never to reported holdout ECE or #96 enablement metrics |
 | **When to use** | Cheap volume for isotonic warm-start / OATS hints only; prefer verifier packs for reported ECE |
 
 Upstream TwinRouterBench pins live in
@@ -191,23 +218,17 @@ Upstream TwinRouterBench pins live in
 |-------|-------|
 | Path | `tests/eval/corpus/label-packs/twinrouterbench-weak/ci-fixture.jsonl` |
 | Rows | 3 synthetic weak rows (zero / economical / frontier) + 2 skips |
-| Also tested | Generate from `tests/eval/corpus/twinrouterbench/ci-subset.json` in unit tests (no prompt vendoring) |
+| Preferred corpus | `tests/eval/corpus/twinrouterbench/ci-subset.json` (unit-tested; no prompt vendoring) |
 
 ```bash
 npm run routing:ingest-twinrouterbench-weak -- \
   --input tests/eval/corpus/label-packs/twinrouterbench-weak/ci-fixture.jsonl \
   --output /tmp/trb-weak-pack.jsonl
-
-# Or from static-track corpus subset (hashes only):
-npm run routing:ingest-twinrouterbench-weak -- \
-  --input tests/eval/corpus/twinrouterbench/ci-subset.json \
-  --output /tmp/trb-weak-from-corpus.jsonl \
-  --limit 50
 ```
 
 ---
 
-## Calibration dry-run holdout ECE (SP-191)
+## Calibration dry-run holdout ECE (SP-191 / SP-201)
 
 Operators fit logistic + isotonic offline on pack rows and report **holdout ECE**
 without writing prompt text into artifacts.
@@ -218,14 +239,20 @@ npm run routing:calibration-dry-run
 
 # Operator packs (schema-valid JSONL from the converters above)
 npm run routing:calibration-dry-run -- --packs /tmp/swe-gym-pack.jsonl /tmp/fc-rewardbench-pack.jsonl
+
+# Warm-start: include weak / exclude_from_holdout_ece rows in the **fit** pool only
+npm run routing:calibration-dry-run -- \
+  --packs /tmp/swe-gym-pack.jsonl /tmp/trb-weak-from-ci-subset.jsonl \
+  --include-excluded-in-fit
 ```
 
 | Rule | Detail |
 |------|--------|
 | Soft ECE threshold | Advisory **0.25** calibrated holdout ECE (`CALIBRATION_DRY_RUN_SOFT_ECE_THRESHOLD`) — **not** a `config/release-gates.json` absolute |
 | Sample-starved | &lt; 30 ECE-eligible rows → report-only (`SAMPLE_STARVED`); exit 0 |
-| Weak labels | Rows with `exclude_from_holdout_ece` never enter holdout ECE metrics |
-| #96 / `modernbert_k4` | Use pack holdout (verifier packs), not fixture-only QR, when deciding enablement — **do not** flip defaults here |
+| Weak labels | Rows with `exclude_from_holdout_ece` **never** enter holdout ECE metrics or soft ECE pass-fail |
+| `--include-excluded-in-fit` | Optional warm-start: weak rows join the logistic/isotonic **fit** set; `ece_eligible_rows` / holdout ECE counts stay verifier-grade only |
+| #96 / `modernbert_k4` | Use **verifier** pack holdout only (SWE-Gym + FC-RewardBench) when deciding enablement — **do not** flip defaults here; weak fit must not change the ECE decision |
 | Privacy | Dry-run loads via `loadLabelPackFile` / ingest converters; tainted keys fail closed |
 
-Implementation: `scripts/verify-routing-calibration.ts` (`runCalibrationDryRunFromRows`, `--dry-run-packs`).
+Implementation: `scripts/verify-routing-calibration.ts` (`runCalibrationDryRunFromRows`, `--dry-run-packs`, `--include-excluded-in-fit`).
