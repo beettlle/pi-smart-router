@@ -65,3 +65,7 @@
 ## Blockers
 
 None.
+
+## Notes
+
+- 2026-07-11: Contract amended — `fileScopeMustChange` redirected off pre-landed `PROVENANCE.md` (SP-192).

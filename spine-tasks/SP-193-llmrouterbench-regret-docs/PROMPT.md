@@ -51,7 +51,7 @@ Closes #103 — Using the SP-192 pinned code/tool subset, ship an **offline regr
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/llmrouterbench-regret-report.test.ts` |
-| fileScopeMustChange | `scripts/eval/llmrouterbench-regret-report.ts`, `tests/eval/corpus/llmrouterbench/PROVENANCE.md`, `README.md` |
+| fileScopeMustChange | `scripts/eval/llmrouterbench-regret-report.ts`, `tests/unit/llmrouterbench-regret-report.test.ts`, `README.md` |
 | fileScopeMustNotChange | `config/release-gates.json`, `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | Offline regret/CS report runs on vendored subset; staleness/refresh documented; PR CI does not download full corpus; absolute gates unchanged; #103 closable. |
 
@@ -108,4 +108,4 @@ Closes #103 — Using the SP-192 pinned code/tool subset, ship an **offline regr
 
 ## Amendments
 
-None.
+- **2026-07-11:** Redirected Contract `fileScopeMustChange` away from `tests/eval/corpus/llmrouterbench/PROVENANCE.md` (already changed on main by SP-192) to delivery artifacts `scripts/eval/llmrouterbench-regret-report.ts` + `tests/unit/llmrouterbench-regret-report.test.ts` + `README.md`. PROVENANCE remains in File Scope Must change / Documentation Must Update.

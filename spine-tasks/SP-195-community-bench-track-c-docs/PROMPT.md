@@ -52,7 +52,7 @@ Closes #105 — Extend SP-194 community-bench CLI with (1) **Track B (optional):
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/community-bench.test.ts` |
-| fileScopeMustChange | `scripts/eval/community-bench.ts`, `README.md` |
+| fileScopeMustChange | `README.md` |
 | fileScopeMustNotChange | `config/release-gates.json`, `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | Track B skips with reason when #95 adapter missing; Track C optional offline on vendored LLMRouterBench subset; README contribute section + matching maintainer contact; PR CI does not download full corpora; #105 closable. |
 
@@ -111,4 +111,4 @@ Closes #105 — Extend SP-194 community-bench CLI with (1) **Track B (optional):
 
 ## Amendments
 
-None.
+- **2026-07-11:** Redirected Contract `fileScopeMustChange` away from `scripts/eval/community-bench.ts` (already changed on main by SP-194) to delivery artifact `README.md`. `community-bench.ts` remains in File Scope Must change for Track B/C wiring; unit tests may also change.
