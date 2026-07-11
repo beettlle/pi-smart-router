@@ -150,3 +150,57 @@ npm run routing:ingest-fc-rewardbench -- \
   --input tests/eval/corpus/label-packs/fc-rewardbench/ci-fixture.jsonl \
   --output /tmp/fc-rewardbench-pack.jsonl
 ```
+
+---
+
+## TwinRouterBench weak labels (SP-190)
+
+Optional **weak** supervision derived from the landed TwinRouterBench static-track
+corpus (`tests/eval/corpus/twinrouterbench/`, SP-186/187 / #101). Records already
+store `prefix_hash` + `prefix_token_estimate` — **no prompt/prefix text** is
+copied into pack artifacts.
+
+### Weakness policy (read before using in calibration)
+
+| Rule | Detail |
+|------|--------|
+| **What it is** | `verified_target_tier` is a routing-floor / downgrade-cascade proxy |
+| **What it is not** | Not a SWE-Gym executable verifier grade; not FC-RewardBench tool-call correctness |
+| **Binary map** | `zero-tier` / `economical-cloud` → `success=true` (cheap path adequate); `frontier-cloud` → `success=false` |
+| **Holdout ECE** | **Exclude** these rows from holdout ECE / calibration dry-run metrics (SP-191). Pack rows carry `outcome_signals` including `weak_tier_proxy` and `exclude_from_holdout_ece` |
+| **When to use** | Cheap volume for isotonic warm-start / OATS hints only; prefer verifier packs for reported ECE |
+
+Upstream TwinRouterBench pins live in
+[`tests/eval/corpus/twinrouterbench/PROVENANCE.md`](../twinrouterbench/PROVENANCE.md)
+(git `430acecac71141de77afd8e5e13690d236d58e93`, Apache-2.0).
+
+### Field map
+
+| Upstream / intermediate | Pack field | Notes |
+|-------------------------|------------|-------|
+| `verified_target_tier` | `success` + `tier` | Weak map above; missing tier → **skipped** |
+| `trace_id` | `sample_id` | Prefixed `twinrouterbench-weak:` |
+| `prefix_token_estimate`, `turn_type`, `step_index`, `benchmark_source` | `features` | Numeric / categorical norms only |
+| — | `source` | Always `twinrouterbench-weak` |
+| — | `outcome_signals` | Always includes `weak_tier_proxy`, `exclude_from_holdout_ece` |
+| prompt / prefix text | **never present** | Corpus + converter keep hashes only |
+
+### CI fixture
+
+| Field | Value |
+|-------|-------|
+| Path | `tests/eval/corpus/label-packs/twinrouterbench-weak/ci-fixture.jsonl` |
+| Rows | 3 synthetic weak rows (zero / economical / frontier) + 2 skips |
+| Also tested | Generate from `tests/eval/corpus/twinrouterbench/ci-subset.json` in unit tests (no prompt vendoring) |
+
+```bash
+npm run routing:ingest-twinrouterbench-weak -- \
+  --input tests/eval/corpus/label-packs/twinrouterbench-weak/ci-fixture.jsonl \
+  --output /tmp/trb-weak-pack.jsonl
+
+# Or from static-track corpus subset (hashes only):
+npm run routing:ingest-twinrouterbench-weak -- \
+  --input tests/eval/corpus/twinrouterbench/ci-subset.json \
+  --output /tmp/trb-weak-from-corpus.jsonl \
+  --limit 50
+```
