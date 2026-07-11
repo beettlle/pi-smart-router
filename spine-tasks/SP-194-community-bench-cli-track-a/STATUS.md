@@ -1,7 +1,7 @@
 # SP-194: Community Bench CLI Track A — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
+**Current Step:** 1
+**Status:** 🟡 In Progress
 **Last Updated:** 2026-07-11
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,11 +12,11 @@
 
 ## Step 1: Fingerprint + report schema
 
-**Status:** ⬜ Not Started
+**Status:** 🟡 In Progress (outcomes done; awaiting commit + progress report)
 
-- [ ] Privacy-safe fingerprint helpers
-- [ ] JSON schema + email .txt formatter
-- [ ] Unit tests: hash stability; no prompt/API-key leakage
+- [x] Privacy-safe fingerprint helpers
+- [x] JSON schema + email .txt formatter
+- [x] Unit tests: hash stability; no prompt/API-key leakage
 
 ## Step 2: Track A CLI wiring
 
@@ -40,10 +40,10 @@
 ## Completion Criteria
 
 - [ ] Track A CLI + artifacts
-- [ ] Fingerprint privacy-safe
+- [x] Fingerprint privacy-safe
 - [ ] Gates match assert-release-gates
-- [ ] Thresholds untouched
-- [ ] No SMTP/upload
+- [x] Thresholds untouched
+- [x] No SMTP/upload
 
 ---
 
@@ -51,16 +51,20 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
+| 2026-07-11 | 1 | plan | skipped (engine-owned after .DONE) |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
+| 2026-07-11 | spine_review_step returns skipped in real-pi worker; engine runs reviews after .DONE | Continue; do not block |
 
 ## Execution Log
 
 | Date | Event | Detail |
 |------|-------|--------|
+| 2026-07-11 | start | Step 1 in progress — fingerprint + report schema |
+| 2026-07-11 | step1 | fingerprint + report modules + 8 unit tests green |
 
 ## Blockers
 
