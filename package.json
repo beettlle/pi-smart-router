@@ -74,6 +74,8 @@
     "routing:assert-release-gates:corpus-report": "tsx scripts/eval/assert-release-gates.ts --fixtures tests/eval/corpus/twinrouterbench --report-only",
     "routing:ingest-twinrouterbench": "tsx scripts/eval/ingest-twinrouterbench-corpus.ts",
     "routing:ingest-swe-gym": "tsx scripts/ingest-swe-gym-labels.ts",
+    "routing:ingest-fc-rewardbench": "tsx scripts/ingest-fc-rewardbench-labels.ts",
+    "routing:ingest-twinrouterbench-weak": "tsx scripts/ingest-twinrouterbench-weak-labels.ts",
     "routing:capture-baseline": "tsx scripts/eval/capture-baseline.ts",
     "routing:test-projection": "npm run build && node --experimental-strip-types scripts/test-hydra-projection.ts",
     "benchmark:encoder": "tsx scripts/benchmark-encoder-latency.ts",

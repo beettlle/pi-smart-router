@@ -81,3 +81,126 @@ npm run routing:ingest-swe-gym -- \
   --input tests/eval/corpus/label-packs/swe-gym/ci-fixture.jsonl \
   --output /tmp/swe-gym-pack.jsonl
 ```
+
+---
+
+## FC-RewardBench (SP-190)
+
+Tool-call correct/incorrect preference pairs for function-calling reward models,
+from [FC-RewardBench](https://huggingface.co/datasets/ibm-research/fc-reward-bench)
+([ToolRM / arXiv:2509.11963](https://arxiv.org/abs/2509.11963)). Each upstream row
+pairs a BFCL-derived **chosen** (correct) tool call with a model-generated
+**rejected** (incorrect) call.
+
+### Upstream pins
+
+| Field | Value |
+|-------|-------|
+| Dataset (HF) | [`ibm-research/fc-reward-bench`](https://huggingface.co/datasets/ibm-research/fc-reward-bench) |
+| **Pinned revision** | `269929c3329e603e87ed3203de42896cc03ddbf3` (2025-09-22) |
+| License | **Apache-2.0** (`license:apache-2.0` on the dataset card) |
+| Paper | [arXiv:2509.11963](https://arxiv.org/abs/2509.11963) (ToolRM) |
+| Upstream fields | `tools`, `conversation`, `chosen_output`, `rejected_output`, `error_type`, `model_name`, `test_category`, `test_id` |
+
+### Field map (preference / flat → label pack)
+
+| Upstream / intermediate | Pack field | Notes |
+|-------------------------|------------|-------|
+| `chosen_output` arm | `success=true` | Emits one pack row per preference pair |
+| `rejected_output` arm | `success=false` | Same pair; `outcome_signals` may include `error_type:…` |
+| `label` / `success` / `correct` (flat) | `success` | Flattened rows; missing label → **skipped** (never invented) |
+| `test_id` or `sample_id` | `sample_id` | Prefixed `fc-rewardbench:`; arms suffix `:chosen` / `:rejected` |
+| `features` (optional) | `features` | Finite numbers only; preferred when present |
+| `conversation`, `tools`, outputs | *(derived only)* | Length / count stats → numeric features; **text discarded** |
+| `tier` (optional) | `tier` | `zero-tier` \| `economical-cloud` \| `frontier-cloud` |
+| — | `source` | Always `fc-rewardbench` |
+| `conversation`, `prompt`, `messages`, `content`, call bodies | **rejected** | Must not appear in pack JSONL |
+
+### Privacy rules
+
+1. Pack rows must pass `assertLabelPackRecordSafe` / `parseLabelPackRow`.
+2. Converter never writes conversation turns, tool schemas, or call JSON bodies.
+3. Do **not** check in the full HF arrow dump (`data/data-00000-of-00001.arrow`).
+
+### CI fixture
+
+| Field | Value |
+|-------|-------|
+| Path | `tests/eval/corpus/label-packs/fc-rewardbench/ci-fixture.jsonl` |
+| Rows | 2 synthetic preference pairs + 2 flat labeled rows (+ 2 unmappable skips) |
+| Purpose | Offline unit tests for `scripts/ingest-fc-rewardbench-labels.ts` |
+
+### Regenerate pack from local JSONL (authoring only)
+
+```bash
+# Optional: download locally (not for CI / not committed)
+# huggingface-cli download ibm-research/fc-reward-bench \
+#   --revision 269929c3329e603e87ed3203de42896cc03ddbf3
+
+npm run routing:ingest-fc-rewardbench -- \
+  --input /path/to/fc-rewardbench-style.jsonl \
+  --output /tmp/fc-rewardbench-label-pack.jsonl \
+  --limit 50
+```
+
+Offline CI path (checked-in fixture only):
+
+```bash
+npm run routing:ingest-fc-rewardbench -- \
+  --input tests/eval/corpus/label-packs/fc-rewardbench/ci-fixture.jsonl \
+  --output /tmp/fc-rewardbench-pack.jsonl
+```
+
+---
+
+## TwinRouterBench weak labels (SP-190)
+
+Optional **weak** supervision derived from the landed TwinRouterBench static-track
+corpus (`tests/eval/corpus/twinrouterbench/`, SP-186/187 / #101). Records already
+store `prefix_hash` + `prefix_token_estimate` — **no prompt/prefix text** is
+copied into pack artifacts.
+
+### Weakness policy (read before using in calibration)
+
+| Rule | Detail |
+|------|--------|
+| **What it is** | `verified_target_tier` is a routing-floor / downgrade-cascade proxy |
+| **What it is not** | Not a SWE-Gym executable verifier grade; not FC-RewardBench tool-call correctness |
+| **Binary map** | `zero-tier` / `economical-cloud` → `success=true` (cheap path adequate); `frontier-cloud` → `success=false` |
+| **Holdout ECE** | **Exclude** these rows from holdout ECE / calibration dry-run metrics (SP-191). Pack rows carry `outcome_signals` including `weak_tier_proxy` and `exclude_from_holdout_ece` |
+| **When to use** | Cheap volume for isotonic warm-start / OATS hints only; prefer verifier packs for reported ECE |
+
+Upstream TwinRouterBench pins live in
+[`tests/eval/corpus/twinrouterbench/PROVENANCE.md`](../twinrouterbench/PROVENANCE.md)
+(git `430acecac71141de77afd8e5e13690d236d58e93`, Apache-2.0).
+
+### Field map
+
+| Upstream / intermediate | Pack field | Notes |
+|-------------------------|------------|-------|
+| `verified_target_tier` | `success` + `tier` | Weak map above; missing tier → **skipped** |
+| `trace_id` | `sample_id` | Prefixed `twinrouterbench-weak:` |
+| `prefix_token_estimate`, `turn_type`, `step_index`, `benchmark_source` | `features` | Numeric / categorical norms only |
+| — | `source` | Always `twinrouterbench-weak` |
+| — | `outcome_signals` | Always includes `weak_tier_proxy`, `exclude_from_holdout_ece` |
+| prompt / prefix text | **never present** | Corpus + converter keep hashes only |
+
+### CI fixture
+
+| Field | Value |
+|-------|-------|
+| Path | `tests/eval/corpus/label-packs/twinrouterbench-weak/ci-fixture.jsonl` |
+| Rows | 3 synthetic weak rows (zero / economical / frontier) + 2 skips |
+| Also tested | Generate from `tests/eval/corpus/twinrouterbench/ci-subset.json` in unit tests (no prompt vendoring) |
+
+```bash
+npm run routing:ingest-twinrouterbench-weak -- \
+  --input tests/eval/corpus/label-packs/twinrouterbench-weak/ci-fixture.jsonl \
+  --output /tmp/trb-weak-pack.jsonl
+
+# Or from static-track corpus subset (hashes only):
+npm run routing:ingest-twinrouterbench-weak -- \
+  --input tests/eval/corpus/twinrouterbench/ci-subset.json \
+  --output /tmp/trb-weak-from-corpus.jsonl \
+  --limit 50
+```
