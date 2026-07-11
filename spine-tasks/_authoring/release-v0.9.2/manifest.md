@@ -39,11 +39,11 @@
 
 - [x] All release-scoped tasks `.DONE` (SP-189, SP-190, SP-191)
 - [x] Issue #102 closed
-- [x] `npm run release:check` exit 0 — monitor #29 exit 0; log `/tmp/pi-smart-router-v092-release-check.log` (coverage ~92.9%; consumer-pack + functional-smoke + release-gates PASS)
-- [ ] CI green on release commit — **requires `git push origin main` first** (local HEAD `cba5698`, ahead 19)
-- [ ] Operator approved publish — `npm version patch` → tag `v0.9.2` → push
-- [ ] Release workflow / npm publish
+- [x] `npm run release:check` exit 0 — `/tmp/pi-smart-router-v092-release-check2.log` (`RELEASE_CHECK_EXIT:0`; release-gates PASS)
+- [x] CI green on HEAD `9af45a4` — [run 29162709780](https://github.com/beettlle/pi-smart-router/actions/runs/29162709780) success
+- [x] Operator approved publish — `npm version patch` → `b937a7a` / tag `v0.9.2` pushed
+- [ ] Release workflow / npm publish — [run 29162774613](https://github.com/beettlle/pi-smart-router/actions/runs/29162774613) (watching)
 
 ## Recovery
 
-SP-189 post-integrate: unused `readFileSync` lint → fixed on main (`0f87f07`). SP-190: prelanded `fileScopeMustChange` on PROVENANCE → amended (`58f6f01`).
+SP-189 post-integrate: unused `readFileSync` lint → fixed on main (`0f87f07`). SP-190: prelanded `fileScopeMustChange` on PROVENANCE → amended (`58f6f01`). Pre-tag CI (`8ea8ceb`): `memory-store-telemetry` failed — fixture timestamp aged out of 168h window → fixed (`9af45a4`); CI re-run success.
