@@ -405,6 +405,8 @@ export interface AssertReleaseGatesOptions {
   readonly fixturesDir?: string;
   readonly baselinePath?: string;
   readonly baselineVersion?: string;
+  /** When true, print gate results but always exit 0 (corpus soft-feed / #95). */
+  readonly reportOnly?: boolean;
 }
 
 /** Run release gate assertions from metrics file or fixtures directory. */
@@ -460,15 +462,18 @@ interface ParsedCliArgs {
   readonly fixturesDir?: string | undefined;
   readonly baselinePath?: string | undefined;
   readonly baselineVersion?: string | undefined;
+  readonly reportOnly?: boolean;
   readonly help?: boolean;
 }
 
-function parseArgs(argv: readonly string[]): ParsedCliArgs {
+/** Parse CLI argv for assert-release-gates (exported for unit tests). */
+export function parseAssertReleaseGatesArgs(argv: readonly string[]): ParsedCliArgs {
   let configPath = DEFAULT_CONFIG_PATH;
   let metricsPath: string | undefined;
   let fixturesDir: string | undefined;
   let baselinePath: string | undefined;
   let baselineVersion: string | undefined;
+  let reportOnly = false;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -487,31 +492,35 @@ function parseArgs(argv: readonly string[]): ParsedCliArgs {
     } else if (arg === '--baseline-version' && argv[i + 1]) {
       baselineVersion = argv[i + 1]!;
       i += 1;
+    } else if (arg === '--report-only') {
+      reportOnly = true;
     } else if (arg === '--help' || arg === '-h') {
       return { configPath, help: true };
     }
   }
 
-  return { configPath, metricsPath, fixturesDir, baselinePath, baselineVersion };
+  return { configPath, metricsPath, fixturesDir, baselinePath, baselineVersion, reportOnly };
 }
 
 function usage(): void {
-  console.error(`Usage: assert-release-gates (--metrics FILE | --fixtures DIR) [--config PATH] [--baseline FILE | --baseline-version VERSION]
+  console.error(`Usage: assert-release-gates (--metrics FILE | --fixtures DIR) [--config PATH] [--baseline FILE | --baseline-version VERSION] [--report-only]
 
 Asserts eval harness aggregate metrics against versioned absolute release gates.
 Optional baseline regression compares current metrics to a frozen semver snapshot.
 Exits 0 on pass, 1 with structured JSON on stderr when any gate fails.
+With --report-only, always exits 0 and prints PASS/FAIL plus failed-gate JSON (corpus soft-feed).
 
 Options:
   --metrics FILE           Harness aggregate metrics JSON (from routing:eval-harness)
   --fixtures DIR           Run harness on fixture directory, then assert
   --config PATH            Release gate config (default: config/release-gates.json)
   --baseline FILE          Frozen baseline metrics JSON for regression compare
-  --baseline-version VER   Baseline file version (default: tests/eval/baselines/v{VER}.json)`);
+  --baseline-version VER   Baseline file version (default: tests/eval/baselines/v{VER}.json)
+  --report-only            Print gate outcome without failing the process (SP-188 / #95)`);
 }
 
 async function main(): Promise<void> {
-  const parsed = parseArgs(process.argv.slice(2));
+  const parsed = parseAssertReleaseGatesArgs(process.argv.slice(2));
   if (parsed.help) {
     usage();
     process.exit(0);
@@ -528,6 +537,7 @@ async function main(): Promise<void> {
     ...(parsed.fixturesDir ? { fixturesDir: parsed.fixturesDir } : {}),
     ...(parsed.baselinePath ? { baselinePath: parsed.baselinePath } : {}),
     ...(parsed.baselineVersion ? { baselineVersion: parsed.baselineVersion } : {}),
+    ...(parsed.reportOnly ? { reportOnly: true } : {}),
   });
 
   if (result.passed) {
@@ -535,6 +545,12 @@ async function main(): Promise<void> {
       ? ` (baseline v${result.baseline_regression.reference_version})`
       : '';
     console.log(`release-gates: PASS${baselineNote}`);
+    process.exit(0);
+  }
+
+  if (parsed.reportOnly) {
+    console.log('release-gates: FAIL (report-only; exit 0)');
+    console.log(formatFailedGatesStderr(result));
     process.exit(0);
   }
 

@@ -1,6 +1,6 @@
 # SP-188: TwinRouterBench Corpus Gates + Docs — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-07-10
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Wire harness CI + npm scripts
 
-**Status:** 🟡 In Progress (outcomes done; awaiting commit)
+**Status:** ✅ Complete
 
 - [x] Corpus harness npm script(s)
 - [x] eval-harness-smoke.yml corpus step
@@ -20,7 +20,7 @@
 
 ## Step 2: assert-release-gates + #95 docs
 
-**Status:** 🟡 In Progress
+**Status:** 🟡 In Progress (outcomes done; committing)
 
 - [x] Corpus path support without threshold edits
 - [x] README pin/subset/CI/#95 feed
@@ -65,8 +65,8 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-10 | Step 1 started | Plan review skipped by engine; wiring corpus smoke |
-| 2026-07-10 | Step 1 outcomes | corpus-smoke script + workflow step; default smoke green |
-| 2026-07-10 | Step 2 outcomes | --report-only + corpus-report script; README #95 feed |
+| 2026-07-10 | Step 1 complete | corpus-smoke + workflow; commit ae206c4 |
+| 2026-07-10 | Step 2 outcomes | --report-only + corpus-report; README #95 feed |
 
 ## Blockers
 

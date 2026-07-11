@@ -10,12 +10,14 @@ import {
   loadBaselineMetricsFromVersion,
   loadReleaseGatesConfig,
   loadReleaseGatesConfigFromFile,
+  parseAssertReleaseGatesArgs,
   parseHarnessMetricsInput,
   type ReleaseGatesConfig,
 } from '../../scripts/eval/assert-release-gates.js';
 import { runHarnessOnDir } from '../../scripts/eval/run-harness.js';
 
 const FIXTURES_DIR = join('tests', 'eval', 'fixtures');
+const CORPUS_DIR = join('tests', 'eval', 'corpus', 'twinrouterbench');
 const CONFIG_PATH = join('config', 'release-gates.json');
 
 function loadConfig(): ReleaseGatesConfig {
@@ -124,6 +126,34 @@ describe('assertReleaseGates fixtures path (SP-165)', () => {
 
     expect(result.passed).toBe(true);
     expect(result.absolute_gates.passed).toBe(true);
+  });
+});
+
+describe('corpus path + report-only CLI (SP-188)', () => {
+  it('parses --fixtures corpus path and --report-only', () => {
+    const parsed = parseAssertReleaseGatesArgs([
+      '--fixtures',
+      CORPUS_DIR,
+      '--report-only',
+    ]);
+
+    expect(parsed.reportOnly).toBe(true);
+    expect(parsed.fixturesDir).toContain('twinrouterbench');
+  });
+
+  it('scores corpus subset without changing absolute thresholds', () => {
+    const result = assertReleaseGates({
+      configPath: CONFIG_PATH,
+      fixturesDir: CORPUS_DIR,
+    });
+    const config = loadConfig();
+
+    // Corpus is a soft-feed for #95 — over-routing exceeds absolute max today.
+    expect(config.absolute_gates.mean_over_routing_rate_max).toBe(0.15);
+    expect(result.absolute_gates.passed).toBe(false);
+    expect(
+      result.absolute_gates.failed_gates.some((g) => g.gate === 'mean_over_routing_rate_max'),
+    ).toBe(true);
   });
 });
 

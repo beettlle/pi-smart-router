@@ -798,6 +798,9 @@ Contributors must run `npm run build` before publishing or consuming the library
 | `npm run routing:eval-replay` | Counterfactual replay on eval trace fixtures |
 | `npm run routing:eval-harness` | Three-track eval harness (capability, cost, continuity) on fixture traces |
 | `npm run routing:eval-harness:smoke` | Harness summary JSON only (CI smoke; no network) |
+| `npm run routing:eval-harness:corpus-smoke` | Harness summary on TwinRouterBench CI corpus subset (`tests/eval/corpus/twinrouterbench`) |
+| `npm run routing:assert-release-gates:corpus-report` | Soft-feed: assert corpus vs absolute gates with `--report-only` (exit 0; does not gate releases) |
+| `npm run routing:ingest-twinrouterbench` | Convert TwinRouterBench `question_bank.jsonl` → CI subset / full corpus JSON |
 | `npm run benchmark:encoder` | Compare MiniLM vs Granite encoder latency on held-out agent turns |
 
 ### Offline eval harness (agent-native routing)
@@ -812,8 +815,11 @@ Run locally:
 # Full metrics JSON (per-fixture + aggregate track summaries)
 npm run routing:eval-harness
 
-# CI-style summary only
+# CI-style summary only (default fixtures under tests/eval/fixtures)
 npm run routing:eval-harness:smoke
+
+# TwinRouterBench CI corpus subset (≤50 code/tool records; offline)
+npm run routing:eval-harness:corpus-smoke
 
 # Custom fixture directory (includes TwinRouterBench static track subdirs)
 npm run routing:eval-harness -- --fixtures tests/eval/fixtures
@@ -822,11 +828,26 @@ npm run routing:eval-harness -- --fixtures tests/eval/fixtures
 npm run routing:eval-replay
 ```
 
-**CI smoke:** `.github/workflows/eval-harness-smoke.yml` runs on PRs that touch eval scripts, fixtures, or the workflow. It executes `routing:eval-harness:smoke` and eval unit tests — fast, offline, no provider network calls.
+**CI smoke:** `.github/workflows/eval-harness-smoke.yml` runs on PRs that touch eval scripts, fixtures, or the workflow. It executes `routing:eval-harness:smoke`, `routing:eval-harness:corpus-smoke`, and eval unit tests — fast, offline, no provider network calls. Job timeout stays at 10 minutes.
 
 **TwinRouterBench static track:** import step-level router-visible prefixes with execution-verified target tiers (`track: "static"`). The adapter in `scripts/eval/twinrouterbench-adapter.ts` converts static track records into native eval fixtures for the three-track harness. See `docs/gemini-research.md` §9 for methodology context.
 
-### Benchmark profile refresh
+#### TwinRouterBench CI corpus (SP-186 / SP-187 / SP-188)
+
+| Item | Location / command |
+|------|--------------------|
+| **Pinned upstream** | CommonstackAI/TwinRouterBench `@430acecac71141de77afd8e5e13690d236d58e93` (Apache-2.0) |
+| **CI subset** | `tests/eval/corpus/twinrouterbench/ci-subset.json` (≤50 code/tool records) |
+| **Provenance** | `tests/eval/corpus/twinrouterbench/PROVENANCE.md` |
+| **Regenerate** | `npm run routing:ingest-twinrouterbench -- --input <question_bank.jsonl> --output tests/eval/corpus/twinrouterbench/ci-subset.json --limit 50 --prefer-code-tool` |
+| **Harness smoke** | `npm run routing:eval-harness:corpus-smoke` |
+| **Gate soft-feed** | `npm run routing:assert-release-gates:corpus-report` |
+
+**Absolute release gates stay on default fixtures.** `npm run release:functional-smoke` continues to assert `tests/eval/fixtures` against `config/release-gates.json` — do not point it at the corpus without operator review. Today the corpus subset fails `mean_over_routing_rate_max` (≈0.85 vs absolute max 0.15); that gap is intentional soft signal for the [#95](https://github.com/beettlle/pi-smart-router/issues/95) public static-track acceptance criteria alongside live dogfood traces. Use `--fixtures tests/eval/corpus/twinrouterbench` (or the corpus-report script) for #95 public-track scoring; keep absolute threshold edits out of band until operators approve.
+
+**Deferred:** RouterBench classic (outcome-matrix) smoke is out of scope for SP-188; prefer TwinRouterBench static track + dogfood for #95.
+
+Sample fixtures under `tests/eval/fixtures/twinrouterbench/` remain the small adapter unit-test inputs and are unchanged by corpus ingest.
 
 Capability scores in `config/benchmark-profiles.json` are grounded from public leaderboard snapshots under `tests/fixtures/benchmark-leaderboards/` (and optional **recorded** live snapshots under `tests/fixtures/benchmark-leaderboards/recorded/`). Each artifact records provenance (`source_urls`, `scrape_date`, `catalog_freeze_date`) in its header.
 
@@ -907,6 +928,8 @@ Tag-triggered publish via GitHub Actions (requires `NPMSECRET` repository secret
 1. `routing:verify-calibration --skip-embed` — artifact shape + triage benchmark gates (no ONNX embedding)
 2. `routing:verify-benchmark-profiles` — checked-in capability profiles match fixture ingest
 3. `assert-release-gates --fixtures tests/eval/fixtures --baseline-version 0.6.0` — eval harness aggregate metrics vs `config/release-gates.json` and semver baseline regression vs `tests/eval/baselines/v0.6.0.json`
+
+The TwinRouterBench CI corpus is **not** part of Tier 0: use `routing:eval-harness:corpus-smoke` / `routing:assert-release-gates:corpus-report` for offline public-track soft-feed ([#95](https://github.com/beettlle/pi-smart-router/issues/95)). Absolute thresholds in `config/release-gates.json` stay fixture-backed until operators approve a change.
 
 `release:check` runs the full pre-release path: **live benchmark profile refresh** (fixture fallback; dirty-tree fail), then `verify:ci`, consumer pack verify, then Tier 0 functional smoke.
 
