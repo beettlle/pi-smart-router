@@ -1,27 +1,23 @@
 {
   "benchmark": "swebench_verified",
-  "source_url": "https://www.swebench.com/",
+  "source_url": "https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json",
   "scrape_date": "2026-07-10",
   "entries": [
     {
       "model_id": "claude-opus-4-5",
-      "score": 80.9
+      "score": 79.2
     },
     {
       "model_id": "claude-sonnet-4-6",
-      "score": 79.6
-    },
-    {
-      "model_id": "gpt-5.3-codex",
-      "score": 85.0
-    },
-    {
-      "model_id": "claude-3.5-haiku",
-      "score": 62.4
+      "score": 76.8
     },
     {
       "model_id": "gemini-2.5-flash",
-      "score": 58.1
+      "score": 28.73
+    },
+    {
+      "model_id": "gpt-5.3-codex",
+      "score": 74.4
     }
   ]
 }

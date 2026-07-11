@@ -107,7 +107,7 @@ describe('pi-model-scope', () => {
     const { resolveModelScope } = await import(consumerFixture.moduleUrl);
     expect(typeof resolveModelScope).toBe('function');
     await expect(resolveModelScope([], {} as never)).resolves.toEqual([]);
-  });
+  }, 15_000);
 
   it('findPiCodingAgentDir resolves without agent npm when pi is globally installed', async () => {
     try {

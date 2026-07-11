@@ -123,15 +123,26 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
   });
 
   it('checked-in artifact matches fixture ingest', () => {
+    // After live refresh, committed profiles come from recorded snapshots (not fixtures).
+    // Accept either source so PR fixture edits and release live refreshes both verify.
     const checkedIn = readFileSync(join('config', 'benchmark-profiles.json'), 'utf8');
     const parsed = parseBenchmarkProfilesArtifact(JSON.parse(checkedIn));
-    const artifact = ingestBenchmarkProfilesFromDir(DEFAULT_BENCHMARK_FIXTURES_DIR, {
+    const options = {
       catalogFreezeDate: parsed.provenance.catalog_freeze_date,
       scrapeDate: parsed.provenance.scrape_date,
       ...(parsed.aliases !== undefined ? { aliases: parsed.aliases } : {}),
-    });
+    };
+    const fromFixtures = serializeBenchmarkProfilesArtifact(
+      ingestBenchmarkProfilesFromDir(DEFAULT_BENCHMARK_FIXTURES_DIR, options),
+    );
+    const fromRecorded = serializeBenchmarkProfilesArtifact(
+      ingestBenchmarkProfilesFromDir(DEFAULT_RECORDED_LEADERBOARDS_DIR, options),
+    );
 
-    expect(serializeBenchmarkProfilesArtifact(artifact)).toBe(checkedIn);
+    expect(
+      fromFixtures === checkedIn || fromRecorded === checkedIn,
+      'committed profiles must match fixture ingest or recorded ingest',
+    ).toBe(true);
   });
 
   it('emits default fleet aliases when none are supplied (SP-174)', () => {
@@ -155,16 +166,19 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
     expect(artifact.aliases).toEqual({ 'my-fleet-id': 'claude-opus-4-5' });
   });
 
-  it('validates required capability dimensions and rejects duplicate benchmark rows', () => {
-    const incomplete = [
-      fixture('swebench_verified', [{ model_id: 'solo-model', score: 70 }]),
-      fixture('terminal_bench', [{ model_id: 'solo-model', score: 60 }]),
-      fixture('livecodebench', [{ model_id: 'solo-model', score: 65 }]),
-      fixture('bfcl', [{ model_id: 'solo-model', score: 55 }]),
+  it('skips models missing a capability dimension; rejects duplicate benchmark rows', () => {
+    // Full coverage for complete-model; tool_use-only for incomplete-model (live mix case).
+    const mixed = [
+      fixture('swebench_verified', [{ model_id: 'complete-model', score: 70 }]),
+      fixture('terminal_bench', [
+        { model_id: 'complete-model', score: 60 },
+        { model_id: 'incomplete-model', score: 50 },
+      ]),
+      fixture('livecodebench', [{ model_id: 'complete-model', score: 65 }]),
+      fixture('bfcl', [{ model_id: 'complete-model', score: 55 }]),
     ];
-    expect(() =>
-      aggregateBenchmarkProfiles(incomplete, { catalogFreezeDate: '2026-07-09' }),
-    ).not.toThrow();
+    const artifact = aggregateBenchmarkProfiles(mixed, { catalogFreezeDate: '2026-07-09' });
+    expect(artifact.models.map((m) => m.model_id)).toEqual(['complete-model']);
 
     const duplicate = [
       ...fullFixtureSet().slice(0, 3),
@@ -312,7 +326,8 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
       scrapeDate: '2026-07-10',
     });
 
-    expect(artifact.models.length).toBeGreaterThanOrEqual(5);
+    // Live mixes may skip models missing a capability dim (e.g. haiku only on TB recorded).
+    expect(artifact.models.length).toBeGreaterThanOrEqual(4);
     expect(artifact.provenance.scrape_date).toBe('2026-07-10');
     expect(artifact.provenance.source_urls.swebench_verified).toBe(
       BENCHMARK_SOURCE_URLS.swebench_verified,

@@ -5,23 +5,15 @@
   "entries": [
     {
       "model_id": "claude-opus-4-5",
-      "score": 88.2
+      "score": 77.47
     },
     {
       "model_id": "claude-sonnet-4-6",
-      "score": 84.5
-    },
-    {
-      "model_id": "gpt-5.3-codex",
-      "score": 90.1
-    },
-    {
-      "model_id": "claude-3.5-haiku",
-      "score": 70.6
+      "score": 73.24
     },
     {
       "model_id": "gemini-2.5-flash",
-      "score": 66.9
+      "score": 56.24
     }
   ]
 }

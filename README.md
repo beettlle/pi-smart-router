@@ -855,8 +855,8 @@ Optional flags: `--catalog-freeze-date YYYY-MM-DD`, `--scrape-date YYYY-MM-DD`, 
 | Benchmark | Default live fetch | Score field | Fallback |
 |-----------|-------------------|-------------|----------|
 | `swebench_verified` | Native: [SWE-bench `leaderboards.json`](https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json) (Verified board) | `resolved` → `score` (0–100) | recorded → fixtures |
-| `livecodebench` | Native when adapter landed (SP-183): [LCB `performances_generation.json`](https://raw.githubusercontent.com/LiveCodeBench/livecodebench.github.io/main/src/mocks/performances_generation.json); until then fixture-shaped `--live-url` only | aggregate `pass@1` | recorded → fixtures |
-| `bfcl` | Native when adapter landed (SP-184): [Gorilla `data_overall.csv`](https://raw.githubusercontent.com/ShishirPatil/gorilla/gh-pages/data_overall.csv); until then fixture-shaped `--live-url` only | `Overall Acc` | recorded → fixtures |
+| `livecodebench` | Native: [LCB `performances_generation.json`](https://raw.githubusercontent.com/LiveCodeBench/livecodebench.github.io/main/src/mocks/performances_generation.json) | aggregate `pass@1` | recorded → fixtures |
+| `bfcl` | Native: [Gorilla `data_overall.csv`](https://raw.githubusercontent.com/ShishirPatil/gorilla/gh-pages/data_overall.csv) | `Overall Acc` | recorded → fixtures |
 | `terminal_bench` | **No free stable JSON** (tbench.ai is HTML; HF leaderboard is submissions-only; paid Parse API is **not** the default). Pass `--live-url terminal_bench=URL` at a fixture-shaped mirror | `score` (0–100) | recorded → fixtures |
 
 **Terminal-Bench operator mirror schema** (SP-185 / #104):

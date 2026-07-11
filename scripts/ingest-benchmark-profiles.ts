@@ -382,23 +382,33 @@ export function aggregateBenchmarkProfiles(
   }
 
   const models: BenchmarkProfileRecord[] = [];
+  const skippedIncompleteModels: string[] = [];
 
   for (const [modelId, accumulator] of [...byModel.entries()].sort(([a], [b]) =>
     a.localeCompare(b),
   )) {
     const capabilities: Partial<BenchmarkModelCapabilities> = {};
+    let missingDimension: CapabilityDimension | undefined;
     for (const dimension of CAPABILITY_DIMENSIONS) {
       const scores = accumulator.dimensionScores[dimension];
       if (scores.length === 0) {
-        throw new BenchmarkIngestError(
-          `Model ${modelId} is missing capability dimension ${dimension} after ingest`,
-        );
+        missingDimension = dimension;
+        break;
       }
       capabilities[dimension] = roundCapability(average(scores));
     }
 
+    // Live mixes can leave a model with only tool_use (e.g. Terminal-Bench recorded
+    // haiku while SWE/LCB/BFCL live omit it). Never invent scores — skip incomplete rows.
+    if (missingDimension !== undefined) {
+      skippedIncompleteModels.push(`${modelId} (missing ${missingDimension})`);
+      continue;
+    }
+
     const parsedCapabilities = capabilitiesSchema.parse(capabilities);
-    const benchmarkSources = accumulator.benchmarkSources;
+    const benchmarkSources = Object.fromEntries(
+      Object.entries(accumulator.benchmarkSources).sort(([a], [b]) => a.localeCompare(b)),
+    );
     if (Object.keys(benchmarkSources).length === 0) {
       throw new BenchmarkIngestError(`Model ${modelId} has no benchmark sources`);
     }
@@ -408,6 +418,15 @@ export function aggregateBenchmarkProfiles(
       capabilities: parsedCapabilities,
       benchmark_sources: benchmarkSources,
     });
+  }
+
+  if (skippedIncompleteModels.length > 0) {
+    console.warn(
+      `ingest-benchmark-profiles: skipped ${skippedIncompleteModels.length} model(s) with incomplete capability coverage:`,
+    );
+    for (const detail of skippedIncompleteModels) {
+      console.warn(`  skip ${detail}`);
+    }
   }
 
   if (models.length === 0) {
