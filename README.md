@@ -890,7 +890,7 @@ npm run routing:eval-replay
 npm run routing:twinrouterbench:full-track
 ```
 
-**CI smoke:** `.github/workflows/eval-harness-smoke.yml` runs on PRs that touch eval scripts, fixtures, or the workflow. It executes `routing:eval-harness:smoke`, `routing:eval-harness:corpus-smoke`, and eval unit tests — fast, offline, no provider network calls. Job timeout stays at 10 minutes. The optional full-track nightly (`.github/workflows/twinrouterbench-full-nightly.yml`) is **not** required on PRs and does not gate `release:functional-smoke`.
+**CI smoke:** `.github/workflows/eval-harness-smoke.yml` runs on PRs that touch eval scripts, fixtures, or the workflow. It executes `routing:eval-harness:smoke`, `routing:eval-harness:corpus-smoke`, and eval unit tests — fast, offline, no provider network calls. Job timeout stays at 10 minutes. The optional full-track nightly (`.github/workflows/twinrouterbench-full-nightly.yml`, `schedule` + `workflow_dispatch` only) is **not** on `pull_request` and must not be configured as a required status check — failures there do not gate PR CI or `release:functional-smoke`.
 
 **TwinRouterBench static track:** import step-level router-visible prefixes with execution-verified target tiers (`track: "static"`). The adapter in `scripts/eval/twinrouterbench-adapter.ts` converts static track records into native eval fixtures for the three-track harness. See `docs/gemini-research.md` §9 for methodology context.
 

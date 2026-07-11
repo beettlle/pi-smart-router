@@ -1,6 +1,6 @@
 # SP-200: TwinRouterBench Full Static-Track Path + Nightly — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-11
 **Review Level:** 1
@@ -12,15 +12,15 @@
 
 ## Step 1: Full-track npm scripts + docs
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
-- [ ] npm scripts
-- [ ] README / PROVENANCE
-- [ ] PR smoke still bounded
+- [x] npm scripts
+- [x] README / PROVENANCE
+- [x] PR smoke still bounded
 
 ## Step 2: Optional nightly workflow
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] nightly yml
 - [ ] non-blocking vs PR
@@ -62,6 +62,8 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-11 | start | Resume Step 1 — full-track npm scripts + docs |
+| 2026-07-11 | step1 done | Full-track scripts + docs; corpus-smoke ≤150; plan review skipped |
+| 2026-07-11 | step2 start | Optional nightly workflow |
 
 ## Blockers
 
