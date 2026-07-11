@@ -1,7 +1,7 @@
 # SP-201: TwinRouterBench Weak Packs + Fit CLI — Status
 
 **Current Step:** 3
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-11
 **Review Level:** 1
 **Review Counter:** 0
@@ -28,12 +28,12 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 
 - [x] Contract tests
 - [x] Smoke dry-run
-- [ ] verify:ci
-- [ ] Close #106
+- [x] verify:ci
+- [x] Close #106
 
 ---
 
@@ -42,7 +42,7 @@
 - [x] Weak pack path
 - [x] CLI flag
 - [x] ECE boundary
-- [ ] #106 closable
+- [x] #106 closable
 
 ---
 
@@ -52,14 +52,15 @@
 |------|------|------|---------|
 | 2026-07-11 | 1 | plan | skipped (engine post-.DONE; SP-195) |
 | 2026-07-11 | 2 | plan | skipped (engine post-.DONE; SP-195) |
-| 2026-07-11 | 3 | plan | pending |
+| 2026-07-11 | 3 | plan | skipped (engine post-.DONE; SP-195) |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
 | 2026-07-11 | `includeExcludedInFit` already on `runCalibrationDryRunFromRows`; CLI did not parse `--include-excluded-in-fit` | Wired + tests; fit path includes weak in isotonic fit only |
-| 2026-07-11 | Smoke ingest from `ci-subset.json` accepted 50/50 schema-valid weak rows with `weak_tier_proxy` + `exclude_from_holdout_ece` | Step 1 path verified |
+| 2026-07-11 | Smoke: ci-subset → 148 weak rows; dry-run `ece_eligible=4` with/without flag | ECE boundary held |
+| 2026-07-11 | `detect_changes` vs main: HIGH (dry-run calibration flows) | Expected; unit + verify:ci green |
 
 ## Execution Log
 
@@ -68,6 +69,7 @@
 | 2026-07-11 | start | Resume Step 1; plan review skipped by engine |
 | 2026-07-11 | step1 done | Commit `feat(SP-201): complete Step 1 — Corpus → weak pack path` |
 | 2026-07-11 | step2 done | Commit `feat(SP-201): complete Step 2 — CLI --include-excluded-in-fit` |
+| 2026-07-11 | step3 done | Contract + smoke + verify:ci + coverage 92.96% lines; #106 closed |
 
 ## Blockers
 
