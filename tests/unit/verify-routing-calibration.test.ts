@@ -7,6 +7,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { MINIMUM_TRAINING_SAMPLES } from '../../scripts/calibration-aggregate.js';
 import { refineRoutingCentroidsWithOats } from '../../scripts/lib/oats-centroid-refinement.js';
 import {
+  LABEL_PACK_SCHEMA_VERSION,
+  formatLabelPackJsonl,
+  loadLabelPackJsonl,
+  type LabelPackRow,
+} from '../../scripts/lib/label-pack-schema.js';
+import {
   createDefaultRoutingCalibrationBundle,
   HYDRA_PREFIX_SCHEMA_VERSION,
   serializeRoutingCalibrationBundle,
@@ -14,7 +20,13 @@ import {
 } from '../../scripts/train-routing-calibration.js';
 import {
   assertClusterBenchmark,
+  CALIBRATION_DRY_RUN_SOFT_ECE_THRESHOLD,
   CLUSTER_CALIBRATION_BENCHMARKS,
+  formatCalibrationDryRunReport,
+  isExcludedFromHoldoutEce,
+  labelPackRowToTrainingSample,
+  loadCiFixtureLabelPacks,
+  runCalibrationDryRunFromRows,
   validateOatsCentroidArtifact,
   verifyClusterBenchmarks,
   verifyRoutingCalibration,
@@ -27,6 +39,7 @@ import {
 } from '../../src/domain/matching/cluster-matcher.js';
 import { EMBEDDING_DIM } from '../../src/domain/matching/embedding-provider.js';
 import type { TextEmbedder } from '../../src/domain/matching/embedding-provider.js';
+import { P_SUCCESS_FEATURE_NAMES } from '../../src/domain/routing/p-success-classifier.js';
 
 function makeEmbeddingVector(seed = 0.01): number[] {
   return Array.from({ length: EMBEDDING_DIM }, (_, index) => Math.sin(index * seed));
@@ -56,6 +69,29 @@ function makeTrainingRecord(
     success_label: true,
     hydra_prefix_schema_version: HYDRA_PREFIX_SCHEMA_VERSION,
     embedding: makeEmbeddingVector(),
+    ...overrides,
+  };
+}
+
+function makePackRow(
+  sampleId: string,
+  success: boolean,
+  overrides: Partial<LabelPackRow> = {},
+): LabelPackRow {
+  const features: Record<string, number> = {};
+  for (const name of P_SUCCESS_FEATURE_NAMES) {
+    features[name] = 0.1;
+  }
+  features.triage_cyclomatic_score = success ? 0.2 : 0.8;
+  features.requirement_reasoning = success ? 0.4 : 0.9;
+  features.economical_tier = success ? 1 : 0;
+
+  return {
+    schema_version: LABEL_PACK_SCHEMA_VERSION,
+    sample_id: sampleId,
+    source: 'swe-gym',
+    features,
+    success,
     ...overrides,
   };
 }
@@ -206,5 +242,74 @@ describe('verify routing calibration OATS (SP-147)', () => {
     const result = assertClusterBenchmark(benchmark, centroids);
     expect(result.passed).toBe(true);
     expect(result.message).toContain('skipped');
+  });
+});
+
+describe('calibration dry-run ECE from label packs (SP-191)', () => {
+  it('reports SAMPLE_STARVED (report-only) for tiny CI fixtures', () => {
+    const rows = loadCiFixtureLabelPacks();
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.some((row) => isExcludedFromHoldoutEce(row))).toBe(true);
+
+    const result = runCalibrationDryRunFromRows(rows);
+    expect(result.mode).toBe('report_only_sample_starved');
+    expect(result.holdout_ece_calibrated).toBeNull();
+    expect(result.soft_ece_passed).toBeNull();
+    expect(result.excluded_from_ece_rows).toBeGreaterThan(0);
+    expect(formatCalibrationDryRunReport(result)).toContain('SAMPLE_STARVED');
+  });
+
+  it('rejects tainted pack rows via label-pack schema (never writes prompt text)', () => {
+    const tainted = `${JSON.stringify({
+      schema_version: 1,
+      sample_id: 'bad',
+      source: 'swe-gym',
+      success: true,
+      features: { requirement_reasoning: 0.5 },
+      prompt: 'LEAKED',
+    })}\n`;
+
+    expect(() => loadLabelPackJsonl(tainted, 'tainted')).toThrow(/Tainted|forbidden/i);
+
+    const clean = Array.from({ length: 4 }, (_, index) =>
+      makePackRow(`clean-${index}`, index % 2 === 0),
+    );
+    const serialized = formatLabelPackJsonl(clean);
+    expect(serialized).not.toMatch(/"prompt"\s*:/);
+    expect(serialized).not.toContain('LEAKED');
+  });
+
+  it('reports deterministic holdout ECE on enough pack rows and excludes weak labels', () => {
+    const eligible = Array.from({ length: 40 }, (_, index) =>
+      makePackRow(`ece-${index}`, index % 3 !== 0, {
+        features: {
+          ...makePackRow(`ece-${index}`, index % 3 !== 0).features,
+          triage_cyclomatic_score: index / 40,
+          requirement_reasoning: (index % 5) / 5,
+        },
+      }),
+    );
+    const weak = Array.from({ length: 5 }, (_, index) =>
+      makePackRow(`weak-${index}`, true, {
+        source: 'twinrouterbench-weak',
+        outcome_signals: ['weak_tier_proxy', 'exclude_from_holdout_ece'],
+      }),
+    );
+
+    const first = runCalibrationDryRunFromRows([...eligible, ...weak]);
+    const second = runCalibrationDryRunFromRows([...eligible, ...weak]);
+
+    expect(first.mode).toBe('evaluated');
+    expect(first.ece_eligible_rows).toBe(40);
+    expect(first.excluded_from_ece_rows).toBe(5);
+    expect(first.holdout_sample_count).toBeGreaterThan(0);
+    expect(first.holdout_ece_raw).not.toBeNull();
+    expect(first.holdout_ece_calibrated).not.toBeNull();
+    expect(first.soft_ece_threshold).toBe(CALIBRATION_DRY_RUN_SOFT_ECE_THRESHOLD);
+    expect(typeof first.soft_ece_passed).toBe('boolean');
+
+    expect(second.holdout_ece_raw).toBe(first.holdout_ece_raw);
+    expect(second.holdout_ece_calibrated).toBe(first.holdout_ece_calibrated);
+    expect(labelPackRowToTrainingSample(eligible[0]!).request_id).toBe('ece-0');
   });
 });

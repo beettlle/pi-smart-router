@@ -5,6 +5,11 @@
  * Loads a versioned routing-calibration.json bundle and asserts routing signals
  * on benchmark prompts. Uses triage cyclomatic threshold from the bundle and
  * validates artifact shapes. ONNX cluster matching is optional (--skip-embed).
+ *
+ * SP-191: `--dry-run-packs` / `--ci-fixtures` loads privacy-safe label packs,
+ * holdout-splits, fits logistic + isotonic offline, and reports holdout ECE
+ * (soft advisory threshold; report-only when sample-starved). Never writes
+ * prompt text into artifacts.
  */
 
 import { existsSync } from 'node:fs';
@@ -18,16 +23,33 @@ import {
   assignClusterByCentroids,
   type RoutingCentroidsArtifact,
 } from '../src/domain/matching/cluster-matcher.js';
-import { predictPSuccessCheap } from '../src/domain/routing/p-success-classifier.js';
-import { extractPSuccessFeatures } from '../src/domain/routing/p-success-classifier.js';
+import {
+  MIN_TRAINING_SAMPLES,
+  P_SUCCESS_FEATURE_NAMES,
+  predictPSuccessCheap,
+  extractPSuccessFeatures,
+  trainFromLabeledSamples,
+  type LabeledTrainingSample,
+  type PSuccessFeatures,
+  type PSuccessFailureProxies,
+} from '../src/domain/routing/p-success-classifier.js';
 import {
   applyIsotonicLookup,
+  fitIsotonicCalibratorFromSamples,
   validateIsotonicCalibratorArtifact,
 } from './lib/isotonic-calibrator.js';
+import {
+  LabelPackError,
+  loadLabelPackFile,
+  type LabelPackRow,
+} from './lib/label-pack-schema.js';
 import {
   OATS_REFINEMENT_ARTIFACT_VERSION,
   type RefinedRoutingCentroidsArtifact,
 } from './lib/oats-centroid-refinement.js';
+import { ingestFcRewardBenchFile } from './ingest-fc-rewardbench-labels.js';
+import { ingestSweGymVerifierFile } from './ingest-swe-gym-labels.js';
+import { ingestTwinRouterBenchWeakFile } from './ingest-twinrouterbench-weak-labels.js';
 import {
   assertCompatibleHydraProjectionArtifact,
   DEFAULT_ROUTING_CALIBRATION_PATH,
@@ -38,6 +60,27 @@ import {
   unflattenHydraProjectionWeights,
   type RoutingCalibrationBundle,
 } from './train-routing-calibration.js';
+
+/** Soft advisory ECE ceiling for pack dry-run (not a release-gate absolute). */
+export const CALIBRATION_DRY_RUN_SOFT_ECE_THRESHOLD = 0.25;
+
+/** Pack outcome signal that excludes a row from holdout ECE metrics (SP-190 weak labels). */
+export const EXCLUDE_FROM_HOLDOUT_ECE_SIGNAL = 'exclude_from_holdout_ece';
+
+export const DEFAULT_LABEL_PACK_CI_FIXTURES = {
+  sweGym: resolve('tests/eval/corpus/label-packs/swe-gym/ci-fixture.jsonl'),
+  fcRewardBench: resolve('tests/eval/corpus/label-packs/fc-rewardbench/ci-fixture.jsonl'),
+  twinRouterWeak: resolve(
+    'tests/eval/corpus/label-packs/twinrouterbench-weak/ci-fixture.jsonl',
+  ),
+} as const;
+
+const EMPTY_FAILURE_PROXIES: PSuccessFailureProxies = {
+  tool_failure_chain_count: null,
+  stop_reason_invalid: null,
+  reprompt_rate: null,
+  edit_distance_proxy: null,
+};
 
 export interface CalibrationBenchmark {
   readonly id: string;
@@ -481,13 +524,240 @@ export function verifyRoutingCalibration(
   };
 }
 
+/** True when pack row must not contribute to holdout ECE metrics. */
+export function isExcludedFromHoldoutEce(row: LabelPackRow): boolean {
+  return (row.outcome_signals ?? []).includes(EXCLUDE_FROM_HOLDOUT_ECE_SIGNAL);
+}
+
+/** Map pack feature map → P(success) feature vector (missing keys → 0). */
+export function featuresFromLabelPackRow(row: LabelPackRow): PSuccessFeatures {
+  const features = {} as Record<(typeof P_SUCCESS_FEATURE_NAMES)[number], number>;
+  for (const name of P_SUCCESS_FEATURE_NAMES) {
+    const value = row.features[name];
+    features[name] = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  }
+  return features;
+}
+
+/** Convert a validated label-pack row into a training sample (no prompt text). */
+export function labelPackRowToTrainingSample(row: LabelPackRow): LabeledTrainingSample {
+  return {
+    request_id: row.sample_id,
+    features: featuresFromLabelPackRow(row),
+    success: row.success,
+    outcome_signals: [],
+    failure_proxies: EMPTY_FAILURE_PROXIES,
+  };
+}
+
+export interface CalibrationDryRunResult {
+  readonly mode: 'report_only_sample_starved' | 'evaluated';
+  readonly total_rows: number;
+  readonly ece_eligible_rows: number;
+  readonly excluded_from_ece_rows: number;
+  readonly fit_sample_count: number;
+  readonly holdout_sample_count: number;
+  readonly holdout_ece_raw: number | null;
+  readonly holdout_ece_calibrated: number | null;
+  readonly soft_ece_threshold: number;
+  readonly soft_ece_passed: boolean | null;
+  readonly min_training_samples: number;
+  readonly sources: readonly string[];
+}
+
+export interface CalibrationDryRunOptions {
+  readonly minTrainingSamples?: number;
+  readonly softEceThreshold?: number;
+  /** When true, include weak/excluded rows in the isotonic fit set only (never holdout ECE). */
+  readonly includeExcludedInFit?: boolean;
+}
+
+/**
+ * Offline calibration dry-run: fit logistic + isotonic on pack rows and report
+ * holdout ECE. Sample-starved packs are report-only (soft_ece_passed = null).
+ */
+export function runCalibrationDryRunFromRows(
+  rows: readonly LabelPackRow[],
+  options?: CalibrationDryRunOptions,
+): CalibrationDryRunResult {
+  const minTrainingSamples = options?.minTrainingSamples ?? MIN_TRAINING_SAMPLES;
+  const softEceThreshold = options?.softEceThreshold ?? CALIBRATION_DRY_RUN_SOFT_ECE_THRESHOLD;
+  const includeExcludedInFit = options?.includeExcludedInFit ?? false;
+
+  const sources = [...new Set(rows.map((row) => row.source))].sort();
+  const eceEligibleRows = rows.filter((row) => !isExcludedFromHoldoutEce(row));
+  const excludedRows = rows.filter((row) => isExcludedFromHoldoutEce(row));
+
+  const eceSamples = eceEligibleRows.map(labelPackRowToTrainingSample);
+  const excludedSamples = excludedRows.map(labelPackRowToTrainingSample);
+
+  if (eceSamples.length < minTrainingSamples) {
+    return {
+      mode: 'report_only_sample_starved',
+      total_rows: rows.length,
+      ece_eligible_rows: eceSamples.length,
+      excluded_from_ece_rows: excludedSamples.length,
+      fit_sample_count: 0,
+      holdout_sample_count: 0,
+      holdout_ece_raw: null,
+      holdout_ece_calibrated: null,
+      soft_ece_threshold: softEceThreshold,
+      soft_ece_passed: null,
+      min_training_samples: minTrainingSamples,
+      sources,
+    };
+  }
+
+  const fitPool = includeExcludedInFit ? [...eceSamples, ...excludedSamples] : eceSamples;
+  const weights = trainFromLabeledSamples(fitPool);
+  // Holdout ECE is always computed on ECE-eligible rows only (weak labels excluded).
+  const isotonic = fitIsotonicCalibratorFromSamples(eceSamples, weights, {
+    minTrainingSamples,
+  });
+
+  const holdout_ece_calibrated = isotonic.artifact.holdout_ece_calibrated;
+  const soft_ece_passed =
+    holdout_ece_calibrated === null ? null : holdout_ece_calibrated <= softEceThreshold;
+
+  return {
+    mode: 'evaluated',
+    total_rows: rows.length,
+    ece_eligible_rows: eceSamples.length,
+    excluded_from_ece_rows: excludedSamples.length,
+    fit_sample_count: isotonic.fit_sample_count,
+    holdout_sample_count: isotonic.holdout_sample_count,
+    holdout_ece_raw: isotonic.artifact.holdout_ece_raw,
+    holdout_ece_calibrated,
+    soft_ece_threshold: softEceThreshold,
+    soft_ece_passed,
+    min_training_samples: minTrainingSamples,
+    sources,
+  };
+}
+
+/** Load validated pack JSONL files (fail-closed on taint / schema errors). */
+export function loadLabelPacksForDryRun(packPaths: readonly string[]): LabelPackRow[] {
+  const rows: LabelPackRow[] = [];
+  for (const packPath of packPaths) {
+    const resolvedPath = resolve(packPath);
+    if (!existsSync(resolvedPath)) {
+      throw new LabelPackError(`Label-pack file not found: ${resolvedPath}`);
+    }
+    const loaded = loadLabelPackFile(resolvedPath);
+    rows.push(...loaded.rows);
+  }
+  return rows;
+}
+
+/** Ingest checked-in CI fixtures into pack rows (offline, no network). */
+export function loadCiFixtureLabelPacks(
+  fixtures: typeof DEFAULT_LABEL_PACK_CI_FIXTURES = DEFAULT_LABEL_PACK_CI_FIXTURES,
+): LabelPackRow[] {
+  const swe = ingestSweGymVerifierFile(fixtures.sweGym);
+  const fc = ingestFcRewardBenchFile(fixtures.fcRewardBench);
+  const weak = ingestTwinRouterBenchWeakFile(fixtures.twinRouterWeak);
+  return [...swe.rows, ...fc.rows, ...weak.rows];
+}
+
+export function runCalibrationDryRunFromPackFiles(
+  packPaths: readonly string[],
+  options?: CalibrationDryRunOptions,
+): CalibrationDryRunResult {
+  return runCalibrationDryRunFromRows(loadLabelPacksForDryRun(packPaths), options);
+}
+
+export function runCalibrationDryRunFromCiFixtures(
+  options?: CalibrationDryRunOptions,
+): CalibrationDryRunResult {
+  return runCalibrationDryRunFromRows(loadCiFixtureLabelPacks(), options);
+}
+
+export function formatCalibrationDryRunReport(result: CalibrationDryRunResult): string {
+  const lines = [
+    `calibration-dry-run: mode=${result.mode}`,
+    `  sources=${result.sources.join(',') || '(none)'}`,
+    `  total_rows=${result.total_rows} ece_eligible=${result.ece_eligible_rows} excluded_from_ece=${result.excluded_from_ece_rows}`,
+    `  min_training_samples=${result.min_training_samples} soft_ece_threshold=${result.soft_ece_threshold}`,
+  ];
+
+  if (result.mode === 'report_only_sample_starved') {
+    lines.push(
+      `  SAMPLE_STARVED: need ≥${result.min_training_samples} ECE-eligible rows; report-only (no soft pass/fail)`,
+    );
+    return lines.join('\n');
+  }
+
+  lines.push(
+    `  fit=${result.fit_sample_count} holdout=${result.holdout_sample_count}`,
+    `  holdout_ece_raw=${result.holdout_ece_raw?.toFixed(4) ?? 'null'}`,
+    `  holdout_ece_calibrated=${result.holdout_ece_calibrated?.toFixed(4) ?? 'null'}`,
+    `  soft_ece=${result.soft_ece_passed === null ? 'n/a' : result.soft_ece_passed ? 'PASS' : 'FAIL'}`,
+  );
+  return lines.join('\n');
+}
+
+function parseDryRunCliArgs(argv: readonly string[]): {
+  readonly dryRun: boolean;
+  readonly ciFixtures: boolean;
+  readonly enforceSoftEce: boolean;
+  readonly packPaths: readonly string[];
+  readonly bundlePath: string | undefined;
+} {
+  const packPaths: string[] = [];
+  let dryRun = false;
+  let ciFixtures = false;
+  let enforceSoftEce = false;
+  let bundlePath: string | undefined;
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!;
+    if (arg === '--dry-run-packs' || arg === '--dry-run') {
+      dryRun = true;
+      continue;
+    }
+    if (arg === '--ci-fixtures') {
+      dryRun = true;
+      ciFixtures = true;
+      continue;
+    }
+    if (arg === '--enforce-soft-ece') {
+      enforceSoftEce = true;
+      continue;
+    }
+    if (arg === '--packs' || arg === '--label-packs') {
+      const next = argv[i + 1];
+      if (next === undefined || next.startsWith('-')) {
+        throw new CalibrationVerifyError(`${arg} requires one or more pack JSONL paths`);
+      }
+      dryRun = true;
+      while (i + 1 < argv.length && !argv[i + 1]!.startsWith('-')) {
+        i += 1;
+        packPaths.push(argv[i]!);
+      }
+      continue;
+    }
+    if (arg.startsWith('-')) {
+      continue;
+    }
+    if (bundlePath === undefined) {
+      bundlePath = arg;
+    }
+  }
+
+  return { dryRun, ciFixtures, enforceSoftEce, packPaths, bundlePath };
+}
+
 function usage(): void {
   console.error(
     [
-      'Usage: npm run routing:verify-calibration -- [bundle.json]',
+      'Usage:',
+      '  npm run routing:verify-calibration -- [bundle.json]',
+      '  npm run routing:calibration-dry-run -- [--ci-fixtures | --packs <jsonl...>]',
       '',
       'Validates routing-calibration.json artifact shapes and benchmark triage gates.',
-      'Exits non-zero when any assertion fails.',
+      'Dry-run mode loads privacy-safe label packs, holdout-splits, and reports ECE',
+      `(soft advisory threshold ${CALIBRATION_DRY_RUN_SOFT_ECE_THRESHOLD}; report-only when sample-starved).`,
+      'Exits non-zero when bundle assertions fail, or when --enforce-soft-ece and soft ECE fails.',
     ].join('\n'),
   );
 }
@@ -498,7 +768,28 @@ function main(): void {
     return;
   }
 
-  const bundlePath = process.argv[2] ?? DEFAULT_ROUTING_CALIBRATION_PATH;
+  const args = parseDryRunCliArgs(process.argv.slice(2));
+
+  if (args.dryRun) {
+    const result = args.ciFixtures
+      ? runCalibrationDryRunFromCiFixtures()
+      : args.packPaths.length > 0
+        ? runCalibrationDryRunFromPackFiles(args.packPaths)
+        : runCalibrationDryRunFromCiFixtures();
+
+    console.log(formatCalibrationDryRunReport(result));
+
+    if (
+      args.enforceSoftEce &&
+      result.mode === 'evaluated' &&
+      result.soft_ece_passed === false
+    ) {
+      process.exit(1);
+    }
+    return;
+  }
+
+  const bundlePath = args.bundlePath ?? DEFAULT_ROUTING_CALIBRATION_PATH;
   const result = verifyRoutingCalibration(bundlePath);
 
   for (const assertion of result.assertions) {
