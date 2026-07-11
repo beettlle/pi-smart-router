@@ -1,7 +1,7 @@
 # SP-195: Community Bench Track B/C + Docs — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
+**Current Step:** 3
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-11
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,39 +12,39 @@
 
 ## Step 1: Track B skip + Track C flags
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Track B skip-with-reason
-- [ ] --llmrouterbench / --full offline
-- [ ] Unit tests for skip + Track C
+- [x] Track B skip-with-reason
+- [x] --llmrouterbench / --full offline
+- [x] Unit tests for skip + Track C
 
 ## Step 2: README contribute + contact parity
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Contribute section
-- [ ] Maintainer contact matches CLI
-- [ ] Cross-links corpus paths
+- [x] Contribute section
+- [x] Maintainer contact matches CLI
+- [x] Cross-links corpus paths
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Contract testCommand
-- [ ] CLI Track A + Track C smoke
-- [ ] verify:ci
-- [ ] Coverage ≥77%
+- [x] Contract testCommand
+- [x] CLI Track A + Track C smoke
+- [x] verify:ci
+- [x] Coverage ≥77%
 
 ---
 
 ## Completion Criteria
 
-- [ ] Track B skip
-- [ ] Track C optional
-- [ ] README contribute
-- [ ] No full corpus in PR CI
-- [ ] Gates untouched
-- [ ] #105 closable
+- [x] Track B skip
+- [x] Track C optional
+- [x] README contribute
+- [x] No full corpus in PR CI
+- [x] Gates untouched
+- [x] #105 closable
 
 ---
 
@@ -52,16 +52,27 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
+| 2026-07-11 | 1 | plan | skipped (engine-owned after .DONE) |
+| 2026-07-11 | 2 | plan | skipped (engine-owned after .DONE) |
+| 2026-07-11 | 3 | plan | skipped (engine-owned after .DONE) |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
+| 2026-07-11 | `community-bench-report.ts` holds Track B/C Zod schema + default skip reasons; Track C "ran" metrics require a schema extension. Not listed in File Scope May change (authoring gap vs SP-194). Editing as companion to Must-change `community-bench.ts`. | Documented scope companion |
+| 2026-07-11 | `tests/eval/corpus/llmrouterbench/PROVENANCE.md` Check-If-Affected only; not in File Scope. Cross-links live in README contribute section instead. | No PROVENANCE edit |
 
 ## Execution Log
 
 | Date | Event | Detail |
 |------|-------|--------|
+| 2026-07-11 | Step 1 started | Plan review skipped; implementing Track B/C flags |
+| 2026-07-11 | Step 1 complete | Track B skip + Track C offline + unit tests green; committed |
+| 2026-07-11 | Step 2 started | README contribute section + contact parity |
+| 2026-07-11 | Step 2 complete | Contribute section + contact parity + corpus cross-links; committed |
+| 2026-07-11 | Step 3 started | Contract tests, CLI smoke, verify:ci, coverage |
+| 2026-07-11 | Step 3 complete | verify:ci green; coverage 92.91% lines; gates untouched |
 
 ## Blockers
 

@@ -1,0 +1,1 @@
+SP-195 complete — Track B skip-with-reason (#95), Track C optional offline (--llmrouterbench/--full), README contribute section + contact parity. verify:ci green; coverage 92.91% lines; release-gates.json untouched.

@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 /**
- * Community bench CLI — SP-194 / GitHub #105 Track A.
+ * Community bench CLI — SP-194 / SP-195 / GitHub #105.
  *
  * Offline smoke (vendored TwinRouterBench subset, no network):
  *
  *   npm run routing:community-bench -- \\
  *     --output /tmp/community-bench-report.json \\
  *     --email-file /tmp/community-bench-report.txt
+ *
+ * Optional Track C (vendored LLMRouterBench subset, no network):
+ *
+ *   npm run routing:community-bench -- --llmrouterbench
  *
  * Default corpus: tests/eval/corpus/twinrouterbench
  * Gates: config/release-gates.json via assert-release-gates helpers (thresholds unchanged).
@@ -27,17 +31,29 @@ import {
 import { buildSetupFingerprint } from './community-bench-fingerprint.js';
 import {
   buildCommunityBenchReport,
+  COMMUNITY_BENCH_MAINTAINER_CONTACT,
   formatCommunityBenchEmail,
   formatCommunityBenchIssueBody,
   formatMailtoHint,
+  TRACK_B_SKIP_REASON_ADAPTER_INCOMPLETE,
+  TRACK_C_SKIP_REASON_NOT_REQUESTED,
   type CommunityBenchReport,
+  type TrackBResult,
+  type TrackCResult,
 } from './community-bench-report.js';
+import {
+  buildLlmRouterBenchRegretReport,
+  DEFAULT_LLMROUTERBENCH_SUBSET_PATH,
+} from './llmrouterbench-regret-report.js';
 import { runHarnessOnDir } from './run-harness.js';
 
 export const DEFAULT_CORPUS_PATH = resolve('tests/eval/corpus/twinrouterbench');
 export const DEFAULT_GATES_CONFIG = resolve('config/release-gates.json');
 export const DEFAULT_JSON_OUTPUT = resolve('community-bench-report.json');
 export const DEFAULT_EMAIL_OUTPUT = resolve('community-bench-report.txt');
+
+/** Re-export maintainer contact so CLI footer / README parity tests share one constant. */
+export { COMMUNITY_BENCH_MAINTAINER_CONTACT };
 
 export interface CommunityBenchCliArgs {
   readonly output: string;
@@ -47,6 +63,12 @@ export interface CommunityBenchCliArgs {
   readonly corpusPath: string;
   readonly configPath: string;
   readonly modelsPath?: string;
+  /** Path to dogfood export (#95). Adapter incomplete → Track B skips with reason. */
+  readonly dogfoodExportPath: string | null;
+  /** When true, run Track C offline on vendored LLMRouterBench subset. */
+  readonly llmrouterbench: boolean;
+  /** Optional override for Track C subset JSON (default: vendored ci-subset). */
+  readonly llmrouterbenchSubsetPath: string;
   readonly help: boolean;
 }
 
@@ -93,11 +115,63 @@ export function runTrackA(
   return { metrics, gates };
 }
 
-/** Build the full community-bench report (fingerprint + Track A). */
+/**
+ * Track B (#95 dogfood export→harness). Adapter is incomplete — always skip
+ * with an explicit reason. Never invent dogfood labels.
+ */
+export function resolveTrackB(dogfoodExportPath: string | null): TrackBResult {
+  if (dogfoodExportPath) {
+    return {
+      status: 'skipped',
+      reason: `${TRACK_B_SKIP_REASON_ADAPTER_INCOMPLETE} (requested --dogfood-export ${dogfoodExportPath})`,
+    };
+  }
+  return {
+    status: 'skipped',
+    reason: TRACK_B_SKIP_REASON_ADAPTER_INCOMPLETE,
+  };
+}
+
+/**
+ * Track C: optional offline LLMRouterBench regret/CS on the SP-192/SP-193
+ * vendored subset. Never downloads the full HF corpus.
+ */
+export function resolveTrackC(options: {
+  readonly enabled: boolean;
+  readonly subsetPath?: string;
+}): TrackCResult {
+  if (!options.enabled) {
+    return {
+      status: 'skipped',
+      reason: TRACK_C_SKIP_REASON_NOT_REQUESTED,
+    };
+  }
+
+  const subsetPath = resolve(options.subsetPath ?? DEFAULT_LLMROUTERBENCH_SUBSET_PATH);
+  const regret = buildLlmRouterBenchRegretReport({ subsetPath });
+  return {
+    name: 'LLMRouterBench',
+    status: 'ran',
+    subset_path: regret.subset_path,
+    offline: true,
+    downloads_corpus: false,
+    fixture_count: regret.fixture_count,
+    catalog_id: regret.catalog_id,
+    checkpoint_date: regret.checkpoint_date,
+    cumulative_regret_usd: regret.cumulative_regret_usd,
+    mean_cost_savings_ratio: regret.mean_cost_savings_ratio,
+    mean_quality_retention: regret.mean_quality_retention,
+  };
+}
+
+/** Build the full community-bench report (fingerprint + Track A + optional B/C). */
 export function runCommunityBench(options: {
   readonly corpusPath?: string;
   readonly configPath?: string;
   readonly modelsPath?: string;
+  readonly dogfoodExportPath?: string | null;
+  readonly llmrouterbench?: boolean;
+  readonly llmrouterbenchSubsetPath?: string;
 }): CommunityBenchReport {
   const corpusPath = options.corpusPath ?? DEFAULT_CORPUS_PATH;
   const configPath = options.configPath ?? DEFAULT_GATES_CONFIG;
@@ -105,11 +179,20 @@ export function runCommunityBench(options: {
     ...(options.modelsPath ? { modelsPath: options.modelsPath } : {}),
   });
   const { metrics, gates } = runTrackA(corpusPath, configPath);
+  const trackB = resolveTrackB(options.dogfoodExportPath ?? null);
+  const trackC = resolveTrackC({
+    enabled: options.llmrouterbench ?? false,
+    ...(options.llmrouterbenchSubsetPath
+      ? { subsetPath: options.llmrouterbenchSubsetPath }
+      : {}),
+  });
   return buildCommunityBenchReport({
     fingerprint,
     corpusPath,
     metrics,
     gates,
+    trackB,
+    trackC,
   });
 }
 
@@ -122,6 +205,9 @@ export function parseCommunityBenchArgs(argv: readonly string[]): CommunityBench
   let corpusPath = DEFAULT_CORPUS_PATH;
   let configPath = DEFAULT_GATES_CONFIG;
   let modelsPath: string | undefined;
+  let dogfoodExportPath: string | null = null;
+  let llmrouterbench = false;
+  let llmrouterbenchSubsetPath = DEFAULT_LLMROUTERBENCH_SUBSET_PATH;
   let help = false;
 
   for (let i = 0; i < argv.length; i++) {
@@ -148,6 +234,14 @@ export function parseCommunityBenchArgs(argv: readonly string[]): CommunityBench
     } else if (arg === '--models' && argv[i + 1]) {
       modelsPath = resolve(argv[i + 1]!);
       i += 1;
+    } else if (arg === '--dogfood-export' && argv[i + 1]) {
+      dogfoodExportPath = resolve(argv[i + 1]!);
+      i += 1;
+    } else if (arg === '--llmrouterbench' || arg === '--full') {
+      llmrouterbench = true;
+    } else if (arg === '--llmrouterbench-subset' && argv[i + 1]) {
+      llmrouterbenchSubsetPath = resolve(argv[i + 1]!);
+      i += 1;
     } else if (arg === '--help' || arg === '-h') {
       help = true;
     }
@@ -161,6 +255,9 @@ export function parseCommunityBenchArgs(argv: readonly string[]): CommunityBench
     corpusPath,
     configPath,
     ...(modelsPath ? { modelsPath } : {}),
+    dogfoodExportPath,
+    llmrouterbench,
+    llmrouterbenchSubsetPath,
     help,
   };
 }
@@ -168,26 +265,33 @@ export function parseCommunityBenchArgs(argv: readonly string[]): CommunityBench
 export function usage(): string {
   return `Usage: community-bench [options]
 
-Privacy-safe community bench report (Track A: TwinRouterBench + release gates).
+Privacy-safe community bench report (Track A required; Track B/C optional).
 Writes community-bench-report.json and an email-ready .txt. No SMTP / no upload.
 
-Offline smoke (vendored corpus, no network):
+Offline smoke (vendored TwinRouterBench corpus, no network):
   npm run routing:community-bench -- \\
     --output /tmp/community-bench-report.json \\
     --email-file /tmp/community-bench-report.txt
 
-Options:
-  --output PATH         JSON report path (default: ./community-bench-report.json)
-  --email-file PATH     Email .txt path (default: ./community-bench-report.txt)
-  --no-email-file       Skip writing the .txt artifact
-  --print-issue-body    Print GitHub issue body to stdout
-  --mailto ADDRESS      Print mailto: hint URL (does not send; .txt is source of truth)
-  --corpus DIR          TwinRouterBench corpus dir (default: tests/eval/corpus/twinrouterbench)
-  --config PATH         Release gates config (default: config/release-gates.json)
-  --models PATH         Fleet models.yaml for fingerprint (default: config/models.yaml[.example])
-  --help, -h            Show this help
+Optional Track C (vendored LLMRouterBench subset, no network / no full HF download):
+  npm run routing:community-bench -- --llmrouterbench
 
-Track B (dogfood) and Track C (LLMRouterBench) are deferred to SP-195.`;
+Options:
+  --output PATH              JSON report path (default: ./community-bench-report.json)
+  --email-file PATH          Email .txt path (default: ./community-bench-report.txt)
+  --no-email-file            Skip writing the .txt artifact
+  --print-issue-body         Print GitHub issue body to stdout
+  --mailto ADDRESS           Print mailto: hint URL (does not send; .txt is source of truth)
+  --corpus DIR               TwinRouterBench corpus dir (default: tests/eval/corpus/twinrouterbench)
+  --config PATH              Release gates config (default: config/release-gates.json)
+  --models PATH              Fleet models.yaml for fingerprint (default: config/models.yaml[.example])
+  --dogfood-export PATH      Track B: dogfood export path (#95). Skips with reason until adapter lands
+  --llmrouterbench, --full   Track C: offline regret/CS on vendored LLMRouterBench subset
+  --llmrouterbench-subset P  Track C subset JSON (default: tests/eval/corpus/llmrouterbench/ci-subset.json)
+  --help, -h                 Show this help
+
+Maintainer contact: ${COMMUNITY_BENCH_MAINTAINER_CONTACT}
+Contribute: see README "Contribute a community bench report".`;
 }
 
 function writeFileEnsuringDir(path: string, contents: string): void {
@@ -223,6 +327,9 @@ async function main(): Promise<void> {
     corpusPath: args.corpusPath,
     configPath: args.configPath,
     ...(args.modelsPath ? { modelsPath: args.modelsPath } : {}),
+    dogfoodExportPath: args.dogfoodExportPath,
+    llmrouterbench: args.llmrouterbench,
+    llmrouterbenchSubsetPath: args.llmrouterbenchSubsetPath,
   });
 
   const written = writeCommunityBenchArtifacts(report, {
@@ -235,7 +342,18 @@ async function main(): Promise<void> {
     console.log(`community-bench: wrote ${written.emailPath}`);
   }
   console.log(`community-bench: Track A ${report.tracks.A.passed ? 'PASS' : 'FAIL'}`);
+  if (report.tracks.B) {
+    console.log(`community-bench: Track B SKIPPED — ${report.tracks.B.reason}`);
+  }
+  if (report.tracks.C?.status === 'ran') {
+    console.log(
+      `community-bench: Track C ran offline (fixtures=${report.tracks.C.fixture_count}, regret_usd=${report.tracks.C.cumulative_regret_usd})`,
+    );
+  } else if (report.tracks.C?.status === 'skipped') {
+    console.log(`community-bench: Track C SKIPPED — ${report.tracks.C.reason}`);
+  }
   console.log(`community-bench: overall ${report.overall_passed ? 'PASS' : 'FAIL'}`);
+  console.log(`community-bench: maintainer contact: ${COMMUNITY_BENCH_MAINTAINER_CONTACT}`);
 
   if (args.printIssueBody) {
     console.log('--- issue body ---');

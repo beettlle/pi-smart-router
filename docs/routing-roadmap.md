@@ -186,7 +186,7 @@ flowchart TD
 | **1. Data collection** | Shadow-log features; discard raw prompts | Async encoder features for future Granite trial | telemetry, `data/contrib/` | Partial |
 | **2. Labeling** | Cheap-success + failure proxies | Loop escalation, `stop_reason`, edit distance, re-prompt; SWE-Gym / FC-RewardBench / weak TwinRouterBench packs | SP-062, SP-104 export, SP-189–SP-190 | Partial (packs landed; #102) |
 | **3. Training** | Calibrated artifacts | OATS centroid shift; isotonic calibrator; projection refresh; pack-fed dry-run ECE | SP-115–117, SP-191 `routing:calibration-dry-run` | Scripts + dry-run; grow pack volume |
-| **4. Offline eval** | Agent-native QR/CS/latency | TwinRouterBench static track; counterfactual AST progression; cumulative regret | TwinRouterBench harness smoke + SP-193 LLMRouterBench offline regret (`routing:llmrouterbench-regret`; not PR CI) | Partial |
+| **4. Offline eval** | Agent-native QR/CS/latency | TwinRouterBench static track; counterfactual AST progression; cumulative regret | TwinRouterBench harness smoke + SP-193 LLMRouterBench offline regret (`routing:llmrouterbench-regret`; not PR CI) + SP-194/SP-195 community-bench (`routing:community-bench`; Track C via `--llmrouterbench`) | Partial |
 | **5. Shadow deploy** | Gradual τ relaxation | Fallback to pin-only if QR regresses &gt;5% | explain + config | Proposed |
 
 **Eval anti-pattern:** MT-Bench or HumanEval alone. Prefer SWE-bench traces, Terminal-Bench, tool-loop continuity, counterfactual routing ([RouterBench](https://arxiv.org/abs/2403.12031), [LLMRouterBench](https://arxiv.org/abs/2601.07206), TwinRouterBench per gemini-research).
