@@ -30,7 +30,7 @@ import { loadTwinRouterBenchStaticTrack } from '../../scripts/eval/twinrouterben
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const CI_SUBSET_PATH = join(REPO_ROOT, 'tests/eval/corpus/twinrouterbench/ci-subset.json');
 const CI_SUBSET_SHA256 =
-  'ec0b1e70709718956824b6d06092273a49171d48add019a15f2bc2772df1b265';
+  'c9a45d5bf25bb1e56d80d6a31dbd2b4c0fff02e4ba2a9e7a46565437ae97fdca';
 
 function syntheticRow(
   overrides: Partial<UpstreamQuestionBankRow> = {},
@@ -239,11 +239,11 @@ describe('ingest-twinrouterbench-corpus (SP-186)', () => {
     expect(isCodeToolWorkload({ benchmark: 'mtrag' })).toBe(false);
     expect(isCodeToolWorkload({ benchmark: 'qmsum' })).toBe(false);
 
-    const quotas = allocateCodeToolQuotas(50);
-    expect(quotas.get('swebench')).toBe(17);
-    expect(quotas.get('bfcl')).toBe(17);
-    expect(quotas.get('pinchbench')).toBe(16);
-    expect([...quotas.values()].reduce((a, b) => a + b, 0)).toBe(50);
+    const quotas = allocateCodeToolQuotas(150);
+    expect(quotas.get('swebench')).toBe(50);
+    expect(quotas.get('bfcl')).toBe(50);
+    expect(quotas.get('pinchbench')).toBe(50);
+    expect([...quotas.values()].reduce((a, b) => a + b, 0)).toBe(150);
   });
 
   it('skips chat-only rows when preferCodeTool is set', () => {
@@ -264,9 +264,9 @@ describe('ingest-twinrouterbench-corpus (SP-186)', () => {
   });
 });
 
-describe('TwinRouterBench CI subset (SP-187)', () => {
+describe('TwinRouterBench CI subset (SP-187 / SP-199)', () => {
   it('vendors a bounded offline subset that loads and scores without network', () => {
-    expect(CI_SUBSET_MAX_RECORDS).toBe(50);
+    expect(CI_SUBSET_MAX_RECORDS).toBe(150);
 
     const buf = readFileSync(CI_SUBSET_PATH);
     const sha = createHash('sha256').update(buf).digest('hex');

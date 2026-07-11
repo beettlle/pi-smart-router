@@ -31,9 +31,9 @@ export const TWINROUTERBENCH_PINNED_COMMIT =
 
 /**
  * Max records for the vendored CI subset (`tests/eval/corpus/twinrouterbench/ci-subset.json`).
- * Keep ≤50 so PR CI stays small; full corpus remains optional via converter without --limit.
+ * Keep ≤150 so PR CI stays small; full corpus remains optional via converter without --limit.
  */
-export const CI_SUBSET_MAX_RECORDS = 50 as const;
+export const CI_SUBSET_MAX_RECORDS = 150 as const;
 
 /**
  * Upstream `benchmark` values treated as code/tool workloads for CI subset selection.

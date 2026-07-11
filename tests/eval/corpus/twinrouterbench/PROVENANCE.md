@@ -1,9 +1,9 @@
-# TwinRouterBench static-track provenance (SP-186 / SP-187)
+# TwinRouterBench static-track provenance (SP-186 / SP-187 / SP-199)
 
 Pinned public source for converting TwinRouterBench `question_bank.jsonl` into
 pi-smart-router `TwinRouterBenchStaticTrack` JSON (`scripts/eval/twinrouterbench-adapter.ts`).
 
-**CI-sized subset (SP-187):** `ci-subset.json` — ≤50 code/tool records, checksummed below.
+**CI-sized subset (SP-187 → SP-199):** `ci-subset.json` — ≤150 code/tool records, checksummed below.
 The full ~970-row corpus is **not** checked in; regenerate locally with the converter
 (`--limit` / no-limit). Sample fixtures under `tests/eval/fixtures/twinrouterbench/` are
 unchanged and remain the default release-gate smoke inputs.
@@ -33,16 +33,16 @@ Upstream JSONL SHA-256 (pinned commit, full 970 rows):
 
 `5b4f90c24643b214a9b0f26bf4e05afc742554262f4ef405e0b3b4a4cce503f4`
 
-## CI subset (SP-187)
+## CI subset (SP-199)
 
 | Field | Value |
 |-------|-------|
 | Path | `tests/eval/corpus/twinrouterbench/ci-subset.json` |
-| **Max records** | **≤50** (`CI_SUBSET_MAX_RECORDS` in the converter) |
-| Vendored records | 50 |
-| Approx size | ~29 KB |
+| **Max records** | **≤150** (`CI_SUBSET_MAX_RECORDS` in the converter) |
+| Vendored records | 148 |
+| Approx size | ~83 KB |
 | Selection | `--prefer-code-tool` — keeps `swebench` / `bfcl` / `pinchbench`; skips chat-only (`mtrag`, `qmsum`); stratified quotas across the three code/tool benchmarks |
-| SHA-256 | `ec0b1e70709718956824b6d06092273a49171d48add019a15f2bc2772df1b265` |
+| SHA-256 | `c9a45d5bf25bb1e56d80d6a31dbd2b4c0fff02e4ba2a9e7a46565437ae97fdca` |
 
 ### Regenerate CI subset
 
@@ -58,11 +58,11 @@ shasum -a 256 /tmp/trb-question_bank.jsonl
 npm run routing:ingest-twinrouterbench -- \
   --input /tmp/trb-question_bank.jsonl \
   --output tests/eval/corpus/twinrouterbench/ci-subset.json \
-  --limit 50 \
+  --limit 150 \
   --prefer-code-tool
 
 shasum -a 256 tests/eval/corpus/twinrouterbench/ci-subset.json
-# expect: ec0b1e70709718956824b6d06092273a49171d48add019a15f2bc2772df1b265
+# expect: c9a45d5bf25bb1e56d80d6a31dbd2b4c0fff02e4ba2a9e7a46565437ae97fdca
 ```
 
 Offline harness smoke on the corpus directory (does not touch default fixtures):
@@ -141,13 +141,13 @@ npx tsx scripts/eval/ingest-twinrouterbench-corpus.ts \
   --limit 20
 ```
 
-CI subset (code/tool only, stratified, ≤50):
+CI subset (code/tool only, stratified, ≤150):
 
 ```bash
 npm run routing:ingest-twinrouterbench -- \
   --input /tmp/trb-question_bank.jsonl \
   --output tests/eval/corpus/twinrouterbench/ci-subset.json \
-  --limit 50 \
+  --limit 150 \
   --prefer-code-tool
 ```
 
@@ -159,5 +159,7 @@ stratifies across swebench / bfcl / pinchbench when a limit is set.
 ## Related tasks
 
 - **SP-186** — pin + converter (landed)
-- **SP-187** — vendor CI-sized subset + checksums under this directory (this file)
+- **SP-187** — vendor CI-sized subset + checksums under this directory (landed; bound was ≤50)
+- **SP-199** — raise CI subset bound 50→150 (this file)
 - **SP-188** — CI smoke / gates docs (do not change absolute `config/release-gates.json` thresholds here)
+- **SP-200** — full-track / nightly docs (owns README full-corpus guidance)
