@@ -1,6 +1,6 @@
 # SP-197: Routing Roadmap Status Sync — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-11
 **Review Level:** 0
@@ -12,7 +12,7 @@
 
 ## Step 1: Sync status column
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] §2 status cells
 - [x] #95/#96/#108 pointers
@@ -20,7 +20,7 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Read-through
 - [ ] Suite sanity
@@ -55,7 +55,8 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-11 | Step 1 started | Syncing §2 status cells against closed issues |
-| 2026-07-11 | Step 1 outcomes | Updated docs/routing-roadmap.md §2/§3/§5 status truth |
+| 2026-07-11 | Step 1 complete | docs(SP-197) commit 2ea5bd0 |
+| 2026-07-11 | Step 2 started | Read-through + suite sanity + close #109 |
 
 ## Blockers
 
