@@ -39,9 +39,9 @@
 
 - [x] All release-scoped tasks `.DONE` (SP-192–SP-195)
 - [x] Issues #103 and #105 closed
-- [ ] `npm run release:check` exit 0
-- [ ] CI green on release commit
-- [ ] Operator approved publish — `npm version patch` → tag `v0.9.3` → push
+- [x] `npm run release:check` exit 0 — `/tmp/pi-smart-router-v093-final-release-check.log` + prebump recheck exit 0
+- [x] CI green on `57f6ce2` — [run 29163821696](https://github.com/beettlle/pi-smart-router/actions/runs/29163821696) success
+- [x] Operator approved publish (wait for CI first) — `npm version patch` → tag `v0.9.3` → push
 - [ ] Release workflow / npm publish
 
 ## Recovery

@@ -5,7 +5,7 @@
 **Next Task ID:** SP-196
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.9.2 (2026-07-11) — SWE-Gym + FC-RewardBench label packs (#102 → SP-189–SP-191). **In flight:** v0.9.3 — LLMRouterBench (#103) + community bench (#105) → SP-192–SP-195.
+**Released:** v0.9.3 (2026-07-11) — LLMRouterBench (#103 → SP-192–SP-193) + community bench (#105 → SP-194–SP-195); prior v0.9.2 label packs (#102).
 
 ---
 
