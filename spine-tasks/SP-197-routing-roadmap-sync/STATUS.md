@@ -1,7 +1,7 @@
 # SP-197: Routing Roadmap Status Sync — Status
 
-**Current Step:** 1
-**Status:** ⬜ Not Started
+**Current Step:** 2
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-11
 **Review Level:** 0
 **Review Counter:** 0
@@ -12,28 +12,28 @@
 
 ## Step 1: Sync status column
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] §2 status cells
-- [ ] #95/#96/#108 pointers
-- [ ] as-of date
+- [x] §2 status cells
+- [x] #95/#96/#108 pointers
+- [x] as-of date
 
 ## Step 2: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Read-through
-- [ ] Suite sanity
-- [ ] Close #109
+- [x] Read-through
+- [x] Suite sanity
+- [x] Close #109
 
 ---
 
 ## Completion Criteria
 
-- [ ] Status truth
-- [ ] Pointers present
-- [ ] No invented rows
-- [ ] #109 closable
+- [x] Status truth
+- [x] Pointers present
+- [x] No invented rows
+- [x] #109 closable
 
 ---
 
@@ -47,13 +47,19 @@
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-07-11 | #71–#84, #102/#103/#105 all CLOSED; #95/#96/#108 OPEN | Status cells → Landed / Partial-remaining; #108 replaces open #75 implication |
+| 2026-07-11 | `docs/qa/shadow-dogfood-protocol.md` exists for Phase 5 pointer | Linked from §5 Shadow deploy |
 
 ## Execution Log
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-11 | Step 1 started | Syncing §2 status cells against closed issues |
+| 2026-07-11 | Step 1 complete | docs(SP-197) commit 2ea5bd0 |
+| 2026-07-11 | Step 2 started | Read-through + suite sanity + close #109 |
+| 2026-07-11 | Suite sanity | `npm run typecheck && npm test` — 97 files / 1637 tests passed |
+| 2026-07-11 | Close #109 | Comment + closed (completed) |
+| 2026-07-11 | Step 2 complete | Verification + #109 closed |
 
 ## Blockers
 
