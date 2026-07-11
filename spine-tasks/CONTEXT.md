@@ -580,7 +580,7 @@
 **Deferred:** #103 (P3), #95, #96, #105, #1/#25/#26 hardware.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.9.2/manifest.md`, `spine-tasks/_authoring/backlog-snapshot-20260711-v092.md`  
-**Status:** Published as **v0.9.2** (`b937a7a` / tag `v0.9.2`); Release workflow watching [run 29162774613](https://github.com/beettlle/pi-smart-router/actions/runs/29162774613).
+**Status:** Published as **v0.9.2** (`b937a7a` / tag `v0.9.2`); Release [run 29162774613](https://github.com/beettlle/pi-smart-router/actions/runs/29162774613) success; on npm as `0.9.2`.
 
 ---
 

@@ -42,7 +42,7 @@
 - [x] `npm run release:check` exit 0 — `/tmp/pi-smart-router-v092-release-check2.log` (`RELEASE_CHECK_EXIT:0`; release-gates PASS)
 - [x] CI green on HEAD `9af45a4` — [run 29162709780](https://github.com/beettlle/pi-smart-router/actions/runs/29162709780) success
 - [x] Operator approved publish — `npm version patch` → `b937a7a` / tag `v0.9.2` pushed
-- [ ] Release workflow / npm publish — [run 29162774613](https://github.com/beettlle/pi-smart-router/actions/runs/29162774613) (watching)
+- [x] Release workflow / npm publish — [run 29162774613](https://github.com/beettlle/pi-smart-router/actions/runs/29162774613) success; `npm view pi-smart-router version` → `0.9.2`
 
 ## Recovery
 
