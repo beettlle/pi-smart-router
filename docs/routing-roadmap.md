@@ -1,6 +1,6 @@
 # Routing Quality Roadmap
 
-**Last updated:** 2026-07-08  
+**Last updated:** 2026-07-11  
 **Purpose:** Prioritized implementation backlog for pre-generation routing quality (task success per dollar), ordered by impact.  
 **Audience:** Implementers and spine task authors.  
 **Companion docs:** [PRD](PRD.md) (pipeline contract), [deep-research](deep-research.md) (architecture survey), [constitution](constitution.md) (non-negotiables), [research/README.md](research/README.md) (provenance index).  
@@ -55,8 +55,8 @@ Ordered for **task success per dollar**. Status reflects the codebase as of 2026
 | **Pipeline stages** | `low_intensity`, calibration scripts (SP-116/117) |
 | **Evidence** | [SWE-Gym](https://arxiv.org/abs/2412.21139); [ToolRM](https://arxiv.org/abs/2509.11963); UCCI (gemini-research §5 — verify citation before SLO claims). Confidence: high (method), medium (our label volume). |
 | **Effort** | M |
-| **Status** | **Partial** — SP-104/105/106/116/117 landed. **Gap:** isotonic artifact, verifier-grade label volume, counterfactual eval. |
-| **Follow-on** | GitHub [#74](https://github.com/beettlle/pi-smart-router/issues/74); extend SP-117 bundle format. |
+| **Status** | **Partial** — SP-104/105/106/116/117 landed; SP-189–SP-191 privacy-safe label packs + pack-fed dry-run ECE close the **label-volume** gap for #102. **Remaining gap:** serve-time isotonic artifact adoption volume, counterfactual eval. |
+| **Follow-on** | GitHub [#74](https://github.com/beettlle/pi-smart-router/issues/74); [#102](https://github.com/beettlle/pi-smart-router/issues/102) closable via SP-191; [#96](https://github.com/beettlle/pi-smart-router/issues/96) enablement should use pack holdout ECE (not fixture-only QR) — do not flip `modernbert_k4` defaults until that evidence lands. |
 
 ### P1 — Benchmark-grounded capability profiles
 
@@ -184,8 +184,8 @@ flowchart TD
 | Phase | Goal | Additions (merged) | Repo hooks | Done? |
 |-------|------|-------------------|------------|-------|
 | **1. Data collection** | Shadow-log features; discard raw prompts | Async encoder features for future Granite trial | telemetry, `data/contrib/` | Partial |
-| **2. Labeling** | Cheap-success + failure proxies | Loop escalation, `stop_reason`, edit distance, re-prompt | SP-062, SP-104 export | Partial |
-| **3. Training** | Calibrated artifacts | OATS centroid shift; isotonic calibrator; projection refresh | SP-115, SP-116, SP-117 | Scripts done; volume gap |
+| **2. Labeling** | Cheap-success + failure proxies | Loop escalation, `stop_reason`, edit distance, re-prompt; SWE-Gym / FC-RewardBench / weak TwinRouterBench packs | SP-062, SP-104 export, SP-189–SP-190 | Partial (packs landed; #102) |
+| **3. Training** | Calibrated artifacts | OATS centroid shift; isotonic calibrator; projection refresh; pack-fed dry-run ECE | SP-115–117, SP-191 `routing:calibration-dry-run` | Scripts + dry-run; grow pack volume |
 | **4. Offline eval** | Agent-native QR/CS/latency | TwinRouterBench static track; counterfactual AST progression; cumulative regret | **Gap:** harness | Proposed |
 | **5. Shadow deploy** | Gradual τ relaxation | Fallback to pin-only if QR regresses &gt;5% | explain + config | Proposed |
 

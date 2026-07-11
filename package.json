@@ -67,6 +67,7 @@
     "routing:ingest-benchmarks": "tsx scripts/ingest-benchmark-profiles.ts",
     "routing:verify-benchmark-profiles": "vitest run tests/unit/ingest-benchmark-profiles.test.ts -t \"checked-in artifact matches fixture ingest\"",
     "routing:verify-calibration": "bash -c 'if [[ \" $* \" == *\" --skip-embed \"* ]]; then vitest run tests/unit/train-routing-calibration.test.ts -t \"verifyRoutingCalibration passes|evaluates benchmark triage gates\"; else npm run build && tsx scripts/verify-routing-calibration.ts \"$@\"; fi' --",
+    "routing:calibration-dry-run": "tsx scripts/verify-routing-calibration.ts --dry-run-packs",
     "routing:eval-replay": "tsx scripts/eval/counterfactual-replay.ts",
     "routing:eval-harness": "tsx scripts/eval/run-harness.ts",
     "routing:eval-harness:smoke": "tsx scripts/eval/run-harness.ts --summary-only",
