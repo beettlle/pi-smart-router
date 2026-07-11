@@ -204,3 +204,28 @@ npm run routing:ingest-twinrouterbench-weak -- \
   --output /tmp/trb-weak-from-corpus.jsonl \
   --limit 50
 ```
+
+---
+
+## Calibration dry-run holdout ECE (SP-191)
+
+Operators fit logistic + isotonic offline on pack rows and report **holdout ECE**
+without writing prompt text into artifacts.
+
+```bash
+# Default: ingest checked-in CI fixtures in-memory (usually SAMPLE_STARVED / report-only)
+npm run routing:calibration-dry-run
+
+# Operator packs (schema-valid JSONL from the converters above)
+npm run routing:calibration-dry-run -- --packs /tmp/swe-gym-pack.jsonl /tmp/fc-rewardbench-pack.jsonl
+```
+
+| Rule | Detail |
+|------|--------|
+| Soft ECE threshold | Advisory **0.25** calibrated holdout ECE (`CALIBRATION_DRY_RUN_SOFT_ECE_THRESHOLD`) — **not** a `config/release-gates.json` absolute |
+| Sample-starved | &lt; 30 ECE-eligible rows → report-only (`SAMPLE_STARVED`); exit 0 |
+| Weak labels | Rows with `exclude_from_holdout_ece` never enter holdout ECE metrics |
+| #96 / `modernbert_k4` | Use pack holdout (verifier packs), not fixture-only QR, when deciding enablement — **do not** flip defaults here |
+| Privacy | Dry-run loads via `loadLabelPackFile` / ingest converters; tainted keys fail closed |
+
+Implementation: `scripts/verify-routing-calibration.ts` (`runCalibrationDryRunFromRows`, `--dry-run-packs`).

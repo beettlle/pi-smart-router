@@ -568,7 +568,56 @@ At runtime, `ClusterMatcher` prefers `routing_centroids` from the calibration bu
 
 Below these thresholds the train path returns bootstrap centroids unchanged. The verify script reports `oats_refinement` metadata when refinement ran.
 
+These guards match `DEFAULT_OATS_MIN_POSITIVE_SAMPLES` / `DEFAULT_OATS_MIN_NEGATIVE_SAMPLES` in `scripts/lib/oats-centroid-refinement.ts` and `MINIMUM_TRAINING_SAMPLES.routing_centroids` (10) in `scripts/calibration-aggregate.ts`. The same global floors appear under `minimum_training_samples` in [`config/routing-calibration.json.example`](config/routing-calibration.json.example) (`hydra_projection` 100, `triage_thresholds` 50, `p_success_weights` / `isotonic_calibrator` 30, `routing_centroids` 10).
+
 See [routing-roadmap.md](docs/routing-roadmap.md) §2 P2 OATS and GitHub [#77](https://github.com/beettlle/pi-smart-router/issues/77).
+
+### Privacy-safe label packs + calibration dry-run (SP-189–SP-191 / #102)
+
+Offline **label packs** are feature-vector + binary-outcome JSONL (never prompt/message text). Schema: `scripts/lib/label-pack-schema.ts`. Provenance, pins, and field maps: [`tests/eval/corpus/label-packs/PROVENANCE.md`](tests/eval/corpus/label-packs/PROVENANCE.md).
+
+**Regenerate packs (offline / no network for CI fixtures):**
+
+```bash
+# SWE-Gym verifier-style → pack
+npm run routing:ingest-swe-gym -- \
+  --input tests/eval/corpus/label-packs/swe-gym/ci-fixture.jsonl \
+  --output /tmp/swe-gym-pack.jsonl
+
+# FC-RewardBench preference / flat → pack
+npm run routing:ingest-fc-rewardbench -- \
+  --input tests/eval/corpus/label-packs/fc-rewardbench/ci-fixture.jsonl \
+  --output /tmp/fc-rewardbench-pack.jsonl
+
+# Optional weak TwinRouterBench tier proxy (exclude from holdout ECE)
+npm run routing:ingest-twinrouterbench-weak -- \
+  --input tests/eval/corpus/label-packs/twinrouterbench-weak/ci-fixture.jsonl \
+  --output /tmp/trb-weak-pack.jsonl
+```
+
+**Calibration dry-run (holdout ECE):**
+
+```bash
+# CI fixtures (ingests packs in-memory; sample-starved → report-only)
+npm run routing:calibration-dry-run
+
+# Operator packs (schema-valid JSONL)
+npm run routing:calibration-dry-run -- --packs /tmp/swe-gym-pack.jsonl /tmp/fc-rewardbench-pack.jsonl
+
+# Soft ECE advisory fail (threshold 0.25 calibrated ECE; not a release-gate absolute)
+npm run routing:calibration-dry-run -- --packs /tmp/swe-gym-pack.jsonl --enforce-soft-ece
+```
+
+Dry-run behavior:
+
+| Condition | Result |
+|-----------|--------|
+| &lt; 30 ECE-eligible rows | `SAMPLE_STARVED` report-only (exit 0); no soft pass/fail |
+| ≥ 30 ECE-eligible rows | Fit logistic + isotonic; report `holdout_ece_raw` / `holdout_ece_calibrated` |
+| Rows with `exclude_from_holdout_ece` | Counted separately; **never** enter holdout ECE metrics (weak TwinRouterBench) |
+| Soft threshold | Advisory `0.25` calibrated ECE — **does not** change `config/release-gates.json` |
+
+**#96 / `modernbert_k4` advisory:** when deciding whether to enable ModernBERT K=4 heads, use **pack holdout ECE / Top-1 error on verifier-grade packs** (SWE-Gym + FC-RewardBench), not fixture-only QR. Weak TwinRouterBench rows are warm-start only. This task does **not** flip `modernbert_k4` defaults.
 
 ### Operator tuning (frugality slider)
 
@@ -793,6 +842,10 @@ Contributors must run `npm run build` before publishing or consuming the library
 | `npm run routing:train-calibration` | Train routing calibration artifact bundle |
 | `npm run routing:train-p-success` | Train standalone `config/p-success-weights.json` (synthetic fixture by default) |
 | `npm run routing:verify-calibration` | Verify calibration bundle against benchmark prompts |
+| `npm run routing:calibration-dry-run` | Pack-fed isotonic dry-run: holdout ECE on label packs (CI fixtures by default) |
+| `npm run routing:ingest-swe-gym` | Convert SWE-Gym verifier-style JSONL → privacy-safe label pack |
+| `npm run routing:ingest-fc-rewardbench` | Convert FC-RewardBench JSONL → privacy-safe label pack |
+| `npm run routing:ingest-twinrouterbench-weak` | Convert TwinRouterBench weak tier labels → pack (exclude from ECE) |
 | `npm run routing:ingest-benchmarks` | Regenerate `config/benchmark-profiles.json` from leaderboard fixtures |
 | `npm run routing:verify-benchmark-profiles` | CI smoke: assert checked-in profiles match fixture ingest |
 | `npm run routing:eval-replay` | Counterfactual replay on eval trace fixtures |
