@@ -1,5 +1,5 @@
-**Current Step:** Step 2: Testing & Verification
-**Status:** In Progress
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-07-12
 **Review Level:** 0
 **Review Counter:** 0
@@ -18,11 +18,11 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Contract paths changed
-- [ ] `npm run typecheck && npm test`
-- [ ] #110 comment — docs Partial; SP-206 remains
+- [x] Contract paths changed
+- [x] `npm run typecheck && npm test`
+- [x] #110 comment — docs Partial; SP-206 remains
 
 ---
 
@@ -45,6 +45,9 @@
 | 2026-07-12 | Step 1 started | Document behavioral-first bootstrap |
 | 2026-07-12 | Step 1 complete | README + shadow protocol; no JSON shipped |
 | 2026-07-12 | Step 2 started | Testing & Verification |
+| 2026-07-12 | Tests | typecheck + 1652 tests passed (100 files) |
+| 2026-07-12 | #110 comment | https://github.com/beettlle/pi-smart-router/issues/110#issuecomment-4949652684 |
+| 2026-07-12 | Step 2 complete | Contract paths OK; ready for .DONE |
 
 ## Blockers
 
@@ -54,4 +57,5 @@
 
 ## Notes
 
-Release: v0.12.0. Partial #110. GitNexus detect_changes: low risk, docs-only.
+Release: v0.12.0. Partial #110 docs AC. Train/ship remains SP-206.
+Completion criteria: zero-manual-label bootstrap documented; protocol + README link aggregate/train/verify; no config artifact shipped; no invented labels.
