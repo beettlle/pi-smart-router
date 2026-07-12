@@ -1,7 +1,7 @@
 {
   "benchmark": "livecodebench",
   "source_url": "https://livecodebench.github.io/leaderboard.html",
-  "scrape_date": "2026-07-11",
+  "scrape_date": "2026-07-12",
   "entries": [
     {
       "model_id": "claude-opus-4-5",

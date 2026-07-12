@@ -7,8 +7,8 @@
       "livecodebench": "https://livecodebench.github.io/leaderboard.html",
       "bfcl": "https://gorilla.cs.berkeley.edu/leaderboard.html"
     },
-    "scrape_date": "2026-07-11",
-    "catalog_freeze_date": "2026-07-11"
+    "scrape_date": "2026-07-12",
+    "catalog_freeze_date": "2026-07-12"
   },
   "aliases": {
     "claude-3-5-sonnet": "claude-sonnet-4-6",
