@@ -628,7 +628,7 @@ Dry-run behavior:
 | `--include-excluded-in-fit` | Weak rows may warm-start the fit pool; `ece_eligible` / holdout ECE stay verifier-grade |
 | Soft threshold | Advisory `0.25` calibrated ECE — **does not** change `config/release-gates.json` |
 
-**#96 / `modernbert_k4` advisory:** when deciding whether to enable ModernBERT K=4 heads, use **pack holdout ECE / Top-1 error on verifier-grade packs** (SWE-Gym + FC-RewardBench), not fixture-only QR and **not** weak-fit ECE. Weak TwinRouterBench rows are warm-start only. This task does **not** flip `modernbert_k4` defaults.
+**#96 / `modernbert_k4` advisory:** when deciding whether to enable ModernBERT K=4 heads, use **pack holdout ECE / Top-1 error on verifier-grade packs** (SWE-Gym + FC-RewardBench), not fixture-only QR and **not** weak-fit ECE. Weak TwinRouterBench rows are warm-start only. This task does **not** flip `modernbert_k4` defaults. Go/no-go evidence (SP-204 / #113): [`spine-tasks/_authoring/release-v0.11.0/encoder-gonogo-artifact.md`](spine-tasks/_authoring/release-v0.11.0/encoder-gonogo-artifact.md).
 
 ### Operator tuning (frugality slider)
 

@@ -1,6 +1,6 @@
 # SP-204: Encoder Holdout ECE + Latency Go/No-Go Artifact — Status
 
-**Current Step:** 2
+**Current Step:** 3
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-11
 **Review Level:** 1
@@ -21,15 +21,15 @@
 
 ## Step 2: Decision writeup + #96 link
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
-- [ ] encoder-gonogo-artifact.md
-- [ ] No defaults flip
-- [ ] Comment #96; close #113
+- [x] encoder-gonogo-artifact.md
+- [x] No defaults flip
+- [x] Comment #96; close #113
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Artifact present
 - [ ] defaults/gates unchanged
@@ -40,10 +40,10 @@
 
 ## Completion Criteria
 
-- [ ] Evidence or blockers
-- [ ] Recommendation writeup
-- [ ] #96 linked; defaults untouched
-- [ ] #113 closable
+- [x] Evidence or blockers
+- [x] Recommendation writeup
+- [x] #96 linked; defaults untouched
+- [x] #113 closable
 
 ---
 
@@ -52,6 +52,7 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-11 | 1 | plan | skipped (engine post-.DONE; SP-195) |
+| 2026-07-11 | 2 | plan | skipped (engine post-.DONE; SP-195) |
 
 ## Discoveries
 
@@ -68,6 +69,10 @@
 | 2026-07-11 | Step 1 started | Plan review + measurement runs |
 | 2026-07-11 | calibration-dry-run | Archived `.pi-smart-router/measurements/sp-204/calibration-dry-run.txt` |
 | 2026-07-11 | benchmark:encoder | PASS Granite within budget; archived benchmark-encoder.txt |
+| 2026-07-11 | Step 1 complete | Progress reported |
+| 2026-07-11 | Artifact written | `spine-tasks/_authoring/release-v0.11.0/encoder-gonogo-artifact.md` |
+| 2026-07-11 | #96 commented | https://github.com/beettlle/pi-smart-router/issues/96#issuecomment-4949298582 |
+| 2026-07-11 | #113 closed | Defaults untouched; #96 remains open |
 
 ## Blockers
 
