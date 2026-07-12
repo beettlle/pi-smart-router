@@ -108,9 +108,40 @@ hydra: {
 
 ---
 
+## First full-pack run (2026-07-12)
+
+**Commit:** `01204ad8e9109ac4e5927bc1542b8363220a6aab`  
+**Local archive (gitignored):** `.pi-smart-router/measurements/first-full-pack/` (`SUMMARY.txt`)
+
+Clears the SP-204 / #113 **sample-starved** blocker: full pinned verifier dumps ingested and dry-run evaluated.
+
+| Pin | Rows |
+|-----|------|
+| SWE-Gym OpenHands verifier `d47f6cab…` (`train.mixture`) | 2636 pack rows (1318/1318 success balance) |
+| FC-RewardBench `269929c3…` (`data`) | 3000 pack rows (1500 pairs × chosen/rejected) |
+| TwinRouterBench weak (CI subset, warm-start only) | 148 excluded-from-ECE rows |
+
+**Primary dry-run** (`--packs` swe-gym + fc-rewardbench, `--enforce-soft-ece`):
+
+```text
+mode=evaluated
+ece_eligible=5636 fit=4509 holdout=1127
+holdout_ece_raw=0.2466 holdout_ece_calibrated=0.1480
+soft_ece=PASS (threshold 0.25)
+```
+
+**Weak warm-start** (`--include-excluded-in-fit`): `excluded_from_ece=148`, holdout still verifier-only (`holdout_ece_calibrated=0.1418`, soft PASS).
+
+Privacy: packs contain features + outcomes only (no prompt/messages/conversation bodies). Packs not committed.
+
+**Still no default flip.** Soft ECE PASS on verifier packs is necessary evidence for #96 quality discussion, but **not** approval to edit `src/config/defaults.ts`. Granite latency already PASS (above); `modernbert_k4` remains blocked on missing `config/modernbert-k4-heads.json` / Top-1 measurement. Behavioral serve-time weights (#110) still need dogfood exports.
+
+---
+
 ## Links
 
 - Issue #96 (product decision tracker)
 - Issue #113 (this measurement run)
 - Label-pack provenance: `tests/eval/corpus/label-packs/PROVENANCE.md`
 - Draft tracker notes: `spine-tasks/_authoring/issues/issue-96-update.md`
+- First full-pack archive: `.pi-smart-router/measurements/first-full-pack/SUMMARY.txt`
