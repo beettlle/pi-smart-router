@@ -500,6 +500,8 @@ Optional `feedback_good` / `feedback_bad` only refine labels when the operator c
 
 **Provenance today vs behavioral adoption:** the checked-in `config/p-success-weights.json` remains **synthetic/fixture** (SP-175 — trained on `scripts/fixtures/p-success-synthetic-train.jsonl`, not community dogfood). Treat those weights as an interim dogfood enablement until real passive-signal floors are met and artifacts are retrained/shipped ([#110](https://github.com/beettlle/pi-smart-router/issues/110) train/ship slice — SP-206). Do not claim synthetic rows are behavioral.
 
+**SP-206 status (v0.12.0):** **deferred / Partial (B).** Operator had no #95 dogfood exports in this window (labeled economical-tier rows = **0**, floor ≥30). No behavioral `config/p-success-weights.json` or `config/routing-calibration.json` was shipped. See [`spine-tasks/_authoring/release-v0.12.0/behavioral-calibration-partial.md`](spine-tasks/_authoring/release-v0.12.0/behavioral-calibration-partial.md). Leave [#110](https://github.com/beettlle/pi-smart-router/issues/110) open until floors are met; never invent labels.
+
 **Zero-manual-label path (aggregate → train → verify):**
 
 ```bash

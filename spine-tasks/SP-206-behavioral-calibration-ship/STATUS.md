@@ -1,4 +1,4 @@
-**Current Step:** Step 1: Locate exports + aggregate
+**Current Step:** Step 2: Train, ship or Partial
 **Status:** In Progress
 **Last Updated:** 2026-07-12
 **Review Level:** 1
@@ -10,7 +10,7 @@
 
 ## Step 1: Locate exports + aggregate
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Operator export path(s) recorded
 - [x] Privacy spot-check
@@ -21,11 +21,13 @@
 
 ## Step 2: Train, ship or Partial
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Train when floors met OR Partial writeup when not
-- [ ] Provenance non-synthetic when shipping
-- [ ] README status updated
+- [x] Train when floors met OR Partial writeup when not
+- [x] Provenance non-synthetic when shipping
+- [x] README status updated
+
+> Path (B): Partial writeup at `spine-tasks/_authoring/release-v0.12.0/behavioral-calibration-partial.md`. No ship; configs unchanged (synthetic provenance retained honestly). README deferred status updated.
 
 ## Step 3: Testing & Verification
 
@@ -43,7 +45,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-12 | 1 | plan | skipped (engine post-.DONE; SP-195) |
 
 ## Discoveries
 
@@ -59,6 +61,9 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-12 | Step 1 start | Path (B) Partial — skip aggregate/train; document counts=0 |
+| 2026-07-12 | Step 1 complete | counts=0; no aggregate; plan review skipped by engine |
+| 2026-07-12 | Step 2 start | Write Partial artifact + README deferred status |
+| 2026-07-12 | Step 2 outcomes | Partial md written; configs untouched; README updated |
 
 ## Blockers
 
