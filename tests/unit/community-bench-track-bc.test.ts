@@ -26,7 +26,7 @@ import {
 import { DEFAULT_LLMROUTERBENCH_SUBSET_PATH } from '../../scripts/eval/llmrouterbench-regret-report.js';
 
 const SYNTHETIC_LABELED_EXPORT = resolve(
-  'tests/eval/fixtures/dogfood-track-b/synthetic-labeled-export.json',
+  'tests/eval/dogfood-track-b/synthetic-labeled-export.json',
 );
 
 describe('dogfood Track B adapter (SP-203)', () => {

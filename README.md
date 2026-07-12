@@ -968,7 +968,7 @@ npm run routing:community-bench -- \
 
 # Optional Track B: labeled dogfood export → harness gates (skips if incomplete — never invents labels)
 npm run routing:community-bench -- \
-  --dogfood-export tests/eval/fixtures/dogfood-track-b/synthetic-labeled-export.json \
+  --dogfood-export tests/eval/dogfood-track-b/synthetic-labeled-export.json \
   --output /tmp/community-bench-report.json \
   --email-file /tmp/community-bench-report.txt
 
@@ -989,7 +989,7 @@ npm run routing:community-bench -- \
 | Track | Corpus | When |
 |-------|--------|------|
 | **A (required)** | [TwinRouterBench CI corpus](#twinrouterbench-ci-corpus-sp-186--sp-187--sp-188) (`tests/eval/corpus/twinrouterbench`) | Always |
-| **B (optional)** | Labeled dogfood export (`--dogfood-export PATH`) | Runs when adapter + export present with required outcome labels (`success_label`, `min_tier`, `min_model_id`); skips with an explicit reason when incomplete — never invents labels. Example: `tests/eval/fixtures/dogfood-track-b/synthetic-labeled-export.json` ([#111](https://github.com/beettlle/pi-smart-router/issues/111)) |
+| **B (optional)** | Labeled dogfood export (`--dogfood-export PATH`) | Runs when adapter + export present with required outcome labels (`success_label`, `min_tier`, `min_model_id`); skips with an explicit reason when incomplete — never invents labels. Example: `tests/eval/dogfood-track-b/synthetic-labeled-export.json` ([#111](https://github.com/beettlle/pi-smart-router/issues/111)) |
 | **C (optional)** | [LLMRouterBench offline subset](#llmrouterbench-offline-regret-sp-192--sp-193) (`tests/eval/corpus/llmrouterbench`) | `--llmrouterbench` or `--full`; offline only |
 
 PR CI does **not** download full TwinRouterBench / LLMRouterBench corpora. Absolute gate thresholds in `config/release-gates.json` are unchanged by this CLI.
