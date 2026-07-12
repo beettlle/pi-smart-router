@@ -1,24 +1,24 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 2: Testing & Verification
+**Status:** In Progress
 **Last Updated:** 2026-07-12
 **Review Level:** 0
 **Review Counter:** 0
-**Iteration:** 0
+**Iteration:** 1
 **Size:** S
 
 ---
 
 ## Step 1: Document behavioral-first bootstrap
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] README calibration: passive fields, floors, synthetic vs behavioral
-- [ ] shadow-dogfood-protocol.md: #110 aggregate/train/verify pointer
-- [ ] No calibration JSON shipped
+- [x] README calibration: passive fields, floors, synthetic vs behavioral
+- [x] shadow-dogfood-protocol.md: #110 aggregate/train/verify pointer
+- [x] No calibration JSON shipped
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Contract paths changed
 - [ ] `npm run typecheck && npm test`
@@ -42,7 +42,9 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-12 | Step 1 started | Document behavioral-first bootstrap |
+| 2026-07-12 | Step 1 complete | README + shadow protocol; no JSON shipped |
+| 2026-07-12 | Step 2 started | Testing & Verification |
 
 ## Blockers
 
@@ -52,4 +54,4 @@
 
 ## Notes
 
-Release: v0.12.0. Partial #110.
+Release: v0.12.0. Partial #110. GitNexus detect_changes: low risk, docs-only.
