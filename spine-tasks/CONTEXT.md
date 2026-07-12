@@ -2,10 +2,11 @@
 
 **Last Updated:** 2026-07-11
 **Status:** Active
-**Next Task ID:** SP-202
+**Next Task ID:** SP-205
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** v0.10.0 (2026-07-11) — SP-196–SP-201: #95 Partial protocol/QA, #109 roadmap sync, #108 profile coverage, #107 TwinRouterBench 150+full/nightly, #106 weak packs + `--include-excluded-in-fit`. Prior v0.9.3 LLMRouterBench + community bench.
+**Queued for v0.11.0:** SP-202 (#112 over-routing analysis), SP-203 (#111 Track B adapter), SP-204 (#113 encoder go/no-go artifact).
 
 ---
 
