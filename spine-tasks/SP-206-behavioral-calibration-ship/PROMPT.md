@@ -44,8 +44,8 @@ Closes #110 when floors are met — Aggregate privacy-safe dogfood exports from 
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `config/p-success-weights.json` **and/or** `config/routing-calibration.json` (create), `README.md` |
-| May change | `scripts/**` (only if aggregate/train CLI needs a thin dogfood→train glue), `tests/unit/**` (provenance/verify tests), `spine-tasks/_authoring/release-v0.12.0/**` (Partial writeup if floors unmet), `package.json` (script alias only if needed) |
+| Must change | Path (A): `config/p-success-weights.json` **and/or** `config/routing-calibration.json` (create). Path (B) Partial: `spine-tasks/_authoring/release-v0.12.0/behavioral-calibration-partial.md` |
+| May change | `README.md` (calibration status), `scripts/**` (thin dogfood→train glue only), `tests/unit/**` (provenance/verify tests), `spine-tasks/_authoring/release-v0.12.0/**`, `package.json` (script alias only if needed) |
 | Must NOT change | `config/release-gates.json`, `src/config/defaults.ts`, `src/domain/pipeline/router-pipeline.ts`, `.pi/extensions/smart-router/index.ts` |
 
 ## Contract
@@ -53,9 +53,13 @@ Closes #110 when floors are met — Aggregate privacy-safe dogfood exports from 
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npm run routing:verify-calibration -- --skip-embed` |
-| fileScopeMustChange | `README.md` |
+| fileScopeMustChange | `spine-tasks/_authoring/release-v0.12.0/behavioral-calibration-partial.md` |
 | fileScopeMustNotChange | `config/release-gates.json`, `src/config/defaults.ts` |
-| completionCriteria | Either (A) floors met: non-synthetic p-success and/or routing-calibration shipped with provenance + verify green + README updated + #110 closable; or (B) floors unmet: Partial writeup archived, no invented labels, #110 left open with clear blocker. |
+| completionCriteria | Either (A) floors met: non-synthetic p-success and/or routing-calibration shipped with provenance + verify green + README updated + #110 closable; or (B) floors unmet: Partial writeup archived at fileScopeMustChange path, no invented labels, #110 left open with clear blocker. README may still update under May change. |
+
+## Amendments
+
+- 2026-07-12: Redirect `fileScopeMustChange` from pre-landed `README.md` (SP-205) to Partial delivery artifact `spine-tasks/_authoring/release-v0.12.0/behavioral-calibration-partial.md`. Operator confirmed path (B) — no #95 exports.
 
 ## Steps
 
@@ -107,8 +111,4 @@ Closes #110 when floors are met — Aggregate privacy-safe dogfood exports from 
 - Change absolute `config/release-gates.json` thresholds
 - Flip encoder defaults (#96)
 - Close #95 (human sign-off only)
-- Start this task before operator confirms export paths (External dependency)
-
-## Amendments
-
-None.
+- Start this task before operator confirms export paths (External dependency) — resolved 2026-07-12: operator confirmed path (B) Partial (no exports)
