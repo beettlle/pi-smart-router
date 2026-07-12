@@ -61,9 +61,14 @@
 
 | Date | Blocker | Resolution |
 |------|---------|------------|
-| | | External: #95 exports — do not start Wave 2 until operator confirms |
+| 2026-07-12 | External: #95 exports | Operator chose path (B) Partial — no exports yet; do not invent labels |
 
 ## Notes
 
 Release: v0.12.0. Closes #110 when floors met.
-Operator: paste export paths + row counts here before batch start.
+**Operator 2026-07-12:** No #95 dogfood exports available. Execute Contract path **(B) Partial** only:
+- Write `spine-tasks/_authoring/release-v0.12.0/behavioral-calibration-partial.md` (counts = 0; blocker = no #95 exports)
+- Do **not** overwrite `config/p-success-weights.json` or invent `config/routing-calibration.json` as behavioral
+- Update `README.md` calibration status to deferred / Partial
+- Leave #110 open; comment Partial on the issue
+- Export paths: none

@@ -7,6 +7,7 @@
 **Profile:** minor
 **Theme:** Live shadow dogfood (#95) + behavioral P(success)/isotonic calibration from real exports (#110)
 **Operator approved scope:** yes (2026-07-12)
+**Wave 2 path:** Partial (B) — operator 2026-07-12: no #95 exports yet; ship Partial writeup; leave #110/#95 open; never invent labels. Publish docs-only minor after SP-206 Partial + gates.
 
 ---
 
@@ -125,6 +126,7 @@ Wave 2: SP-206 (after External #95 exports)
 - [ ] Sign-off form posted on #95 (go / no-go / needs more data)
 - [ ] No frugality / absolute-gate / encoder-default flips without separate approval
 
+**Release decision 2026-07-12:** Wave 2 proceeds as SP-206 **Partial (B)** without exports. #95 checklist remains open for a future release; do not close #95.
 ---
 
 ## Publish checklist (Phase 5–6)
