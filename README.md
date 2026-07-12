@@ -1064,6 +1064,8 @@ npm run routing:verify-benchmark-profiles
 
 Tag-triggered publish via GitHub Actions (requires `NPMSECRET` repository secret). pi.dev gallery listing syncs automatically from npm (`pi-package` keyword); no separate submit step.
 
+**Scope composition:** use `/skill:router-release-operator` for themed release planning (not open-ended backlog cycles). **Patch** = docs + bugfixes only; **minor** = new capability (1–3 related issues under one theme). Budgets and audit rules: [`skills/router-release-operator/references/release-profiles.md`](skills/router-release-operator/references/release-profiles.md).
+
 **Tier 0 functional smoke** (`release:functional-smoke`) runs before tag publish and chains:
 
 1. `routing:verify-calibration --skip-embed` — artifact shape + triage benchmark gates (no ONNX embedding)

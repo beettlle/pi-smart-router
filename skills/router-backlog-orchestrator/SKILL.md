@@ -14,13 +14,23 @@ Invoke explicitly: `/skill:router-backlog-orchestrator`
 **Compose with:**
 - pi-spine `create-spine-tasks` skill — packet structure and size rules
 - [`skills/spine-autonomous-operator/SKILL.md`](../spine-autonomous-operator/SKILL.md) — preflight, wave loop, recovery, pi-spine issue filing
+- [`skills/router-release-operator/SKILL.md`](../router-release-operator/SKILL.md) — themed semver release composition and publish
 - [`.cursor/rules/spine-task-authoring.mdc`](../../.cursor/rules/spine-task-authoring.mdc) — PROMPT/STATUS contracts
 - [`.cursor/rules/spine-operator-cursor.mdc`](../../.cursor/rules/spine-operator-cursor.mdc) — spine CLI reference
+
+## Skill boundaries
+
+| Concern | Owner |
+|---------|-------|
+| Development **cycle** triage (docs → 3–5 bugs → 1 feature) | This skill |
+| Versioned **release** composition (theme, patch/minor/major, publish) | [`router-release-operator`](../router-release-operator/SKILL.md) |
+
+When the operator asks for a versioned release (`release v0.x.y`, `patch release`, `minor release`, `ship to npm`), **do not** invent feature-patch scopes here. Optionally write a backlog snapshot, then **hand off** to `/skill:router-release-operator`.
 
 ## Success criteria
 
 1. Backlog plan approved by operator before batch start
-2. Documentation issues processed before bugs; feature ratio **1 per 3–5 bugs**
+2. Documentation issues processed before bugs; feature ratio **1 per 3–5 bugs** (cycle policy only)
 3. New `SP-*` packets validate (`spine tasks validate pending`)
 4. Queued scope lands on `main` via gate + integrate
 5. Linked GitHub issues commented/closed when tasks complete
@@ -32,8 +42,10 @@ Invoke explicitly: `/skill:router-backlog-orchestrator`
 - **Never** start a batch without operator approval of the backlog plan table
 - **Never** claim batch/test success without CLI output
 - **Never** create XL tasks; split epics into S/M packets
+- **Never** choose npm bump type or release profile from this skill — use `router-release-operator`
 - **Always** run docs bucket completely before bug/feature ratio units
 - **Always** link packets to GitHub issues in `## Source`
+- **Always** hand off versioned release requests to `router-release-operator` after optional snapshot
 
 ## Phase 0 — Baseline
 
@@ -45,6 +57,8 @@ git status && git branch --show-current   # must be main
 ```
 
 Stop if not on `main` or `gh`/`spine` unavailable.
+
+**Release handoff:** if the invocation names a target version or patch/minor/major **release** (not a plain backlog cycle), stop after optional snapshot and invoke [`router-release-operator`](../router-release-operator/SKILL.md).
 
 Optional snapshot:
 
@@ -90,6 +104,8 @@ Dedup:
 
 ## Phase 3 — Prioritize
 
+**Applies to development cycles only** — not versioned releases (see Skill boundaries).
+
 **Order:**
 1. All **documentation** issues
 2. **Bugs** — user-facing / CI blockers first, then wiring/refactors; decompose epics
@@ -99,6 +115,8 @@ Dedup:
 - All open doc tasks first
 - Then **one ratio unit**: 3–5 bugs + 1 feature
 - Repeat until operator stops or backlog empty
+
+If the operator’s goal for this invocation is **ship a release**, do not expand the ratio unit into a release scope — hand off to [`router-release-operator`](../router-release-operator/SKILL.md) with the intended theme/version.
 
 ## Phase 4 — Operator approval
 
@@ -143,6 +161,8 @@ Hand off to [`skills/spine-autonomous-operator/SKILL.md`](../spine-autonomous-op
 
 Do not advance waves until current wave is integrated on `main`.
 
+If this cycle’s approved plan is explicitly a **release ship** (version bump / npm publish), stop cycle execution and continue under [`router-release-operator`](../router-release-operator/SKILL.md) (manifest, theme audit, `release:check`, publish gates).
+
 ## Phase 7 — Issue filing
 
 | Situation | Repo | Action |
@@ -177,7 +197,8 @@ Do not claim orchestrator success unless `npm run verify:ci` exits 0 and the tab
 ## Short prompt (resume)
 
 ```text
-Run router-backlog-orchestrator: collect GitHub + spine backlog → classify →
+Run router-backlog-orchestrator: if operator asked for release vX.Y.Z / patch|minor,
+hand off to router-release-operator. Else: collect GitHub + spine backlog → classify →
 prioritize (docs first, 3-5 bugs + 1 feature) → show plan → author SP packets →
 spine preflight → batch waves → file issues → final report.
 ```

@@ -2,6 +2,8 @@
 
 Use when classifying and ordering work in `router-backlog-orchestrator`.
 
+**Scope:** development **cycle** planning only. Do **not** choose npm bump type (patch/minor/major) or release composition from this rubric — use [`router-release-operator` release profiles](../../router-release-operator/references/release-profiles.md).
+
 ## Buckets
 
 ### documentation
@@ -33,11 +35,14 @@ Use when classifying and ordering work in `router-backlog-orchestrator`.
 
 ## Feature-to-bug ratio
 
-After documentation bucket is empty for this cycle:
+**Cycle policy** (not a release profile). After documentation bucket is empty for this cycle:
 
 - Queue **3 to 5 bugs**, then **exactly 1 feature**
 - One **ratio unit** per orchestrator invocation (default)
-- If fewer than 3 bugs remain, queue remaining bugs + 1 feature (or 0 features if none left)
+- If fewer than 3 bugs remain, queue remaining bugs + at most 1 feature (or 0 features if none left)
+- Empty or short bug queues are normal — do not invent fake bugs to fill a 3–5 quota for a **cycle**
+
+Shipping that work as an npm version is a separate step: hand off to `router-release-operator` (patch = docs+bugs only; enhancements require **minor** + theme).
 
 ## Dedup rules
 
