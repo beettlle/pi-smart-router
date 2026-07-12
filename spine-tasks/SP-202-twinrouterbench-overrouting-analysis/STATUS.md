@@ -1,6 +1,6 @@
 # SP-202: TwinRouterBench Over-Routing Analysis — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-11
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Reproduce soft-report + analyzer
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Archive soft-report numbers
 - [x] Analyzer script
@@ -21,7 +21,7 @@
 
 ## Step 2: Authoring report + recommendation
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] over-routing-analysis.md
 - [ ] No silent hard-gate move
@@ -69,6 +69,8 @@
 | 2026-07-11 | Step 1 started | Reproduce soft-report + analyzer |
 | 2026-07-11 | Soft-report | FAIL report-only; mean_over_routing_rate 0.868056 |
 | 2026-07-11 | Analyzer + tests | scripts/eval/analyze-twinrouterbench-overrouting.ts + unit tests + npm script |
+| 2026-07-11 | Step 1 complete | Commit 32ade07; plan review skipped |
+| 2026-07-11 | Step 2 started | Authoring report + recommendation |
 
 ## Blockers
 

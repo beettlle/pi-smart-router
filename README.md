@@ -864,6 +864,7 @@ Contributors must run `npm run build` before publishing or consuming the library
 | `npm run routing:eval-harness:smoke` | Harness summary JSON only (CI smoke; no network) |
 | `npm run routing:eval-harness:corpus-smoke` | Harness summary on TwinRouterBench CI corpus subset (`tests/eval/corpus/twinrouterbench`) |
 | `npm run routing:assert-release-gates:corpus-report` | Soft-feed: assert corpus vs absolute gates with `--report-only` (exit 0; does not gate releases) |
+| `npm run routing:analyze-overrouting` | TwinRouterBench over-routing breakdown by stage / reason_code / tiers (#112; see `spine-tasks/_authoring/release-v0.11.0/over-routing-analysis.md`) |
 | `npm run routing:twinrouterbench:full-track` | Local/nightly: pin fetch → full convert (no `--limit`) → harness + gates `--report-only` (gitignored cache) |
 | `npm run routing:twinrouterbench:full-ingest` | Convert cached `question_bank.jsonl` → full static-track JSON (no `--limit`) |
 | `npm run routing:twinrouterbench:full-report` | Harness summary + gates `--report-only` on cached full track |
@@ -915,6 +916,7 @@ npm run routing:twinrouterbench:full-track
 | **Regenerate** | `npm run routing:ingest-twinrouterbench -- --input <question_bank.jsonl> --output tests/eval/corpus/twinrouterbench/ci-subset.json --limit 150 --prefer-code-tool` |
 | **Harness smoke** | `npm run routing:eval-harness:corpus-smoke` |
 | **Gate soft-feed** | `npm run routing:assert-release-gates:corpus-report` |
+| **Over-routing breakdown** | `npm run routing:analyze-overrouting` · [v0.11.0 analysis](spine-tasks/_authoring/release-v0.11.0/over-routing-analysis.md) (#112 / #95) |
 | **Human QA protocol** | [`docs/qa/shadow-dogfood-protocol.md`](docs/qa/shadow-dogfood-protocol.md) · `npm run qa:shadow-dogfood` |
 
 **Absolute release gates stay on default fixtures.** `npm run release:functional-smoke` continues to assert `tests/eval/fixtures` against `config/release-gates.json` — do not point it at the corpus without operator review. Today the corpus subset fails `mean_over_routing_rate_max` (≈0.85 vs absolute max 0.15); that gap is intentional soft signal for the [#95](https://github.com/beettlle/pi-smart-router/issues/95) public static-track acceptance criteria alongside live dogfood traces. Use `--fixtures tests/eval/corpus/twinrouterbench` (or the corpus-report script) for #95 public-track scoring; keep absolute threshold edits out of band until operators approve. For live shadow dogfood steps and sign-off, see the [shadow dogfood protocol](docs/qa/shadow-dogfood-protocol.md).
