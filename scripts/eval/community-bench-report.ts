@@ -104,13 +104,38 @@ const SkippedTrackSchema = z.object({
   reason: z.string().min(1),
 });
 
-/** Track B: dogfood export (#95). Adapter incomplete → always skip with reason. */
+/**
+ * Track B skip when `--dogfood-export` is omitted.
+ * @deprecated Prefer {@link TRACK_B_SKIP_REASON_NOT_REQUESTED}. Kept as alias for older tests.
+ */
 export const TRACK_B_SKIP_REASON_ADAPTER_INCOMPLETE =
-  'Track B dogfood export→harness adapter incomplete (#95 still open); no dogfood labels invented' as const;
+  'Track B optional; pass --dogfood-export PATH with a labeled dogfood Track B export (success_label, min_tier, min_model_id); no dogfood labels invented' as const;
+
+/** Default Track B skip when --dogfood-export is not passed. */
+export const TRACK_B_SKIP_REASON_NOT_REQUESTED = TRACK_B_SKIP_REASON_ADAPTER_INCOMPLETE;
+
+/** Skip when export is present but labels/schema incomplete — never invent labels. */
+export const TRACK_B_SKIP_REASON_INCOMPLETE_LABELS =
+  'Track B export incomplete or unlabeled; required outcome fields success_label, min_tier, min_model_id — no dogfood labels invented' as const;
 
 /** Default Track C skip when --llmrouterbench / --full not passed. */
 export const TRACK_C_SKIP_REASON_NOT_REQUESTED =
   'Track C LLMRouterBench optional; pass --llmrouterbench or --full to run offline on vendored subset (no full HF download)' as const;
+
+const TrackBRanSchema = z.object({
+  name: z.literal('DogfoodExport'),
+  status: z.literal('ran'),
+  export_path: z.string().min(1),
+  record_count: z.number().int().nonnegative(),
+  fixture_count: z.number().int().nonnegative(),
+  catalog_id: z.string().min(1),
+  checkpoint_date: z.string().min(1),
+  metrics: HarnessGateMetricsSchema,
+  gates: AssertReleaseGatesResultSchema,
+  passed: z.boolean(),
+});
+
+const TrackBSchema = z.union([SkippedTrackSchema, TrackBRanSchema]);
 
 const TrackCRanSchema = z.object({
   name: z.literal('LLMRouterBench'),
@@ -134,7 +159,7 @@ export const CommunityBenchReportSchema = z.object({
   fingerprint: SetupFingerprintSchema,
   tracks: z.object({
     A: TrackASchema,
-    B: SkippedTrackSchema.optional(),
+    B: TrackBSchema.optional(),
     C: TrackCSchema.optional(),
   }),
   overall_passed: z.boolean(),
@@ -142,7 +167,8 @@ export const CommunityBenchReportSchema = z.object({
 
 export type CommunityBenchReport = z.infer<typeof CommunityBenchReportSchema>;
 export type TrackAResult = z.infer<typeof TrackASchema>;
-export type TrackBResult = z.infer<typeof SkippedTrackSchema>;
+export type TrackBResult = z.infer<typeof TrackBSchema>;
+export type TrackBRanResult = z.infer<typeof TrackBRanSchema>;
 export type TrackCResult = z.infer<typeof TrackCSchema>;
 export type TrackCRanResult = z.infer<typeof TrackCRanSchema>;
 
@@ -185,7 +211,7 @@ export function buildCommunityBenchReport(input: BuildReportInput): CommunityBen
       },
       B: input.trackB ?? {
         status: 'skipped',
-        reason: TRACK_B_SKIP_REASON_ADAPTER_INCOMPLETE,
+        reason: TRACK_B_SKIP_REASON_NOT_REQUESTED,
       },
       C: input.trackC ?? {
         status: 'skipped',
@@ -260,6 +286,35 @@ function formatTrackABlock(track: TrackAResult): string {
   return lines.join('\n');
 }
 
+function formatTrackBBlock(track: TrackBResult | undefined): string {
+  if (!track) {
+    return '';
+  }
+  if (track.status === 'skipped') {
+    return `Track B: SKIPPED — ${track.reason}`;
+  }
+  const lines = [
+    `Track B (${track.name}): ${track.passed ? 'PASS' : 'FAIL'}`,
+    `  status: ${track.status}`,
+    `  export_path: ${track.export_path}`,
+    `  record_count: ${track.record_count}`,
+    `  fixture_count: ${track.fixture_count}`,
+    `  catalog_id: ${track.catalog_id}`,
+    `  checkpoint_date: ${track.checkpoint_date}`,
+    `  mean_capability_adequacy_rate: ${track.metrics.mean_capability_adequacy_rate}`,
+    `  mean_quality_retention: ${track.metrics.mean_quality_retention}`,
+    `  mean_over_routing_rate: ${track.metrics.mean_over_routing_rate}`,
+    `  mean_pin_preserved_rate: ${track.metrics.mean_pin_preserved_rate}`,
+    `  absolute_gates: ${track.gates.absolute_gates.passed ? 'PASS' : 'FAIL'}`,
+  ];
+  if (track.gates.baseline_regression) {
+    lines.push(
+      `  baseline_regression (v${track.gates.baseline_regression.reference_version}): ${track.gates.baseline_regression.passed ? 'PASS' : 'FAIL'}`,
+    );
+  }
+  return lines.join('\n');
+}
+
 function formatTrackCBlock(track: TrackCResult | undefined): string {
   if (!track) {
     return '';
@@ -289,9 +344,7 @@ export function formatCommunityBenchEmail(report: CommunityBenchReport): string 
   const overall = report.overall_passed ? 'PASS' : 'FAIL';
   const subject = `pi-smart-router community-bench ${overall} v${report.fingerprint.package_version}`;
 
-  const trackBLine = report.tracks.B
-    ? `Track B: SKIPPED — ${report.tracks.B.reason}`
-    : '';
+  const trackBLine = formatTrackBBlock(report.tracks.B);
   const trackCLine = formatTrackCBlock(report.tracks.C);
 
   const parts = [
