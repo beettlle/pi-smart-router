@@ -35,12 +35,18 @@ import {
   formatCommunityBenchEmail,
   formatCommunityBenchIssueBody,
   formatMailtoHint,
-  TRACK_B_SKIP_REASON_ADAPTER_INCOMPLETE,
+  TRACK_B_SKIP_REASON_INCOMPLETE_LABELS,
+  TRACK_B_SKIP_REASON_NOT_REQUESTED,
   TRACK_C_SKIP_REASON_NOT_REQUESTED,
   type CommunityBenchReport,
   type TrackBResult,
   type TrackCResult,
 } from './community-bench-report.js';
+import { loadDogfoodTrackBExport } from './dogfood-track-b-adapter.js';
+import {
+  aggregateHarnessMetrics,
+  scoreFixtureHarness,
+} from './harness-tracks.js';
 import {
   buildLlmRouterBenchRegretReport,
   DEFAULT_LLMROUTERBENCH_SUBSET_PATH,
@@ -63,7 +69,7 @@ export interface CommunityBenchCliArgs {
   readonly corpusPath: string;
   readonly configPath: string;
   readonly modelsPath?: string;
-  /** Path to dogfood export (#95). Adapter incomplete → Track B skips with reason. */
+  /** Path to labeled dogfood Track B export (#111). Incomplete → skip with reason. */
   readonly dogfoodExportPath: string | null;
   /** When true, run Track C offline on vendored LLMRouterBench subset. */
   readonly llmrouterbench: boolean;
@@ -116,19 +122,79 @@ export function runTrackA(
 }
 
 /**
- * Track B (#95 dogfood export→harness). Adapter is incomplete — always skip
- * with an explicit reason. Never invent dogfood labels.
+ * Assert release gates on harness metrics (same helpers as Track A; thresholds unchanged).
  */
-export function resolveTrackB(dogfoodExportPath: string | null): TrackBResult {
-  if (dogfoodExportPath) {
+export function assertGatesOnMetrics(
+  metrics: HarnessGateMetrics,
+  configPath: string = DEFAULT_GATES_CONFIG,
+): AssertReleaseGatesResult {
+  const config = loadReleaseGatesConfigFromFile(configPath);
+  const absolute_gates = assertAbsoluteGates(metrics, config);
+
+  let baseline_regression: AssertReleaseGatesResult['baseline_regression'];
+  const baselineGates = config.baseline_regression;
+  if (baselineGates) {
+    const baselineMetrics = loadBaselineMetricsFromVersion(baselineGates.reference_version);
+    baseline_regression = assertBaselineRegression(metrics, baselineMetrics, baselineGates);
+  }
+
+  const passed =
+    absolute_gates.passed && (baseline_regression === undefined || baseline_regression.passed);
+
+  return {
+    passed,
+    absolute_gates,
+    ...(baseline_regression ? { baseline_regression } : {}),
+  };
+}
+
+/**
+ * Track B (#111 dogfood export→harness). Runs when export is valid and fully
+ * labeled; skips with an explicit reason when missing/incomplete — never invents labels.
+ */
+export function resolveTrackB(
+  dogfoodExportPath: string | null,
+  configPath: string = DEFAULT_GATES_CONFIG,
+): TrackBResult {
+  if (!dogfoodExportPath) {
     return {
       status: 'skipped',
-      reason: `${TRACK_B_SKIP_REASON_ADAPTER_INCOMPLETE} (requested --dogfood-export ${dogfoodExportPath})`,
+      reason: TRACK_B_SKIP_REASON_NOT_REQUESTED,
     };
   }
+
+  const adapted = loadDogfoodTrackBExport(dogfoodExportPath);
+  if (!adapted.ok) {
+    const reason = adapted.reason.toLowerCase().includes('no dogfood labels invented')
+      ? adapted.reason
+      : `${TRACK_B_SKIP_REASON_INCOMPLETE_LABELS} (${adapted.reason})`;
+    return {
+      status: 'skipped',
+      reason: `${reason} (requested --dogfood-export ${dogfoodExportPath})`,
+    };
+  }
+
+  const results = adapted.fixtures.map((fixture) => scoreFixtureHarness(fixture));
+  const aggregate = aggregateHarnessMetrics(results);
+  const metrics: HarnessGateMetrics = {
+    mean_capability_adequacy_rate: aggregate.tracks.capability.mean_capability_adequacy_rate,
+    mean_quality_retention: aggregate.tracks.capability.mean_quality_retention,
+    mean_over_routing_rate: aggregate.tracks.capability.mean_over_routing_rate,
+    mean_pin_preserved_rate: aggregate.tracks.continuity.mean_pin_preserved_rate,
+  };
+  const gates = assertGatesOnMetrics(metrics, configPath);
+
   return {
-    status: 'skipped',
-    reason: TRACK_B_SKIP_REASON_ADAPTER_INCOMPLETE,
+    name: 'DogfoodExport',
+    status: 'ran',
+    export_path: dogfoodExportPath,
+    record_count: adapted.record_count,
+    fixture_count: adapted.fixtures.length,
+    catalog_id: aggregate.catalog_id,
+    checkpoint_date: aggregate.checkpoint_date,
+    metrics,
+    gates,
+    passed: gates.passed,
   };
 }
 
@@ -179,7 +245,7 @@ export function runCommunityBench(options: {
     ...(options.modelsPath ? { modelsPath: options.modelsPath } : {}),
   });
   const { metrics, gates } = runTrackA(corpusPath, configPath);
-  const trackB = resolveTrackB(options.dogfoodExportPath ?? null);
+  const trackB = resolveTrackB(options.dogfoodExportPath ?? null, configPath);
   const trackC = resolveTrackC({
     enabled: options.llmrouterbench ?? false,
     ...(options.llmrouterbenchSubsetPath
@@ -285,7 +351,7 @@ Options:
   --corpus DIR               TwinRouterBench corpus dir (default: tests/eval/corpus/twinrouterbench)
   --config PATH              Release gates config (default: config/release-gates.json)
   --models PATH              Fleet models.yaml for fingerprint (default: config/models.yaml[.example])
-  --dogfood-export PATH      Track B: dogfood export path (#95). Skips with reason until adapter lands
+  --dogfood-export PATH      Track B: labeled dogfood export (runs when valid; skips if incomplete — no invented labels)
   --llmrouterbench, --full   Track C: offline regret/CS on vendored LLMRouterBench subset
   --llmrouterbench-subset P  Track C subset JSON (default: tests/eval/corpus/llmrouterbench/ci-subset.json)
   --help, -h                 Show this help
@@ -342,7 +408,11 @@ async function main(): Promise<void> {
     console.log(`community-bench: wrote ${written.emailPath}`);
   }
   console.log(`community-bench: Track A ${report.tracks.A.passed ? 'PASS' : 'FAIL'}`);
-  if (report.tracks.B) {
+  if (report.tracks.B?.status === 'ran') {
+    console.log(
+      `community-bench: Track B ran (records=${report.tracks.B.record_count}, fixtures=${report.tracks.B.fixture_count}) ${report.tracks.B.passed ? 'PASS' : 'FAIL'}`,
+    );
+  } else if (report.tracks.B?.status === 'skipped') {
     console.log(`community-bench: Track B SKIPPED — ${report.tracks.B.reason}`);
   }
   if (report.tracks.C?.status === 'ran') {

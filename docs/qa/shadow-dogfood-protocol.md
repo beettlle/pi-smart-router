@@ -15,7 +15,7 @@ Companion script: `npm run qa:shadow-dogfood` ([`scripts/qa/shadow-dogfood-sessi
 
 - Do **not** edit [`config/release-gates.json`](../../config/release-gates.json) without explicit operator approval.
 - Do **not** treat TwinRouterBench soft FAIL (`mean_over_routing_rate` ≈ 0.85 vs max 0.15) as a release blocker — it is intentional soft signal for #95.
-- Do **not** invent harness labels or force community Track B to pass until the dogfood→harness adapter lands.
+- Do **not** invent harness labels. Community Track B (`--dogfood-export`) runs only when the export includes required outcome labels (`success_label`, `min_tier`, `min_model_id`); incomplete exports skip with an explicit reason (see `scripts/eval/dogfood-track-b-adapter.ts` / [#111](https://github.com/beettlle/pi-smart-router/issues/111)).
 - Do **not** flip encoder defaults (`granite` / `modernbert_k4`) from this protocol.
 
 ## Setup
@@ -137,7 +137,7 @@ Recommend relaxing frugality / flipping encoder defaults: no / yes (requires #96
 | Issue | Role |
 |-------|------|
 | [#95](https://github.com/beettlle/pi-smart-router/issues/95) | Shadow dogfood + public-track soft-feed protocol |
-| Track B adapter (authoring draft) | Dogfood export → harness fixtures (autonomous) |
+| [#111](https://github.com/beettlle/pi-smart-router/issues/111) | Track B dogfood export → harness adapter (labeled exports only) |
 | Over-routing analysis (authoring draft) | Why corpus ≈0.85 (autonomous) |
 | Behavioral calibration (authoring draft) | Train/ship non-synthetic weights from exports |
 | [#75](https://github.com/beettlle/pi-smart-router/issues/75) (closed) | Original profile ingest/mapper — keep closed |

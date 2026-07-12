@@ -1,6 +1,6 @@
 # SP-203: Track B Dogfood Export → Harness Adapter — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-07-12
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Schema + adapter module
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] dogfood-track-b-adapter.ts
 - [x] Document required fields / skip on missing labels
@@ -20,7 +20,7 @@
 
 ## Step 2: Wire resolveTrackB + tests + docs
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] resolveTrackB wiring
 - [ ] Unit test updates
@@ -41,9 +41,9 @@
 
 ## Completion Criteria
 
-- [ ] Schema + adapter
+- [x] Schema + adapter
 - [ ] Run vs skip without inventing labels
-- [ ] Tests + fixture
+- [x] Tests + fixture
 - [ ] README
 - [ ] #111 closable
 
@@ -54,6 +54,7 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-12 | 1 | plan | skipped (engine-owned; spawnFailed=false) |
+| 2026-07-12 | 2 | plan | skipped (engine-owned; spawnFailed=false) |
 
 ## Discoveries
 
@@ -67,6 +68,7 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-07-12 | start | Resume Step 1; plan review skipped by engine |
+| 2026-07-12 | step1 | Adapter + synthetic fixture committed; plan review skipped; advancing to Step 2 |
 
 ## Blockers
 
