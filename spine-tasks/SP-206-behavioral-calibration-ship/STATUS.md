@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 1: Locate exports + aggregate
+**Status:** In Progress
 **Last Updated:** 2026-07-12
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,14 +10,14 @@
 
 ## Step 1: Locate exports + aggregate
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Operator export path(s) recorded
-- [ ] Privacy spot-check
-- [ ] Aggregate train file produced
-- [ ] Sample counts in Discoveries
+- [x] Operator export path(s) recorded
+- [x] Privacy spot-check
+- [x] Aggregate train file produced
+- [x] Sample counts in Discoveries
 
-> ⚠️ Hydrate: Expand with exact export paths and row counts from operator #95 window.
+> Path (B): no #95 exports; aggregation skipped; counts = 0. Privacy N/A (no training input).
 
 ## Step 2: Train, ship or Partial
 
@@ -49,13 +49,16 @@
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-07-12 | Export paths: none (operator confirmed path B) | Cannot train behavioral artifacts |
+| 2026-07-12 | Privacy spot-check: N/A — no training input files present | No prompt/message bodies to reject |
+| 2026-07-12 | Aggregated train file: not produced (no source exports) | Floor unmet |
+| 2026-07-12 | Sample counts: economical-tier labeled = **0** (floor ≥30) | Path (B) Partial required |
 
 ## Execution Log
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-12 | Step 1 start | Path (B) Partial — skip aggregate/train; document counts=0 |
 
 ## Blockers
 
