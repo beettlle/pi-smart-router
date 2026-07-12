@@ -1,5 +1,5 @@
-**Current Step:** Step 2: Train, ship or Partial
-**Status:** In Progress
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-07-12
 **Review Level:** 1
 **Review Counter:** 0
@@ -21,7 +21,7 @@
 
 ## Step 2: Train, ship or Partial
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Train when floors met OR Partial writeup when not
 - [x] Provenance non-synthetic when shipping
@@ -31,13 +31,15 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Contract `testCommand`
-- [ ] verify-calibration / dry-run as applicable
-- [ ] `npm run verify:ci`
-- [ ] coverage:check if code/tests changed
-- [ ] #110 close or Partial comment
+- [x] Contract `testCommand`
+- [x] verify-calibration / dry-run as applicable
+- [x] `npm run verify:ci`
+- [x] coverage:check if code/tests changed
+- [x] #110 close or Partial comment
+
+> Contract green. Path (B): no new calibration artifact — dry-run N/A (soft ECE still via verify:ci). coverage via verify:ci. #110 left OPEN with Partial comment.
 
 ---
 
@@ -46,6 +48,8 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-07-12 | 1 | plan | skipped (engine post-.DONE; SP-195) |
+| 2026-07-12 | 2 | plan | skipped (engine post-.DONE; SP-195) |
+| 2026-07-12 | 3 | plan | skipped (engine post-.DONE; SP-195) |
 
 ## Discoveries
 
@@ -64,6 +68,10 @@
 | 2026-07-12 | Step 1 complete | counts=0; no aggregate; plan review skipped by engine |
 | 2026-07-12 | Step 2 start | Write Partial artifact + README deferred status |
 | 2026-07-12 | Step 2 outcomes | Partial md written; configs untouched; README updated |
+| 2026-07-12 | Step 2 complete | plan review skipped by engine |
+| 2026-07-12 | Step 3 start | Contract tests + Partial comment on #110 |
+| 2026-07-12 | Step 3 verify | typecheck+verify-calibration skip-embed OK; verify:ci OK; #110 Partial comment |
+| 2026-07-12 | Step 3 complete | Path (B) done; .DONE |
 
 ## Blockers
 
@@ -80,3 +88,5 @@ Release: v0.12.0. Closes #110 when floors met.
 - Update `README.md` calibration status to deferred / Partial
 - Leave #110 open; comment Partial on the issue
 - Export paths: none
+
+**Completed path (B):** Partial archived; #110 remains open (comment https://github.com/beettlle/pi-smart-router/issues/110#issuecomment-4952231412).
