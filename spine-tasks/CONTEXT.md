@@ -5,8 +5,8 @@
 **Next Task ID:** SP-207
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.11.0 (2026-07-12) — SP-202–SP-204: #112 TwinRouterBench over-routing analysis, #111 Track B dogfood→harness adapter, #113 encoder go/no-go artifact (feeds #96). Prior v0.10.0 SP-196–SP-201.
-**In progress:** v0.12.0 — SP-205–SP-206 (#110 behavioral calibration) + human #95 shadow dogfood gate. Manifest: `spine-tasks/_authoring/release-v0.12.0/manifest.md`.
+**Released:** v0.12.0 (2026-07-12) — SP-205–SP-206: #110 behavioral calibration docs + Partial train/ship (no #95 exports; floors unmet). #110/#95 remain open. Prior v0.11.0 SP-202–SP-204.
+**In progress:** — (v0.12.0 shipped as Partial for behavioral artifacts)
 
 ---
 
@@ -615,18 +615,20 @@
 
 **Source:** Operator-approved **v0.12.0** (2026-07-12). Theme: live shadow dogfood (#95 human) + behavioral P(success)/isotonic from real exports (#110).
 
-**Wave order (planned):**
+**Wave order (executed):**
 
 | Wave | Tasks | Notes |
 |------|-------|-------|
-| 1 | SP-205 | Docs; parallel with human #95 sessions |
-| 2 | SP-206 | After operator archives #95 exports + confirms floors |
+| 1 | SP-205 | Docs landed |
+| 2 | SP-206 | Path (B) Partial — no #95 exports; `behavioral-calibration-partial.md` |
+
+**Status:** Published as **v0.12.0**. #110 left open (Partial). #95 human gate still open.
 
 **Human gate:** #95 — `docs/qa/shadow-dogfood-protocol.md` + sign-off (not a spine task).
 
-**Deferred:** #96, #114 (encoder), #1/#25/#26 hardware.
+**Deferred:** #96, #114 (encoder), #1/#25/#26 hardware; #110 train/ship until floors met.
 
-**Authoring notes:** `spine-tasks/_authoring/release-v0.12.0/manifest.md`
+**Authoring notes:** `spine-tasks/_authoring/release-v0.12.0/manifest.md`, `spine-tasks/_authoring/release-v0.12.0/behavioral-calibration-partial.md`
 
 ---
 
