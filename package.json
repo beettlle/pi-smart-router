@@ -73,6 +73,7 @@
     "routing:eval-harness:smoke": "tsx scripts/eval/run-harness.ts --summary-only",
     "routing:eval-harness:corpus-smoke": "tsx scripts/eval/run-harness.ts --fixtures tests/eval/corpus/twinrouterbench --summary-only",
     "routing:assert-release-gates:corpus-report": "tsx scripts/eval/assert-release-gates.ts --fixtures tests/eval/corpus/twinrouterbench --report-only",
+    "routing:analyze-overrouting": "tsx scripts/eval/analyze-twinrouterbench-overrouting.ts",
     "routing:twinrouterbench:full-ingest": "bash -c 'set -euo pipefail; CACHE=\"${TRB_CACHE_DIR:-.pi-smart-router/eval-cache/twinrouterbench}\"; mkdir -p \"$CACHE\"; npm run routing:ingest-twinrouterbench -- --input \"$CACHE/question_bank.jsonl\" --output \"$CACHE/full-static-track.json\"'",
     "routing:twinrouterbench:full-report": "bash -c 'set -euo pipefail; CACHE=\"${TRB_CACHE_DIR:-.pi-smart-router/eval-cache/twinrouterbench}\"; DIR=\"$CACHE/full-track\"; mkdir -p \"$DIR\"; cp \"$CACHE/full-static-track.json\" \"$DIR/full-static-track.json\"; npm run routing:eval-harness -- --fixtures \"$DIR\" --summary-only; npx tsx scripts/eval/assert-release-gates.ts --fixtures \"$DIR\" --report-only'",
     "routing:twinrouterbench:full-track": "bash scripts/eval/twinrouterbench-full-track.sh",
