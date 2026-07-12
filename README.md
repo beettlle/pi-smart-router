@@ -473,7 +473,7 @@ See [routing-roadmap.md](docs/routing-roadmap.md) §2 P2 and GitHub [#78](https:
 
 ### P(success) training export (baseline classifier)
 
-When `SMART_ROUTER_DATASET=1`, the router records privacy-safe dataset rows and behavioral outcome labels (model override, compaction pin break, `/smart-router feedback good|bad`). Export labeled training data from pi:
+When `SMART_ROUTER_DATASET=1`, the router records privacy-safe dataset rows and behavioral outcome labels. Export labeled training data from pi:
 
 ```bash
 /smart-router export dataset [--limit N]
@@ -481,23 +481,60 @@ When `SMART_ROUTER_DATASET=1`, the router records privacy-safe dataset rows and 
 
 Each JSONL row joins dataset features with `success_label` and `outcome_signals`. Success means no negative outcome signals were recorded for that `request_id` (for example `model_override` or `feedback_bad` mark failure). Prompt plaintext is never included.
 
-**Dogfood artifact (SP-175):** the repo ships a non-example `config/p-success-weights.json` trained on the synthetic fixture at `scripts/fixtures/p-success-synthetic-train.jsonl` (**provenance: synthetic/fixture**, not community contrib — 40 labeled feature-vector rows, no prompt text). With `trained_sample_count ≥ 30`, the low-intensity gate uses trained logistic scores instead of neutral `0.5`. Missing or invalid artifacts still fall back safely to neutral defaults.
+#### Behavioral-first bootstrap (zero manual labels)
 
-**Operator train / reload (no prompt text):**
+Primary path for [#110](https://github.com/beettlle/pi-smart-router/issues/110) (docs slice).
+
+Manual `/smart-router feedback good|bad` is **optional**. Passive dogfood signals already captured under `SMART_ROUTER_DATASET=1` (and privacy-safe telemetry-contrib export) are sufficient to train when you have enough rows:
+
+| Passive field / signal | Role |
+|------------------------|------|
+| `model_override` | Failure — operator overrode the routed model |
+| `compaction_pin_break` | Neutral/positive context — pin broke at compaction (not a cheap-tier failure by itself) |
+| Loop-escalation proxies (`tool_failure_chain`, pin reason `loop_escalation`) | Failure proxies for stuck tool loops |
+| `stop_reason` / `stop_reason_invalid` / `stop_reason_length` | Execution outcome — invalid or truncated stops mark failure |
+
+Optional `feedback_good` / `feedback_bad` only refine labels when the operator chooses to annotate; they are not required for a valid train path. **Do not invent labels** — incomplete exports skip or stay unlabeled rather than fabricating outcomes.
+
+**Sample floor:** collect at least **≥30** labeled **economical-tier** rows (`minimum_training_samples.p_success_weights` / `isotonic_calibrator` in [`config/routing-calibration.json.example`](config/routing-calibration.json.example)) before relying on non-neutral `P(success)` or isotonic. Below that floor the classifier returns neutral `P_success_cheap = 0.5`.
+
+**Provenance today vs behavioral adoption:** the checked-in `config/p-success-weights.json` remains **synthetic/fixture** (SP-175 — trained on `scripts/fixtures/p-success-synthetic-train.jsonl`, not community dogfood). Treat those weights as an interim dogfood enablement until real passive-signal floors are met and artifacts are retrained/shipped ([#110](https://github.com/beettlle/pi-smart-router/issues/110) train/ship slice — SP-206). Do not claim synthetic rows are behavioral.
+
+**Zero-manual-label path (aggregate → train → verify):**
 
 ```bash
-# 1) Opt in + dogfood, then export privacy-safe labeled JSONL (features + labels only)
+# 1) Opt in + dogfood (no /feedback required) — see docs/qa/shadow-dogfood-protocol.md
 SMART_ROUTER_DATASET=1
-# …run sessions with /model smart-router/auto and /smart-router feedback…
+# …sessions with /model smart-router/auto; prefer passive outcomes…
+/smart-router export dataset --limit 200
+/smart-router export telemetry-contrib
+
+# 2) Aggregate privacy-safe contrib / exports (reject tainted payloads)
+npm run routing:calibration-aggregate -- --contrib-dir data/contrib
+
+# 3) Train when ≥30 economical-tier labeled rows exist
+npm run routing:train-p-success -- --input path/to/export.jsonl --output config/p-success-weights.json
+npm run routing:train-calibration -- --input path/to/aggregated.jsonl
+
+# 4) Verify artifact shapes / gates
+npm run routing:verify-calibration -- config/routing-calibration.json
+```
+
+#### Operator train / reload (no prompt text)
+
+```bash
+# Opt in + dogfood, then export privacy-safe labeled JSONL (features + labels only)
+SMART_ROUTER_DATASET=1
+# …run sessions with /model smart-router/auto (optional: /smart-router feedback)…
 /smart-router export dataset --limit 200
 
-# 2) Train standalone weights (≥30 labeled rows required)
+# Train standalone weights (≥30 labeled rows required)
 npm run routing:train-p-success -- --input path/to/export.jsonl --output config/p-success-weights.json
 
-# Or regenerate the checked-in dogfood weights from the synthetic fixture:
+# Or regenerate the checked-in dogfood weights from the synthetic fixture (interim only):
 npm run routing:train-p-success
 
-# 3) Optional: merge isotonic into an existing calibration bundle (does not rewrite hydra/centroids)
+# Optional: merge isotonic into an existing calibration bundle (does not rewrite hydra/centroids)
 npm run routing:train-p-success -- --input path/to/export.jsonl \
   --calibration-output config/routing-calibration.json
 

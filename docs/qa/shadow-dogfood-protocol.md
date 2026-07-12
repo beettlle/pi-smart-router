@@ -55,8 +55,8 @@ After each session (or at natural breakpoints):
 
 1. `/smart-router status`
 2. `/smart-router history` (sample recent decisions: stage, reason, selected model)
-3. Prefer **passive** outcome signals already captured when `SMART_ROUTER_DATASET=1` (model override, compaction pin break, loop escalation proxies).
-4. Use `/smart-router feedback good|bad` only when the outcome is clearly successful or clearly failed — optional, not required for a valid run.
+3. Prefer **passive** outcome signals already captured when `SMART_ROUTER_DATASET=1` (model override, compaction pin break, loop-escalation proxies, `stop_reason` / related failure proxies). These are sufficient for the zero-manual-label calibration bootstrap ([#110](https://github.com/beettlle/pi-smart-router/issues/110)) — no invented labels.
+4. Use `/smart-router feedback good|bad` only when the outcome is clearly successful or clearly failed — optional, not required for a valid run or for P(success) training.
 5. Note subjective over-routing (too expensive) or under-routing (quality miss) in the sign-off form.
 
 ## Export and privacy check
@@ -74,7 +74,25 @@ Then:
 2. Record: export paths, row counts, date, install / fleet notes.
 3. Store exports outside git (default under `.pi-smart-router/`; already gitignored).
 
-Training floors used elsewhere in the project: **≥30** labeled economical-tier rows preferred before trusting isotonic / P(success) retrains. A shorter window (≥5 matrix sessions) is still valid for #95 qualitative sign-off.
+Training floors used elsewhere in the project: **≥30** labeled economical-tier rows preferred before trusting isotonic / P(success) retrains (`minimum_training_samples.p_success_weights` / `isotonic_calibrator`). A shorter window (≥5 matrix sessions) is still valid for #95 qualitative sign-off. Incomplete Track B / harness exports must **skip** rather than invent labels ([#111](https://github.com/beettlle/pi-smart-router/issues/111)).
+
+### Next step after export — behavioral calibration ([#110](https://github.com/beettlle/pi-smart-router/issues/110))
+
+Shadow dogfood exports are the human half of behavioral calibration. After privacy checks:
+
+```bash
+# Aggregate community / local contrib (rejects tainted prompt/message keys)
+npm run routing:calibration-aggregate -- --contrib-dir data/contrib
+
+# Train when ≥30 economical-tier labeled rows exist (passive signals OK — no /feedback required)
+npm run routing:train-p-success -- --input path/to/export.jsonl --output config/p-success-weights.json
+npm run routing:train-calibration -- --input path/to/aggregated.jsonl
+
+# Verify shapes and benchmark gates
+npm run routing:verify-calibration -- config/routing-calibration.json
+```
+
+Checked-in `config/p-success-weights.json` remains **synthetic/fixture** until the train/ship slice (SP-206) replaces it with non-synthetic provenance. Docs for the zero-manual-label path live in the README [behavioral-first bootstrap](../../README.md#behavioral-first-bootstrap-zero-manual-labels) section.
 
 ## Offline companion commands
 
@@ -137,9 +155,9 @@ Recommend relaxing frugality / flipping encoder defaults: no / yes (requires #96
 | Issue | Role |
 |-------|------|
 | [#95](https://github.com/beettlle/pi-smart-router/issues/95) | Shadow dogfood + public-track soft-feed protocol |
-| [#111](https://github.com/beettlle/pi-smart-router/issues/111) | Track B dogfood export → harness adapter (labeled exports only) |
+| [#110](https://github.com/beettlle/pi-smart-router/issues/110) | Behavioral calibration — zero-manual-label bootstrap → aggregate → train → verify (docs SP-205; train/ship SP-206) |
+| [#111](https://github.com/beettlle/pi-smart-router/issues/111) | Track B dogfood export → harness adapter (labeled exports only; never invent labels) |
 | Over-routing analysis (authoring draft) | Why corpus ≈0.85 (autonomous) |
-| Behavioral calibration (authoring draft) | Train/ship non-synthetic weights from exports |
 | [#75](https://github.com/beettlle/pi-smart-router/issues/75) (closed) | Original profile ingest/mapper — keep closed |
 | [#108](https://github.com/beettlle/pi-smart-router/issues/108) | Dogfood fleet `benchmark` vs `pattern_default` coverage |
 | [#96](https://github.com/beettlle/pi-smart-router/issues/96) | Encoder / K=4 enablement after holdout evidence |
