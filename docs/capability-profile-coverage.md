@@ -1,24 +1,24 @@
-# Capability profile coverage (dogfood fleet)
+# Capability profile coverage (fixture list)
 
-Measurable story for HyDRA capability priors on the primary Cursor/pi dogfood fleet: which scoped model IDs resolve with `capability_source=benchmark` vs `pattern_default`. Closes [#108](https://github.com/beettlle/pi-smart-router/issues/108). Parent ingest/mapper work stays closed under [#75](https://github.com/beettlle/pi-smart-router/issues/75).
+Measurable story for HyDRA capability priors on the primary **capability-coverage fixture** list: which IDs resolve with `capability_source=benchmark` vs `pattern_default`. Closes [#108](https://github.com/beettlle/pi-smart-router/issues/108). Parent ingest/mapper work stays closed under [#75](https://github.com/beettlle/pi-smart-router/issues/75).
 
-**Companion:** live QA steps in [`docs/qa/shadow-dogfood-protocol.md`](qa/shadow-dogfood-protocol.md).  
+**Companion:** live QA with any qualifying scoped fleet — [`docs/qa/shadow-dogfood-protocol.md`](qa/shadow-dogfood-protocol.md). That protocol does **not** require the fixture IDs below.  
 **Artifact:** [`config/benchmark-profiles.json`](../config/benchmark-profiles.json)  
 **Resolver:** [`src/config/pi-model-mapper.ts`](../src/config/pi-model-mapper.ts) (`getCapabilitySource`, `resolveBenchmarkModelId`)
 
 ## Coverage metric
 
-Define the **primary dogfood fleet** as the fixed ID list below (aligned with the shadow protocol’s economical + frontier + non-Gemini fallback guidance and common Cursor/pi registry IDs).
+Define the **primary capability-coverage fixture** as the fixed ID list below (checked-in mapper gate for #108). Rows may include Cursor/composer registry ids as fixture aliases; they are not a live dogfood fleet requirement.
 
 \[
-\text{benchmark\_coverage} = \frac{\#\{\text{id} \in \text{primary fleet} : \texttt{getCapabilitySource(id)} = \texttt{benchmark}\}}{|\text{primary fleet}|}
+\text{benchmark\_coverage} = \frac{\#\{\text{id} \in \text{primary fixture} : \texttt{getCapabilitySource(id)} = \texttt{benchmark}\}}{|\text{primary fixture}|}
 \]
 
 **Gate:** `benchmark_coverage === 1` for the primary list. Enforced by `tests/unit/pi-model-mapper-coverage.test.ts`.
 
 Intentional `pattern_default` IDs are **outside** the primary list; they are documented in [Intentional gaps](#intentional-gaps) and asserted separately so silent regressions do not hide behind “coverage”.
 
-## Primary dogfood fleet
+## Primary capability-coverage fixture
 
 | Fleet model ID | `capability_source` | Resolution | Notes |
 |----------------|---------------------|------------|-------|
@@ -37,8 +37,8 @@ Intentional `pattern_default` IDs are **outside** the primary list; they are doc
 | `gemini-2.5-flash-lite` | `benchmark` | alias → `gemini-2.5-flash` | Lite variant |
 | `gemini-2.0-flash` | `benchmark` | alias → `gemini-2.5-flash` | Prior flash generation ID |
 | `gemini-flash-latest` | `benchmark` | alias → `gemini-2.5-flash` | Rolling “latest” ID |
-| `cursor/auto` | `benchmark` | alias → `gpt-5.3-codex` | Opaque Cursor auto (protocol non-Gemini fallback) |
-| `composer-latest` | `benchmark` | alias → `gpt-5.3-codex` | Composer coding model (protocol non-Gemini fallback) |
+| `cursor/auto` | `benchmark` | alias → `gpt-5.3-codex` | Opaque Cursor auto (fixture row) |
+| `composer-latest` | `benchmark` | alias → `gpt-5.3-codex` | Composer coding model (fixture row) |
 | `composer-1` | `benchmark` | alias → `gpt-5.3-codex` | Versioned Composer ID |
 | `cursor/composer-latest` | `benchmark` | alias → `gpt-5.3-codex` | Provider-prefixed Composer ID |
 | `default` | `benchmark` | alias → `gpt-5.3-codex` | Opaque fleet placeholder (`SP-098`) |
@@ -63,7 +63,7 @@ These IDs stay on `pattern_default` on purpose. Do **not** invent leaderboard sc
 
 1. Prefer a real ingest row from `npm run routing:ingest-benchmarks` (fixtures or `--live`).
 2. Add `"fleet-id": "canonical-model_id"` under `aliases` only when the canonical row already exists.
-3. Extend the primary list + unit test expectations together so the metric stays honest.
+3. Extend the primary fixture list + unit test expectations together so the metric stays honest.
 4. Confirm with `npm run routing:verify-benchmark-profiles` and `npx vitest run tests/unit/pi-model-mapper-coverage.test.ts`.
 
 Do **not** reopen [#75](https://github.com/beettlle/pi-smart-router/issues/75) for alias/docs work — that issue owns core ingest/mapper (landed). Coverage follow-ons stay on [#108](https://github.com/beettlle/pi-smart-router/issues/108).
@@ -72,7 +72,7 @@ Do **not** reopen [#75](https://github.com/beettlle/pi-smart-router/issues/75) f
 
 | Link | Role |
 |------|------|
-| [`docs/qa/shadow-dogfood-protocol.md`](qa/shadow-dogfood-protocol.md) | Live dogfood matrix + sign-off |
+| [`docs/qa/shadow-dogfood-protocol.md`](qa/shadow-dogfood-protocol.md) | Live dogfood matrix + sign-off (any qualifying fleet; not this fixture list) |
 | [`docs/routing-roadmap.md`](routing-roadmap.md) §2 | Roadmap status (owned by SP-197; points at #108) |
 | `npm run routing:ingest-benchmarks` | Regenerate profiles |
 | `npm run routing:verify-benchmark-profiles` | CI smoke vs fixture ingest |

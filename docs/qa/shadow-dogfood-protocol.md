@@ -18,14 +18,21 @@ Companion script: `npm run qa:shadow-dogfood` ([`scripts/qa/shadow-dogfood-sessi
 - Do **not** invent harness labels. Community Track B (`--dogfood-export`) runs only when the export includes required outcome labels (`success_label`, `min_tier`, `min_model_id`); incomplete exports skip with an explicit reason (see `scripts/eval/dogfood-track-b-adapter.ts` / [#111](https://github.com/beettlle/pi-smart-router/issues/111)).
 - Do **not** flip encoder defaults (`granite` / `modernbert_k4`) from this protocol.
 
+## Prerequisites (any machine)
+
+- Clone of this repo; from the package root run `npm install`.
+- `bash`, Node.js, and `npm` on `PATH`.
+- pi with the smart-router extension enabled from this checkout.
+- Live matrix is install-local (your scoped fleet + credentials). Offline companion (`npm run qa:shadow-dogfood`) is repo-local: the script resolves the package root from its own path and does not depend on the invoke cwd.
+
 ## Setup
 
 1. Install / enable the smart-router pi extension from this repo.
 2. In pi: `/model smart-router/auto`.
-3. Scoped fleet should include:
+3. Scoped fleet should include (provider-agnostic — use whatever your install exposes):
    - at least one **economical-cloud** model
    - at least one **frontier-cloud** model
-   - a **non-Gemini** fallback such as `cursor/auto` or `composer-latest` (avoids empty-fleet fail-safe on Gemini-only configs)
+   - at least one **non-Google** fallback (avoids empty-fleet fail-safe on Gemini-only configs). Examples by class: Anthropic Sonnet/Opus, OpenAI or Copilot coding models, or any other non-Google id available in that install.
 4. Environment (shell that launches pi, or documented install env):
 
    ```bash
@@ -47,7 +54,7 @@ Run **at least five** sessions covering every row below (one session may cover m
 | 3 | Planning turn | Ask for a multi-file plan / architecture | Planning delegate vs pin smash; frontier sub-call |
 | 4 | Multi-turn pin continuity | Same session, 5+ turns on one task | Pin preserved; unjustified pin breaks |
 | 5 | Hard task | Intentionally difficult coding task | Under-routing to weak models; quality failures |
-| 6 | Gemini-heavy (if in fleet) | Tool-heavy Gemini session | thought_signature / empty-fleet behavior |
+| 6 | Gemini-heavy (optional) | Only if Gemini is in your fleet: tool-heavy Gemini session | thought_signature / empty-fleet behavior; N/A when unused |
 
 ## Per-session recording
 
@@ -96,13 +103,13 @@ Checked-in `config/p-success-weights.json` remains **synthetic/fixture** until t
 
 ## Offline companion commands
 
-From the repo root (after sessions, or anytime):
+After sessions, or anytime — from this package (cwd optional; `npm run` / the script bind to the package root):
 
 ```bash
 npm run qa:shadow-dogfood
 ```
 
-Or manually:
+Or manually from the package root:
 
 ```bash
 # Hard gates on default fixtures — MUST pass
@@ -112,7 +119,7 @@ npm run release:functional-smoke
 npm run routing:assert-release-gates:corpus-report
 ```
 
-Archive stdout / generated reports with the sign-off (the QA script copies under `.pi-smart-router/qa-runs/<timestamp>/`).
+Archive stdout / generated reports with the sign-off (the QA script copies under `<package-root>/.pi-smart-router/qa-runs/<timestamp>/`, overridable via `SMART_ROUTER_QA_OUT_DIR`).
 
 ## Sign-off form
 
@@ -159,9 +166,9 @@ Recommend relaxing frugality / flipping encoder defaults: no / yes (requires #96
 | [#111](https://github.com/beettlle/pi-smart-router/issues/111) | Track B dogfood export → harness adapter (labeled exports only; never invent labels) |
 | Over-routing analysis (authoring draft) | Why corpus ≈0.85 (autonomous) |
 | [#75](https://github.com/beettlle/pi-smart-router/issues/75) (closed) | Original profile ingest/mapper — keep closed |
-| [#108](https://github.com/beettlle/pi-smart-router/issues/108) | Dogfood fleet `benchmark` vs `pattern_default` coverage |
+| [#108](https://github.com/beettlle/pi-smart-router/issues/108) | Mapper coverage metric over a fixed fixture ID list (`benchmark` vs `pattern_default`) |
 | [#96](https://github.com/beettlle/pi-smart-router/issues/96) | Encoder / K=4 enablement after holdout evidence |
 
-**Coverage report:** which primary fleet IDs resolve `capability_source=benchmark` vs intentional `pattern_default` gaps — [`docs/capability-profile-coverage.md`](../capability-profile-coverage.md) (metric gated by `tests/unit/pi-model-mapper-coverage.test.ts`).
+**Coverage report (not the live #95 fleet):** [`docs/capability-profile-coverage.md`](../capability-profile-coverage.md) measures mapper coverage for a **fixed fixture ID list** in this repo (gated by `tests/unit/pi-model-mapper-coverage.test.ts`). Live shadow dogfood uses **any** scoped fleet that meets Setup §3 — that fixture list is not required for #95 sign-off.
 
 Paste-ready GitHub bodies: [`spine-tasks/_authoring/issues/`](../../spine-tasks/_authoring/issues/).
