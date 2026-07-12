@@ -1,7 +1,7 @@
 # SP-203: Track B Dogfood Export → Harness Adapter — Status
 
 **Current Step:** 3
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-12
 **Review Level:** 1
 **Review Counter:** 0
@@ -29,7 +29,7 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Contract tests
 - [x] community-bench smoke
@@ -73,6 +73,7 @@
 | 2026-07-12 | step1 | Adapter + synthetic fixture committed; plan review skipped; advancing to Step 2 |
 | 2026-07-12 | step2 | Wired resolveTrackB; report schema; tests + README + QA note; unit tests green |
 | 2026-07-12 | step3 | Contract + smoke + verify:ci + coverage:check green; #111 closed (Partial #95 noted) |
+| 2026-07-12 | done | All completion criteria met; creating .DONE |
 
 ## Blockers
 
