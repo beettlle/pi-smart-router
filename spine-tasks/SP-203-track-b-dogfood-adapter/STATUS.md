@@ -22,10 +22,10 @@
 
 **Status:** 🔄 In Progress
 
-- [ ] resolveTrackB wiring
-- [ ] Unit test updates
-- [ ] README Track B section
-- [ ] Optional QA protocol note
+- [x] resolveTrackB wiring
+- [x] Unit test updates
+- [x] README Track B section
+- [x] Optional QA protocol note
 
 ## Step 3: Testing & Verification
 
@@ -42,9 +42,9 @@
 ## Completion Criteria
 
 - [x] Schema + adapter
-- [ ] Run vs skip without inventing labels
+- [x] Run vs skip without inventing labels
 - [x] Tests + fixture
-- [ ] README
+- [x] README
 - [ ] #111 closable
 
 ---
@@ -60,7 +60,7 @@
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| 2026-07-12 | `community-bench-report.ts` types Track B as skip-only (`SkippedTrackSchema`). AC requires ran + gate metrics — must extend report schema. Not in Must NOT; not listed in Must/May. | Touch `scripts/eval/community-bench-report.ts` for Track B ran union + skip reasons. |
+| 2026-07-12 | `community-bench-report.ts` types Track B as skip-only (`SkippedTrackSchema`). AC requires ran + gate metrics — must extend report schema. Not in Must NOT; not listed in Must/May. | Touched `scripts/eval/community-bench-report.ts` for Track B ran union + skip reasons. |
 | 2026-07-12 | Telemetry-contrib has optional `success_label` but no `min_tier`. Track B export schema must require explicit outcome labels (`success_label`, `min_tier`, `min_model_id`) — never invent from routing tier alone. | Adapter refuses incomplete rows. |
 
 ## Execution Log
@@ -69,6 +69,7 @@
 |------|-------|--------|
 | 2026-07-12 | start | Resume Step 1; plan review skipped by engine |
 | 2026-07-12 | step1 | Adapter + synthetic fixture committed; plan review skipped; advancing to Step 2 |
+| 2026-07-12 | step2 | Wired resolveTrackB; report schema; tests + README + QA note; unit tests green |
 
 ## Blockers
 
