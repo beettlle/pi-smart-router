@@ -261,9 +261,11 @@ export function aggregateSessionStatsFromFleet(
   fleet?: readonly ModelProfile[],
   catalog?: PriceCatalog | null,
 ): SessionStatsSnapshot {
+  const tierMap = buildTierMap(fleet);
+  const frontierCost = resolveFrontierCostPer1M(fleet, catalog);
   return aggregateSessionStats(entries, {
-    tier_by_model_id: buildTierMap(fleet),
-    frontier_cost_per_1m: resolveFrontierCostPer1M(fleet, catalog),
+    ...(tierMap ? { tier_by_model_id: tierMap } : {}),
+    ...(frontierCost !== undefined ? { frontier_cost_per_1m: frontierCost } : {}),
   });
 }
 

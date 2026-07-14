@@ -62,9 +62,10 @@ After each session (or at natural breakpoints):
 
 1. `/smart-router status`
 2. `/smart-router history` (sample recent decisions: stage, reason, selected model)
-3. Prefer **passive** outcome signals already captured when `SMART_ROUTER_DATASET=1` (model override, compaction pin break, loop-escalation proxies, `stop_reason` / related failure proxies). These are sufficient for the zero-manual-label calibration bootstrap ([#110](https://github.com/beettlle/pi-smart-router/issues/110)) — no invented labels.
-4. Use `/smart-router feedback good|bad` only when the outcome is clearly successful or clearly failed — optional, not required for a valid run or for P(success) training.
-5. Note subjective over-routing (too expensive) or under-routing (quality miss) in the sign-off form.
+3. `/smart-router stats` (window aggregates + role cost breakdown before/during export; privacy-safe, no prompt bodies)
+4. Prefer **passive** outcome signals already captured when `SMART_ROUTER_DATASET=1` (model override, compaction pin break, loop-escalation proxies, `stop_reason` / related failure proxies). These are sufficient for the zero-manual-label calibration bootstrap ([#110](https://github.com/beettlle/pi-smart-router/issues/110)) — no invented labels.
+5. Use `/smart-router feedback good|bad` only when the outcome is clearly successful or clearly failed — optional, not required for a valid run or for P(success) training.
+6. Note subjective over-routing (too expensive) or under-routing (quality miss) in the sign-off form.
 
 ## Export and privacy check
 
