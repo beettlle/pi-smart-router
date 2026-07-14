@@ -12,6 +12,7 @@ import {
   formatDatasetExportJsonl,
   formatHistoryMessage,
   formatPricingStalenessLine,
+  formatStatsMessage,
   formatStatusMessage,
   getRouterStateDbPath,
   getSmartRouterArgumentCompletions,
@@ -122,9 +123,19 @@ describe('parseSmartRouterArgs (SP-045)', () => {
     expect(parseSmartRouterArgs('history 25')).toEqual({ command: 'history', limit: 25 });
   });
 
+  it('parses stats with default and explicit limits', () => {
+    expect(parseSmartRouterArgs('stats')).toEqual({ command: 'stats', limit: 10 });
+    expect(parseSmartRouterArgs('stats 50')).toEqual({ command: 'stats', limit: 50 });
+  });
+
   it('rejects invalid history limits', () => {
     expect(() => parseSmartRouterArgs('history 0')).toThrow('Usage:');
     expect(() => parseSmartRouterArgs('history abc')).toThrow('Usage:');
+  });
+
+  it('rejects invalid stats limits', () => {
+    expect(() => parseSmartRouterArgs('stats 0')).toThrow('Usage:');
+    expect(() => parseSmartRouterArgs('stats abc')).toThrow('Usage:');
   });
 
   it('parses export dataset with default and explicit limits', () => {
@@ -170,11 +181,20 @@ describe('getSmartRouterArgumentCompletions', () => {
   }
 
   it('offers top-level subcommands on empty prefix', () => {
-    expect(completionValues('')).toEqual(['status', 'history', 'mode', 'pricing', 'export', 'feedback', 'unpin']);
+    expect(completionValues('')).toEqual([
+      'status',
+      'history',
+      'stats',
+      'mode',
+      'pricing',
+      'export',
+      'feedback',
+      'unpin',
+    ]);
   });
 
   it('filters top-level subcommands by partial prefix', () => {
-    expect(completionValues('st')).toEqual(['status']);
+    expect(completionValues('st')).toEqual(['status', 'stats']);
     expect(completionValues('hi')).toEqual(['history']);
     expect(completionValues('pr')).toEqual(['pricing']);
     expect(completionValues('ex')).toEqual(['export']);
@@ -193,6 +213,10 @@ describe('getSmartRouterArgumentCompletions', () => {
 
   it('offers history completion after history token', () => {
     expect(completionValues('history')).toEqual(['history']);
+  });
+
+  it('offers stats completion after stats token', () => {
+    expect(completionValues('stats')).toEqual(['stats']);
   });
 
   it('offers export subcommands after export token', () => {
@@ -477,6 +501,41 @@ describe('formatHistoryMessage', () => {
     expect(message).toContain('gemini-flash-latest');
     expect(message).toContain('hydra_match');
     expect(message).toContain('4ms');
+  });
+});
+
+describe('formatStatsMessage (SP-207)', () => {
+  it('formats empty stats window', () => {
+    expect(formatStatsMessage([])).toBe('No routing stats yet (empty telemetry window).');
+  });
+
+  it('includes role cost breakdown and omits frontier savings without prices', () => {
+    const message = formatStatsMessage([
+      {
+        timestamp: '2026-07-04T12:00:00.000Z',
+        session_id: 'sess-1',
+        request_id: 'req-2',
+        turn_type: 'main_loop',
+        stage: 'pinned',
+        reason_code: 'session_pin',
+        selected_model_id: 'gpt-4o-mini',
+        estimated_cost_usd: 0.002,
+        routing_latency_ms: 4,
+        pin_reason: 'session_pin',
+        ...DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
+        ...DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
+        ...DEFAULT_BREAKEVEN_TELEMETRY_FIELDS,
+        ...DEFAULT_SAAR_TELEMETRY_FIELDS,
+        ...DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS,
+        ...DEFAULT_PIN_ONLY_FALLBACK_TELEMETRY_FIELDS,
+      },
+    ]);
+
+    expect(message).toContain('Entries: 1');
+    expect(message).toContain('Role cost breakdown:');
+    expect(message).toContain('primary (pin path): 1');
+    expect(message).toContain('frontier prices unavailable');
+    expect(message).not.toMatch(/prompt/i);
   });
 });
 

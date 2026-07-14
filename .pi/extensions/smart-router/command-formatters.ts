@@ -4,9 +4,14 @@ import {
 } from '../../../src/infrastructure/telemetry/telemetry-limits.js';
 import type {
   ModelProfile,
+  PriceCatalog,
   RoutingDecision,
   RoutingTelemetry,
 } from '../../../src/domain/types/index.js';
+import {
+  aggregateSessionStatsFromFleet,
+  type SessionStatsSnapshot,
+} from '../../../src/infrastructure/telemetry/session-stats.js';
 import { SMART_ROUTER_USAGE } from './commands.js';
 import {
   DEFAULT_TELEMETRY_CONTRIB_EXPORT_LIMIT,
@@ -18,6 +23,8 @@ import {
 } from './dataset-export.js';
 import { formatPricingStalenessLine } from './pricing-lifecycle.js';
 import type { FleetMode, SmartRouterCommand, SmartRouterRuntime } from './types.js';
+
+export type { SessionStatsSnapshot };
 
 /** Opaque / virtual auto ids that hide the concrete delegated fleet model (SP-178). */
 function isBareOrSmartRouterAuto(modelId: string): boolean {
@@ -149,6 +156,10 @@ export function parseSmartRouterArgs(args: string): SmartRouterCommand {
     return { command: 'history', limit: parseHistoryLimit(tokens[1]) };
   }
 
+  if (tokens[0] === 'stats') {
+    return { command: 'stats', limit: parseHistoryLimit(tokens[1]) };
+  }
+
   if (tokens[0] === 'mode' && (tokens[1] === 'scoped' || tokens[1] === 'all')) {
     return { command: 'mode', mode: tokens[1] };
   }
@@ -243,6 +254,88 @@ export function formatHistoryMessage(
       return `${entry.timestamp} | ${modelId} | ${entry.stage} | ${entry.turn_type} | ${entry.routing_latency_ms}ms`;
     })
     .join('\n');
+}
+
+function formatUsd(value: number): string {
+  if (!Number.isFinite(value)) {
+    return 'n/a';
+  }
+  if (Math.abs(value) >= 1) {
+    return `$${value.toFixed(4)}`;
+  }
+  return `$${value.toFixed(6)}`;
+}
+
+function formatShare(value: number | null): string {
+  if (value === null) {
+    return 'n/a';
+  }
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function formatMean(value: number | null, suffix: string): string {
+  if (value === null) {
+    return 'n/a';
+  }
+  if (suffix === 'ms') {
+    return `${value.toFixed(1)}${suffix}`;
+  }
+  return `${formatUsd(value)}${suffix}`;
+}
+
+/**
+ * Operator-facing text for `/smart-router stats` (privacy-safe aggregates only).
+ */
+export function formatStatsMessage(
+  entries: readonly RoutingTelemetry[],
+  options?: {
+    fleet?: readonly ModelProfile[];
+    priceCatalog?: PriceCatalog | null;
+  },
+): string {
+  const snapshot = aggregateSessionStatsFromFleet(
+    entries,
+    options?.fleet,
+    options?.priceCatalog,
+  );
+
+  if (snapshot.entry_count === 0) {
+    return 'No routing stats yet (empty telemetry window).';
+  }
+
+  const lines = [
+    `Entries: ${snapshot.entry_count}`,
+    `Cost: total ${formatUsd(snapshot.total_cost_usd)} | mean ${formatMean(snapshot.mean_cost_usd, '')}`,
+    `Latency: total ${snapshot.total_latency_ms.toFixed(0)}ms | mean ${formatMean(snapshot.mean_latency_ms, 'ms')}`,
+    `Planning delegate share: ${formatShare(snapshot.planning_delegate_share)} (direct ${formatShare(snapshot.direct_share)})`,
+    `Local vs cloud (when known): local ${formatShare(snapshot.local_share)} | cloud ${formatShare(snapshot.cloud_share)}`,
+    'Role cost breakdown:',
+    `  primary (pin path): ${snapshot.role_cost.primary.count} | ${formatUsd(snapshot.role_cost.primary.total_cost_usd)}`,
+    `  planning_delegate: ${snapshot.role_cost.planning_delegate.count} | ${formatUsd(snapshot.role_cost.planning_delegate.total_cost_usd)}`,
+    `  other: ${snapshot.role_cost.other.count} | ${formatUsd(snapshot.role_cost.other.total_cost_usd)}`,
+  ];
+
+  if (snapshot.frontier_savings_usd !== undefined) {
+    lines.push(
+      `Vs always-frontier savings (est.): ${formatUsd(snapshot.frontier_savings_usd)}`,
+      '  formula: sum max(0, tokens/1e6 * frontier_cost_per_1m - estimated_cost_usd); omitted when prices missing',
+    );
+  } else {
+    lines.push('Vs always-frontier savings: (omitted — frontier prices unavailable)');
+  }
+
+  return lines.join('\n');
+}
+
+/** JSON snapshot helper for automation (same aggregate as formatStatsMessage). */
+export function buildStatsSnapshot(
+  entries: readonly RoutingTelemetry[],
+  options?: {
+    fleet?: readonly ModelProfile[];
+    priceCatalog?: PriceCatalog | null;
+  },
+): SessionStatsSnapshot {
+  return aggregateSessionStatsFromFleet(entries, options?.fleet, options?.priceCatalog);
 }
 
 export type { FleetMode };

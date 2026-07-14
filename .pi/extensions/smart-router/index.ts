@@ -36,6 +36,7 @@ import {
 } from './fleet-bootstrap.js';
 import {
   formatHistoryMessage,
+  formatStatsMessage,
   formatStatusMessage,
   parseSmartRouterArgs,
   resolveHistoryModelId,
@@ -82,6 +83,7 @@ export {
   formatLmuStatus,
   formatPricingStalenessLine,
   formatHistoryMessage,
+  formatStatsMessage,
   formatStatusMessage,
   getDatasetExportPath,
   getRouterStateDbPath,
