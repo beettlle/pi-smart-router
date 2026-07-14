@@ -1,12 +1,12 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-07-12
+**Last Updated:** 2026-07-13
 **Status:** Active
-**Next Task ID:** SP-207
+**Next Task ID:** SP-208
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** v0.12.0 (2026-07-12) — SP-205–SP-206: #110 behavioral calibration docs + Partial train/ship (no #95 exports; floors unmet). #110/#95 remain open. Prior v0.11.0 SP-202–SP-204.
-**In progress:** — (v0.12.0 shipped as Partial for behavioral artifacts)
+**In progress:** v0.12.1 — SP-207 (#118 session stats; patch operator override). Manifest: `spine-tasks/_authoring/release-v0.12.1/manifest.md`. Then human #95 dogfood.
 
 ---
 
@@ -629,6 +629,20 @@
 **Deferred:** #96, #114 (encoder), #1/#25/#26 hardware; #110 train/ship until floors met.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.12.0/manifest.md`, `spine-tasks/_authoring/release-v0.12.0/behavioral-calibration-partial.md`
+
+### Phase 44 — Release v0.12.1 Session Stats Hygiene (SP-207)
+
+| Task | Summary | Size | Deps | Maps |
+|------|---------|------|------|------|
+| SP-207 | Session stats + role cost breakdown (`/smart-router stats`) | M | — | Closes #118 |
+
+**Source:** Operator-approved **v0.12.1** (2026-07-13). Patch profile with **explicit override**: #118 treated as read-only ops hygiene (zero routing change) for pre-#95 dogfood instrumentation.
+
+**Wave order:** single wave — SP-207.
+
+**Deferred until after #95 dogfood:** #115–#117, #119–#120.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.12.1/manifest.md`
 
 ---
 
