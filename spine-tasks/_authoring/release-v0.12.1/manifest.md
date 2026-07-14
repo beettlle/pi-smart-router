@@ -95,10 +95,10 @@ test "${PIPESTATUS[0]}" -eq 0
 
 ## Publish checklist (Phase 5–6)
 
-- [ ] SP-207 `.DONE` on `main`
-- [ ] Post-integrate `release:check` green
-- [ ] `spine preflight` green
-- [ ] Clean git tree
+- [x] SP-207 `.DONE` on `main`
+- [x] Post-integrate `release:check` green (`/tmp/pi-smart-router-post-integrate-v0121.log`; functional-smoke EXIT:0 after gate commit `2d7e825`)
+- [x] `spine preflight` green
+- [x] Clean git tree (`main` pushed to `origin` at `2d7e825`)
 - [ ] Operator approved publish bump type: **patch**
 - [ ] `npm version patch` + `git push && git push --tags`
 - [ ] `release.yml` succeeded; npm `0.12.1`
