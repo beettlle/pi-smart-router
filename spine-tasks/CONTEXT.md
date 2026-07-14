@@ -5,8 +5,8 @@
 **Next Task ID:** SP-208
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.12.0 (2026-07-12) — SP-205–SP-206: #110 behavioral calibration docs + Partial train/ship (no #95 exports; floors unmet). #110/#95 remain open. Prior v0.11.0 SP-202–SP-204.
-**In progress:** v0.12.1 — SP-207 (#118 session stats; patch operator override). Manifest: `spine-tasks/_authoring/release-v0.12.1/manifest.md`. Then human #95 dogfood.
+**Released:** v0.12.1 (2026-07-13) — SP-207: #118 session stats + role cost ledger (`/smart-router stats`). Prior v0.12.0 SP-205–SP-206 (#110 Partial; #95 human dogfood still open).
+**In progress:** Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`).
 
 ---
 
@@ -639,6 +639,8 @@
 **Source:** Operator-approved **v0.12.1** (2026-07-13). Patch profile with **explicit override**: #118 treated as read-only ops hygiene (zero routing change) for pre-#95 dogfood instrumentation.
 
 **Wave order:** single wave — SP-207.
+
+**Status:** Published as **v0.12.1** (tag `v0.12.1`, commit `266b970`). #118 closed. #95 human gate still open.
 
 **Deferred until after #95 dogfood:** #115–#117, #119–#120.
 

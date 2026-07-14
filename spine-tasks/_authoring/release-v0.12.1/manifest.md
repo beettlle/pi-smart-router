@@ -99,6 +99,6 @@ test "${PIPESTATUS[0]}" -eq 0
 - [x] Post-integrate `release:check` green (`/tmp/pi-smart-router-post-integrate-v0121.log`; functional-smoke EXIT:0 after gate commit `2d7e825`)
 - [x] `spine preflight` green
 - [x] Clean git tree (`main` pushed to `origin` at `2d7e825`)
-- [ ] Operator approved publish bump type: **patch**
-- [ ] `npm version patch` + `git push && git push --tags`
-- [ ] `release.yml` succeeded; npm `0.12.1`
+- [x] Operator approved publish bump type: **patch** (2026-07-13)
+- [x] `npm version patch` + `git push && git push --tags` (`266b970` / `v0.12.1`)
+- [x] `release.yml` succeeded; npm `0.12.1` (https://github.com/beettlle/pi-smart-router/actions/runs/29299243890)
