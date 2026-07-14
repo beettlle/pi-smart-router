@@ -51,7 +51,7 @@ Closes #118 — Add a privacy-safe **session / window stats** surface (llm-use `
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run typecheck && vitest run tests/unit/session-stats.test.ts` |
+| testCommand | `npm run typecheck && npx vitest run tests/unit/session-stats.test.ts` |
 | fileScopeMustChange | `.pi/extensions/smart-router/commands.ts`, `README.md`, `docs/qa/shadow-dogfood-protocol.md`, `tests/unit/session-stats.test.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/router-pipeline.ts`, `src/config/defaults.ts`, `config/release-gates.json` |
 | completionCriteria | `/smart-router stats` works from existing telemetry; role breakdown present; privacy-safe (no prompt text); optional frontier savings fails closed; README + protocol pointer; #118 closable. |
