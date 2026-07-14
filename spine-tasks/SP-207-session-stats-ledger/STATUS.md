@@ -1,5 +1,5 @@
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 1: Aggregate helper + formatters
+**Status:** In Progress
 **Last Updated:** 2026-07-13
 **Review Level:** 1
 **Review Counter:** 0
@@ -10,12 +10,12 @@
 
 ## Step 1: Aggregate helper + formatters
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Pure aggregate over RoutingTelemetry
-- [ ] Role cost buckets + optional frontier savings (fail closed)
-- [ ] formatStatsMessage + JSON snapshot type
-- [ ] Unit tests (empty / mixed / privacy)
+- [x] Pure aggregate over RoutingTelemetry
+- [x] Role cost buckets + optional frontier savings (fail closed)
+- [x] formatStatsMessage + JSON snapshot type
+- [x] Unit tests (empty / mixed / privacy)
 
 ## Step 2: Wire `/smart-router stats`
 
@@ -46,13 +46,14 @@
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-07-13 | GitNexus impact on extension symbols returned UNKNOWN (not indexed); new pure helper under `src/infrastructure/telemetry/session-stats.ts` avoids router-pipeline. | Low — blast radius limited to command formatters + new helper |
 
 ## Execution Log
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-07-13 | step_start | Step 1 — Aggregate helper + formatters |
+| 2026-07-13 | outcomes | Aggregate helper, formatters, unit tests (5 pass) |
 
 ## Blockers
 
@@ -64,3 +65,4 @@
 
 Release: v0.12.1 (patch operator override). Closes #118.
 Before dogfood (#95): land this first so operators can `/smart-router stats` during the matrix.
+Helper path: `src/infrastructure/telemetry/session-stats.ts` (File Scope: May change).
