@@ -60,6 +60,7 @@
 | 2026-07-13 | `spine_review_step` returns skipped in real-pi worker; engine owns reviews after `.DONE`. | Follow SP-195 — proceed after skip |
 | 2026-07-13 | Extended `tests/unit/smart-router-pricing.test.ts` for stats parse/completions (extra path vs contract). | Recorded for verification |
 | 2026-07-13 | `session-stats.ts` line coverage ~89% (≥77% gate). | coverage:check passed |
+| 2026-07-13 | Engine contract failed exit 127: bare `vitest` not on PATH (node_modules was also missing until `npm install`). Amended PROMPT testCommand → `npx vitest`. | Unblocks post-.DONE contract |
 
 ## Execution Log
 
@@ -78,6 +79,9 @@
 | 2026-07-13 | verify | typecheck + session-stats + smart-router-pricing pass; coverage:check pass |
 | 2026-07-13 | github | Commented + closed #118 |
 | 2026-07-13 | step_complete | Step 3 |
+| 2026-07-13 | contract_fail | vitest not found (exit 127); npm install + PROMPT testCommand → npx vitest |
+| 2026-07-13 | reverify | typecheck + session-stats 5 pass; coverage:check pass (session-stats ~89%) |
+| 2026-07-13 | .DONE | Re-created after contract PATH fix |
 
 ## Blockers
 
