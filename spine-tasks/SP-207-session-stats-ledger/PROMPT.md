@@ -115,4 +115,4 @@ Closes #118 — Add a privacy-safe **session / window stats** surface (llm-use `
 
 ## Amendments
 
-None.
+- 2026-07-13 (worker): Contract `testCommand` updated to `npx vitest` (bare `vitest` → exit 127 in engine PATH; matches SP-198–SP-203 packets).

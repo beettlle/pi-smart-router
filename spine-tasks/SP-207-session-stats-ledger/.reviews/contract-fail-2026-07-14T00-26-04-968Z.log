@@ -1,0 +1,13 @@
+Contract testCommand failure log
+Command: npm run typecheck && vitest run tests/unit/session-stats.test.ts
+Exit code: 127
+Attempt: 1 of 2
+Timestamp: 2026-07-14T00:26:04.968Z
+Buffer overflow: no
+---
+
+> pi-smart-router@0.12.0 typecheck
+> tsc --noEmit
+
+
+zsh:1: command not found: vitest

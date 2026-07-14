@@ -111,7 +111,7 @@ After installing via `pi install npm:pi-smart-router` (or from clone — see bel
 
 1. Authenticate providers (`/login`) and enable models in your scoped list if you use one (`/scoped-models`)
 2. `/model smart-router/auto` — every turn runs through the routing pipeline
-3. `/smart-router status` or `/smart-router history` — inspect routing decisions
+3. `/smart-router status`, `/smart-router history`, or `/smart-router stats` — inspect routing decisions and window aggregates
 
 Set `SMART_ROUTER_LOG_ROUTING=1` before starting pi to print each routing decision to stderr (see [Environment variables](#environment-variables)).
 
@@ -180,7 +180,7 @@ pi exposes two different **auto** models. They are easy to confuse but play diff
 **When to use `smart-router/auto`:**
 
 - You want cost/capability-aware model selection across your full authenticated fleet
-- You rely on session pinning, failover, or `/smart-router status` / `history` telemetry
+- You rely on session pinning, failover, or `/smart-router status` / `history` / `stats` telemetry
 - Tool-heavy sessions with Gemini economical models work via in-repo replay repair; add `cursor/auto` for unrepairable Google replay edge cases (see [pi-smart-router#85](https://github.com/beettlle/pi-smart-router/issues/85))
 
 Cursor models (`cursor/*`, `composer-*`, and the opaque fleet id `default`) map to **frontier-cloud** tier in `pi-model-mapper.ts` so HyDRA can score them against Gemini and Claude instead of treating them as unknown economical models ([pi-smart-router#40](https://github.com/beettlle/pi-smart-router/issues/40), [pi-smart-router#70](https://github.com/beettlle/pi-smart-router/issues/70)). Related: [pi-smart-router#23](https://github.com/beettlle/pi-smart-router/issues/23) (turn envelope / pin order), [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37) (Gemini `thought_signature` errors).
@@ -198,6 +198,7 @@ Cursor models bill against your **Cursor Pro subscription quota**, not per-token
 | `/smart-router` | Same as `status` (default when no subcommand is given) |
 | `/smart-router status` | Show fleet mode, fleet size, pricing freshness/staleness, and the last routing decision (stage, tier, selected model, latency) |
 | `/smart-router history` | Show recent routing telemetry from SQLite (default limit; optional numeric limit, e.g. `/smart-router history 20`). Displays the concrete delegated model id (never bare virtual `auto`) |
+| `/smart-router stats` | Privacy-safe session/window aggregates from routing telemetry: count, mean cost/latency, planning_delegate vs direct share, local vs cloud when distinguishable, and role cost breakdown (primary pin path / planning_delegate / other). Optional vs-always-frontier savings when frontier fleet prices exist (omitted otherwise). Optional numeric limit, e.g. `/smart-router stats 50` |
 | `/smart-router mode scoped` | Route only among pi's **enabled model patterns** (default) |
 | `/smart-router mode all` | Route among **all authenticated models** in the registry |
 | `/smart-router pricing refresh` | Manually fetch LiteLLM pricing from `LITELLM_PRICING_URL`, persist to SQLite, and rebuild the fleet with updated rates |
