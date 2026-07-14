@@ -1,7 +1,7 @@
 {
   "benchmark": "swebench_verified",
   "source_url": "https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json",
-  "scrape_date": "2026-07-12",
+  "scrape_date": "2026-07-14",
   "entries": [
     {
       "model_id": "claude-opus-4-5",
