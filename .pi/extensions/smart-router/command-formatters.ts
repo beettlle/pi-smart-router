@@ -156,6 +156,10 @@ export function parseSmartRouterArgs(args: string): SmartRouterCommand {
     return { command: 'history', limit: parseHistoryLimit(tokens[1]) };
   }
 
+  if (tokens[0] === 'stats') {
+    return { command: 'stats', limit: parseHistoryLimit(tokens[1]) };
+  }
+
   if (tokens[0] === 'mode' && (tokens[1] === 'scoped' || tokens[1] === 'all')) {
     return { command: 'mode', mode: tokens[1] };
   }

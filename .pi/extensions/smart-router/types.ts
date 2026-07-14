@@ -34,6 +34,7 @@ export type FleetMode = 'scoped' | 'all';
 export type SmartRouterCommand =
   | { command: 'status' }
   | { command: 'history'; limit: number }
+  | { command: 'stats'; limit: number }
   | { command: 'mode'; mode: FleetMode }
   | { command: 'pricing'; subcommand: 'refresh' }
   | { command: 'export'; subcommand: 'dataset'; limit: number }

@@ -66,16 +66,6 @@ export interface AggregateSessionStatsOptions {
   readonly tier_by_model_id?: ReadonlyMap<string, Tier>;
 }
 
-const EMPTY_BUCKET: RoleBucketStats = { count: 0, total_cost_usd: 0 };
-
-function emptyBreakdown(): RoleCostBreakdown {
-  return {
-    primary: { ...EMPTY_BUCKET },
-    planning_delegate: { ...EMPTY_BUCKET },
-    other: { ...EMPTY_BUCKET },
-  };
-}
-
 /** Mutually exclusive role for cost bucketing. */
 export function classifyRoleCostBucket(entry: RoutingTelemetry): RoleCostBucket {
   if (entry.planning_delegate_path === 'delegate') {

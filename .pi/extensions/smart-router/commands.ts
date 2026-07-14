@@ -2,6 +2,7 @@ import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 
 import {
   formatHistoryMessage,
+  formatStatsMessage,
   formatStatusMessage,
   parseSmartRouterArgs,
 } from './command-formatters.js';
@@ -13,13 +14,14 @@ import { FLEET_MODE_ENTRY_TYPE } from './session-lifecycle.js';
 import type { SmartRouterRuntime } from './types.js';
 
 export const SMART_ROUTER_USAGE =
-  '/smart-router [status] | history [limit] | mode scoped|all | pricing refresh | export dataset [--limit N] | export telemetry-contrib [--limit N] | feedback good|bad | unpin';
+  '/smart-router [status] | history [limit] | stats [limit] | mode scoped|all | pricing refresh | export dataset [--limit N] | export telemetry-contrib [--limit N] | feedback good|bad | unpin';
 
 type CompletionItem = { value: string; label: string };
 
 const TOP_LEVEL: CompletionItem[] = [
   { value: 'status', label: 'Show last routing decision' },
   { value: 'history', label: 'Show recent routing history' },
+  { value: 'stats', label: 'Show session stats + role cost breakdown' },
   { value: 'mode', label: 'Switch fleet mode (scoped or all)' },
   { value: 'pricing', label: 'Manage pricing catalog' },
   { value: 'export', label: 'Export opt-in routing dataset' },
@@ -52,6 +54,8 @@ export const SMART_ROUTER_FULL_INVOCATIONS = [
   'status',
   'history',
   'history 10',
+  'stats',
+  'stats 50',
   'mode scoped',
   'mode all',
   'pricing refresh',
@@ -100,6 +104,10 @@ export function getSmartRouterArgumentCompletions(prefix: string): CompletionIte
     return [{ value: 'history', label: 'Show recent routing history' }];
   }
 
+  if (tokens[0] === 'stats') {
+    return [{ value: 'stats', label: 'Show session stats + role cost breakdown' }];
+  }
+
   const firstToken = tokens[0] ?? '';
   const filtered = filterByPrefix(TOP_LEVEL, firstToken);
   return filtered.length > 0 ? filtered : null;
@@ -143,7 +151,7 @@ export function registerSmartRouterCommand(
 ): void {
   pi.registerCommand('smart-router', {
     description:
-      'Show routing status/history, switch fleet mode (scoped|all), refresh pricing, or export dataset',
+      'Show routing status/history/stats, switch fleet mode (scoped|all), refresh pricing, or export dataset',
     getArgumentCompletions: getSmartRouterArgumentCompletions,
     handler: async (args, ctx) => {
       try {
@@ -162,6 +170,20 @@ export function registerSmartRouterCommand(
           throwIfCommandAborted(signal);
           ctx.ui.notify(
             formatHistoryMessage(rows, { fleet: runtime.streamDeps.fleet }),
+            'info',
+          );
+          return;
+        }
+
+        if (parsed.command === 'stats') {
+          throwIfCommandAborted(signal);
+          const rows = await runtime.store.listTelemetry({ limit: parsed.limit });
+          throwIfCommandAborted(signal);
+          ctx.ui.notify(
+            formatStatsMessage(rows, {
+              fleet: runtime.streamDeps.fleet,
+              priceCatalog: runtime.priceCatalog,
+            }),
             'info',
           );
           return;
