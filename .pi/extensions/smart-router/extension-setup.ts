@@ -1,6 +1,6 @@
 import {
-  AuthStorage,
   ModelRegistry,
+  ModelRuntime,
   type ExtensionAPI,
 } from '@earendil-works/pi-coding-agent';
 
@@ -35,8 +35,9 @@ export async function createSmartRouterRuntime(cwd: string): Promise<{
   runtime: SmartRouterRuntime;
   datasetNotify: DatasetNotify;
 }> {
-  const authStorage = AuthStorage.create();
-  const modelRegistry = ModelRegistry.inMemory(authStorage);
+  // Placeholder until session_start / commands bind ctx.modelRegistry (SP-087).
+  const modelRuntime = await ModelRuntime.create();
+  const modelRegistry = new ModelRegistry(modelRuntime);
   const hydraMatcher = await initHydraMatcher();
   const store = createExtensionStore(cwd);
   const operatorConfig = resolveOperatorConfigFromEnv();

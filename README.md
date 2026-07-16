@@ -127,24 +127,43 @@ After auth or model list changes, restart pi or run `/reload`.
 
 ### Develop from clone
 
-Project-local extensions under `.pi/extensions/` load only after the project is trusted. Without trust, the smart-router provider is never registered — `smart-router` will not appear in `/scoped-models` or `/model`, and `/smart-router` commands will not exist.
+Requires **Pi ≥ 0.80.8** (`pi.minPiVersion`). The extension loads TypeScript from this repo via pi’s loader — no `npm run build` needed for dogfooding.
+
+**Recommended (works from any cwd):** install the clone as a **path package** and remove any published npm copy. npm and path packages have different identities; leaving both installed can double-load and you may keep running a stale npm tarball.
+
+```bash
+# From anywhere — remove published package if present
+pi remove npm:pi-smart-router
+
+# Prefer an absolute path (relative paths are resolved from the install cwd first).
+# Pi stores a path relative to ~/.pi/agent/ in settings (same pattern as other local packages).
+pi install /path/to/pi-smart-router
+
+# Pi does not run npm install for path packages
+cd /path/to/pi-smart-router && npm install
+
+pi list   # must show this clone path, not ~/.pi/agent/npm/.../pi-smart-router
+pi --list-models | grep smart-router
+```
+
+**Alternative (repo-root discovery only):** with the npm package removed, start `pi` with cwd at this repo root. Project-local extensions under `.pi/extensions/` load only after the project is trusted — without trust, `smart-router` never appears in `/scoped-models` or `/model`.
 
 **On first run**, pi prompts you to trust the project when it detects `.pi/extensions/`. Accept the prompt.
 
 **Later or missed prompt:** run `/trust` inside pi to save a trust decision for this directory (or its parent) to `~/.pi/agent/trust.json`. Trust on a **parent folder** (for example `~/Documents/github`) applies to this repo as well. After `/trust`, **restart pi** — the current session is not reloaded automatically.
 
-**Verify the extension loaded** (from the repo root):
+**Verify the extension loaded:**
 
 ```bash
-cd pi-smart-router
 pi --list-models | grep smart-router
 ```
 
 You should see `smart-router  auto`. If the line is missing:
 
-1. Confirm `pi` was started with cwd at this repo root (not a parent directory).
-2. Confirm the project is trusted (`/trust`, or check `~/.pi/agent/trust.json`).
-3. Restart pi or run `/reload` after trusting.
+1. Confirm `pi list` points at this clone (path package) or that cwd is the repo root (discovery mode).
+2. Confirm no `npm:pi-smart-router` entry remains in settings while developing from clone.
+3. Confirm the project is trusted if relying on `.pi/extensions/` discovery (`/trust`, or check `~/.pi/agent/trust.json`).
+4. Restart pi or run `/reload` after trusting or changing packages.
 
 Non-interactive one-shot checks can pass `--approve` to trust project-local resources for that run only.
 
@@ -1150,10 +1169,11 @@ npm run release:check
 npm pack --dry-run
 ```
 
-**Post-publish smoke (manual, macOS):** CI does not run `pi install`. After publish:
+**Post-publish smoke (manual, macOS):** CI does not run `pi install`. After publish (use the version just published; remove any path-package clone entry first if dogfooding):
 
 ```bash
-pi install npm:pi-smart-router@0.1.1
+pi remove ../../Documents/github/pi-smart-router   # if path dogfood was installed
+pi install npm:pi-smart-router@<published-version>
 pi --list-models | grep smart-router
 # in pi: /model smart-router/auto, /smart-router status
 ```
