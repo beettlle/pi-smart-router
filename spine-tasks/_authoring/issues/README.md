@@ -15,6 +15,7 @@ Paste-ready bodies for the post-assessment four outcomes. Created because GitHub
 | [issue-NEW-overrouting-analysis.md](./issue-NEW-overrouting-analysis.md) | **Create** new issue |
 | [issue-NEW-encoder-holdout-decision.md](./issue-NEW-encoder-holdout-decision.md) | **Create** new issue |
 | [issue-NEW-roadmap-sync.md](./issue-NEW-roadmap-sync.md) | **Create** new issue |
+| [issue-NEW-quota-window-feed.md](./issue-NEW-quota-window-feed.md) | **Created** as [#125](https://github.com/beettlle/pi-smart-router/issues/125) |
 
 ## Human QA (not an issue body)
 
@@ -49,6 +50,10 @@ gh issue create --title "Run pack holdout ECE + encoder latency; produce #96 go/
 
 gh issue create --title "Docs: refresh docs/routing-roadmap.md status column (landed vs Gap)" \
   --body-file spine-tasks/_authoring/issues/issue-NEW-roadmap-sync.md
+
+gh issue create --title "routing: live / estimated quota window feed for virtual cost v2" \
+  --label enhancement \
+  --body-file spine-tasks/_authoring/issues/issue-NEW-quota-window-feed.md
 ```
 
 If `gh` returns Forbidden, paste the markdown bodies manually in the GitHub UI.
