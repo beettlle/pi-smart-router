@@ -256,8 +256,32 @@ export function evaluateLoopEscalation(
     return noEscalation('no_failure');
   }
 
+  //
+  // Economical pin — observational churn (SP-210, #122):
+  //
+  // A hard multi-step / tool-failure session pinned economical must not stay
+  // stuck when quality recovery needs a higher tier. Unlike the zero-tier
+  // path (which counts every tool_result turn) economical models CAN complete
+  // most tool loops, so we only count actual tool *failures*. But unlike the
+  // frontier identical-failure gate (FR-014), distinct/varied failures are
+  // still evidence the economical tier cannot recover the loop — a session
+  // failing repeatedly with different errors (ENOENT → ECONNREFUSED → timeout)
+  // is just as stuck as one hitting the same error 3×. We therefore count
+  // consecutive failures of ANY signature toward the escalation threshold.
+  //
+  // Break/upgrade conditions while pinned economical:
+  //   • N consecutive tool failures (any signature) → escalate to frontier
+  //   • a successful tool result → reset the failure streak
+  //   • escalation fires once per session (pin_reason === 'loop_escalation')
+  // History surfaces the break via pin_reason='loop_escalation' plus the new
+  // selected_model_id on the subsequent session_pin stage (see router-pipeline).
+  //
+  const isEconomical = resolvePinnedTier(pin, fleet) === 'economical-cloud';
   const isIdentical = pin.last_tool_failure_signature === signature;
-  const newCount = isIdentical ? pin.consecutive_tool_failures + 1 : 1;
+  const newCount =
+    isEconomical || isIdentical
+      ? pin.consecutive_tool_failures + 1
+      : 1;
 
   const updated: SessionPin = {
     ...pin,

@@ -313,8 +313,13 @@ describe('evaluateLoopEscalation', () => {
       expect(result.reason).toBe('below_threshold');
     });
 
-    it('resets counter to 1 on a different failure signature', () => {
+    it('resets counter to 1 on a different failure signature (frontier pin, identical-only gate)', () => {
+      // Frontier pins keep the stricter FR-014 identical-failure gate: a
+      // different failure signature resets the streak to 1. Economical pins
+      // count any consecutive failure (SP-210 churn) — covered in
+      // economical-pin-break-agentic.test.ts.
       const pin = makePin({
+        pinned_model_id: 'frontier-model',
         consecutive_tool_failures: 2,
         last_tool_failure_signature: 'tf:old_signature',
       });

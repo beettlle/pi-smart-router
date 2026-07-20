@@ -145,24 +145,51 @@ const provenanceSchema = z.object({
  * preserves that map (see CLI). Seed defaults cover common dogfood fleet IDs.
  */
 export const DEFAULT_FLEET_BENCHMARK_ALIASES: Readonly<Record<string, string>> = {
-  // Anthropic — registry short / dated IDs → fixture rows
+  // Anthropic — registry short / dated / dot-notation IDs → fixture rows (SP-208 / #124)
   'claude-opus-4': 'claude-opus-4-5',
   'claude-opus-4-20250514': 'claude-opus-4-5',
+  'claude-opus-4.1': 'claude-opus-4-5',
+  'claude-opus-4-1': 'claude-opus-4-5',
   'claude-sonnet-4': 'claude-sonnet-4-6',
   'claude-sonnet-4-20250514': 'claude-sonnet-4-6',
+  'claude-sonnet-4.5': 'claude-sonnet-4-6',
+  'claude-sonnet-4-5': 'claude-sonnet-4-6',
   'claude-3.5-sonnet': 'claude-sonnet-4-6',
   'claude-3-5-sonnet': 'claude-sonnet-4-6',
   'claude-3.5-sonnet-latest': 'claude-sonnet-4-6',
+  'claude-3-7-sonnet': 'claude-sonnet-4-6',
+  'claude-3.7-sonnet': 'claude-sonnet-4-6',
+  'claude-3-7-sonnet-latest': 'claude-sonnet-4-6',
+  // Provider-prefixed Anthropic registry IDs → Anthropic fixture rows
+  'anthropic/claude-opus-4': 'claude-opus-4-5',
+  'anthropic/claude-sonnet-4': 'claude-sonnet-4-6',
   // OpenAI — frontier coding IDs → gpt-5.3-codex row
   'gpt-5.5': 'gpt-5.3-codex',
   'gpt-5.3': 'gpt-5.3-codex',
   'gpt-5': 'gpt-5.3-codex',
   'gpt-5-codex': 'gpt-5.3-codex',
-  // Gemini — flash family variants → gemini-2.5-flash row
+  // Gemini — flash family variants → gemini-2.5-flash row (SP-208 / #124)
   'gemini-2.5-flash-preview': 'gemini-2.5-flash',
   'gemini-2.5-flash-lite': 'gemini-2.5-flash',
+  'gemini-2.5-flash-002': 'gemini-2.5-flash',
   'gemini-2.0-flash': 'gemini-2.5-flash',
+  'gemini-2.0-flash-001': 'gemini-2.5-flash',
+  'gemini-1.5-flash': 'gemini-2.5-flash',
   'gemini-flash-latest': 'gemini-2.5-flash',
+  'gemini-flash-8b': 'gemini-2.5-flash',
+  // Provider-prefixed Google registry IDs → Gemini fixture rows
+  'google/gemini-2.5-flash': 'gemini-2.5-flash',
+  // GitHub Copilot — per underlying provider family, NO silent cross-family collapse (SP-208 / #124)
+  // Copilot-exposed Claude → Anthropic row (NOT OpenAI)
+  'github-copilot/claude-sonnet-4.5': 'claude-sonnet-4-6',
+  'github-copilot/claude-sonnet-4': 'claude-sonnet-4-6',
+  'github-copilot/claude-3.5-sonnet': 'claude-sonnet-4-6',
+  // Copilot-exposed GPT → OpenAI row
+  'github-copilot/gpt-5': 'gpt-5.3-codex',
+  'github-copilot/gpt-5-codex': 'gpt-5.3-codex',
+  // Copilot-exposed Gemini → Gemini row (NOT OpenAI)
+  'github-copilot/gemini-2.5-flash': 'gemini-2.5-flash',
+  'github-copilot/gemini-2.0-flash': 'gemini-2.5-flash',
   // Cursor / opaque fleet placeholders → strongest grounded coding row
   'cursor/auto': 'gpt-5.3-codex',
   'composer-latest': 'gpt-5.3-codex',
