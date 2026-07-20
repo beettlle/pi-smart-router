@@ -1,0 +1,19 @@
+spine-tasks/SP-208-multi-fleet-capability-coverage/STATUS.md
+  s_8ee78be324b3a1::t_2c2c2b069ad630 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "b01a5396e3cb2518cb0d9b7528da7ecd67dd452a",
+  "prompts": {},
+  "sessions": {
+    "s_8ee78be324b3a1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-719ea973-45e5-4906-8aa3-84cac1a5a092",
+        "model": "unknown"
+      },
+      "human_author": "Test User <test@example.com>"
+    }
+  }
+}
