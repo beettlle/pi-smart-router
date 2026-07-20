@@ -1,0 +1,22 @@
+package.json
+  s_4b5eac3124b1e5::t_1e496fd3db0c26 54
+  s_4b5eac3124b1e5::t_3a6b84f4bd3049 94
+vitest.config.ts
+  s_4b5eac3124b1e5::t_6eb9338008ce9d 7-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "cdd1b15949f4a5f4f7e8498797debd8e023fe2d6",
+  "prompts": {},
+  "sessions": {
+    "s_4b5eac3124b1e5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8e5b097e-f6b2-4122-8f09-2d3d2728246b",
+        "model": "default"
+      },
+      "human_author": "Test User <test@example.com>"
+    }
+  }
+}
