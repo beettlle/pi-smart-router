@@ -317,3 +317,58 @@ describe('SP-209 / #121 — RouterPipeline force_model_id (no silent Anthropic r
     expect(decision.selected_model_id).toBeTruthy();
   });
 });
+
+// ─── Step 2 non-regression ─────────────────────────────────────────────────
+
+describe('SP-209 Step 2 — non-regression', () => {
+  it('healthy Anthropic-only fleet still forces an Anthropic id correctly', async () => {
+    // The original/primary single-provider config must keep working after the
+    // multi-fleet force fix (no provider-family guard that rejects same-family).
+    const anthropicOnly: readonly ModelProfile[] = [
+      makeModel({
+        id: 'claude-opus',
+        tier: 'frontier-cloud',
+        provider: 'anthropic',
+        pricing: { fallback_cost_per_1m: 15.0 },
+      }),
+      makeModel({
+        id: 'claude-haiku',
+        tier: 'economical-cloud',
+        provider: 'anthropic',
+        pricing: { fallback_cost_per_1m: 1.0 },
+      }),
+    ];
+    const pinner = new SessionPinner();
+    const pipeline = new RouterPipeline(anthropicOnly, { sessionPinner: pinner });
+
+    const decision = await pipeline.route(
+      makeRequest({ force_model_id: 'claude-opus' }),
+    );
+
+    expect(decision.selected_model_id).toBe('claude-opus');
+    expect(decision.pin_reason).toBe('user_forced');
+    expect(decision.reason_code).not.toBe(FORCE_REJECTED_NOT_IN_FLEET);
+    expect(decision.reason_code).not.toBe(FORCE_REJECTED_UNHEALTHY);
+  });
+
+  it('missing force id fails closed (no crash) on an Anthropic-only fleet', async () => {
+    const anthropicOnly: readonly ModelProfile[] = [
+      makeModel({
+        id: 'claude-haiku',
+        tier: 'economical-cloud',
+        provider: 'anthropic',
+        pricing: { fallback_cost_per_1m: 1.0 },
+      }),
+    ];
+    const pinner = new SessionPinner();
+    const pipeline = new RouterPipeline(anthropicOnly, { sessionPinner: pinner });
+
+    const decision = await pipeline.route(
+      makeRequest({ force_model_id: 'claude-opus-not-in-fleet' }),
+    );
+
+    // Fail closed with explicit reason, degrade to the only healthy model.
+    expect(decision.reason_code).toBe(FORCE_REJECTED_NOT_IN_FLEET);
+    expect(decision.selected_model_id).toBe('claude-haiku');
+  });
+});

@@ -1,6 +1,6 @@
 # SP-209: Honor force_model_id / Prefer (No Silent Remap) — Status
 
-**Current Step:** Step 1
+**Current Step:** Step 3
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-07-20
 **Review Level:** 1
@@ -12,24 +12,26 @@
 
 ## Step 1: Diagnose + fix force/prefer path
 
-**Status:** 🟡 In Progress (pending plan review)
+**Status:** ✅ Complete
 
 - [x] Reproduce silent cross-provider remap
 - [x] Fail-closed force/prefer fix
 - [x] Explain / log reason surfaced
 - [x] Fixtures: Gemini, codex-style, prefer Copilot
 
+*(Plan-review checkpoint: skipped in-worker per SP-195; batch engine runs review after .DONE.)*
+
 ## Step 2: Non-regression
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Anthropic-only fleets still force correctly
-- [ ] Missing/unhealthy force fails closed
-- [ ] SP-210 pin-break scope untouched
+- [x] Anthropic-only fleets still force correctly
+- [x] Missing/unhealthy force fails closed
+- [x] SP-210 pin-break scope untouched
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🟡 In Progress
 
 - [ ] Contract `testCommand` green
 - [ ] Related unit tests if shared
