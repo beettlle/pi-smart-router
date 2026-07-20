@@ -1,6 +1,6 @@
 # SP-211: Prefer Healthy local_zero on Trivial Turns — Status
 
-**Current Step:** Step 1
+**Current Step:** Step 3
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-07-20
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Preference / explain path
 
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 
 - [x] Reproduce economical dominance on trivial + healthy local
 - [x] Prefer local_zero or explicit explain for economical
@@ -23,14 +23,14 @@
 
 ## Step 2: Non-regression
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] #97 agentic/destructive not forced to zero-tier
-- [ ] SP-209 / SP-210 behaviors unchanged
+- [x] #97 agentic/destructive not forced to zero-tier
+- [x] SP-209 / SP-210 behaviors unchanged
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🟡 In Progress
 
 - [ ] Contract `testCommand` green
 - [ ] Related local_zero tests if touched
