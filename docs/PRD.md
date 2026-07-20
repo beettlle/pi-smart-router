@@ -130,6 +130,13 @@ Detect bounded failure patterns within a session window:
 
 - N identical tool failures (default N = 3).
 - Repeated edit-loop signatures or spiral signals.
+- **Economical-pin agentic churn (#122, SP-210):** while pinned `economical-cloud`,
+  N consecutive tool failures of *any* signature (distinct or identical) escalate
+  to frontier. A hard agentic loop failing with varied errors (ENOENT →
+  ECONNREFUSED → timeout) is just as stuck as one repeating the same error; the
+  stricter identical-failure gate is preserved only for `frontier-cloud` pins.
+  A successful tool result resets the streak. Zero-tier pins use the broader
+  observational churn path from #99 (every tool_result turn).
 
 **Action:** Set `pinnedModel` to frontier tier; `pin_reason = loop_escalation`; pin is immutable for the session remainder (same stickiness as user force). This is observational rescue, not post-generation output judging.
 
