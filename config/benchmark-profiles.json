@@ -55,50 +55,24 @@
   },
   "models": [
     {
-      "model_id": "claude-3.5-haiku",
+      "model_id": "claude-opus-4-5",
       "capabilities": {
-        "reasoning": 0.5685,
-        "code_gen": 0.587,
-        "tool_use": 0.6095
+        "reasoning": 0.7585,
+        "code_gen": 0.708,
+        "tool_use": 0.7498
       },
       "benchmark_sources": {
         "bfcl": {
-          "raw_score": 70.6,
-          "normalized": 0.706
+          "raw_score": 77.47,
+          "normalized": 0.7746999999999999
         },
         "livecodebench": {
-          "raw_score": 55,
-          "normalized": 0.55
-        },
-        "swebench_verified": {
           "raw_score": 62.4,
           "normalized": 0.624
         },
-        "terminal_bench": {
-          "raw_score": 51.3,
-          "normalized": 0.513
-        }
-      }
-    },
-    {
-      "model_id": "claude-opus-4-5",
-      "capabilities": {
-        "reasoning": 0.767,
-        "code_gen": 0.7915,
-        "tool_use": 0.8035
-      },
-      "benchmark_sources": {
-        "bfcl": {
-          "raw_score": 88.2,
-          "normalized": 0.882
-        },
-        "livecodebench": {
-          "raw_score": 77.4,
-          "normalized": 0.774
-        },
         "swebench_verified": {
-          "raw_score": 80.9,
-          "normalized": 0.809
+          "raw_score": 79.2,
+          "normalized": 0.792
         },
         "terminal_bench": {
           "raw_score": 72.5,
@@ -109,22 +83,22 @@
     {
       "model_id": "claude-sonnet-4-6",
       "capabilities": {
-        "reasoning": 0.738,
-        "code_gen": 0.7635,
-        "tool_use": 0.7625
+        "reasoning": 0.724,
+        "code_gen": 0.681,
+        "tool_use": 0.7062
       },
       "benchmark_sources": {
         "bfcl": {
-          "raw_score": 84.5,
-          "normalized": 0.845
+          "raw_score": 73.24,
+          "normalized": 0.7323999999999999
         },
         "livecodebench": {
-          "raw_score": 73.1,
-          "normalized": 0.731
+          "raw_score": 59.4,
+          "normalized": 0.594
         },
         "swebench_verified": {
-          "raw_score": 79.6,
-          "normalized": 0.7959999999999999
+          "raw_score": 76.8,
+          "normalized": 0.768
         },
         "terminal_bench": {
           "raw_score": 68,
@@ -135,22 +109,22 @@
     {
       "model_id": "gemini-2.5-flash",
       "capabilities": {
-        "reasoning": 0.5295,
-        "code_gen": 0.5525,
-        "tool_use": 0.5735
+        "reasoning": 0.3827,
+        "code_gen": 0.5192,
+        "tool_use": 0.5202
       },
       "benchmark_sources": {
         "bfcl": {
-          "raw_score": 66.9,
-          "normalized": 0.669
+          "raw_score": 56.24,
+          "normalized": 0.5624
         },
         "livecodebench": {
-          "raw_score": 52.4,
-          "normalized": 0.524
+          "raw_score": 75.1,
+          "normalized": 0.7509999999999999
         },
         "swebench_verified": {
-          "raw_score": 58.1,
-          "normalized": 0.581
+          "raw_score": 28.73,
+          "normalized": 0.2873
         },
         "terminal_bench": {
           "raw_score": 47.8,
@@ -161,22 +135,14 @@
     {
       "model_id": "gpt-5.3-codex",
       "capabilities": {
-        "reasoning": 0.796,
-        "code_gen": 0.833,
-        "tool_use": 0.8215
+        "reasoning": 0.743,
+        "code_gen": 0.744,
+        "tool_use": 0.742
       },
       "benchmark_sources": {
-        "bfcl": {
-          "raw_score": 90.1,
-          "normalized": 0.9009999999999999
-        },
-        "livecodebench": {
-          "raw_score": 81.6,
-          "normalized": 0.816
-        },
         "swebench_verified": {
-          "raw_score": 85,
-          "normalized": 0.85
+          "raw_score": 74.4,
+          "normalized": 0.7440000000000001
         },
         "terminal_bench": {
           "raw_score": 74.2,

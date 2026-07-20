@@ -59,6 +59,7 @@
 |------|---------|--------|
 | 2026-07-20 | JSON aliases are self-sourcing in the `checked-in artifact matches fixture ingest` verify test (round-trips JSON's own aliases). Must keep seed `DEFAULT_FLEET_BENCHMARK_ALIASES` in `scripts/ingest-benchmark-profiles.ts` in sync and regenerate JSON from seed for byte-exact match. | Regenerate `config/benchmark-profiles.json` via ingest fn after seed edit. |
 | 2026-07-20 | No mapper (`pi-model-mapper.ts`) change needed — `resolveBenchmarkModelId` + alias map already enforce family-preserving resolution. No-collapse principle is data (aliases), not code. | Scope stays docs + config + tests. |
+| 2026-07-20 | **Regression catch (Step 3):** first regen used `DEFAULT_BENCHMARK_FIXTURES_DIR`, which contains complete `claude-3.5-haiku` data across all 4 benchmarks → produced a 5-model JSON with a grounded haiku row → broke `pi-model-mapper.test.ts` (expects haiku `pattern_default`) and added a model the baseline never had. Baseline JSON matches the **recorded** ingest (`DEFAULT_RECORDED_LEADERBOARDS_DIR`) where haiku has only terminal_bench → skipped for missing `code_gen`. | Regenerated from recorded dir (4 models, haiku skipped). `verify:ci` green: 1666/1666 tests, 92.9% line coverage. |
 
 ## Notes
 
