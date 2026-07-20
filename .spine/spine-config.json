@@ -9,8 +9,8 @@
   },
   "baseBranch": "main",
   "testing": {
-    "build": "npm run typecheck && npm run lint && npm test",
-    "test": "npm run typecheck && npm run lint && npm test",
+    "build": "npm run typecheck && npm run lint",
+    "test": "npm test",
     "testWithCoverage": "npm run coverage:check"
   },
   "agents": {
@@ -35,8 +35,70 @@
       }
     },
     "supervisor": {
+      "enabled": false,
       "model": "google/gemini-flash-lite-latest",
+      "pollIntervalMs": 30000,
+      "autoNudge": false,
       "thinking": "off"
+    },
+    "activeProfile": "default",
+    "profiles": {
+      "default": {
+        "worker": {
+          "model": "zai/glm-5.2",
+          "thinking": "high"
+        },
+        "reviewer": {
+          "model": "google/gemini-3.1-pro-preview",
+          "thinking": "high",
+          "plan": {
+            "model": "google/gemini-flash-latest",
+            "thinking": "low"
+          },
+          "code": {
+            "model": "kimi-coding/kimi-k2-thinking",
+            "thinking": "high"
+          },
+          "final": {
+            "model": "google/gemini-3.1-pro-preview",
+            "thinking": "high"
+          }
+        },
+        "supervisor": {
+          "model": "google/gemini-flash-lite-latest",
+          "thinking": "off"
+        }
+      },
+      "mid": {
+        "worker": {
+          "model": "kimi-coding/kimi-for-coding",
+          "thinking": "high"
+        }
+      },
+      "hard": {
+        "worker": {
+          "model": "kimi-coding/k3",
+          "thinking": "high"
+        },
+        "reviewer": {
+          "plan": {
+            "model": "kimi-coding/kimi-k2-thinking",
+            "thinking": "medium"
+          },
+          "code": {
+            "model": "google/gemini-3.1-pro-preview",
+            "thinking": "high"
+          },
+          "final": {
+            "model": "google/gemini-3.1-pro-preview",
+            "thinking": "high"
+          }
+        }
+      }
+    },
+    "escalatePolicy": {
+      "enabled": true,
+      "toProfile": "hard"
     }
   },
   "lanes": {
@@ -60,10 +122,19 @@
   "dashboard": {
     "port": 8129
   },
+  "orchestrator": {
+    "attachedMilestonePollMs": 2000,
+    "sequencePollMs": 5000,
+    "dashboardPollMs": 2000
+  },
   "gates": {
     "requireBeforeIntegrate": true,
     "collectBuildEvidence": true,
     "collectTestEvidence": true
+  },
+  "integrate": {
+    "isolatedWorktree": true,
+    "allowHumanOnBaseBranch": "warn"
   },
   "review": {
     "requireFinalVerdict": true,
@@ -71,7 +142,9 @@
   },
   "handoff": {
     "path": ".spine/handoff.md",
-    "autoWriteOn": []
+    "autoWriteOn": [
+      "session_start"
+    ]
   },
   "metrics": {
     "enabled": true,

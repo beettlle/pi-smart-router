@@ -1206,9 +1206,9 @@ Confirm https://pi.dev/packages/pi-smart-router shows the new version (may lag n
 
 This repo is developed with [pi-spine](https://github.com/beettlle/pi-spine) batches. Agent model pins live in [`.spine/spine-config.json`](.spine/spine-config.json) under `agents.*`. Use **canonical** `provider/model` ids from `pi --list-models` (not TUI labels like `glm-5.2 [zai]`). Run `spine doctor` before real-pi batches.
 
-Hybrid cost/quality recipes (docs-only) are tracked upstream in [pi-spine#210](https://github.com/beettlle/pi-spine/issues/210). Automatic named profiles / hard-packet escalate is requested in [pi-spine#216](https://github.com/beettlle/pi-spine/issues/216) — until that ships, escalate is **manual**.
+Named profiles (`agents.profiles` + `agents.activeProfile`) and `agents.escalatePolicy` are configured in spine-config ([pi-spine#216](https://github.com/beettlle/pi-spine/issues/216) / SP-664). Live stack resolves from `activeProfile` over the base `agents` block. Hybrid cost/quality recipes are documented upstream in [pi-spine#210](https://github.com/beettlle/pi-spine/issues/210).
 
-### Default pins (this repo)
+### Default profile (`activeProfile: "default"`)
 
 | Role | Model | Thinking |
 |------|--------|----------|
@@ -1217,8 +1217,6 @@ Hybrid cost/quality recipes (docs-only) are tracked upstream in [pi-spine#210](h
 | Code review | `kimi-coding/kimi-k2-thinking` | `high` |
 | Final review | `google/gemini-3.1-pro-preview` | `high` |
 | Supervisor | `google/gemini-flash-lite-latest` | `off` |
-
-Spine has **one** live `agents` block. Sticky packets need a temporary override, then restore.
 
 ### When to escalate (hard packets / sticky failures)
 
@@ -1230,12 +1228,13 @@ Escalate when:
 
 ### Tier 1 — mid escalate
 
+Switches the worker to `kimi-coding/kimi-for-coding` (reviewer pins inherit default).
+
 ```bash
-spine settings set agents.worker.model kimi-coding/kimi-for-coding
-spine settings set agents.worker.thinking high
+spine settings set agents.activeProfile mid
 spine batch retry <SP-ID>
 # restore:
-spine settings set agents.worker.model zai/glm-5.2
+spine settings set agents.activeProfile default
 ```
 
 ### Tier 2 — hard escalate
@@ -1247,16 +1246,14 @@ spine settings set agents.worker.model zai/glm-5.2
 | Code | `google/gemini-3.1-pro-preview` | `high` |
 | Final | `google/gemini-3.1-pro-preview` | `high` |
 
+`escalatePolicy.toProfile` is `hard`. Switch explicitly when a packet is sticky:
+
 ```bash
-spine settings set agents.worker.model kimi-coding/k3
-spine settings set agents.worker.thinking high
-spine settings set agents.reviewer.plan.model kimi-coding/kimi-k2-thinking
-spine settings set agents.reviewer.plan.thinking medium
-spine settings set agents.reviewer.code.model google/gemini-3.1-pro-preview
-spine settings set agents.reviewer.final.model google/gemini-3.1-pro-preview
+spine settings set agents.activeProfile hard
 spine doctor
 spine batch retry <SP-ID>
-# restore defaults from .spine/spine-config.json agents block
+# restore:
+spine settings set agents.activeProfile default
 ```
 
 ## Built with
