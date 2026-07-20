@@ -1,7 +1,7 @@
 # SP-211: Prefer Healthy local_zero on Trivial Turns — Status
 
-**Current Step:** Step 3
-**Status:** 🟡 In Progress
+**Current Step:** Done
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-20
 **Review Level:** 1
 **Review Counter:** 0
@@ -30,21 +30,21 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 
-- [ ] Contract `testCommand` green
-- [ ] Related local_zero tests if touched
-- [ ] coverage:check
-- [ ] #123 commented + closable
+- [x] Contract `testCommand` green
+- [x] Related local_zero tests if touched
+- [x] coverage:check
+- [x] #123 commented + closable
 
 ---
 
 ## Completion Criteria
 
-- [ ] Trivial + healthy local → local_zero or explicit explain
-- [ ] Counterfactual fixture green
-- [ ] #97 non-regression green
-- [ ] #123 closable
+- [x] Trivial + healthy local → local_zero or explicit explain
+- [x] Counterfactual fixture green
+- [x] #97 non-regression green
+- [x] #123 closable
 
 ---
 
