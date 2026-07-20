@@ -1,7 +1,7 @@
 # SP-208: Multi-Fleet Capability Aliases + Coverage — Status
 
-**Current Step:** Step 3
-**Status:** 🟡 In Progress
+**Current Step:** Done
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-20
 **Review Level:** 1
 **Review Counter:** 0
@@ -28,22 +28,22 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 
-- [ ] Contract `testCommand` green
-- [ ] `routing:verify-benchmark-profiles` if profiles changed
-- [ ] coverage:check if app code changed
-- [ ] #124 commented + closable
+- [x] Contract `testCommand` green (typecheck + 6/6 coverage test)
+- [x] `routing:verify-benchmark-profiles` if profiles changed
+- [x] coverage:check if app code changed (verify:ci green; 92.9% line coverage; no src/ app code changed)
+- [x] #124 commented + closable (commented + closed)
 
 ---
 
 ## Completion Criteria
 
-- [ ] Copilot/Gemini/Anthropic IDs documented
-- [ ] Coverage tests assert sources/aliases
-- [ ] Protocol multi-fleet note present
-- [ ] #75/#108 stay closed
-- [ ] #124 closable
+- [x] Copilot/Gemini/Anthropic IDs documented
+- [x] Coverage tests assert sources/aliases
+- [x] Protocol multi-fleet note present
+- [x] #75/#108 stay closed
+- [x] #124 closable (closed)
 
 ---
 
