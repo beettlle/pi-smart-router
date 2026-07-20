@@ -147,14 +147,24 @@ export function resolveLocalEligible(input: LocalEligibleInput): LocalEligibleRe
     input.clusterMatch?.confidence === 'high' &&
     input.clusterMatch.tierBias === 'zero-tier';
 
-  const lowIntensityZeroTier =
-    input.tierHint === 'zero-tier' &&
-    input.lowIntensityScore !== null &&
-    input.lowIntensityScore >= input.highThreshold;
-
   const triageTrivial = input.triageVerdict === 'trivial';
 
-  if (!triageTrivial && !lowIntensityZeroTier && !clusterZeroTier) {
+  // SP-211 / #123 (inverse of #97): a genuinely trivial / no-tool prompt is
+  // local-eligible on a high low-intensity score ALONE — decoupled from the
+  // expected-cost tier hint, which optimizes cost-quality among cloud tiers and
+  // may legitimately hint economical/frontier even for low-stakes turns. Without
+  // this, a no-tool conversational prompt that triage rates 'ambiguous' (no
+  // trivial keyword) falls through to economical even when a healthy local
+  // zero-tier model is ready. The local_zero stage still gates on healthy local
+  // readiness, throughput (#84), and tool-use capability (#98), and a 'complex'
+  // triage verdict is decided at the triage stage before this runs — so agentic
+  // / destructive prompts (#97) are never forced to zero-tier.
+  const lowIntensityEligible =
+    input.lowIntensityScore !== null &&
+    input.lowIntensityScore >= input.highThreshold &&
+    input.triageVerdict !== 'complex';
+
+  if (!triageTrivial && !lowIntensityEligible && !clusterZeroTier) {
     return { eligible: false, reason: null };
   }
 
