@@ -1,12 +1,12 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-07-13
+**Last Updated:** 2026-07-19
 **Status:** Active
-**Next Task ID:** SP-208
+**Next Task ID:** SP-212
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.12.1 (2026-07-13) — SP-207: #118 session stats + role cost ledger (`/smart-router stats`). Prior v0.12.0 SP-205–SP-206 (#110 Partial; #95 human dogfood still open).
-**In progress:** Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`).
+**Released:** v0.12.2 (hotfix AuthStorage→ModelRuntime bootstrap). Prior v0.12.1 SP-207 (#118 stats); v0.12.0 SP-205–SP-206 (#110 Partial; #95 still open).
+**In progress:** Release **v0.13.0** — SP-208–SP-211 (multi-fleet dogfood routing correctness). Human #95 dogfood still open.
 
 ---
 
@@ -645,6 +645,31 @@
 **Deferred until after #95 dogfood:** #115–#117, #119–#120.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.12.1/manifest.md`
+
+### Phase 45 — Release v0.13.0 Multi-Fleet Dogfood Routing Correctness (SP-208–SP-211)
+
+| Task | Summary | Size | Deps | Maps |
+|------|---------|------|------|------|
+| SP-208 | Multi-fleet capability aliases + Copilot/Gemini/Anthropic coverage | M | — | Closes #124 |
+| SP-209 | Honor `force_model_id` / prefer — no silent provider remap | M | SP-208 | Closes #121 |
+| SP-210 | Economical pin break/upgrade on hard agentic failure | M | — | Closes #122 |
+| SP-211 | Prefer healthy `local_zero` on trivial/no-tool turns | M | SP-209 | Closes #123 |
+
+**Source:** Operator-approved **v0.13.0** (2026-07-19). Theme: multi-fleet dogfood routing correctness.
+
+**Wave order:**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| 1 | SP-208, SP-210 | Disjoint scopes (mapper/docs vs pinning) |
+| 2 | SP-209 | After SP-208; pipeline force/prefer |
+| 3 | SP-211 | After SP-209; local_zero preference |
+
+**Status:** Packets authored; awaiting batch execution.
+
+**Deferred:** #95/#110 (human/exports), #96/#114 encoder, #115–#117 Colibri, #119/#120 reliability, #125 quota feed, #1/#25/#26 hardware.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.13.0/manifest.md`
 
 ---
 
