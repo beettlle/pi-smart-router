@@ -50,7 +50,13 @@ import { SaarSessionStateTracker } from './saar-session-state.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type PinAction = 'use_pin' | 'sub_route' | 'saar_route' | 'break' | 'no_pin';
+export type PinAction =
+  | 'use_pin'
+  | 'sub_route'
+  | 'saar_route'
+  | 'break'
+  | 'no_pin'
+  | 'force_rejected';
 
 export type PinSaarReason =
   | 'saar_buffer_active'
@@ -60,6 +66,15 @@ export type PinSaarReason =
 
 export type PinFlipFlopReason = 'flip_flop_tier_pinned';
 
+/**
+ * SP-209 / #121 — force_model_id could not be honored. Surfaced as the routing
+ * decision `reason_code` so explain / `SMART_ROUTER_LOG_ROUTING=1` makes the
+ * rejection explicit instead of silently remapping across provider families.
+ */
+export const FORCE_REJECTED_NOT_IN_FLEET =
+  'force_rejected_not_in_fleet' as const;
+export const FORCE_REJECTED_UNHEALTHY = 'force_rejected_unhealthy' as const;
+
 export interface PinLookupResult {
   readonly action: PinAction;
   readonly pinnedModel?: ModelProfile;
@@ -68,6 +83,10 @@ export interface PinLookupResult {
   readonly saarReason?: PinSaarReason;
   readonly flipFlopReason?: PinFlipFlopReason;
   readonly breakReason?: PinReason;
+  /** SP-209 / #121: rejection reason code when force_model_id cannot be honored. */
+  readonly forceRejectionReason?: string;
+  /** SP-209 / #121: the force_model_id value that was rejected. */
+  readonly forceModelId?: string;
 }
 
 export interface SessionPinnerConfig {
@@ -376,6 +395,19 @@ export class SessionPinner {
     }
 
     const pin = this.pins.get(request.session_id);
+
+    // SP-209 / #121: force_model_id is an explicit operator/user override
+    // honored whether or not a pin already exists. Previously a first-turn
+    // force (no pin) was dropped and an unavailable force returned `break`,
+    // both of which let the pipeline silently remap to a different provider
+    // family. Compaction — only meaningful when a pin exists — keeps priority
+    // so a compacted session fully re-routes instead of force-pinning.
+    if (
+      request.force_model_id &&
+      !(pin !== undefined && request.compaction_flag)
+    ) {
+      return this.resolveForceOverride(request, fleet);
+    }
 
     if (!pin) {
       return { action: 'no_pin' };
@@ -706,10 +738,9 @@ export class SessionPinner {
       return overflowResult;
     }
 
-    // 3. Explicit operator / user override → pin to forced model
-    if (request.force_model_id) {
-      return this.handleForceOverride(request, pin, fleet);
-    }
+    // 3. Explicit operator/user override → handled in lookupPin (SP-209 / #121)
+    //    so force is honored with or without an existing pin and fails closed
+    //    with an explicit reason instead of silently remapping providers.
 
     // 4. Loop escalation — threshold tracking is on the pin record;
     //    the loop_escalation pipeline stage calls breakPin() externally
@@ -816,13 +847,22 @@ export class SessionPinner {
     return null;
   }
 
-  private handleForceOverride(
+  /**
+   * SP-209 / #121: resolve an explicit force_model_id override.
+   *
+   * Healthy in-fleet target → pin to it (`use_pin`). Unavailable target → fail
+   * closed (`force_rejected`) carrying an explicit reason code so the pipeline
+   * can surface the rejection in explain / SMART_ROUTER_LOG_ROUTING instead of
+   * silently remapping to a different provider family. A rejected force is a
+   * no-op on pin state — the existing pin (if any) is preserved.
+   */
+  private resolveForceOverride(
     request: RoutingRequest,
-    _pin: SessionPin,
     fleet: readonly ModelProfile[],
   ): PinLookupResult {
+    const forceModelId = request.force_model_id!;
     const forced = fleet.find(
-      (m) => m.id === request.force_model_id && m.healthy !== false,
+      (m) => m.id === forceModelId && m.healthy !== false,
     );
 
     if (forced) {
@@ -830,9 +870,17 @@ export class SessionPinner {
       return { action: 'use_pin', pinnedModel: forced };
     }
 
-    // Forced model unavailable — break pin, allow re-route
-    this.breakPin(request.session_id);
-    return { action: 'break', breakReason: 'user_forced' };
+    // Forced model unavailable — fail closed with explicit reason (SP-209 / #121).
+    // Do NOT break the pin or silently remap across provider families.
+    const inFleet = fleet.some((m) => m.id === forceModelId);
+    return {
+      action: 'force_rejected',
+      breakReason: 'user_forced',
+      forceRejectionReason: inFleet
+        ? FORCE_REJECTED_UNHEALTHY
+        : FORCE_REJECTED_NOT_IN_FLEET,
+      forceModelId,
+    };
   }
 
   // ─── Persistence (StorePort) ────────────────────────────────────────────────
