@@ -246,7 +246,7 @@ When you use `smart-router/auto`, the extension does **not** read `config/models
 4. **Route** — `createRouterFromFleet()` runs the 12-stage pipeline on each request.
 5. **Delegate** — The extension resolves the chosen model in the registry and forwards the stream via pi-ai's built-in provider APIs.
 
-Unknown models receive conservative economical-cloud defaults. Local providers (`lmstudio`, `ollama`) map to `zero-tier`. Cursor provider models (`cursor/*`, `composer-*`, opaque id `default`) map to `frontier-cloud` with explicit capability defaults (SP-086, SP-098).
+Unknown models receive conservative economical-cloud defaults. Local providers (`lmstudio`, `ollama`) map to `zero-tier`. Cursor provider models (`cursor/*`, `composer-*`, opaque id `default`) map to `frontier-cloud` with explicit capability defaults (SP-086, SP-098). Benchmark-grounded capability vectors (including multi-fleet `github-copilot/*`, Gemini, and Anthropic dogfood IDs, aliased family-by-family) are documented in the [capability profile coverage report](docs/capability-profile-coverage.md) ([#108](https://github.com/beettlle/pi-smart-router/issues/108) / [#124](https://github.com/beettlle/pi-smart-router/issues/124)).
 
 To refresh after auth or settings changes, restart pi or `/reload` extensions.
 

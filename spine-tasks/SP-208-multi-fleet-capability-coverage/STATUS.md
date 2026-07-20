@@ -1,6 +1,6 @@
 # SP-208: Multi-Fleet Capability Aliases + Coverage — Status
 
-**Current Step:** Step 1
+**Current Step:** Step 3
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-07-20
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Coverage table + aliases
 
-**Status:** 🟡 In Progress (awaiting plan-review)
+**Status:** ✅ Complete
 
 - [x] Fleet ID list extended (Copilot / Gemini / Anthropic)
 - [x] Coverage doc rows + rationales
@@ -21,14 +21,14 @@
 
 ## Step 2: Protocol cross-link
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Multi-fleet note in shadow-dogfood protocol
-- [ ] Optional README pointer reviewed
+- [x] Multi-fleet note in shadow-dogfood protocol
+- [x] Optional README pointer reviewed
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🟡 In Progress
 
 - [ ] Contract `testCommand` green
 - [ ] `routing:verify-benchmark-profiles` if profiles changed
@@ -51,7 +51,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-20 | 1 | plan | skipped (engine-owned; SP-195) |
 
 ## Discoveries
 

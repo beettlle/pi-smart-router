@@ -33,6 +33,9 @@ Companion script: `npm run qa:shadow-dogfood` ([`scripts/qa/shadow-dogfood-sessi
    - at least one **economical-cloud** model
    - at least one **frontier-cloud** model
    - at least one **non-Google** fallback (avoids empty-fleet fail-safe on Gemini-only configs). Examples by class: Anthropic Sonnet/Opus, OpenAI or Copilot coding models, or any other non-Google id available in that install.
+
+> **Multi-fleet capability grounding (fleet-agnostic).** This protocol is intentionally provider-agnostic — any qualifying fleet works, and live dogfood does **not** require the fixture IDs in the coverage report. When your scoped fleet does surface common multi-provider dogfood IDs (Anthropic catalog strings, Gemini variants, or `github-copilot/*`), the mapper grounds their capability vectors family-by-family rather than collapsing them onto a single provider row. See [`docs/capability-profile-coverage.md` § Multi-fleet dogfood coverage](../capability-profile-coverage.md#multi-fleet-dogfood-coverage-copilot-gemini-anthropic-124). This is a passive reference for interpreting `/smart-router status` capability provenance, not a setup requirement.
+
 4. Environment (shell that launches pi, or documented install env):
 
    ```bash
@@ -168,8 +171,9 @@ Recommend relaxing frugality / flipping encoder defaults: no / yes (requires #96
 | Over-routing analysis (authoring draft) | Why corpus ≈0.85 (autonomous) |
 | [#75](https://github.com/beettlle/pi-smart-router/issues/75) (closed) | Original profile ingest/mapper — keep closed |
 | [#108](https://github.com/beettlle/pi-smart-router/issues/108) | Mapper coverage metric over a fixed fixture ID list (`benchmark` vs `pattern_default`) |
+| [#124](https://github.com/beettlle/pi-smart-router/issues/124) | Multi-fleet coverage extension (Copilot / Gemini / Anthropic) — family-preserving aliases, no silent cross-family collapse |
 | [#96](https://github.com/beettlle/pi-smart-router/issues/96) | Encoder / K=4 enablement after holdout evidence |
 
-**Coverage report (not the live #95 fleet):** [`docs/capability-profile-coverage.md`](../capability-profile-coverage.md) measures mapper coverage for a **fixed fixture ID list** in this repo (gated by `tests/unit/pi-model-mapper-coverage.test.ts`). Live shadow dogfood uses **any** scoped fleet that meets Setup §3 — that fixture list is not required for #95 sign-off.
+**Coverage report (not the live #95 fleet):** [`docs/capability-profile-coverage.md`](../capability-profile-coverage.md) measures mapper coverage for a **fixed fixture ID list** in this repo (gated by `tests/unit/pi-model-mapper-coverage.test.ts`). The primary Cursor/pi list gates [#108](https://github.com/beettlle/pi-smart-router/issues/108); the multi-fleet extension (Copilot / Gemini / Anthropic, family-preserving aliases) gates [#124](https://github.com/beettlle/pi-smart-router/issues/124). Live shadow dogfood uses **any** scoped fleet that meets Setup §3 — that fixture list is not required for #95 sign-off.
 
 Paste-ready GitHub bodies: [`spine-tasks/_authoring/issues/`](../../spine-tasks/_authoring/issues/).
