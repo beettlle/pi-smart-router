@@ -1,7 +1,7 @@
 # SP-210: Economical Pin Break on Hard Agentic Failure — Status
 
-**Current Step:** Step 3
-**Status:** 🟡 In Progress
+**Current Step:** Done (pending plan review)
+**Status:** 🟡 Awaiting plan review
 **Last Updated:** 2026-07-20
 **Review Level:** 1
 **Review Counter:** 0
@@ -29,22 +29,22 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete (pending plan review)
 
-- [ ] Contract `testCommand` green
-- [ ] Related pinning tests if touched
-- [ ] coverage:check
-- [ ] #122 commented + closable
+- [x] Contract `testCommand` green
+- [x] Related pinning tests if touched
+- [x] coverage:check
+- [x] #122 commented + closable
 
 ---
 
 ## Completion Criteria
 
-- [ ] Break/upgrade conditions documented + implemented
-- [ ] History shows reason + new model
-- [ ] Hard-failure fixture green
-- [ ] Healthy pin non-regression green
-- [ ] #122 closable
+- [x] Break/upgrade conditions documented + implemented
+- [x] History shows reason + new model
+- [x] Hard-failure fixture green
+- [x] Healthy pin non-regression green
+- [x] #122 closable
 
 ---
 
