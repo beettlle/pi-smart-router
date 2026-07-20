@@ -171,8 +171,12 @@ describe('Loop escalation resilience', () => {
       expect(successResult.updatedPin!.last_tool_failure_signature).toBeNull();
     });
 
-    it('counts different failure signatures independently', () => {
+    it('counts different failure signatures independently (frontier pin, identical-only gate)', () => {
+      // Economical pins now count any consecutive failure (SP-210 churn); the
+      // identical-only gate is preserved for frontier pins. Use a frontier pin
+      // here so a distinct failure resets the streak to 1.
       const pin = makePin({
+        pinned_model_id: 'frontier-model',
         consecutive_tool_failures: 2,
         last_tool_failure_signature: 'tf:old_sig',
       });

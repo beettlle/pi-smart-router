@@ -556,6 +556,64 @@ describe('Session pinning integration', () => {
       expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-opus');
     });
 
+    it('economical churn on distinct tool failures breaks pin to frontier (SP-210, #122)', async () => {
+      // A hard agentic loop pinned economical that fails repeatedly with
+      // DIFFERENT errors must still escalate — the economical tier cannot
+      // recover the loop. History must surface the break reason
+      // (pin_reason='loop_escalation') and the new frontier model.
+      const pinner = new SessionPinner({ saarConfig });
+      const pipeline = new RouterPipeline(fleet, {
+        sessionPinner: pinner,
+        saarConfig,
+        loopEscalationConfig: { threshold: 3 },
+      });
+
+      // Warm an economical pin (claude-haiku).
+      await pipeline.route(makeRequest({ request_id: 'churn-0', turn_type: 'main_loop' }));
+      await pipeline.route(makeRequest({ request_id: 'churn-1', turn_type: 'planning' }));
+      expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-haiku');
+
+      // Inject two prior distinct failures so the next distinct failure hits N=3.
+      const priorSignature = extractToolFailureSignature(
+        makeRequest({
+          turn_type: 'tool_result',
+          messages: [{ role: 'tool', content: 'Error: ENOENT file not found' }],
+        }),
+      )!;
+      const warmPin = pinner.getPin('session-pin-int')!;
+      pinner.loadPin({
+        ...warmPin,
+        consecutive_tool_failures: 2,
+        last_tool_failure_signature: priorSignature,
+        updated_at: new Date().toISOString(),
+      });
+
+      // Third failure with a DIFFERENT signature — under the old identical-only
+      // gate this reset to 1 and the session stayed stuck economical. Now it
+      // escalates. loop_escalation returns decided:false (per its contract),
+      // so turn_envelope still routes this tool_result turn to economical; the
+      // pin record is what surfaces the break on the triggering turn.
+      await pipeline.route(
+        makeRequest({
+          request_id: 'churn-fail-3',
+          turn_type: 'tool_result',
+          messages: [{ role: 'tool', content: 'Error: ECONNREFUSED connection refused' }],
+        }),
+      );
+
+      // History surfaces the break: pin flipped to frontier with loop_escalation reason.
+      expect(pinner.getPin('session-pin-int')!.pin_reason).toBe('loop_escalation');
+      expect(pinner.getPin('session-pin-int')!.pinned_model_id).toBe('claude-opus');
+
+      // The escalated frontier pin takes effect on the next session_pin-decided
+      // turn — recovery reaches the frontier model with the break reason attached.
+      const recovery = await pipeline.route(
+        makeRequest({ request_id: 'churn-recover', turn_type: 'main_loop' }),
+      );
+      expect(recovery.selected_model_id).toBe('claude-opus');
+      expect(recovery.pin_reason).toBe('loop_escalation');
+    });
+
     it('context overflow still breaks pin after SAAR hard-lock', async () => {
       const overflowFleet = [
         makeModel({
