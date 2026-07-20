@@ -1,0 +1,20 @@
+SP-208 DONE — Multi-Fleet Capability Aliases + Coverage (closes #124)
+
+All steps complete. Completion criteria met.
+
+Deliverables:
+- config/benchmark-profiles.json: +21 family-preserving aliases (41 total); regenerated from recorded provenance (4 canonical models)
+- scripts/ingest-benchmark-profiles.ts: DEFAULT_FLEET_BENCHMARK_ALIASES seed extended (synced with JSON)
+- tests/unit/pi-model-mapper-coverage.test.ts: MULTI_FLEET_DOGFOOD_IDS (15/15 benchmark) + no-silent-cross-family-collapse assertion + multi-fleet pattern_default gaps
+- docs/capability-profile-coverage.md: Multi-fleet dogfood coverage section + Intentional gaps + family-preserving extension guidance
+- docs/qa/shadow-dogfood-protocol.md: fleet-agnostic multi-fleet note + #124 in Related issues
+- README.md: Fleet behavior one-liner pointer
+
+Verification:
+- npm run typecheck: PASS
+- npx vitest run tests/unit/pi-model-mapper-coverage.test.ts: 6/6 PASS
+- npm run routing:verify-benchmark-profiles: PASS
+- npm run verify:ci: 102 files / 1666 tests PASS, 92.9% line coverage
+
+#124 commented and closed. #75/#108 remain closed (no core ingest re-implementation; no mapper code change).
+No routing-domain symbols changed; File Scope respected (no router-pipeline.ts, pinning, release-gates, or extension edits).
