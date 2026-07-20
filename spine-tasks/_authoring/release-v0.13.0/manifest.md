@@ -115,7 +115,7 @@ Deps: SP-209→SP-208; SP-211→SP-209; SP-210 none
 - Hot-file serialization: `.pi/extensions/smart-router/index.ts`, `src/domain/pipeline/router-pipeline.ts`, `src/domain/pinning/session-pinner.ts`, `src/config/pi-model-mapper.ts` — do not parallel-edit shared paths in one wave.
 - Do **not** flip encoder defaults (`modernbert_k4`) or absolute `config/release-gates.json` in this release.
 - #121/#124 both touch mapper/aliases — Wave 1 then Wave 2 order reduces thrash; merge carefully if both edit `pi-model-mapper.ts`.
-- No pending tasks today — Phase 3 must author all four packets before any batch.
+- **Resolved:** All four packets authored and landed; ZAI API-key 5h limit stalled Wave 1 briefly (pi `auth.json` `type:api_key`, not Coding Plan dashboard).
 
 ---
 
@@ -139,12 +139,12 @@ Deps: SP-209→SP-208; SP-211→SP-209; SP-210 none
 
 ## Publish checklist (Phase 5–6)
 
-- [ ] All release-scoped tasks `.DONE` on `main`
-- [ ] Post-integrate `release:check` green after **each wave** (log paths recorded)
-- [ ] `spine preflight` green
-- [ ] `npm run release:check` green on final `HEAD` (exit 0 verified)
-- [ ] CI workflow green on `HEAD` (`gh run list` / `gh run watch`)
-- [ ] `git status` clean
-- [ ] Operator approved publish bump type: **minor** (matches Phase 2)
-- [ ] `npm version minor` + `git push && git push --tags`
-- [ ] `release.yml` succeeded; `npm view pi-smart-router version` matches `0.13.0`
+- [x] All release-scoped tasks `.DONE` on `main` (SP-208–SP-211)
+- [x] Post-integrate `release:check` green after **each wave** — `/tmp/pi-smart-router-post-integrate-wave-0.log`, `wave-1.log`, `wave-2.log`
+- [x] `spine preflight` green (before each wave start)
+- [x] `npm run release:check` green on final `HEAD` before bump (exit 0)
+- [x] CI workflow green on pre-bump `HEAD` (run `29783747712`); tag Release run `29783858942`
+- [x] `git status` clean at bump
+- [x] Operator approved publish bump type: **minor** (2026-07-20)
+- [x] `npm version minor` → `0.13.0` (`7585a96`) + `git push && git push --tags` (`v0.13.0`)
+- [x] `release.yml` succeeded; `npm view pi-smart-router version` = `0.13.0`

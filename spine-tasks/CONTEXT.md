@@ -1,12 +1,12 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-07-19
+**Last Updated:** 2026-07-20
 **Status:** Active
 **Next Task ID:** SP-212
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.12.2 (hotfix AuthStorage→ModelRuntime bootstrap). Prior v0.12.1 SP-207 (#118 stats); v0.12.0 SP-205–SP-206 (#110 Partial; #95 still open).
-**In progress:** Release **v0.13.0** — SP-208–SP-211 (multi-fleet dogfood routing correctness). Human #95 dogfood still open.
+**Released:** v0.13.0 (2026-07-20) — SP-208–SP-211 multi-fleet dogfood routing correctness (#124/#121/#122/#123). Prior v0.12.2 AuthStorage hotfix; v0.12.1 SP-207 (#118); v0.12.0 SP-205–SP-206 (#110 Partial).
+**In progress:** Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 remains open until real exports.
 
 ---
 
@@ -665,7 +665,7 @@
 | 2 | SP-209 | After SP-208; pipeline force/prefer |
 | 3 | SP-211 | After SP-209; local_zero preference |
 
-**Status:** Packets authored; awaiting batch execution.
+**Status:** Published as **v0.13.0** (npm + GitHub Release). Issues #121–#124 closed. Post-integrate logs: `/tmp/pi-smart-router-post-integrate-wave-{0,1,2}.log`. Release run: https://github.com/beettlle/pi-smart-router/actions/runs/29783858942
 
 **Deferred:** #95/#110 (human/exports), #96/#114 encoder, #115–#117 Colibri, #119/#120 reliability, #125 quota feed, #1/#25/#26 hardware.
 
