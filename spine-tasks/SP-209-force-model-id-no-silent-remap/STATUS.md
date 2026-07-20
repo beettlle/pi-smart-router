@@ -1,7 +1,7 @@
 # SP-209: Honor force_model_id / Prefer (No Silent Remap) — Status
 
-**Current Step:** Step 3
-**Status:** 🟡 In Progress
+**Current Step:** Done
+**Status:** ✅ Complete
 **Last Updated:** 2026-07-20
 **Review Level:** 1
 **Review Counter:** 0
@@ -31,22 +31,22 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 
-- [ ] Contract `testCommand` green
-- [ ] Related unit tests if shared
-- [ ] coverage:check
-- [ ] #121 commented + closable
+- [x] Contract `testCommand` green
+- [x] Related unit tests if shared
+- [x] coverage:check
+- [x] #121 commented + closable
 
 ---
 
 ## Completion Criteria
 
-- [ ] Healthy force selects target id
-- [ ] Impossible force fails closed with reason
-- [ ] Explain/log surfaces reason
-- [ ] Fixtures green
-- [ ] #121 closable
+- [x] Healthy force selects target id
+- [x] Impossible force fails closed with reason
+- [x] Explain/log surfaces reason
+- [x] Fixtures green
+- [x] #121 closable
 
 ---
 
@@ -54,7 +54,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-07-20 | 1 | plan | skipped in-worker (SP-195); engine runs after .DONE |
 
 ## Discoveries
 
@@ -66,3 +66,5 @@
 ## Notes
 
 Depends on SP-208. Wave 2 after Wave 1 (SP-208 + SP-210).
+
+Verification evidence: typecheck ✅; force-model-id-remap.test.ts 14/14 ✅; full suite 1695 green; coverage:check exit 0 (session-pinner.ts 91.7%, router-pipeline.ts 91.3% lines, ≥77% policy). #121 commented + closed.
