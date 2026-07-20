@@ -1,0 +1,21 @@
+README.md
+  s_f6b0ef81a549ac::t_13fd52898865a8 1209,1211,1231-1232,1234,1237,1249-1250,1252,1255-1256
+.spine/spine-config.json
+  s_f6b0ef81a549ac::t_336ebba44ebd49 12-13,38,40-41,43-101,125-129,135-138,145-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "6e867c9dda971e93bb7f0c746e293bb1a3adb2c5",
+  "prompts": {},
+  "sessions": {
+    "s_f6b0ef81a549ac": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "68be0745-3d45-4dce-8fe1-64f6ef8f7dba",
+        "model": "default"
+      },
+      "human_author": "Test User <test@example.com>"
+    }
+  }
+}
