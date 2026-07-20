@@ -1,0 +1,48 @@
+spine-tasks/SP-211-prefer-local-zero-trivial/STATUS.md
+  s_3f863f334eed30::t_a7437956689a0c 1-63
+AGENTS.md
+  s_3f863f334eed30::t_3d277ceeb90242 4
+spine-tasks/SP-208-multi-fleet-capability-coverage/STATUS.md
+  s_3f863f334eed30::t_157c8c4ea9117a 1-64
+spine-tasks/SP-209-force-model-id-no-silent-remap/PROMPT.md
+  s_3f863f334eed30::t_009544c43263ed 1-115
+spine-tasks/SP-210-economical-pin-break-agentic/STATUS.md
+  s_3f863f334eed30::t_e9317c19cbe745 1-65
+spine-tasks/_authoring/release-v0.13.0/manifest.md
+  s_3f863f334eed30::t_2f029da8c7e673 9
+  s_3f863f334eed30::t_3c82ee3b255a09 1-8,10-90,95-150
+  s_3f863f334eed30::t_e357e0383dbc3d 91-94
+spine-tasks/SP-209-force-model-id-no-silent-remap/STATUS.md
+  s_3f863f334eed30::t_7ffdc0b31b25f6 1-65
+spine-tasks/SP-210-economical-pin-break-agentic/PROMPT.md
+  s_3f863f334eed30::t_f498419e9ca380 1-113
+spine-tasks/dependencies.json
+  s_3f863f334eed30::t_5489b12047a231 608-616
+.spine/rules-manifest.json
+  s_3f863f334eed30::t_719a4c59a798b4 2,324-340
+CLAUDE.md
+  s_3f863f334eed30::t_3d277ceeb90242 4
+spine-tasks/SP-208-multi-fleet-capability-coverage/PROMPT.md
+  s_3f863f334eed30::t_7ebc1c45cb81f6 1-115
+spine-tasks/SP-211-prefer-local-zero-trivial/PROMPT.md
+  s_3f863f334eed30::t_0b71c8e4e5017f 1-112
+spine-tasks/CONTEXT.md
+  s_3f863f334eed30::t_65650115971668 3,5,8-9
+  s_3f863f334eed30::t_9bb8372ded18ab 649-673
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "c45142b40ed11693cf973d5e638ee4eeac5affb7",
+  "prompts": {},
+  "sessions": {
+    "s_3f863f334eed30": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-c3ac0a73-3c45-4e82-8564-3dbfa1d04b2a",
+        "model": "unknown"
+      },
+      "human_author": "Test User <test@example.com>"
+    }
+  }
+}
