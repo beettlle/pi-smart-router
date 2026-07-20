@@ -4,6 +4,11 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
     environment: 'node',
+    // Cap forks so local release/CI do not spawn ~availableParallelism() multi-GB workers.
+    maxWorkers: Math.max(
+      1,
+      Number.parseInt(process.env.VITEST_MAX_WORKERS ?? '4', 10) || 4,
+    ),
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],

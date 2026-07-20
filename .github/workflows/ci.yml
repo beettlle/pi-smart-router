@@ -34,8 +34,5 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Test
-        run: npm test
-
       - name: Coverage check
         run: npm run coverage:check
