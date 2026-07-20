@@ -145,7 +145,7 @@ describe('SessionPinner', () => {
       expect(pinner.getPin('sess-1')?.pin_reason).toBe('user_forced');
     });
 
-    it('breaks pin when force_model_id target is unhealthy', () => {
+    it('fails closed (force_rejected) when force_model_id target is unhealthy (SP-209 / #121)', () => {
       const pinner = new SessionPinner();
       pinner.recordPin('sess-1', 'claude-opus', 'initial');
 
@@ -158,12 +158,16 @@ describe('SessionPinner', () => {
         fleetWithUnhealthy,
       );
 
-      expect(result.action).toBe('break');
+      // SP-209: no silent remap — explicit force_rejected with reason.
+      expect(result.action).toBe('force_rejected');
       expect(result.breakReason).toBe('user_forced');
-      expect(pinner.getPin('sess-1')).toBeNull();
+      expect(result.forceRejectionReason).toBe('force_rejected_unhealthy');
+      expect(result.forceModelId).toBe('sick-model');
+      // A rejected force preserves the existing pin (no-op on pin state).
+      expect(pinner.getPin('sess-1')?.pinned_model_id).toBe('claude-opus');
     });
 
-    it('breaks pin when force_model_id target is not in fleet', () => {
+    it('fails closed (force_rejected) when force_model_id target is not in fleet (SP-209 / #121)', () => {
       const pinner = new SessionPinner();
       pinner.recordPin('sess-1', 'claude-opus', 'initial');
 
@@ -172,8 +176,12 @@ describe('SessionPinner', () => {
         fleet,
       );
 
-      expect(result.action).toBe('break');
+      // SP-209: no silent cross-provider remap — explicit force_rejected.
+      expect(result.action).toBe('force_rejected');
       expect(result.breakReason).toBe('user_forced');
+      expect(result.forceRejectionReason).toBe('force_rejected_not_in_fleet');
+      expect(result.forceModelId).toBe('nonexistent');
+      expect(pinner.getPin('sess-1')?.pinned_model_id).toBe('claude-opus');
     });
 
     it('compaction break takes priority over force override', () => {

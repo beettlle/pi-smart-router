@@ -1,0 +1,15 @@
+SP-209 complete.
+
+Closes #121 — force_model_id / Prefer no longer silently remaps across provider families.
+
+Root causes fixed:
+- turnEnvelope no longer short-circuits before session_pin when force_model_id is set
+- SessionPinner resolves force with or without an existing pin; unavailable force
+  returns force_rejected with an explicit reason code (force_rejected_not_in_fleet /
+  force_rejected_unhealthy) surfaced as the decision reason_code
+- session_pin handles force_rejected: safe cloud default with explicit reason
+  (zero-crash resilience, never silent); persistPinIfNeeded preserves existing pin
+
+Verification: typecheck OK; force-model-id-remap.test.ts 14/14; full suite 1695/1695;
+coverage:check exit 0 (session-pinner.ts 91.7%, router-pipeline.ts 91.3% lines, >=77%).
+#121 commented + closed.

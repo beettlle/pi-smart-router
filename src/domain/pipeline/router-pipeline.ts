@@ -47,6 +47,8 @@ import {
 import type { SessionPinner } from '../pinning/session-pinner.js';
 import {
   evaluateModelSwitchBreakeven,
+  FORCE_REJECTED_NOT_IN_FLEET,
+  FORCE_REJECTED_UNHEALTHY,
   type ModelSwitchBreakevenContext,
 } from '../pinning/session-pinner.js';
 import { evaluateLoopEscalation } from '../pinning/loop-escalation.js';
@@ -1003,6 +1005,46 @@ export class RouterPipeline {
         };
       }
 
+      case 'force_rejected': {
+        // SP-209 / #121: force_model_id could not be honored. Fail closed with
+        // an explicit reason — never silently remap to a different provider
+        // family. Degrade to the safe cloud default so the host agent still has
+        // a usable model (constitution: zero-crash resilience), but record the
+        // rejection as reason_code so explain / SMART_ROUTER_LOG_ROUTING=1
+        // surfaces it instead of masking it as a normal route.
+        const fallbackModel = safeCloudDefault(this.activeFleet, {
+          request,
+          ...(this.options.contextFitConfig !== undefined
+            ? { contextFitConfig: this.options.contextFitConfig }
+            : {}),
+        });
+        const forceReasonCode =
+          result.forceRejectionReason ?? FORCE_REJECTED_NOT_IN_FLEET;
+        return {
+          decided: true,
+          stage: 'session_pin',
+          decision: fallbackModel
+            ? this.withEstimatedCost(request, fallbackModel, {
+                request_id: request.request_id,
+                selected_model_id: fallbackModel.id,
+                tier: fallbackModel.tier,
+                stage: 'session_pin',
+                reason_code: forceReasonCode,
+                routing_latency_ms: 0,
+                pin_reason: 'user_forced',
+              })
+            : {
+                request_id: request.request_id,
+                selected_model_id: 'unknown',
+                tier: 'economical-cloud',
+                stage: 'session_pin',
+                reason_code: forceReasonCode,
+                routing_latency_ms: 0,
+                pin_reason: 'user_forced',
+              },
+        };
+      }
+
       case 'break':
         if (result.breakReason === 'context_overflow' && existingPin) {
           this.markContextOverflowFromPin(request, existingPin.pinned_model_id);
@@ -1041,6 +1083,10 @@ export class RouterPipeline {
     if (decision.reason_code === 'pin_only_fallback') return;
     if (decision.reason_code === 'saar_buffer_active') return;
     if (decision.reason_code === 'saar_hard_lock') return;
+    // SP-209 / #121: a rejected force must not overwrite the existing pin — the
+    // one-shot override simply could not be applied.
+    if (decision.reason_code === FORCE_REJECTED_NOT_IN_FLEET) return;
+    if (decision.reason_code === FORCE_REJECTED_UNHEALTHY) return;
 
     // Turn envelope is a per-turn tier bias — do not overwrite an existing pin (SP-064).
     if (decision.stage === 'turn_envelope' && pinner.getPin(request.session_id)) return;
@@ -1132,6 +1178,14 @@ export class RouterPipeline {
 
   private async turnEnvelope(request: RoutingRequest): Promise<StageResult> {
     if (this.isPinOnlyFallbackActive(request)) {
+      return { decided: false, stage: 'turn_envelope' };
+    }
+
+    // SP-209 / #121: an explicit force_model_id override must be resolved by the
+    // session_pin stage (healthy in-fleet → use_pin; unavailable → fail-closed
+    // reason). Do not let the turn envelope short-circuit and silently drop the
+    // force, which previously caused first-turn forces to remap providers.
+    if (request.force_model_id) {
       return { decided: false, stage: 'turn_envelope' };
     }
 
