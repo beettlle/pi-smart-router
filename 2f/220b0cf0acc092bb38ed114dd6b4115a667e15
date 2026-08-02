@@ -1,0 +1,18 @@
+spine-tasks/SP-214-quota-window-feed/STATUS.md
+  h_ae151c586ac6c5 4,15,61
+src/domain/pricing/quota-window-feed.ts
+  h_ae151c586ac6c5 1-240
+tests/unit/quota-window-feed.test.ts
+  h_ae151c586ac6c5 1-326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "2f220b0cf0acc092bb38ed114dd6b4115a667e15",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
