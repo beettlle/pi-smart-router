@@ -14,6 +14,7 @@ import type {
   PlanningDelegateConfig,
   PlanningDelegateObservability,
   PriceCatalog,
+  RoutePath,
   RoutingDecision,
   RoutingFeatureSidecar,
   RoutingRequest,
@@ -71,6 +72,15 @@ import type { HydraMatcher as HydraMatcherType, MatchResult } from '../matching/
 import type { ClusterMatcher, ClusterMatchResult } from '../matching/cluster-matcher.js';
 import { clusterReasonCode } from '../../config/routing-clusters-loader.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
+import {
+  requirementFingerprint,
+  resolveDegradedRoute,
+  type CompiledPatternPack,
+  type DegradedRouteConfig,
+  type LearnedRouteStore,
+  type NeuralFailureKind,
+} from '../routing/degraded-route-sandwich.js';
+import { DEFAULT_DEGRADED_ROUTE_CONFIG } from '../types/schemas.js';
 import {
   buildTierFeatures,
   scoreLowIntensity,
@@ -259,6 +269,12 @@ export interface PipelineOptions {
   readonly throughputMeter?: ThroughputMeter;
   /** Pre-local_zero tool-use capability gate (SP-177, #98). */
   readonly localZeroConfig?: LocalZeroConfig;
+  /** Degraded neural failover sandwich knobs (SP-212, #119). */
+  readonly degradedRouteConfig?: DegradedRouteConfig;
+  /** Privacy-safe learned map for the degraded sandwich (SP-212, #119). */
+  readonly learnedRouteStore?: LearnedRouteStore;
+  /** Compiled operator pattern pack overlay for the degraded sandwich (SP-212, #119). */
+  readonly patternPack?: CompiledPatternPack;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -302,6 +318,9 @@ export class RouterPipeline {
   private currentPlanningDelegate: PlanningDelegateObservability | null = null;
   /** Explicit local_zero gate skip reasons for tier-selection telemetry (SP-164). */
   private currentLocalZeroGateSkipReasons: readonly string[] = [];
+  /** Degraded sandwich route path for explain/telemetry (SP-212, #119). */
+  private currentRoutePath: RoutePath | null = null;
+  private currentRoutePathConfidence: number | null = null;
 
   constructor(fleet: readonly ModelProfile[], options?: PipelineOptions) {
     this.fleet = fleet;
@@ -352,6 +371,8 @@ export class RouterPipeline {
     this.currentBreakevenReason = null;
     this.currentPlanningDelegate = null;
     this.currentLocalZeroGateSkipReasons = [];
+    this.currentRoutePath = null;
+    this.currentRoutePathConfidence = null;
 
     let currentStage: NamedPipelineStage | undefined;
 
@@ -449,6 +470,8 @@ export class RouterPipeline {
       ...(this.currentPlanningDelegate
         ? { planning_delegate: this.currentPlanningDelegate }
         : {}),
+      route_path: this.resolveRoutePathTelemetry(decision).routePath,
+      route_path_confidence: this.resolveRoutePathTelemetry(decision).routePathConfidence,
     };
 
     const withBaseFeatures = { ...decision, features };
@@ -569,12 +592,44 @@ export class RouterPipeline {
     failedStage: string,
     fallback: RoutingDecision,
   ): void {
-    this.options.telemetryEmitter?.emitPipelineError(request, failedStage, fallback);
+    this.options.telemetryEmitter?.emitPipelineError(request, failedStage, fallback, {
+      routePath: 'safe_default',
+      routePathConfidence: null,
+    });
+  }
+
+  /**
+   * Resolve route_path classification for telemetry/explain (SP-212, #119).
+   * Degraded/neural paths set currentRoutePath explicitly; other stages map
+   * to heuristic (deterministic rules) or safe_default (fallback stage).
+   */
+  private resolveRoutePathTelemetry(decision: RoutingDecision): {
+    routePath: RoutePath;
+    routePathConfidence: number | null;
+  } {
+    if (this.currentRoutePath !== null) {
+      return {
+        routePath: this.currentRoutePath,
+        routePathConfidence: this.currentRoutePathConfidence,
+      };
+    }
+
+    if (decision.stage === 'fallback') {
+      return { routePath: 'safe_default', routePathConfidence: null };
+    }
+    if (decision.stage === 'hydra_match') {
+      return { routePath: 'neural', routePathConfidence: null };
+    }
+    return { routePath: 'heuristic', routePathConfidence: null };
   }
 
   /** Step 7: emit routing telemetry after decision (T040). */
   private emitTelemetry(request: RoutingRequest, decision: RoutingDecision): void {
-    this.options.telemetryEmitter?.emit(request, decision);
+    const { routePath, routePathConfidence } = this.resolveRoutePathTelemetry(decision);
+    this.options.telemetryEmitter?.emit(request, decision, {
+      routePath,
+      routePathConfidence,
+    });
   }
 
   private withEstimatedCost(
@@ -1706,6 +1761,10 @@ export class RouterPipeline {
    * Step 5: HyDRA embedding matcher for ambiguous prompts (T050).
    * Scores fleet candidates via embedding cosine similarity with shortfall gate.
    * Pass-through when no matcher is configured.
+   *
+   * SP-212 / #119: encoder/neural errors and budget overruns with no selection
+   * fail open through the degraded sandwich (learned → pattern → safe default)
+   * instead of throwing to the host.
    */
   private async hydraMatcher(request: RoutingRequest): Promise<StageResult> {
     const matcher = this.options.hydraMatcher;
@@ -1717,8 +1776,22 @@ export class RouterPipeline {
       ? this.constrainFleetToTierHint(this.activeFleet, this.currentTierHint)
       : this.activeFleet;
 
-    const result = await matcher.match(request, fleetForMatch);
+    let result: MatchResult;
+    try {
+      result = await matcher.match(request, fleetForMatch);
+    } catch (error: unknown) {
+      console.warn('HyDRA neural match failed; routing via degraded sandwich', {
+        request_id: request.request_id,
+        session_id: request.session_id,
+        error: this.redactPromptFromError(error, request.prompt_text),
+      });
+      return this.degradedRouteStage(request, 'neural_error');
+    }
     this.currentHydraResult = result;
+
+    if (result.budgetExceeded && !result.selected) {
+      return this.degradedRouteStage(request, 'neural_budget_exceeded');
+    }
 
     if (!result.selected) {
       return { decided: false, stage: 'hydra_match' };
@@ -1730,6 +1803,10 @@ export class RouterPipeline {
     if (!selectedModel) {
       return { decided: false, stage: 'hydra_match' };
     }
+
+    this.currentRoutePath = 'neural';
+    this.currentRoutePathConfidence = Math.min(1, Math.max(0, result.selected.score));
+    this.recordLearnedRoute(selectedModel.tier);
 
     return {
       decided: true,
@@ -1745,5 +1822,84 @@ export class RouterPipeline {
         pin_reason: null,
       }),
     };
+  }
+
+  /**
+   * SP-212 / #119 degraded sandwich stage: learned map → operator pattern pack
+   * → safe default. Never throws; falls through to the legacy safe_default
+   * stage when disabled or when no degraded path can select a model.
+   */
+  private degradedRouteStage(
+    request: RoutingRequest,
+    failure: NeuralFailureKind,
+  ): StageResult {
+    const config =
+      this.options.degradedRouteConfig ??
+      DEFAULT_OPERATOR_CONFIG.degraded_route ??
+      DEFAULT_DEGRADED_ROUTE_CONFIG;
+
+    if (!config.enabled) {
+      return { decided: false, stage: 'hydra_match' };
+    }
+
+    const safeDefaultModel = safeCloudDefault(this.activeFleet, {
+      request,
+      ...(this.options.contextFitConfig !== undefined
+        ? { contextFitConfig: this.options.contextFitConfig }
+        : {}),
+    });
+
+    const resolution = resolveDegradedRoute({
+      failure,
+      fleet: this.activeFleet,
+      toolUseEstimate: estimateCheapToolUseRequirement(request.prompt_text),
+      clusterId: this.currentClusterMatch?.clusterId ?? null,
+      learnedStore: this.options.learnedRouteStore ?? null,
+      patternPack: this.options.patternPack ?? null,
+      safeDefaultModel,
+      config,
+      promptText: request.prompt_text,
+    });
+
+    this.currentRoutePath = resolution.routePath;
+    this.currentRoutePathConfidence = resolution.confidence;
+
+    if (!resolution.model) {
+      return { decided: false, stage: 'hydra_match' };
+    }
+
+    return {
+      decided: true,
+      stage: 'hydra_match',
+      decision: this.withEstimatedCost(request, resolution.model, {
+        request_id: request.request_id,
+        selected_model_id: resolution.model.id,
+        tier: resolution.model.tier,
+        stage: resolution.routePath === 'safe_default' ? 'fallback' : 'hydra_match',
+        reason_code: resolution.reasonCode,
+        routing_latency_ms: 0,
+        pin_reason: null,
+      }),
+    };
+  }
+
+  /**
+   * Record the neural decision into the learned map (SP-212). Keys are the
+   * requirement fingerprint and/or cluster id — never raw prompt text.
+   */
+  private recordLearnedRoute(tier: Tier): void {
+    const store = this.options.learnedRouteStore;
+    if (!store) {
+      return;
+    }
+
+    const requirements = this.currentHydraResult?.requirements;
+    const fingerprint = requirements ? requirementFingerprint(requirements) : null;
+    const clusterId = this.currentClusterMatch?.clusterId ?? null;
+    if (fingerprint === null && clusterId === null) {
+      return;
+    }
+
+    store.record({ requirementFingerprint: fingerprint, clusterId }, tier);
   }
 }

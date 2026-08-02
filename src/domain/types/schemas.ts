@@ -368,6 +368,36 @@ export const QuotaWindowPositionSchema = z.object({
   elapsed_window_seconds: z.number().nonnegative().optional(),
 });
 
+/**
+ * Degraded neural failover sandwich knobs (SP-212, #119).
+ * Fail-open chain when the encoder/neural stage errors or exceeds budget:
+ * learned map → operator pattern pack → safe default. Never crashes the host.
+ */
+export const DegradedRouteConfigSchema = z.object({
+  /** When false, neural failures fall through to the legacy safe_default stage. */
+  enabled: z.boolean().default(true),
+  /** Minimum learned-entry confidence to honor a learned tier suggestion. */
+  learned_min_confidence: z.number().min(0).max(1),
+  /** Maximum learned-map entries (FIFO eviction; poisoning bound). */
+  learned_max_entries: z.number().int().positive(),
+  /**
+   * Cheap tool-use cue ceiling (0–1). Learned/pattern suggestions toward cheaper
+   * tiers are only honored below this estimate — a cheap overlay may never alone
+   * override a predicted capability shortfall.
+   */
+  pattern_tool_use_ceiling: z.number().min(0).max(1),
+});
+
+export type DegradedRouteConfig = z.infer<typeof DegradedRouteConfigSchema>;
+
+/** Degraded sandwich defaults per #119 (SP-212). */
+export const DEFAULT_DEGRADED_ROUTE_CONFIG: Readonly<DegradedRouteConfig> = {
+  enabled: true,
+  learned_min_confidence: 0.6,
+  learned_max_entries: 512,
+  pattern_tool_use_ceiling: 0.3,
+} as const;
+
 /** SAAR defaults per routing-roadmap.md §2 P0 (SP-121). */
 export const DEFAULT_SAAR_CONFIG: Readonly<SaarConfig> = {
   planning_turn_buffer: 2,
@@ -526,6 +556,8 @@ export const OperatorConfigSchema = z.object({
   /** Pre-local_zero tool-use capability gate (SP-177, #98). */
   local_zero: LocalZeroConfigSchema.optional(),
   routing_clusters: RoutingClustersConfigSchema.optional(),
+  /** Degraded neural failover sandwich knobs (SP-212, #119). */
+  degraded_route: DegradedRouteConfigSchema.optional(),
   /**
    * Emergency pin-on-first-turn fallback (#83, SP-161).
    * When true, subsequent turns use the session pin only — multi-stage routing

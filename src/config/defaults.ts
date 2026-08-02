@@ -4,6 +4,7 @@
  */
 
 import {
+  DEFAULT_DEGRADED_ROUTE_CONFIG,
   DEFAULT_LOCAL_ZERO_CONFIG,
   DEFAULT_PLANNING_DELEGATE_CONFIG,
   DEFAULT_SAAR_CONFIG,
@@ -63,5 +64,6 @@ export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
   saar: DEFAULT_SAAR_CONFIG,
   planning_delegate: DEFAULT_PLANNING_DELEGATE_CONFIG,
   local_zero: DEFAULT_LOCAL_ZERO_CONFIG,
+  degraded_route: DEFAULT_DEGRADED_ROUTE_CONFIG,
   pin_only_fallback: false,
 } as const;

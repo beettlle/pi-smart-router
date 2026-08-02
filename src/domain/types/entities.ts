@@ -30,6 +30,15 @@ export type RoutingStage =
   | 'hydra_match'
   | 'fallback';
 
+/**
+ * Degraded neural failover path classification (SP-212, #119).
+ * `neural` — HyDRA encoder/embedding path decided normally.
+ * `learned` — privacy-safe learned map (fingerprint/cluster → tier) hit after neural failure.
+ * `heuristic` — deterministic rules / operator pattern pack decided.
+ * `safe_default` — safe economical/frontier default after earlier paths failed.
+ */
+export type RoutePath = 'neural' | 'learned' | 'heuristic' | 'safe_default';
+
 export type PriceSource = 'override' | 'registry' | 'yaml_fallback';
 
 // ─── Message ─────────────────────────────────────────────────────────────────
@@ -332,6 +341,10 @@ export interface RoutingFeatureSidecar {
   readonly planning_delegate?: PlanningDelegateObservability;
   /** Why local_zero eligibility passed (SP-111, #59). */
   readonly local_eligible_reason: string | null;
+  /** Degraded failover path classification (SP-212, #119); absent on legacy paths. */
+  readonly route_path?: RoutePath | null;
+  /** Confidence (0–1) associated with route_path when a classifier produced one. */
+  readonly route_path_confidence?: number | null;
 }
 
 export interface RoutingDecision {
@@ -506,4 +519,8 @@ export interface RoutingTelemetry {
   readonly planning_delegate_exclude_execution_history: boolean | null;
   /** True when emergency pin-only fallback routed this request (SP-162, #83). */
   readonly pin_only_fallback_active: boolean;
+  /** Degraded failover path classification (SP-212, #119); absent on legacy paths. */
+  readonly route_path?: RoutePath | null;
+  /** Confidence (0–1) associated with route_path when a classifier produced one. */
+  readonly route_path_confidence?: number | null;
 }

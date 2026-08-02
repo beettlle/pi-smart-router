@@ -1,7 +1,7 @@
 # SP-212: Degraded Neural Failover Sandwich — Status
 
 **Current Step:** Step 1
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 **Last Updated:** 2026-08-02
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,12 +12,12 @@
 
 ## Step 1: Sandwich module + wiring
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Degrade path neural → learned → pattern → safe default
-- [ ] Pipeline/matcher wiring; host never crashes
-- [ ] `route_path` telemetry + confidence
-- [ ] Learned keys fingerprint/cluster only
+- [x] Degrade path neural → learned → pattern → safe default
+- [x] Pipeline/matcher wiring; host never crashes
+- [x] `route_path` telemetry + confidence
+- [x] Learned keys fingerprint/cluster only
 
 **Plan-review checkpoint** — Confirm distinct from #115; no FrugalGPT cascade.
 
