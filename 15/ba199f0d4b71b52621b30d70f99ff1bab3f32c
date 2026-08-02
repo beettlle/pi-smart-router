@@ -1,0 +1,14 @@
+spine-tasks/SP-214-quota-window-feed/.reviews/final-20260802T235413.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "15ba199f0d4b71b52621b30d70f99ff1bab3f32c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
