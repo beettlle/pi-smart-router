@@ -1,7 +1,7 @@
 # SP-214: Quota Window Feed for Virtual Cost v2 — Status
 
 **Current Step:** Step 1
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 **Last Updated:** 2026-08-02
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,7 +12,7 @@
 
 ## Step 1: Feed module + degrade chain
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Document adapter → estimate → omit
 - [ ] Pool-level QuotaWindowPosition or omit
@@ -58,7 +58,7 @@
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-08-02 | Feed module created: degrade chain adapter → telemetry pool burn estimate → omit; pool = models with `quota_cost_per_1m`; budget env-gated (default disabled, never invented) | None |
 
 ## Notes
 
