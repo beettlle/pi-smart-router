@@ -172,7 +172,7 @@ flowchart TD
 | session_pin | SAAR knobs; breakeven on break; hard-lock in tool loops |
 | deterministic_triage | Confounder sanitization + entropy check for adversarial suffixes |
 | local_zero | SP-111: not trivial-only; respect HW + cold-start |
-| hydra_matcher | Grounded profiles; Granite trial; SP-115 = learned approximation |
+| hydra_matcher | Grounded profiles; Granite trial; SP-115 = learned approximation; SP-212 = degraded failover sandwich (learned → pattern → safe_default) with `route_path` telemetry |
 | safe_default / overflow | Never silent ceiling downgrade |
 
 **Routing rule:** Per-turn routing at turn 0 classification and same-provider `tool_result` sub-routes **with breakeven** — not open-ended planning→frontier mid-session.

@@ -1,6 +1,6 @@
 # SP-212: Degraded Neural Failover Sandwich — Status
 
-**Current Step:** Step 1
+**Current Step:** Step 3
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-08-02
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Sandwich module + wiring
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete (plan review skipped by runtime — engine-owned, SP-195)
 
 - [x] Degrade path neural → learned → pattern → safe default
 - [x] Pipeline/matcher wiring; host never crashes
@@ -23,15 +23,15 @@
 
 ## Step 2: Pattern pack + failure injection tests
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Optional pattern pack fail-closed
-- [ ] Unit tests for encoder failure injection
-- [ ] Brief operator docs pointer
+- [x] Optional pattern pack fail-closed
+- [x] Unit tests for encoder failure injection
+- [x] Brief operator docs pointer
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Contract `testCommand` green
 - [ ] Related matcher/pipeline tests if touched
@@ -53,7 +53,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-08-02 | 1 | plan | SKIPPED (engine-owned per SP-195; nested spawn blocked) |
 
 ## Discoveries
 
