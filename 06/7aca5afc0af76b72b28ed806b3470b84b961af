@@ -1,0 +1,18 @@
+README.md
+  h_ae151c586ac6c5 445-463
+docs/routing-roadmap.md
+  h_ae151c586ac6c5 175
+spine-tasks/SP-212-degraded-neural-failover/STATUS.md
+  h_ae151c586ac6c5 3,15,26,28-30,34,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "067aca5afc0af76b72b28ed806b3470b84b961af",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
