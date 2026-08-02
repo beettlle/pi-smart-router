@@ -1,0 +1,38 @@
+.pi/extensions/smart-router/extension-setup.ts
+  h_ae151c586ac6c5 80
+.pi/extensions/smart-router/planning-delegate.ts
+  h_ae151c586ac6c5 8-12,30,35,232-290,306-309,327,336-352,354-366,369-372,374-376,383,385-389,404-409,421,436-438
+.pi/extensions/smart-router/types.ts
+  h_ae151c586ac6c5 15,64-65
+spine-tasks/SP-213-planning-delegate-timeouts/STATUS.md
+  h_ae151c586ac6c5 4,15,17-19
+src/domain/types/entities.ts
+  h_ae151c586ac6c5 243-254,274-279,525-530
+src/domain/types/schemas.ts
+  h_ae151c586ac6c5 324,328-331,383-386,394-395,407-412,446-451
+src/infrastructure/telemetry/routing-telemetry.ts
+  h_ae151c586ac6c5 83-84,597-600,609-611,827-829,840-842,889-891,1202-1204
+tests/integration/planning-delegate.test.ts
+  h_ae151c586ac6c5 17,186
+tests/unit/defaults.test.ts
+  h_ae151c586ac6c5 19-20,37-38,52-53,62-63,70-71
+tests/unit/router-pipeline.test.ts
+  h_ae151c586ac6c5 20,286,315
+tests/unit/schemas.test.ts
+  h_ae151c586ac6c5 27-28
+tests/unit/session-stats.test.ts
+  h_ae151c586ac6c5 61-63
+tests/unit/smart-router-extension.test.ts
+  h_ae151c586ac6c5 181-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "3a39376a90f6a4756696716ce5f4170371bc89e5",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
