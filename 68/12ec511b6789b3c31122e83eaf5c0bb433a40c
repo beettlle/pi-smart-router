@@ -1,0 +1,22 @@
+.pi/extensions/smart-router/fleet-bootstrap.ts
+  h_ae151c586ac6c5 18-24,48,52-92,286,290
+README.md
+  h_ae151c586ac6c5 465-468
+docs/routing-roadmap.md
+  h_ae151c586ac6c5 92,334
+spine-tasks/SP-214-quota-window-feed/STATUS.md
+  h_ae151c586ac6c5 3,15,25,27-29,33,55
+tests/unit/quota-window-feed.test.ts
+  h_ae151c586ac6c5 3-4,329-388
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "6812ec511b6789b3c31122e83eaf5c0bb433a40c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
