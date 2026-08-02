@@ -1,0 +1,18 @@
+spine-tasks/SP-213-planning-delegate-timeouts/STATUS.md
+  h_ae151c586ac6c5 32,34-37,43-46,61
+tests/integration/pi-extension.test.ts
+  h_ae151c586ac6c5 801,804
+tests/integration/planning-delegate.test.ts
+  h_ae151c586ac6c5 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "c7d37e45693cdf53bad968817a6c19ed901c3962",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
