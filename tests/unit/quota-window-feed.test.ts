@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { resolveQuotaWindowFeedPosition } from '../../.pi/extensions/smart-router/fleet-bootstrap.js';
+import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
 import {
   DEFAULT_QUOTA_WINDOW_ESTIMATE_CONFIG,
   DEFAULT_QUOTA_WINDOW_SECONDS,
@@ -322,5 +324,65 @@ describe('resolveQuotaWindowEstimateConfigFromEnv', () => {
     expect(resolveQuotaWindowEstimateConfigFromEnv()).toEqual(
       DEFAULT_QUOTA_WINDOW_ESTIMATE_CONFIG,
     );
+  });
+});
+
+describe('resolveQuotaWindowFeedPosition (extension wiring)', () => {
+  it('omits the position when the fleet has no subscription pool and no adapter', async () => {
+    const store = new MemoryStore();
+    const fleet = [makeModel('gpt-4o-mini', { fallback_cost_per_1m: 0.6 })];
+
+    await expect(resolveQuotaWindowFeedPosition(store, fleet)).resolves.toBeUndefined();
+  });
+
+  it('derives a pool-level estimate from store telemetry when configured', async () => {
+    const store = new MemoryStore();
+    store.appendTelemetry(
+      makeEntry({
+        selected_model_id: 'composer-latest',
+        estimated_input_tokens: 400_000,
+        timestamp: NOW.toISOString(),
+      }),
+    );
+    const fleet = [
+      makeModel('composer-latest', { fallback_cost_per_1m: 0, quota_cost_per_1m: 4 }),
+    ];
+
+    const position = await resolveQuotaWindowFeedPosition(store, fleet, {
+      estimateConfig: CONFIG,
+      now: NOW,
+    });
+    expect(position?.remaining_window_fraction).toBeCloseTo(0.6, 6);
+  });
+
+  it('uses the adapter even when the fleet has no pool models', async () => {
+    const store = new MemoryStore();
+    const fleet = [makeModel('gpt-4o-mini', { fallback_cost_per_1m: 0.6 })];
+
+    const position = await resolveQuotaWindowFeedPosition(store, fleet, {
+      adapter: {
+        id: 'test-adapter',
+        getWindowPosition: () => Promise.resolve({ remaining_window_fraction: 0.3 }),
+      },
+      now: NOW,
+    });
+    expect(position?.remaining_window_fraction).toBe(0.3);
+  });
+
+  it('omits the position when the feed is disabled (default config)', async () => {
+    const store = new MemoryStore();
+    store.appendTelemetry(
+      makeEntry({
+        selected_model_id: 'composer-latest',
+        estimated_input_tokens: 400_000,
+        timestamp: NOW.toISOString(),
+      }),
+    );
+    const fleet = [
+      makeModel('composer-latest', { fallback_cost_per_1m: 0, quota_cost_per_1m: 4 }),
+    ];
+
+    const position = await resolveQuotaWindowFeedPosition(store, fleet, { now: NOW });
+    expect(position).toBeUndefined();
   });
 });

@@ -15,6 +15,13 @@ import {
   createOnnxEmbeddingProvider,
 } from '../../../src/domain/matching/hydra-matcher.js';
 import { SessionPinner } from '../../../src/domain/pinning/session-pinner.js';
+import {
+  collectPoolModelIds,
+  resolveQuotaWindowEstimateConfigFromEnv,
+  resolveQuotaWindowPosition,
+  type QuotaWindowAdapter,
+  type QuotaWindowEstimateConfig,
+} from '../../../src/domain/pricing/quota-window-feed.js';
 import type { ModelProfile, PriceCatalog } from '../../../src/domain/types/index.js';
 import type { QuotaWindowPosition } from '../../../src/domain/types/entities.js';
 import type { OperatorConfig } from '../../../src/domain/types/schemas.js';
@@ -38,8 +45,49 @@ export interface CreateDispatchOptionsExtras {
   readonly operatorConfig?: OperatorConfig;
   /** Live price catalog when fleet discovery has loaded one. */
   readonly priceCatalog?: PriceCatalog | null;
-  /** Rolling subscription quota position when available. */
+  /** Rolling subscription quota position when available (see resolveQuotaWindowFeedPosition, SP-214). */
   readonly quotaWindowPosition?: QuotaWindowPosition;
+}
+
+/** Max telemetry rows scanned for the quota-window burn estimate (SP-214). */
+const QUOTA_FEED_TELEMETRY_LIMIT = 5000;
+
+export interface ResolveQuotaWindowFeedDeps {
+  /** Optional provider adapter (degrade chain step 1). */
+  readonly adapter?: QuotaWindowAdapter;
+  /** Estimate config override; defaults to env-resolved config. */
+  readonly estimateConfig?: QuotaWindowEstimateConfig;
+  readonly now?: Date;
+}
+
+/**
+ * Resolve the pool-level `QuotaWindowPosition` for the fleet via the SP-214
+ * degrade chain: adapter → telemetry burn estimate → omit. Returns `undefined`
+ * when the fleet has no subscription pool and no adapter, or when the feed is
+ * disabled — callers then fall back to flat virtual cost + SP-097 failover.
+ */
+export async function resolveQuotaWindowFeedPosition(
+  store: StorePort,
+  fleet: readonly ModelProfile[],
+  deps?: ResolveQuotaWindowFeedDeps,
+): Promise<QuotaWindowPosition | undefined> {
+  const poolModelIds = collectPoolModelIds(fleet);
+  if (poolModelIds.size === 0 && !deps?.adapter) {
+    return undefined;
+  }
+  const estimateConfig =
+    deps?.estimateConfig ?? resolveQuotaWindowEstimateConfigFromEnv();
+  const entries =
+    poolModelIds.size > 0
+      ? await store.listTelemetry({ limit: QUOTA_FEED_TELEMETRY_LIMIT })
+      : [];
+  return resolveQuotaWindowPosition({
+    adapter: deps?.adapter,
+    entries,
+    poolModelIds,
+    estimateConfig,
+    ...(deps?.now !== undefined ? { now: deps.now } : {}),
+  });
 }
 
 /** Minimal settings surface used for scoped fleet discovery. */
@@ -235,9 +283,11 @@ export async function rebuildFleet(
   );
   runtime.priceCatalog = catalog;
   runtime.fleetScopeFingerprint = fingerprint;
+  const quotaWindowPosition = await resolveQuotaWindowFeedPosition(runtime.store, fleet);
   const router = createRouterFromFleet(fleet, {
     ...createDispatchOptions(runtime.store, runtime.sessionPinner, runtime.hydraMatcher, {
       priceCatalog: catalog,
+      ...(quotaWindowPosition !== undefined ? { quotaWindowPosition } : {}),
     }),
     lifecycleHookState: runtime.lifecycleHookState,
   });

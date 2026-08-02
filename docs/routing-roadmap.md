@@ -89,7 +89,7 @@ Ordered for **task success per dollar**. Status reflects the codebase as of 2026
 | **Pipeline stages** | `session_pin`, pricing broker, expected-cost (SP-096/106) |
 | **Evidence** | SP-096; SAAR; Zylos FinOps; gemini-research §7 (SeqRoute framing only). Confidence: medium. |
 | **Effort** | M |
-| **Status** | **Landed** — virtual cost v2 (`src/domain/pricing/virtual-cost-v2.ts`, closed [#78](https://github.com/beettlle/pi-smart-router/issues/78)) with quota λ / KV savings credit; pin-break breakeven via closed [#73](https://github.com/beettlle/pi-smart-router/issues/73). |
+| **Status** | **Landed** — virtual cost v2 (`src/domain/pricing/virtual-cost-v2.ts`, closed [#78](https://github.com/beettlle/pi-smart-router/issues/78)) with quota λ / KV savings credit; pin-break breakeven via closed [#73](https://github.com/beettlle/pi-smart-router/issues/73). **Feed producer** landed via SP-214 ([#125](https://github.com/beettlle/pi-smart-router/issues/125)): `src/domain/pricing/quota-window-feed.ts` (adapter → telemetry pool burn estimate → omit) wired through the extension → `createDispatchOptions`. |
 | **Follow-on** | Closed [#78](https://github.com/beettlle/pi-smart-router/issues/78), [#73](https://github.com/beettlle/pi-smart-router/issues/73). |
 
 ### P3 — Encoder upgrade path (Granite 97M before ModernBERT)
@@ -331,6 +331,7 @@ Full parallel dump: [research/routing-quality-2026-07.json](research/routing-qua
 | P1 HyDRA 7-flag prefix | SP-112 (4-flag) | [#76](https://github.com/beettlle/pi-smart-router/issues/76) |
 | P2 OATS | SP-114 | [#77](https://github.com/beettlle/pi-smart-router/issues/77) |
 | P2 virtual cost v2 | SP-096, SP-106 | [#78](https://github.com/beettlle/pi-smart-router/issues/78) |
+| P2 quota window feed | SP-214 | [#125](https://github.com/beettlle/pi-smart-router/issues/125) |
 | P2 eval harness | — | [#79](https://github.com/beettlle/pi-smart-router/issues/79) |
 | P3 encoder | SP-115 | [#80](https://github.com/beettlle/pi-smart-router/issues/80), [#81](https://github.com/beettlle/pi-smart-router/issues/81) |
 | P3 entropy triage | Confounder sanitization | [#82](https://github.com/beettlle/pi-smart-router/issues/82) |

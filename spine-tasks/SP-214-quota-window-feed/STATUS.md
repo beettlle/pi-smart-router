@@ -1,6 +1,6 @@
 # SP-214: Quota Window Feed for Virtual Cost v2 — Status
 
-**Current Step:** Step 1
+**Current Step:** Step 3
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-08-02
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Feed module + degrade chain
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [ ] Document adapter → estimate → omit
 - [ ] Pool-level QuotaWindowPosition or omit
@@ -22,15 +22,15 @@
 
 ## Step 2: Extension wiring + tests
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Wire into createDispatchOptions / pipeline
-- [ ] Unit tests for estimate/adapter mapping
-- [ ] Roadmap/README feed note
+- [x] Wire into createDispatchOptions / pipeline
+- [x] Unit tests for estimate/adapter mapping
+- [x] Roadmap/README feed note
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Contract `testCommand` green
 - [ ] Related virtual-cost / extension tests if touched
@@ -52,7 +52,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-08-02 | 1 | plan | SKIPPED (engine-owned; SP-195) |
 
 ## Discoveries
 

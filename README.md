@@ -462,6 +462,10 @@ See [routing-roadmap.md](docs/routing-roadmap.md) §2 P0 and GitHub [#71](https:
 
 Rolling-window position is supplied to the router pipeline as `quotaWindowPosition` (library API / telemetry integration). Use `remaining_window_fraction` in `[0, 1]` (1 = full budget). Optionally derive it from elapsed time and consumed quota via `deriveRemainingWindowFraction(elapsed_seconds, consumed_fraction)` in `virtual-cost-v2.ts` (defaults assume a Cursor-style **5h** window).
 
+**Quota window feed (producer, [#125](https://github.com/beettlle/pi-smart-router/issues/125))**
+
+There is no universal cross-provider "remaining quota" API, so `src/domain/pricing/quota-window-feed.ts` produces the position via an adapter + degrade chain: (1) a provider `QuotaWindowAdapter` when a trustworthy signal exists, (2) a telemetry-derived **pool-level** burn estimate over the rolling window (subscription-pool models = fleet entries with `quota_cost_per_1m`; enabled via `SMART_ROUTER_QUOTA_POOL_BUDGET_TOKENS` + `SMART_ROUTER_QUOTA_WINDOW_SECONDS`), (3) omit → flat virtual cost + SP-097 exhaustion failover. The smart-router extension resolves the feed at fleet rebuild and passes it through `createDispatchOptions` (SP-173 wiring gap closed). Soft bias only — no hard ban at any threshold; SP-097 reactive failover remains the safety net when the feed is missing or stale. Per-model fractions for shared pools are never invented.
+
 When `quotaWindowPosition` is omitted, λ stays at 1 and quota premiums are zero — behavior matches SP-096 flat virtual cost.
 
 **Operator knobs** (`VirtualCostV2Config` — wire through `RouterPipeline` options today; defaults in `DEFAULT_VIRTUAL_COST_V2_CONFIG`):
