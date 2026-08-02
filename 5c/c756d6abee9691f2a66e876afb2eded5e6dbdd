@@ -1,0 +1,30 @@
+spine-tasks/SP-212-degraded-neural-failover/STATUS.md
+  h_ae151c586ac6c5 4,15,17-20
+src/config/defaults.ts
+  h_ae151c586ac6c5 7,67
+src/domain/pipeline/router-pipeline.ts
+  h_ae151c586ac6c5 17,75-83,272-277,321-323,374-375,473-474,595-623,628-632,1764-1767,1779-1789,1792-1795,1807-1810,1826-1904
+src/domain/routing/degraded-route-sandwich.ts
+  h_ae151c586ac6c5 1-478
+src/domain/types/entities.ts
+  h_ae151c586ac6c5 33-41,344-347,522-525
+src/domain/types/index.ts
+  h_ae151c586ac6c5 44
+src/domain/types/schemas.ts
+  h_ae151c586ac6c5 371-400,559-560
+src/infrastructure/telemetry/routing-telemetry.ts
+  h_ae151c586ac6c5 37,1309-1314,1347-1352,1362,1369,1375,1448-1449
+tests/unit/degraded-route-sandwich.test.ts
+  h_ae151c586ac6c5 1-614
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "5cc756d6abee9691f2a66e876afb2eded5e6dbdd",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
