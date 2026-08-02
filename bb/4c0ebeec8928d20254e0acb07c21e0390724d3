@@ -1,0 +1,14 @@
+spine-tasks/SP-214-quota-window-feed/STATUS.md
+  h_ae151c586ac6c5 3-4,33,35-39,45-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "bb4c0ebeec8928d20254e0acb07c21e0390724d3",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
