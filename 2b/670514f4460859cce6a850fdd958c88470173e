@@ -1,0 +1,14 @@
+spine-tasks/SP-213-planning-delegate-timeouts/STATUS.md
+  h_ae151c586ac6c5 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "2b670514f4460859cce6a850fdd958c88470173e",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
