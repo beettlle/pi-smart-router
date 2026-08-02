@@ -15,7 +15,7 @@
   },
   "agents": {
     "worker": {
-      "model": "zai/glm-5.2",
+      "model": "kimi-coding/k3",
       "thinking": "high"
     },
     "reviewer": {
@@ -45,6 +45,32 @@
     "profiles": {
       "default": {
         "worker": {
+          "model": "kimi-coding/k3",
+          "thinking": "high"
+        },
+        "reviewer": {
+          "model": "google/gemini-3.1-pro-preview",
+          "thinking": "high",
+          "plan": {
+            "model": "google/gemini-flash-latest",
+            "thinking": "low"
+          },
+          "code": {
+            "model": "kimi-coding/kimi-k2-thinking",
+            "thinking": "high"
+          },
+          "final": {
+            "model": "google/gemini-3.1-pro-preview",
+            "thinking": "high"
+          }
+        },
+        "supervisor": {
+          "model": "google/gemini-flash-lite-latest",
+          "thinking": "off"
+        }
+      },
+      "budget": {
+        "worker": {
           "model": "zai/glm-5.2",
           "thinking": "high"
         },
@@ -69,15 +95,9 @@
           "thinking": "off"
         }
       },
-      "mid": {
-        "worker": {
-          "model": "kimi-coding/kimi-for-coding",
-          "thinking": "high"
-        }
-      },
       "hard": {
         "worker": {
-          "model": "kimi-coding/k3",
+          "model": "kimi-coding/kimi-k2-thinking",
           "thinking": "high"
         },
         "reviewer": {
