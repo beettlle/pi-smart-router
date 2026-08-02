@@ -1,12 +1,12 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-07-20
+**Last Updated:** 2026-08-02
 **Status:** Active
-**Next Task ID:** SP-212
+**Next Task ID:** SP-215
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** v0.13.0 (2026-07-20) — SP-208–SP-211 multi-fleet dogfood routing correctness (#124/#121/#122/#123). Prior v0.12.2 AuthStorage hotfix; v0.12.1 SP-207 (#118); v0.12.0 SP-205–SP-206 (#110 Partial).
-**In progress:** Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 remains open until real exports.
+**In progress:** Release **v0.14.0** authoring (SP-212–SP-214). Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 remains open until real exports.
 
 ---
 
@@ -670,6 +670,30 @@
 **Deferred:** #95/#110 (human/exports), #96/#114 encoder, #115–#117 Colibri, #119/#120 reliability, #125 quota feed, #1/#25/#26 hardware.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.13.0/manifest.md`
+
+### Phase 46 — Release v0.14.0 Routing Session Resilience (SP-212–SP-214)
+
+| Task | Summary | Size | Deps | Maps |
+|------|---------|------|------|------|
+| SP-212 | Degraded neural failover sandwich (learned/heuristic/safe default) | M | — | Closes #119 |
+| SP-213 | Bounded timeouts for planning_delegate / fan-out | M | — | Closes #120 |
+| SP-214 | Live / estimated quota window feed for virtual cost v2 | M | — | Closes #125 |
+
+**Source:** Operator-approved **v0.14.0** (2026-08-02). Original ask was v0.13.1 patch; reclassified to minor (0 open bugs/docs). Theme: routing session resilience.
+
+**Wave order (proposed):**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| 1 | SP-212 | Failover sandwich — pipeline / routing module |
+| 2 | SP-213 | planning_delegate timeouts — extension path |
+| 3 | SP-214 | Quota feed — fleet-bootstrap + pricing feed |
+
+**Status:** Packets authored; awaiting Phase 4 batch execution.
+
+**Deferred:** #95/#110 (human/exports), #96/#114 encoder, #115–#117 Colibri, #1/#25/#26 hardware.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.14.0/manifest.md`
 
 ---
 
