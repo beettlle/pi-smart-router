@@ -29,21 +29,21 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
-- [ ] Contract `testCommand` green
-- [ ] Related planning-delegate tests if present
-- [ ] coverage:check
-- [ ] #120 commented + closable
+- [x] Contract `testCommand` green
+- [x] Related planning-delegate tests if present
+- [x] coverage:check
+- [x] #120 commented + closable
 
 ---
 
 ## Completion Criteria
 
-- [ ] Timeouts enforced with documented knobs
-- [ ] Timeout → cancel + reason + safe fallback
-- [ ] Telemetry fields present
-- [ ] #120 closable
+- [x] Timeouts enforced with documented knobs
+- [x] Timeout → cancel + reason + safe fallback
+- [x] Telemetry fields present
+- [x] #120 closable
 
 ---
 
@@ -58,6 +58,7 @@
 | Date | Finding | Impact |
 |------|---------|--------|
 | 2026-08-02 | docs/routing-roadmap.md checked — planning_delegate row already "Landed"; timeout is an operational bound documented in README + config docstrings, no roadmap edit needed | None |
+| 2026-08-02 | Scope expansion (documented per File Scope rule): tests/integration/pi-extension.test.ts needed a mechanical toEqual update for the new PlanningDelegateConfig timeout fields — forced by the in-scope type change; no behavior change | test-only |
 
 ## Notes
 

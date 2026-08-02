@@ -7,7 +7,7 @@
  * Release matrix: cache-preserving planning delegate (SP-145, #71).
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { Api, Context, Model } from '@earendil-works/pi-ai/compat';
 import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
