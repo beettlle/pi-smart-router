@@ -178,6 +178,9 @@ function makePlanningDelegateDecision(
       },
       planning_delegate_reason_code: 'planning_delegate',
       fallback_reason: null,
+      workers_spawned: null,
+      workers_succeeded: null,
+      worker_timeout_count: null,
     },
   );
 }

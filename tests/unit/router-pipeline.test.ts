@@ -17,7 +17,7 @@ import type { ThroughputMeter } from '../../src/infrastructure/hardware/throughp
 import { THROUGHPUT_BELOW_THRESHOLD } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 import type { ModelProfile, PriceCatalog, RoutingRequest } from '../../src/domain/types/index.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
-import { DEFAULT_SAAR_CONFIG } from '../../src/domain/types/schemas.js';
+import { DEFAULT_SAAR_CONFIG, DEFAULT_PLANNING_DELEGATE_CONFIG } from '../../src/domain/types/schemas.js';
 import {
   P_SUCCESS_FEATURE_NAMES,
   createDefaultPSuccessWeights,
@@ -283,8 +283,8 @@ describe('RouterPipeline', () => {
         sessionPinner: pinner,
         saarConfig,
         planningDelegateConfig: {
+          ...DEFAULT_PLANNING_DELEGATE_CONFIG,
           enabled: false,
-          compressed_context: DEFAULT_OPERATOR_CONFIG.planning_delegate.compressed_context,
         },
       });
 
@@ -312,8 +312,8 @@ describe('RouterPipeline', () => {
       const pipeline = new RouterPipeline(pinFleet, {
         sessionPinner: pinner,
         planningDelegateConfig: {
+          ...DEFAULT_PLANNING_DELEGATE_CONFIG,
           enabled: false,
-          compressed_context: DEFAULT_OPERATOR_CONFIG.planning_delegate.compressed_context,
         },
       });
       const decision = await pipeline.route(makeRequest({ turn_type: 'planning' }));

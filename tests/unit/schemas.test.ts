@@ -24,6 +24,8 @@ const validPlanningDelegateConfig = {
     max_tokens: 16_384,
     exclude_execution_history: true,
   },
+  global_timeout_ms: 120_000,
+  sub_call_timeout_ms: 30_000,
 };
 
 describe('CompressedContextSpecSchema', () => {

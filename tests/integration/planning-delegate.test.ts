@@ -14,7 +14,7 @@ import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../src/domain/types/index.js';
-import { DEFAULT_SAAR_CONFIG } from '../../src/domain/types/schemas.js';
+import { DEFAULT_SAAR_CONFIG, DEFAULT_PLANNING_DELEGATE_CONFIG } from '../../src/domain/types/schemas.js';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -183,8 +183,8 @@ describe('Planning delegate integration (SP-145, #71)', () => {
         sessionPinner: pinner,
         saarConfig,
         planningDelegateConfig: {
+          ...DEFAULT_PLANNING_DELEGATE_CONFIG,
           enabled: false,
-          compressed_context: DEFAULT_OPERATOR_CONFIG.planning_delegate.compressed_context,
         },
       });
       const explain = createExplainHandler({

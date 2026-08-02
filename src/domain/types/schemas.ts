@@ -321,10 +321,14 @@ export const CompressedContextSpecSchema = z.object({
 
 export type CompressedContextSpec = z.infer<typeof CompressedContextSpecSchema>;
 
-/** Planning delegate operator knobs (SP-142, #71). */
+/** Planning delegate operator knobs (SP-142, #71; timeouts SP-213, #120). */
 export const PlanningDelegateConfigSchema = z.object({
   enabled: z.boolean(),
   compressed_context: CompressedContextSpecSchema,
+  /** Global cap (ms) for the whole delegate stage; mirrors llm-use WORKER_GLOBAL_TIMEOUT. */
+  global_timeout_ms: z.number().int().positive(),
+  /** Per-call cap (ms) for each delegate sub-call worker; mirrors llm-use WORKER_CALL_TIMEOUT. */
+  sub_call_timeout_ms: z.number().int().positive(),
 });
 
 export type PlanningDelegateConfig = z.infer<typeof PlanningDelegateConfigSchema>;
@@ -376,7 +380,10 @@ export const DEFAULT_SAAR_CONFIG: Readonly<SaarConfig> = {
   switch_threshold: 0.5,
 } as const;
 
-/** Planning delegate defaults per routing-roadmap.md §2 P0 / #71 (SP-142). */
+/** Planning delegate defaults per routing-roadmap.md §2 P0 / #71 (SP-142).
+ * Timeout bounds mirror llm-use worker discipline (SP-213, #120):
+ * 120s global stage cap (WORKER_GLOBAL_TIMEOUT), 30s per sub-call (WORKER_CALL_TIMEOUT).
+ */
 export const DEFAULT_PLANNING_DELEGATE_CONFIG: Readonly<PlanningDelegateConfig> = {
   enabled: true,
   compressed_context: {
@@ -384,6 +391,8 @@ export const DEFAULT_PLANNING_DELEGATE_CONFIG: Readonly<PlanningDelegateConfig> 
     max_tokens: 16_384,
     exclude_execution_history: true,
   },
+  global_timeout_ms: 120_000,
+  sub_call_timeout_ms: 30_000,
 } as const;
 
 /** Env: SMART_ROUTER_PLANNING_DELEGATE_ENABLED — enable delegate path (default true). */
@@ -395,6 +404,12 @@ const ENV_PLANNING_DELEGATE_MAX_TOKENS = 'SMART_ROUTER_PLANNING_DELEGATE_MAX_TOK
 /** Env: SMART_ROUTER_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY — exclude tool traces (default true). */
 const ENV_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY =
   'SMART_ROUTER_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY';
+/** Env: SMART_ROUTER_PLANNING_DELEGATE_GLOBAL_TIMEOUT_MS — global delegate stage cap ms (default 120000). */
+const ENV_PLANNING_DELEGATE_GLOBAL_TIMEOUT_MS =
+  'SMART_ROUTER_PLANNING_DELEGATE_GLOBAL_TIMEOUT_MS';
+/** Env: SMART_ROUTER_PLANNING_DELEGATE_SUB_CALL_TIMEOUT_MS — per sub-call worker cap ms (default 30000). */
+const ENV_PLANNING_DELEGATE_SUB_CALL_TIMEOUT_MS =
+  'SMART_ROUTER_PLANNING_DELEGATE_SUB_CALL_TIMEOUT_MS';
 
 function readBooleanEnv(name: string): boolean | undefined {
   const raw = process.env[name];
@@ -428,6 +443,12 @@ export function resolvePlanningDelegateConfigFromEnv(
         readBooleanEnv(ENV_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY) ??
         base.compressed_context.exclude_execution_history,
     },
+    global_timeout_ms:
+      readPositiveIntEnv(ENV_PLANNING_DELEGATE_GLOBAL_TIMEOUT_MS) ??
+      base.global_timeout_ms,
+    sub_call_timeout_ms:
+      readPositiveIntEnv(ENV_PLANNING_DELEGATE_SUB_CALL_TIMEOUT_MS) ??
+      base.sub_call_timeout_ms,
   };
 }
 

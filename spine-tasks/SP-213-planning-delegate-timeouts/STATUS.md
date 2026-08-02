@@ -1,7 +1,7 @@
 # SP-213: Bounded Planning Delegate Timeouts — Status
 
 **Current Step:** Step 1
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 **Last Updated:** 2026-08-02
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,11 +12,11 @@
 
 ## Step 1: Timeout knobs + enforce
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Document global + per-call timeout knobs
-- [ ] On timeout: cancel + reason + safe fallback
-- [ ] Telemetry timeout / success counts
+- [x] Document global + per-call timeout knobs
+- [x] On timeout: cancel + reason + safe fallback
+- [x] Telemetry timeout / success counts
 
 **Plan-review checkpoint** — Confirm no unbounded queue growth; happy-path defaults preserved.
 
