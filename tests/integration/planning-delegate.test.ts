@@ -7,14 +7,25 @@
  * Release matrix: cache-preserving planning delegate (SP-145, #71).
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import type { Api, Context, Model } from '@earendil-works/pi-ai/compat';
+import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
+
+import {
+  resolvePlanningDelegatePath,
+  type PlanningDelegateSpawnFn,
+  type PlanningDelegateSpawnResult,
+} from '../../.pi/extensions/smart-router/planning-delegate.js';
+import type { StreamDelegationDeps } from '../../.pi/extensions/smart-router/types.js';
 import { createExplainHandler } from '../../src/api/explain/router-explain.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
+import { ExecutionLedger } from '../../src/domain/delegation/execution-ledger.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../src/domain/types/index.js';
 import { DEFAULT_SAAR_CONFIG, DEFAULT_PLANNING_DELEGATE_CONFIG } from '../../src/domain/types/schemas.js';
+import type { RouterHandle } from '../../src/index.js';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -62,6 +73,12 @@ const REQUEST_IDS = {
   explainDirect: '550e8400-e29b-41d4-a716-446655440013',
   parityWarmup: '550e8400-e29b-41d4-a716-446655440014',
   parityPlanning: '550e8400-e29b-41d4-a716-446655440015',
+  slowWarmup: '550e8400-e29b-41d4-a716-446655440016',
+  slowPlanning: '550e8400-e29b-41d4-a716-446655440017',
+  fastWarmup: '550e8400-e29b-41d4-a716-446655440018',
+  fastPlanning: '550e8400-e29b-41d4-a716-446655440019',
+  globalWarmup: '550e8400-e29b-41d4-a716-446655440020',
+  globalPlanning: '550e8400-e29b-41d4-a716-446655440021',
 } as const;
 
 function makeRequest(overrides?: Partial<RoutingRequest>): RoutingRequest {
@@ -246,6 +263,161 @@ describe('Planning delegate integration (SP-145, #71)', () => {
       expect(explainDecision.features?.planning_delegate?.path).toBe(
         liveDecision.features?.planning_delegate?.path,
       );
+    });
+  });
+
+  describe('bounded delegate timeouts (SP-213, #120)', () => {
+    const emptyContext = { messages: [] } as unknown as Context;
+
+    const timeoutRegistry = {
+      find(provider: string, id: string) {
+        return {
+          provider,
+          id,
+          api: 'anthropic-messages',
+        } as unknown as Model<Api>;
+      },
+    } as unknown as ModelRegistry;
+
+    function makeTimeoutDeps(
+      spawnPlanningDelegate: PlanningDelegateSpawnFn,
+      planningDelegateConfig: typeof DEFAULT_PLANNING_DELEGATE_CONFIG,
+    ): StreamDelegationDeps {
+      return {
+        router: {} as unknown as RouterHandle,
+        modelRegistry: timeoutRegistry,
+        fleet,
+        executionLedger: new ExecutionLedger(),
+        spawnPlanningDelegate,
+        planningDelegateConfig,
+      };
+    }
+
+    async function routePlanningDecision(warmupId: string, planningId: string) {
+      const pinner = new SessionPinner();
+      const pipeline = new RouterPipeline(fleet, { sessionPinner: pinner });
+      await pipeline.route(
+        makeRequest({ request_id: warmupId, turn_type: 'main_loop' }),
+      );
+      return pipeline.route(
+        makeRequest({ request_id: planningId, turn_type: 'planning' }),
+      );
+    }
+
+    it('slow worker is cancelled on per-call timeout and falls back without hanging', async () => {
+      const decision = await routePlanningDecision(
+        REQUEST_IDS.slowWarmup,
+        REQUEST_IDS.slowPlanning,
+      );
+      expect(decision.reason_code).toBe('planning_delegate');
+
+      let observedSignal: AbortSignal | undefined;
+      const slowWorker: PlanningDelegateSpawnFn = (_model, _ctx, options) => {
+        observedSignal = options?.signal;
+        // Stalled worker: never settles (llm-use test_spawn_workers_global_timeout intent).
+        return new Promise<PlanningDelegateSpawnResult>(() => {});
+      };
+      const deps = makeTimeoutDeps(slowWorker, {
+        ...DEFAULT_PLANNING_DELEGATE_CONFIG,
+        sub_call_timeout_ms: 25,
+      });
+
+      const started = Date.now();
+      const resolution = await resolvePlanningDelegatePath(
+        emptyContext,
+        decision,
+        undefined,
+        deps,
+      );
+      // No hang: fallback resolves promptly even though the worker never settles.
+      expect(Date.now() - started).toBeLessThan(5_000);
+
+      // Cancellation signal forwarded to the abandoned worker.
+      expect(observedSignal?.aborted).toBe(true);
+
+      expect(resolution.usedDelegatePath).toBe(false);
+      expect(resolution.decision.reason_code).toBe('planning_direct_frontier');
+      expect(resolution.decision.selected_model_id).toBe('claude-opus');
+      expect(resolution.decision.features?.planning_delegate).toMatchObject({
+        path: 'direct',
+        fallback_reason: 'planning_delegate_timeout',
+        workers_spawned: 1,
+        workers_succeeded: 0,
+        worker_timeout_count: 1,
+      });
+    });
+
+    it('global timeout caps the stage when tighter than the per-call timeout', async () => {
+      const decision = await routePlanningDecision(
+        REQUEST_IDS.globalWarmup,
+        REQUEST_IDS.globalPlanning,
+      );
+
+      const stalledWorker: PlanningDelegateSpawnFn = () =>
+        new Promise<PlanningDelegateSpawnResult>(() => {});
+      const deps = makeTimeoutDeps(stalledWorker, {
+        ...DEFAULT_PLANNING_DELEGATE_CONFIG,
+        global_timeout_ms: 20,
+        sub_call_timeout_ms: 60_000,
+      });
+
+      const started = Date.now();
+      const resolution = await resolvePlanningDelegatePath(
+        emptyContext,
+        decision,
+        undefined,
+        deps,
+      );
+      expect(Date.now() - started).toBeLessThan(5_000);
+      expect(resolution.usedDelegatePath).toBe(false);
+      expect(
+        resolution.decision.features?.planning_delegate?.fallback_reason,
+      ).toBe('planning_delegate_timeout');
+      expect(
+        resolution.decision.features?.planning_delegate?.worker_timeout_count,
+      ).toBe(1);
+    });
+
+    it('fast worker within budget keeps delegate path and records worker success', async () => {
+      const decision = await routePlanningDecision(
+        REQUEST_IDS.fastWarmup,
+        REQUEST_IDS.fastPlanning,
+      );
+
+      const fastWorker: PlanningDelegateSpawnFn = async () => ({
+        ok: true,
+        observationText: 'Plan: modular service layout.',
+      });
+      const deps = makeTimeoutDeps(fastWorker, DEFAULT_PLANNING_DELEGATE_CONFIG);
+
+      const resolution = await resolvePlanningDelegatePath(
+        emptyContext,
+        decision,
+        undefined,
+        deps,
+      );
+
+      expect(resolution.usedDelegatePath).toBe(true);
+      expect(resolution.decision.reason_code).toBe('planning_delegate');
+      expect(resolution.decision.selected_model_id).toBe('claude-haiku');
+      expect(resolution.decision.features?.planning_delegate).toMatchObject({
+        path: 'delegate',
+        workers_spawned: 1,
+        workers_succeeded: 1,
+        worker_timeout_count: 0,
+      });
+
+      const observation = resolution.context.messages.at(-1);
+      expect(typeof observation?.content).toBe('string');
+      if (typeof observation?.content === 'string') {
+        expect(observation.content).toContain('Plan: modular service layout.');
+      }
+    });
+
+    it('default config leaves happy path unbounded by tight test budgets', async () => {
+      // Defaults mirror llm-use: 120s global / 30s per-call — existing behavior preserved.
+      expect(DEFAULT_PLANNING_DELEGATE_CONFIG.global_timeout_ms).toBe(120_000);
+      expect(DEFAULT_PLANNING_DELEGATE_CONFIG.sub_call_timeout_ms).toBe(30_000);
     });
   });
 });

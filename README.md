@@ -368,6 +368,8 @@ Cluster IDs are stable reason-code prefixes (`cluster_low_stakes_general`, `clus
 | `SMART_ROUTER_PLANNING_DELEGATE_MAX_MESSAGES` | `12` | Compressed-context message cap for frontier sub-call |
 | `SMART_ROUTER_PLANNING_DELEGATE_MAX_TOKENS` | `16384` | Compressed-context token cap for frontier sub-call |
 | `SMART_ROUTER_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY` | `true` | Exclude tool execution history from delegate payload |
+| `SMART_ROUTER_PLANNING_DELEGATE_GLOBAL_TIMEOUT_MS` | `120000` | Global cap (ms) on the whole planning-delegate stage per planning turn — bounds fan-out wall-clock so a stalled worker cannot hang TTFT ([#120](https://github.com/beettlle/pi-smart-router/issues/120)) |
+| `SMART_ROUTER_PLANNING_DELEGATE_SUB_CALL_TIMEOUT_MS` | `30000` | Per-call cap (ms) on each delegate sub-call worker; on expiry the worker is cancelled/abandoned and routing falls back to direct frontier with `planning_delegate_timeout` ([#120](https://github.com/beettlle/pi-smart-router/issues/120)) |
 | `SMART_ROUTER_PREFIX_CACHE_WEIGHT` | `0.20` | SAAR weight on warm prefix value in cache breakeven math (0–1; [#73](https://github.com/beettlle/pi-smart-router/issues/73)) |
 | `SMART_ROUTER_IDLE_TIMEOUT_SECONDS` | `300` | SAAR idle seconds before pin reopens for full re-route |
 | `SMART_ROUTER_SWITCH_THRESHOLD` | `0.5` | SAAR switch score gate (0–1) for tier upgrades during hard-lock |

@@ -1,6 +1,6 @@
 # SP-213: Bounded Planning Delegate Timeouts — Status
 
-**Current Step:** Step 1
+**Current Step:** Step 3
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-08-02
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Timeout knobs + enforce
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Document global + per-call timeout knobs
 - [x] On timeout: cancel + reason + safe fallback
@@ -22,14 +22,14 @@
 
 ## Step 2: Slow-worker test + docs
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Injected slow-worker test
-- [ ] Operator-facing knob note
+- [x] Injected slow-worker test
+- [x] Operator-facing knob note
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Contract `testCommand` green
 - [ ] Related planning-delegate tests if present
@@ -51,13 +51,13 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-08-02 | 1 | plan | SKIPPED (engine-owned, SP-195) |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-08-02 | docs/routing-roadmap.md checked — planning_delegate row already "Landed"; timeout is an operational bound documented in README + config docstrings, no roadmap edit needed | None |
 
 ## Notes
 
