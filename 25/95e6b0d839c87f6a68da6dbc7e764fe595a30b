@@ -1,0 +1,26 @@
+.pi/extensions/smart-router/extension-setup.ts
+  h_ae151c586ac6c5 21,46-48,77-79
+.pi/extensions/smart-router/fleet-bootstrap.ts
+  h_ae151c586ac6c5 18,20-28,53-89,283,287
+.pi/extensions/smart-router/index.ts
+  h_ae151c586ac6c5 36,104
+spine-tasks/SP-214-quota-window-feed/STATUS.md
+  h_ae151c586ac6c5 4,15,17-19,61-63
+src/domain/pricing/quota-window-feed.ts
+  h_ae151c586ac6c5 1-241
+src/domain/types/schemas.ts
+  h_ae151c586ac6c5 371-447
+tests/unit/quota-window-feed.test.ts
+  h_ae151c586ac6c5 1-418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "2595e6b0d839c87f6a68da6dbc7e764fe595a30b",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
