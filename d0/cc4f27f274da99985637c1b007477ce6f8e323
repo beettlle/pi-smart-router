@@ -1,0 +1,14 @@
+spine-tasks/SP-213-planning-delegate-timeouts/.reviews/final-20260802T235718.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "d0cc4f27f274da99985637c1b007477ce6f8e323",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
