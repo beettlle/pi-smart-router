@@ -44,18 +44,18 @@ Partial #114 — Produce trained `config/modernbert-k4-heads.json` loadable via 
 
 | Scope | Paths |
 |-------|-------|
-| Must change | Path (A): `config/modernbert-k4-heads.json` (create) **and** a train script under `scripts/` (e.g. `scripts/train-modernbert-k4-heads.ts`) **and** `package.json` script alias. Path (B) if floors unmet: `spine-tasks/_authoring/release-v0.16.0/modernbert-k4-heads-partial.md` documenting why heads remain operator-local |
+| Must change | `spine-tasks/_authoring/release-v0.16.0/modernbert-k4-heads-partial.md` (Path B — no privacy-safe [CLS]/K=4 labels; do not invent weights). Path A (`config/modernbert-k4-heads.json` + train script) deferred to a future task when labeled corpus exists. |
 | May change | `tests/unit/modernbert-heads.test.ts`, `src/domain/matching/modernbert-heads.ts` (loader/helpers only), `README.md` (one-line pointer), `tests/eval/corpus/label-packs/PROVENANCE.md` |
-| Must NOT change | `src/config/defaults.ts`, `config/release-gates.json`, `src/domain/pipeline/router-pipeline.ts`, `.pi/extensions/smart-router/index.ts`, `scripts/eval/counterfactual-replay.ts` (SP-219) |
+| Must NOT change | `src/config/defaults.ts`, `config/release-gates.json`, `src/domain/pipeline/router-pipeline.ts`, `.pi/extensions/smart-router/index.ts`, `scripts/eval/counterfactual-replay.ts` (SP-219), `config/modernbert-k4-heads.json` (not shipping Path A) |
 
 ## Contract
 
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/modernbert-heads.test.ts` |
-| fileScopeMustChange | Path (A): `config/modernbert-k4-heads.json`. Path (B): `spine-tasks/_authoring/release-v0.16.0/modernbert-k4-heads-partial.md` |
+| fileScopeMustChange | `spine-tasks/_authoring/release-v0.16.0/modernbert-k4-heads-partial.md` |
 | fileScopeMustNotChange | `src/config/defaults.ts`, `config/release-gates.json`, `scripts/eval/counterfactual-replay.ts` |
-| completionCriteria | Either (A) checked-in heads artifact loads via DEFAULT path + train script + unit coverage; or (B) Partial writeup with honest blocker and no invented weights. Defaults untouched. |
+| completionCriteria | Path (B) Partial writeup with honest blocker and no invented weights; loader null at DEFAULT path covered by unit tests; defaults untouched. |
 
 ## Steps
 
@@ -84,7 +84,7 @@ Partial #114 — Produce trained `config/modernbert-k4-heads.json` loadable via 
 ## Documentation Requirements
 
 **Must Update:**
-- Path (A): train script header / README one-liner for artifact **or** Path (B): `spine-tasks/_authoring/release-v0.16.0/modernbert-k4-heads-partial.md` *(also in File Scope)*
+- `spine-tasks/_authoring/release-v0.16.0/modernbert-k4-heads-partial.md` *(also in File Scope)*
 
 **Check If Affected:**
 - `tests/eval/corpus/label-packs/PROVENANCE.md`
@@ -112,4 +112,4 @@ Partial #114 — Produce trained `config/modernbert-k4-heads.json` loadable via 
 
 ## Amendments
 
-None.
+- **2026-08-03:** Contract `fileScopeMustChange` narrowed to Path (B) Partial only — verifier treats the cell as literal path(s), not Path A/B prose. Path A deferred (no privacy-safe training data).
