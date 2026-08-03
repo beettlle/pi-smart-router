@@ -1,7 +1,7 @@
 # SP-218: Train / Ship ModernBERT K=4 Heads Artifact — Status
 
 **Current Step:** 1
-**Status:** ⬜ Not Started
+**Status:** 🔵 In Progress
 **Last Updated:** 2026-08-03
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,12 +12,12 @@
 
 ## Step 1: Train path + artifact or Partial
 
-**Status:** ⬜ Not Started
+**Status:** 🔵 In Progress
 
-- [ ] Inspect privacy-safe training sources
-- [ ] Train script + ship `config/modernbert-k4-heads.json` **or** Partial writeup
-- [ ] Provenance recorded
-- [ ] package.json script alias when train path exists
+- [x] Inspect privacy-safe training sources
+- [x] Train script + ship `config/modernbert-k4-heads.json` **or** Partial writeup — Path (B): `spine-tasks/_authoring/release-v0.16.0/modernbert-k4-heads-partial.md`
+- [x] Provenance recorded (blocker + operator-local path documented in Partial)
+- [x] package.json script alias when train path exists — N/A (Path B: no train path, no data source)
 
 **Plan-review checkpoint** — No invented weights; schema valid; defaults untouched.
 
@@ -58,6 +58,7 @@
 
 | Date | Finding | Impact |
 |------|---------|--------|
+| 2026-08-03 | No privacy-safe source of [CLS] embeddings or per-dimension K=4 labels: label packs = feature vectors + binary `success` only (no 768-dim inputs); TwinRouterBench keeps `prefix_hash` only (no prompt text); `agent-turn-samples.json` has 20 prompts with no K=4 labels; ModernBERT ONNX not in local cache | Path (A) infeasible without inventing weights → Path (B) Partial writeup |
 
 ## Notes
 
