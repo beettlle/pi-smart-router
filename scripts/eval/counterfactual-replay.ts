@@ -5,16 +5,24 @@
  * Replays multi-turn agent trace fixtures and compares actual routing against
  * counterfactual policies (cheap-at-step-k, hindsight-optimal). Computes
  * cumulative regret vs the cheapest tier that would succeed at each step.
+ *
+ * SP-219 (#114): `--k4-ab` extends the SP-160 fixture QR smoke into a fuller
+ * offline A/B — per-step Top-1 / shortfall / cost-regret stats for
+ * `learned_projection` vs `modernbert_k4` on trace fixtures and TwinRouterBench
+ * static tracks (--corpus). K=4 uses placeholder heads unless
+ * config/modernbert-k4-heads.json is present (flagged in output).
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve, join } from 'node:path';
 
 import { EMBEDDING_DIM } from '../../src/domain/matching/embedding-provider.js';
 import {
   MODERNBERT_CLS_DIM,
+  MODERNBERT_K4_ENABLE_TOP1_ERROR_THRESHOLD,
   MODERNBERT_K4_HEAD_COUNT,
+  loadModernBertK4HeadWeights,
   projectClsToK4Capabilities,
   type K4CapabilityVector,
 } from '../../src/domain/matching/modernbert-heads.js';
@@ -27,12 +35,18 @@ import {
   estimateStepCostUsd,
   loadEvalTraceFixture,
   tierAtLeast,
+  tierRank,
   type EvalCounterfactual,
   type EvalTier,
   type EvalTraceFixture,
   type EvalTraceStep,
   type FrozenCatalog,
 } from './fixture-schema.js';
+import {
+  adaptTwinRouterBenchStaticTrack,
+  isTwinRouterBenchStaticTrack,
+  parseTwinRouterBenchStaticTrack,
+} from './twinrouterbench-adapter.js';
 
 /** HyDRA head modes supported by offline K=4 eval smoke (SP-160). */
 export type HydraHeadsEvalMode = 'learned_projection' | 'modernbert_k4';
@@ -285,6 +299,156 @@ export function validateK4SmokeHeadShapes(fixtures: readonly EvalTraceFixture[])
   return { step_count: stepCount, all_valid: allValid };
 }
 
+export interface HeadModeTop1Stats {
+  readonly hydra_heads: HydraHeadsEvalMode;
+  readonly step_count: number;
+  /** Steps where the head-mode implied tier exactly equals the verified min tier. */
+  readonly top1_matches: number;
+  /** 1 - top1 match rate; proxy for SP-115 Top-1 error vs the 0.1 enablement gate. */
+  readonly top1_error_rate: number;
+  /** Under-routes: implied tier below the verified min tier (would shortfall). */
+  readonly shortfall_steps: number;
+  readonly shortfall_rate: number;
+  /** Over-routes: implied tier above the verified min tier. */
+  readonly overroute_steps: number;
+  readonly overroute_rate: number;
+  /** Cost if every step were routed at the head-mode implied tier (cheapest model). */
+  readonly implied_total_cost_usd: number;
+  readonly hindsight_optimal_total_cost_usd: number;
+  readonly cost_regret_usd: number;
+}
+
+export interface K4HeadModeAbReport {
+  readonly source: string;
+  readonly fixture_count: number;
+  readonly step_count: number;
+  readonly qr_comparison: K4OfflineEvalComparison;
+  readonly learned_projection: HeadModeTop1Stats;
+  readonly modernbert_k4: HeadModeTop1Stats;
+  /** Share of steps where both head modes imply the same tier (routing-delta proxy). */
+  readonly head_mode_tier_agreement_rate: number;
+  /** True when the K=4 side ran with placeholder heads (no trained artifact). */
+  readonly k4_uses_placeholder_heads: boolean;
+}
+
+/**
+ * Per-step Top-1 / shortfall / cost scoring for one head mode against verified
+ * fixture outcomes — the "beyond fixture QR" half of the SP-219 offline A/B.
+ */
+export function scoreHeadModeTop1(
+  fixtures: readonly EvalTraceFixture[],
+  mode: HydraHeadsEvalMode,
+): HeadModeTop1Stats {
+  let stepCount = 0;
+  let matches = 0;
+  let shortfall = 0;
+  let overroute = 0;
+  let impliedCost = 0;
+  let hindsightCost = 0;
+
+  for (const fixture of fixtures) {
+    const catalog = fixture.frozen_catalog;
+    for (const step of fixture.session.steps) {
+      stepCount += 1;
+      const requirements = deriveRequirementsFromHeadMode(step.prefix_hash, mode);
+      const impliedTier = impliedTierFromRequirements(requirements);
+      const minTier = step.step_outcome.min_tier;
+
+      if (impliedTier === minTier) {
+        matches += 1;
+      } else if (tierRank(impliedTier) < tierRank(minTier)) {
+        shortfall += 1;
+      } else {
+        overroute += 1;
+      }
+
+      const impliedModel = cheapestModelForTier(catalog, impliedTier);
+      impliedCost += estimateStepCostUsd(catalog, impliedModel.model_id, step.prefix_token_estimate);
+      hindsightCost += estimateStepCostUsd(
+        catalog,
+        step.step_outcome.min_model_id,
+        step.prefix_token_estimate,
+      );
+    }
+  }
+
+  return {
+    hydra_heads: mode,
+    step_count: stepCount,
+    top1_matches: matches,
+    top1_error_rate: stepCount === 0 ? 0 : roundRate(1 - matches / stepCount),
+    shortfall_steps: shortfall,
+    shortfall_rate: safeRate(shortfall, stepCount),
+    overroute_steps: overroute,
+    overroute_rate: safeRate(overroute, stepCount),
+    implied_total_cost_usd: roundRate(impliedCost),
+    hindsight_optimal_total_cost_usd: roundRate(hindsightCost),
+    cost_regret_usd: roundRate(impliedCost - hindsightCost),
+  };
+}
+
+/**
+ * Full offline A/B for one fixture source: fixture QR comparison plus per-step
+ * Top-1 / shortfall / cost-regret stats for `learned_projection` vs
+ * `modernbert_k4`. Deterministic — callers add timestamps at the CLI edge.
+ */
+export function runK4HeadModeAbEval(
+  fixtures: readonly EvalTraceFixture[],
+  source: string,
+): K4HeadModeAbReport {
+  const stepCount = fixtures.reduce((sum, f) => sum + f.session.steps.length, 0);
+
+  let agreeingSteps = 0;
+  for (const fixture of fixtures) {
+    for (const step of fixture.session.steps) {
+      const learnedTier = impliedTierFromRequirements(
+        deriveRequirementsFromHeadMode(step.prefix_hash, 'learned_projection'),
+      );
+      const k4Tier = impliedTierFromRequirements(
+        deriveRequirementsFromHeadMode(step.prefix_hash, 'modernbert_k4'),
+      );
+      if (learnedTier === k4Tier) {
+        agreeingSteps += 1;
+      }
+    }
+  }
+
+  return {
+    source,
+    fixture_count: fixtures.length,
+    step_count: stepCount,
+    qr_comparison: compareK4HeadModeOfflineEval(fixtures),
+    learned_projection: scoreHeadModeTop1(fixtures, 'learned_projection'),
+    modernbert_k4: scoreHeadModeTop1(fixtures, 'modernbert_k4'),
+    head_mode_tier_agreement_rate: stepCount === 0 ? 1 : safeRate(agreeingSteps, stepCount),
+    // Trained heads load only from config/modernbert-k4-heads.json; when absent the
+    // K=4 side is the deterministic quarter-pooled placeholder (smoke-level only).
+    k4_uses_placeholder_heads: loadModernBertK4HeadWeights() === null,
+  };
+}
+
+/** Load every top-level eval trace fixture in a directory (skips subdirs / non-trace JSON). */
+export function loadTraceFixturesFromDir(dirPath: string): EvalTraceFixture[] {
+  const abs = resolve(dirPath);
+  const fixtures: EvalTraceFixture[] = [];
+
+  for (const name of readdirSync(abs).filter((n) => n.endsWith('.json')).sort()) {
+    const raw = JSON.parse(readFileSync(join(abs, name), 'utf8')) as unknown;
+    if (isTwinRouterBenchStaticTrack(raw)) {
+      continue;
+    }
+    fixtures.push(loadEvalTraceFixture(raw));
+  }
+
+  return fixtures;
+}
+
+/** Adapt a TwinRouterBench static track file into eval trace fixtures for the A/B. */
+export function loadStaticTrackFixtures(trackPath: string): EvalTraceFixture[] {
+  const raw = JSON.parse(readFileSync(resolve(trackPath), 'utf8')) as unknown;
+  return adaptTwinRouterBenchStaticTrack(parseTwinRouterBenchStaticTrack(raw));
+}
+
 export interface StepReplayResult {
   readonly step_index: number;
   readonly prefix_hash: string;
@@ -509,9 +673,20 @@ function roundUsd(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000;
 }
 
-function parseArgs(argv: readonly string[]): { fixturesDir: string; cheapAtStepIndex?: number } {
+interface ReplayCliArgs {
+  readonly fixturesDir: string;
+  readonly cheapAtStepIndex?: number | undefined;
+  readonly k4Ab: boolean;
+  readonly corpusPaths: readonly string[];
+  readonly outPath?: string | undefined;
+}
+
+function parseArgs(argv: readonly string[]): ReplayCliArgs {
   let fixturesDir = defaultFixturesDir();
   let cheapAtStepIndex: number | undefined;
+  let k4Ab = false;
+  const corpusPaths: string[] = [];
+  let outPath: string | undefined;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -521,22 +696,70 @@ function parseArgs(argv: readonly string[]): { fixturesDir: string; cheapAtStepI
     } else if (arg === '--cheap-at-step' && argv[i + 1]) {
       cheapAtStepIndex = Number.parseInt(argv[i + 1]!, 10);
       i += 1;
+    } else if (arg === '--k4-ab') {
+      k4Ab = true;
+    } else if (arg === '--corpus' && argv[i + 1]) {
+      corpusPaths.push(...argv[i + 1]!.split(',').map((p) => resolve(p.trim())));
+      i += 1;
+    } else if (arg === '--out' && argv[i + 1]) {
+      outPath = resolve(argv[i + 1]!);
+      i += 1;
     } else if (arg === '--help' || arg === '-h') {
       console.log(`Usage: routing:eval-replay [--fixtures DIR] [--cheap-at-step N]
+       routing:eval-replay --k4-ab [--fixtures DIR] [--corpus TRACK.json[,...]] [--out PATH]
 
 Replays eval trace fixtures and prints cumulative regret vs hindsight-optimal routing.
-Frozen catalog metadata (catalog_id, checkpoint_date) is echoed for reproducibility.`);
+Frozen catalog metadata (catalog_id, checkpoint_date) is echoed for reproducibility.
+
+--k4-ab runs the SP-219 offline A/B: fixture QR plus per-step Top-1 / shortfall /
+cost-regret stats for learned_projection vs modernbert_k4 on the trace fixture dir
+and each TwinRouterBench static track passed via --corpus. K=4 falls back to
+placeholder heads when config/modernbert-k4-heads.json is absent (flagged in output).`);
       process.exit(0);
     }
   }
 
-  return cheapAtStepIndex === undefined
-    ? { fixturesDir }
-    : { fixturesDir, cheapAtStepIndex };
+  return { fixturesDir, cheapAtStepIndex, k4Ab, corpusPaths, outPath };
+}
+
+function runK4AbCli(parsed: ReplayCliArgs): void {
+  const reports: K4HeadModeAbReport[] = [];
+
+  const traceFixtures = loadTraceFixturesFromDir(parsed.fixturesDir);
+  if (traceFixtures.length > 0) {
+    reports.push(runK4HeadModeAbEval(traceFixtures, `trace-fixtures:${parsed.fixturesDir}`));
+  }
+
+  for (const corpusPath of parsed.corpusPaths) {
+    const fixtures = loadStaticTrackFixtures(corpusPath);
+    reports.push(runK4HeadModeAbEval(fixtures, `static-track:${corpusPath}`));
+  }
+
+  const output = {
+    generated_at: new Date().toISOString(),
+    mode: 'k4-head-mode-ab',
+    top1_error_threshold: MODERNBERT_K4_ENABLE_TOP1_ERROR_THRESHOLD,
+    caveat:
+      'Embeddings are deterministic hash-derived synthetics (no prompt text in packs); ' +
+      'when k4_uses_placeholder_heads is true the K=4 side is the quarter-pooled placeholder. ' +
+      'Results are pipeline smoke evidence, not trained-head enablement evidence.',
+    reports,
+  };
+
+  const json = JSON.stringify(output, null, 2);
+  console.log(json);
+  if (parsed.outPath) {
+    writeFileSync(parsed.outPath, `${json}\n`, 'utf8');
+    console.error(`k4-ab report written to ${parsed.outPath}`);
+  }
 }
 
 async function main(): Promise<void> {
   const parsed = parseArgs(process.argv.slice(2));
+  if (parsed.k4Ab) {
+    runK4AbCli(parsed);
+    return;
+  }
   const options: ReplayOptions =
     parsed.cheapAtStepIndex === undefined
       ? {}
