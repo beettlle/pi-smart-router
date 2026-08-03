@@ -1,0 +1,19 @@
+src/domain/pinning/heat-affinity.ts
+  s_2f8f5106613ff8::t_c4dd1d0b622f66 1-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "14034ae7d6e29c5c9fc46f13cf9162bf8b192764",
+  "prompts": {},
+  "sessions": {
+    "s_2f8f5106613ff8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-b04f12e8-5fa6-476a-8731-8854b3c4a287",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
