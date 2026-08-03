@@ -1,6 +1,6 @@
 # SP-218: Train / Ship ModernBERT K=4 Heads Artifact — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔵 In Progress
 **Last Updated:** 2026-08-03
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Train path + artifact or Partial
 
-**Status:** 🔵 In Progress
+**Status:** ✅ Complete
 
 - [x] Inspect privacy-safe training sources
 - [x] Train script + ship `config/modernbert-k4-heads.json` **or** Partial writeup — Path (B): `spine-tasks/_authoring/release-v0.16.0/modernbert-k4-heads-partial.md`
@@ -23,7 +23,7 @@
 
 ## Step 2: Loader verification + tests
 
-**Status:** ⬜ Not Started
+**Status:** 🔵 In Progress
 
 - [ ] DEFAULT path load non-null (or Partial documents null)
 - [ ] Unit tests extended
@@ -53,6 +53,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
+| 2026-08-03 | 1 | plan | SKIPPED (engine-owned; nested spawn blocked, SP-195) |
 
 ## Discoveries
 
