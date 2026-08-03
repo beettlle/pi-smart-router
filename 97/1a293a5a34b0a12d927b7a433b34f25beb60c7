@@ -1,0 +1,16 @@
+spine-tasks/SP-218-modernbert-k4-heads-artifact/STATUS.md
+  h_ae151c586ac6c5 3,15,26,56
+tests/unit/modernbert-heads.test.ts
+  h_ae151c586ac6c5 7,180-223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "971a293a5a34b0a12d927b7a433b34f25beb60c7",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
