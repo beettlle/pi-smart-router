@@ -1,0 +1,14 @@
+spine-tasks/SP-217-speculative-prewarm-guard/.reviews/final-20260803T004935.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "d3161d94192fa746fbf493d15e2d52107de79bdf",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
