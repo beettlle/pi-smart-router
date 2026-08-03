@@ -363,6 +363,12 @@ export interface RoutingFeatureSidecar {
   readonly route_path?: RoutePath | null;
   /** Confidence (0–1) associated with route_path when a classifier produced one. */
   readonly route_path_confidence?: number | null;
+  /** Speculative prewarm attempted this turn (SP-217, #117); absent when off. */
+  readonly prewarm_attempted?: boolean | null;
+  /** Prewarm warm within deadline; null when not attempted (SP-217, #117). */
+  readonly prewarm_accepted?: boolean | null;
+  /** Telemetry-visible reason the acceptance guard disabled prewarm (SP-217, #117). */
+  readonly prewarm_disabled_reason?: string | null;
 }
 
 export interface RoutingDecision {
@@ -547,4 +553,10 @@ export interface RoutingTelemetry {
   readonly route_path?: RoutePath | null;
   /** Confidence (0–1) associated with route_path when a classifier produced one. */
   readonly route_path_confidence?: number | null;
+  /** Speculative prewarm attempted this turn (SP-217, #117). */
+  readonly prewarm_attempted?: boolean | null;
+  /** Prewarm warm within deadline; null when not attempted (SP-217, #117). */
+  readonly prewarm_accepted?: boolean | null;
+  /** Telemetry-visible reason the acceptance guard disabled prewarm (SP-217, #117). */
+  readonly prewarm_disabled_reason?: string | null;
 }

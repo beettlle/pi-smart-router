@@ -8,6 +8,7 @@ import {
   DEFAULT_LOCAL_ZERO_CONFIG,
   DEFAULT_PLANNING_DELEGATE_CONFIG,
   DEFAULT_SAAR_CONFIG,
+  DEFAULT_SPECULATIVE_PREWARM_CONFIG,
   DEFAULT_WORKLOAD_HEAT_CONFIG,
   resolvePlanningDelegateConfigFromEnv,
   resolveSaarConfigFromEnv,
@@ -19,6 +20,8 @@ export {
   DEFAULT_LOCAL_ZERO_CONFIG,
   DEFAULT_PLANNING_DELEGATE_CONFIG,
   DEFAULT_SAAR_CONFIG,
+  DEFAULT_SPECULATIVE_PREWARM_CONFIG,
+  DEFAULT_WORKLOAD_HEAT_CONFIG,
   resolvePlanningDelegateConfigFromEnv,
   resolveSaarConfigFromEnv,
 } from '../domain/types/schemas.js';
@@ -68,5 +71,7 @@ export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
   degraded_route: DEFAULT_DEGRADED_ROUTE_CONFIG,
   /** Heat knobs only (SP-215) — no frugality default or absolute-gate flips. */
   workload_heat: DEFAULT_WORKLOAD_HEAT_CONFIG,
+  /** Speculative prewarm (SP-217, #117): default OFF; opt-in via operator config. */
+  speculative_prewarm: DEFAULT_SPECULATIVE_PREWARM_CONFIG,
   pin_only_fallback: false,
 } as const;
