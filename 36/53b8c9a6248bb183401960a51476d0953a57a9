@@ -1,0 +1,14 @@
+spine-tasks/SP-216-local-placement-plan-doctor/STATUS.md
+  h_ae151c586ac6c5 4,34,36-40,46-49,68-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "3653b8c9a6248bb183401960a51476d0953a57a9",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
