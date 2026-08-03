@@ -1,0 +1,25 @@
+.pi/extensions/smart-router/fleet-bootstrap.ts
+  s_60b57272e944f3::t_4ccb9812bccb4d 18-24,48,52-92,286,290
+README.md
+  s_60b57272e944f3::t_5c6e8aa3f2af78 486-489
+docs/routing-roadmap.md
+  s_60b57272e944f3::t_a93faed90e6887 92,334
+spine-tasks/SP-214-quota-window-feed/STATUS.md
+  s_60b57272e944f3::t_8c619079133acd 3-4,15,25,27-29,33,35-39,45-48,56,62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "99c0a4d7642c8e16dfc7cb2a78f8812f8947d063",
+  "prompts": {},
+  "sessions": {
+    "s_60b57272e944f3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-66c3c7b8-3634-4815-882d-6b496e3492a0",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
