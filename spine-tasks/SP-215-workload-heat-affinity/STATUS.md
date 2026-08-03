@@ -1,8 +1,8 @@
 # SP-215: Workload Heat Map + Soft Fleet Affinity — Status
 
 **Current Step:** 1
-**Status:** ⬜ Not Started
-**Last Updated:** 2026-08-02
+**Status:** 🔄 In Progress
+**Last Updated:** 2026-08-03
 **Review Level:** 1
 **Review Counter:** 0
 **Iteration:** 0
@@ -12,12 +12,12 @@
 
 ## Step 1: Heat schema + persistence + soft bias
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Privacy-safe heat record (no prompt text)
-- [ ] Persist histogram with provenance
-- [ ] Soft-bias first-turn via expected-cost
-- [ ] Unit tests for soft-bias
+- [x] Privacy-safe heat record (no prompt text)
+- [x] Persist histogram with provenance
+- [x] Soft-bias first-turn via expected-cost
+- [x] Unit tests for soft-bias
 
 **Plan-review checkpoint** — No raw prompt text; shortfall gates hard.
 

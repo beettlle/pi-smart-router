@@ -34,6 +34,26 @@ export const FRONTIER_P_SUCCESS = 1;
 /** Minimum per-1M-token spread required before economical tiers compete. */
 export const MIN_PRICE_DELTA_PER_1M = 0.25;
 
+/**
+ * Maximum soft heat-affinity discount (SP-215, #115). Caps the expected-cost
+ * discount a workload heat map may apply so serve-time affinity can never
+ * dominate hard gates (price delta, pin cache economics, capability
+ * shortfall) — matches the Colibri-style ~25% hysteresis band.
+ */
+export const MAX_HEAT_BIAS_STRENGTH = 0.25;
+
+/**
+ * Soft first-turn / cold-start heat affinity (SP-215, #115). Discounts the
+ * adjusted expected cost of `tier` by `strength` (fraction, clamped to
+ * [0, MAX_HEAT_BIAS_STRENGTH]). Applied AFTER expected-cost computation and
+ * BEFORE the price-delta and pin-economics gates, so it can only ever soften
+ * — never override — hard routing gates.
+ */
+export interface ExpectedCostHeatBias {
+  readonly tier: Tier;
+  readonly strength: number;
+}
+
 /** V2 virtual-cost breakdown attached to expected-cost explain (SP-149). */
 export interface ExpectedCostVirtualCostV2 {
   readonly baseCostUsd: number;
@@ -54,6 +74,8 @@ export interface ExpectedCostBreakdown {
   readonly expectedCostUsd: number;
   readonly adjustedExpectedCostUsd: number;
   readonly virtualCostV2: ExpectedCostVirtualCostV2 | null;
+  /** True when the SP-215 soft heat bias discounted this tier's cost. */
+  readonly heatBiasApplied?: boolean;
 }
 
 export interface SelectTierByExpectedCostInput {
@@ -70,6 +92,8 @@ export interface SelectTierByExpectedCostInput {
   /** Rolling subscription quota position for v2 λ and premiums (SP-149). */
   readonly quotaWindowPosition?: QuotaWindowPosition;
   readonly virtualCostV2Config?: VirtualCostV2Config;
+  /** Soft heat affinity for first-turn / cold-start bias (SP-215, #115). */
+  readonly heatBias?: ExpectedCostHeatBias;
 }
 
 export interface SelectTierByExpectedCostResult {
@@ -78,6 +102,8 @@ export interface SelectTierByExpectedCostResult {
   readonly tierCosts: readonly ExpectedCostBreakdown[];
   readonly rationale: string;
   readonly blockedByPinEconomics: boolean;
+  /** True when the SP-215 soft heat bias changed the winning tier. */
+  readonly heatBiasApplied?: boolean;
 }
 
 function clamp01(value: number): number {
@@ -193,6 +219,26 @@ function applyCostQualityAlpha(
 }
 
 /**
+ * Apply the SP-215 soft heat discount to a tier's adjusted expected cost.
+ * Returns the discounted cost and whether the discount applied. Never raises
+ * any tier's cost; strength is clamped to [0, MAX_HEAT_BIAS_STRENGTH].
+ */
+function applyHeatBias(
+  adjustedExpectedCostUsd: number,
+  tier: Tier,
+  heatBias: ExpectedCostHeatBias | undefined,
+): { readonly cost: number; readonly applied: boolean } {
+  if (!heatBias || heatBias.tier !== tier || !Number.isFinite(heatBias.strength)) {
+    return { cost: adjustedExpectedCostUsd, applied: false };
+  }
+  const strength = Math.min(Math.max(heatBias.strength, 0), MAX_HEAT_BIAS_STRENGTH);
+  if (strength === 0) {
+    return { cost: adjustedExpectedCostUsd, applied: false };
+  }
+  return { cost: adjustedExpectedCostUsd * (1 - strength), applied: true };
+}
+
+/**
  * Format v2 cost breakdown for operator explain output (SP-149).
  */
 export function formatVirtualCostV2Explain(
@@ -231,6 +277,7 @@ export function computeExpectedCost(
     readonly virtualCostV2Config?: VirtualCostV2Config;
     readonly sessionPin?: SessionPin;
     readonly pinnedModel?: ModelProfile;
+    readonly heatBias?: ExpectedCostHeatBias;
   },
 ): ExpectedCostBreakdown {
   const alpha = options?.alpha ?? 1;
@@ -266,12 +313,13 @@ export function computeExpectedCost(
   const boundedPSuccess = resolvePSuccessForTier(tier, pSuccess);
   const expectedCostUsd =
     boundedPSuccess * direct + (1 - boundedPSuccess) * escalationCostUsd;
-  const adjustedExpectedCostUsd = applyCostQualityAlpha(
+  const alphaAdjusted = applyCostQualityAlpha(
     expectedCostUsd,
     boundedPSuccess,
     escalationCostUsd,
     alpha,
   );
+  const heat = applyHeatBias(alphaAdjusted, tier, options?.heatBias);
 
   return {
     tier,
@@ -280,8 +328,9 @@ export function computeExpectedCost(
     directCostUsd: direct,
     escalationCostUsd,
     expectedCostUsd,
-    adjustedExpectedCostUsd,
+    adjustedExpectedCostUsd: heat.cost,
     virtualCostV2,
+    ...(heat.applied ? { heatBiasApplied: true } : {}),
   };
 }
 
@@ -362,7 +411,11 @@ function buildTierRationale(
   const v2Explain = formatVirtualCostV2Explain(breakdown.virtualCostV2);
   const tierLabel = tier === 'frontier-cloud' ? 'Frontier' : 'Economical tier';
   const base = `${tierLabel} minimizes E[cost]=${breakdown.adjustedExpectedCostUsd.toFixed(6)} with P(success)=${breakdown.pSuccess.toFixed(3)}`;
-  return v2Explain ? `${base} (${v2Explain})` : base;
+  const heatNote = breakdown.heatBiasApplied
+    ? ' [heat affinity soft bias (SP-215)]'
+    : '';
+  const withV2 = v2Explain ? `${base} (${v2Explain})` : base;
+  return `${withV2}${heatNote}`;
 }
 
 /**
@@ -442,6 +495,7 @@ export function selectTierByExpectedCost(
         directCostUsd: resolved.directCostUsd,
         virtualCostV2: resolved.virtualCostV2,
         fleet: input.fleet,
+        ...(input.heatBias !== undefined ? { heatBias: input.heatBias } : {}),
         ...virtualCostOptions,
       },
     );
@@ -454,6 +508,7 @@ export function selectTierByExpectedCost(
       tierCosts,
       rationale: 'No viable tiers after context-fit and local readiness filters',
       blockedByPinEconomics: false,
+      heatBiasApplied: false,
     };
   }
 
@@ -475,6 +530,7 @@ export function selectTierByExpectedCost(
       rationale:
         'Economical tier expected cost is lowest but frontier–economical price delta is below threshold',
       blockedByPinEconomics: false,
+      heatBiasApplied: best.heatBiasApplied === true,
     };
   }
 
@@ -487,6 +543,7 @@ export function selectTierByExpectedCost(
       rationale:
         'Expected-cost tier switch blocked because cache reprime exceeds projected savings (FR-008)',
       blockedByPinEconomics: true,
+      heatBiasApplied: best.heatBiasApplied === true,
     };
   }
 
@@ -496,5 +553,6 @@ export function selectTierByExpectedCost(
     tierCosts,
     rationale: buildTierRationale(best.tier, best),
     blockedByPinEconomics: false,
+    heatBiasApplied: best.heatBiasApplied === true,
   };
 }

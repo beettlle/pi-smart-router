@@ -394,6 +394,57 @@ export const DegradedRouteConfigSchema = z.object({
 
 export type DegradedRouteConfig = z.infer<typeof DegradedRouteConfigSchema>;
 
+/**
+ * Workload heat map + soft fleet affinity knobs (SP-215, #115).
+ * Colibri learning-cache analog: privacy-safe histogram of successful routes
+ * (requirement fingerprint / cluster id → tier/model success counts) that
+ * soft-biases first-turn expected-cost selection. The bias is SOFT — it only
+ * discounts the heat-preferred tier's expected cost and can never override a
+ * hard capability shortfall, the frontier–economical price-delta gate, pin
+ * cache economics, or absolute release gates. No frugality defaults or
+ * absolute gates are flipped by this config.
+ */
+export const WorkloadHeatConfigSchema = z.object({
+  /** Master switch for heat recording and soft first-turn bias. */
+  enabled: z.boolean().default(true),
+  /**
+   * Fractional expected-cost discount applied to the heat-preferred tier
+   * (0–0.25). Applied only after a heat cell clears min_samples and
+   * min_success_margin; capped so heat can never dominate hard gates.
+   */
+  bias_strength: z.number().min(0).max(0.25),
+  /** Minimum recorded samples on a tier before its heat cell may bias routing. */
+  min_samples: z.number().int().positive(),
+  /** Minimum success-rate margin over the runner-up tier required to prefer a tier. */
+  min_success_margin: z.number().min(0).max(1),
+  /** Maximum histogram cells per key space (FIFO eviction; poisoning bound). */
+  max_entries: z.number().int().positive(),
+  /**
+   * Live affinity updates at pin-safe boundaries (Colibri REPIN analog).
+   * Default OFF — serve-time repinning is opt-in; the persisted histogram and
+   * first-turn soft bias work without it.
+   */
+  live_update_enabled: z.boolean().default(false),
+  /** Hysteresis band: success-rate advantage required before a live affinity swap (~25%). */
+  hysteresis_band: z.number().min(0).max(1),
+  /** Maximum live affinity swaps per session (thrash cap). */
+  swap_cap: z.number().int().positive(),
+});
+
+export type WorkloadHeatConfig = z.infer<typeof WorkloadHeatConfigSchema>;
+
+/** Workload heat defaults per #115 (SP-215). No frugality/gate flips. */
+export const DEFAULT_WORKLOAD_HEAT_CONFIG: Readonly<WorkloadHeatConfig> = {
+  enabled: true,
+  bias_strength: 0.1,
+  min_samples: 3,
+  min_success_margin: 0.15,
+  max_entries: 512,
+  live_update_enabled: false,
+  hysteresis_band: 0.25,
+  swap_cap: 1,
+} as const;
+
 /** Degraded sandwich defaults per #119 (SP-212). */
 export const DEFAULT_DEGRADED_ROUTE_CONFIG: Readonly<DegradedRouteConfig> = {
   enabled: true,
@@ -579,6 +630,8 @@ export const OperatorConfigSchema = z.object({
   routing_clusters: RoutingClustersConfigSchema.optional(),
   /** Degraded neural failover sandwich knobs (SP-212, #119). */
   degraded_route: DegradedRouteConfigSchema.optional(),
+  /** Workload heat map + soft fleet affinity knobs (SP-215, #115). */
+  workload_heat: WorkloadHeatConfigSchema.optional(),
   /**
    * Emergency pin-on-first-turn fallback (#83, SP-161).
    * When true, subsequent turns use the session pin only — multi-stage routing

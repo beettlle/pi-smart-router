@@ -8,6 +8,7 @@ import {
   DEFAULT_LOCAL_ZERO_CONFIG,
   DEFAULT_PLANNING_DELEGATE_CONFIG,
   DEFAULT_SAAR_CONFIG,
+  DEFAULT_WORKLOAD_HEAT_CONFIG,
   resolvePlanningDelegateConfigFromEnv,
   resolveSaarConfigFromEnv,
   type OperatorConfig,
@@ -65,5 +66,7 @@ export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
   planning_delegate: DEFAULT_PLANNING_DELEGATE_CONFIG,
   local_zero: DEFAULT_LOCAL_ZERO_CONFIG,
   degraded_route: DEFAULT_DEGRADED_ROUTE_CONFIG,
+  /** Heat knobs only (SP-215) — no frugality default or absolute-gate flips. */
+  workload_heat: DEFAULT_WORKLOAD_HEAT_CONFIG,
   pin_only_fallback: false,
 } as const;
