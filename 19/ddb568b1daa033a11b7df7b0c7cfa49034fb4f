@@ -1,0 +1,23 @@
+.pi/extensions/smart-router/command-formatters.ts
+  s_2f8f5106613ff8::t_ff0c12ef7677a3 20,150,156-163,351-417
+.pi/extensions/smart-router/commands.ts
+  s_2f8f5106613ff8::t_d04843bde800f6 2,5,7,14,21,34-35,75-77,279-299
+tests/unit/smart-router-pricing.test.ts
+  s_2f8f5106613ff8::t_ba568b334aa9f1 193-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "19ddb568b1daa033a11b7df7b0c7cfa49034fb4f",
+  "prompts": {},
+  "sessions": {
+    "s_2f8f5106613ff8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-b04f12e8-5fa6-476a-8731-8854b3c4a287",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
