@@ -135,12 +135,12 @@ Then (after wave 0 lands): `spine batch start SP-218,SP-219 --wave 1`
 
 ## Publish checklist (Phase 5–6)
 
-- [ ] All release-scoped tasks `.DONE` on `main`
-- [ ] Post-integrate `release:check` green after **each wave** (log paths recorded)
-- [ ] `spine preflight` green
-- [ ] `npm run release:check` green on final `HEAD` (exit 0 verified)
-- [ ] CI workflow green on `HEAD` (`gh run list` / `gh run watch`)
-- [ ] `git status` clean
-- [ ] Operator approved publish bump type: minor (matches Phase 2)
-- [ ] `npm version minor` + `git push && git push --tags`
-- [ ] `release.yml` succeeded; `npm view pi-smart-router version` matches 0.16.0
+- [x] All release-scoped tasks `.DONE` on `main` — SP-218 / SP-219
+- [x] Post-integrate `release:check` green after **each wave** — `/tmp/pi-smart-router-post-integrate-wave-0b.log`, `/tmp/pi-smart-router-post-integrate-wave-1.log`
+- [x] `spine preflight` green
+- [x] `npm run release:check` green on final `HEAD` (exit 0 verified; 1856 tests; release-gates PASS)
+- [x] CI workflow green on `HEAD` — https://github.com/beettlle/pi-smart-router/actions/runs/30860942126
+- [x] `git status` clean (at tag)
+- [x] Operator approved publish bump type: minor (matches Phase 2)
+- [x] `npm version minor` + `git push && git push --tags` — tag `v0.16.0`, commit `ce03be7`
+- [x] `release.yml` succeeded; `npm view pi-smart-router version` = 0.16.0 — https://github.com/beettlle/pi-smart-router/actions/runs/30861993368
