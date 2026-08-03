@@ -1,0 +1,22 @@
+spine-tasks/SP-217-speculative-prewarm-guard/STATUS.md
+  h_ae151c586ac6c5 3,15,26,58
+src/domain/pipeline/router-pipeline.ts
+  h_ae151c586ac6c5 30,103-109,281-284,335-338,391,491-499,928-937,960-1028
+src/domain/types/entities.ts
+  h_ae151c586ac6c5 366-371,556-561
+src/infrastructure/telemetry/routing-telemetry.ts
+  h_ae151c586ac6c5 859-884,1454,1496
+tests/unit/speculative-prewarm.test.ts
+  h_ae151c586ac6c5 16-25,289-530
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "a526c985d50bad46c3d0b3fa228392163a84ea8a",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
