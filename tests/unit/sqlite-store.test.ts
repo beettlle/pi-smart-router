@@ -77,7 +77,7 @@ function makePriceCatalog(overrides: Partial<PriceCatalog> = {}): PriceCatalog {
 function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): RoutingDatasetRecord {
   return {
     request_id: 'req-1',
-    timestamp: '2026-07-04T00:00:00.000Z',
+    timestamp: '2026-08-01T00:00:00.000Z',
     turn_type: 'main_loop',
     stage: 'hydra_match',
     reason_code: 'hydra_embedding_match',
@@ -389,11 +389,11 @@ describe('SqliteStore', () => {
     it('lists dataset records newest first', async () => {
       store.appendDatasetRecord(makeDatasetRecord({
         request_id: 'req-1',
-        timestamp: '2026-07-04T00:00:00.000Z',
+        timestamp: '2026-08-01T00:00:00.000Z',
       }));
       store.appendDatasetRecord(makeDatasetRecord({
         request_id: 'req-2',
-        timestamp: '2026-07-04T00:01:00.000Z',
+        timestamp: '2026-08-01T00:01:00.000Z',
       }));
 
       const rows = await store.listDatasetRecords({ limit: 10 });

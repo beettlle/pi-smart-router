@@ -75,6 +75,9 @@ function makeEntry(overrides: Partial<RoutingTelemetry> = {}): RoutingTelemetry 
     planning_delegate_max_messages: null,
     planning_delegate_max_tokens: null,
     planning_delegate_exclude_execution_history: null,
+    planning_delegate_workers_spawned: null,
+    planning_delegate_workers_succeeded: null,
+    planning_delegate_worker_timeout_count: null,
     pin_only_fallback_active: false,
     ...overrides,
   };

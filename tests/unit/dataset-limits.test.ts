@@ -61,16 +61,18 @@ describe('dataset-limits', () => {
   });
 
   it('trims oldest rows to make room before append', () => {
+    // Use relative now-based stamps so the 30-day retention window cannot expire fixtures.
+    const baseMs = Date.now() - 60_000;
     const entries = Array.from({ length: DATASET_MAX_ENTRIES }, (_, index) =>
-      makeDatasetRecord(`2026-07-04T00:00:${String(index).padStart(2, '0')}.000Z`),
+      makeDatasetRecord(new Date(baseMs + index).toISOString()),
     );
-    const newest = makeDatasetRecord('2026-07-04T01:00:00.000Z');
+    const newest = makeDatasetRecord(new Date(baseMs + DATASET_MAX_ENTRIES + 1).toISOString());
 
     makeDatasetRoom(entries);
     entries.push(newest);
 
     expect(entries).toHaveLength(DATASET_MAX_ENTRIES);
-    expect(entries[0]?.timestamp).toBe('2026-07-04T00:00:01.000Z');
+    expect(entries[0]?.timestamp).toBe(new Date(baseMs + 1).toISOString());
     expect(entries.at(-1)).toEqual(newest);
   });
 });
