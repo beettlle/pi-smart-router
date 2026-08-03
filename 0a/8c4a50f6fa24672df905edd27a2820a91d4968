@@ -1,0 +1,14 @@
+spine-tasks/SP-218-modernbert-k4-heads-artifact/.reviews/final-20260803T163712.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "0a8c4a50f6fa24672df905edd27a2820a91d4968",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
