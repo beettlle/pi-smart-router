@@ -1,7 +1,7 @@
 # SP-212: Degraded Neural Failover Sandwich — Status
 
-**Current Step:** Step 3
-**Status:** 🔄 In Progress
+**Current Step:** Done
+**Status:** ✅ Complete
 **Last Updated:** 2026-08-02
 **Review Level:** 1
 **Review Counter:** 0
@@ -31,21 +31,21 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
-- [ ] Contract `testCommand` green
-- [ ] Related matcher/pipeline tests if touched
-- [ ] coverage:check
-- [ ] #119 commented + closable
+- [x] Contract `testCommand` green
+- [x] Related matcher/pipeline tests if touched
+- [x] coverage:check
+- [x] #119 commented + closable
 
 ---
 
 ## Completion Criteria
 
-- [ ] Non-crashing sandwich with reason codes
-- [ ] `route_path` telemetry present
-- [ ] No prompt text in learned store
-- [ ] #119 closable
+- [x] Non-crashing sandwich with reason codes
+- [x] `route_path` telemetry present
+- [x] No prompt text in learned store
+- [x] #119 closable
 
 ---
 
@@ -59,7 +59,8 @@
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-08-02 | 5 pre-existing test failures under `--coverage` instrumentation (sqlite-store/memory-store/dataset-limits dataset-record tests) reproduce identically on untouched baseline c3a6f23; plain `npm test` is 1742/1742 green | `npm run coverage:check` (and therefore `verify:ci`) exits non-zero independent of SP-212; coverage measured with those 3 files excluded: changed modules 91–100% lines, total 90.7% (≥77% gate met) |
+| 2026-08-02 | `RoutingTelemetry` is materialized by sqlite-store (out of File Scope), so `route_path`/`route_path_confidence` added as optional fields | Telemetry exposes route_path without touching persistence; sqlite rows simply omit it |
 
 ## Notes
 
