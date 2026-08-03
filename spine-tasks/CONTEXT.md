@@ -689,7 +689,7 @@
 | 2 | SP-213 | planning_delegate timeouts — extension path |
 | 3 | SP-214 | Quota feed — fleet-bootstrap + pricing feed |
 
-**Status:** Published as **v0.14.0** (pending tag). Batch `20260802T234103` integrated; #119/#120/#125 closed.
+**Status:** Published as **v0.14.0** (tag `v0.14.0`, commit `b141394`). Batch `20260802T234103` integrated; #119/#120/#125 closed.
 
 **Deferred:** #95/#110 (human/exports), #96/#114 encoder, #115–#117 Colibri, #1/#25/#26 hardware.
 

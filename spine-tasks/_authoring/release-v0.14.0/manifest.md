@@ -139,10 +139,10 @@ Deps: none (all independent)
 
 - [x] All release-scoped tasks `.DONE` on `main`
 - [x] Post-integrate `release:check` green after **each wave** (`/tmp/pi-smart-router-post-integrate-wave-0b.log`, SKIP live refresh)
-- [ ] `spine preflight` green (re-run at bump)
+- [x] `spine preflight` green (re-run at bump)
 - [x] `npm run release:check` green on final `HEAD` (exit 0 verified; SKIP live refresh)
-- [ ] CI workflow green on `HEAD` (after push)
-- [ ] `git status` clean
+- [x] CI workflow green on `HEAD` (after push) — https://github.com/beettlle/pi-smart-router/actions/runs/30774203492
+- [x] `git status` clean
 - [x] Operator approved publish bump type: minor (matches Phase 2) — 2026-08-03
-- [ ] `npm version minor` + `git push && git push --tags`
-- [ ] `release.yml` succeeded; `npm view pi-smart-router version` matches target
+- [x] `npm version minor` + `git push && git push --tags`
+- [x] `release.yml` succeeded; `npm view pi-smart-router version` = 0.14.0 — https://github.com/beettlle/pi-smart-router/actions/runs/30774266732
