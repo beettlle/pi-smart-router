@@ -5,8 +5,8 @@
 **Next Task ID:** SP-215
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.13.0 (2026-07-20) — SP-208–SP-211 multi-fleet dogfood routing correctness (#124/#121/#122/#123). Prior v0.12.2 AuthStorage hotfix; v0.12.1 SP-207 (#118); v0.12.0 SP-205–SP-206 (#110 Partial).
-**In progress:** Release **v0.14.0** authoring (SP-212–SP-214). Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 remains open until real exports.
+**Released:** v0.14.0 (2026-08-03) — SP-212–SP-214 routing session resilience (#119/#120/#125). Prior v0.13.0 SP-208–SP-211 multi-fleet dogfood (#124/#121/#122/#123).
+**In progress:** Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 remains open until real exports.
 
 ---
 
@@ -689,7 +689,7 @@
 | 2 | SP-213 | planning_delegate timeouts — extension path |
 | 3 | SP-214 | Quota feed — fleet-bootstrap + pricing feed |
 
-**Status:** Packets authored; awaiting Phase 4 batch execution.
+**Status:** Published as **v0.14.0** (pending tag). Batch `20260802T234103` integrated; #119/#120/#125 closed.
 
 **Deferred:** #95/#110 (human/exports), #96/#114 encoder, #115–#117 Colibri, #1/#25/#26 hardware.
 
