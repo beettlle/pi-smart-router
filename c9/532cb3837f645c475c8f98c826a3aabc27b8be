@@ -1,0 +1,37 @@
+spine-tasks/SP-216-local-placement-plan-doctor/STATUS.md
+  s_b1b8d0f17dbdff::t_5c4176b767f7eb 1-65
+spine-tasks/CONTEXT.md
+  s_b1b8d0f17dbdff::t_f1a7ec3a8f7fca 5,9
+  s_b1b8d0f17dbdff::t_4a73c2268e9359 698-719
+spine-tasks/SP-217-speculative-prewarm-guard/STATUS.md
+  s_b1b8d0f17dbdff::t_bd27361a2512ef 1-66
+spine-tasks/SP-217-speculative-prewarm-guard/PROMPT.md
+  s_b1b8d0f17dbdff::t_0f23eb6c833803 1-114
+spine-tasks/SP-216-local-placement-plan-doctor/PROMPT.md
+  s_b1b8d0f17dbdff::t_f52ccf3cd551a8 1-113
+spine-tasks/_authoring/release-v0.15.0/manifest.md
+  s_b1b8d0f17dbdff::t_3620eb07fb0f62 87-95
+  s_b1b8d0f17dbdff::t_417514539689f5 1-86,96-145
+spine-tasks/SP-215-workload-heat-affinity/STATUS.md
+  s_b1b8d0f17dbdff::t_a51e53ecd02ec7 1-67
+spine-tasks/dependencies.json
+  s_b1b8d0f17dbdff::t_9714ee393406ef 619-622
+spine-tasks/SP-215-workload-heat-affinity/PROMPT.md
+  s_b1b8d0f17dbdff::t_fa0d7f50c46e1e 1-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "c9532cb3837f645c475c8f98c826a3aabc27b8be",
+  "prompts": {},
+  "sessions": {
+    "s_b1b8d0f17dbdff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-6adb86ef-b1d9-4d24-a429-2646632d6f93",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
