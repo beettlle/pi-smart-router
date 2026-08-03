@@ -1,12 +1,12 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-08-02
+**Last Updated:** 2026-08-03
 **Status:** Active
-**Next Task ID:** SP-218
+**Next Task ID:** SP-220
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** v0.15.0 (2026-08-03) — SP-215–SP-217 Colibri local affinity & placement (#115/#116/#117). Prior v0.14.0 SP-212–SP-214 routing session resilience (#119/#120/#125).
-**In progress:** Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 remains open until real exports.
+**In progress:** Release **v0.16.0** ModernBERT K=4 measurement (SP-218–SP-219 / #114 → informs #96). Human #95 dogfood remains. #110 open until real exports.
 
 ---
 
@@ -716,6 +716,28 @@
 **Deferred:** #95/#110 (human/exports), #96/#114 encoder, #1/#25/#26 hardware.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.15.0/manifest.md`
+
+### Phase 48 — Release v0.16.0 ModernBERT K=4 Measurement (SP-218–SP-219)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-218 | Train / ship `modernbert-k4-heads.json` (or operator-local Partial) | M | — | Partial #114 |
+| SP-219 | Top-1 / shortfall + offline A/B + #96 recommendation writeup | M | SP-218 | Closes #114; Partial #96 |
+
+**Source:** Operator-approved **v0.16.0** (2026-08-03). Theme: ModernBERT K=4 heads + Top-1 / offline A/B measurement (no default flip).
+
+**Wave order (proposed):**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| 0 | SP-218 | Heads artifact first |
+| 1 | SP-219 | Measurement + writeup (depends SP-218) |
+
+**Status:** Packets authored; awaiting batch execution.
+
+**Deferred:** #95/#110 (human/exports), #96 close (operator enablement), #1/#25/#26 hardware.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.16.0/manifest.md`
 
 ---
 
