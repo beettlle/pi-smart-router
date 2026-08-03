@@ -1,6 +1,6 @@
 # SP-219: K=4 Top-1 + Offline A/B + Enablement Writeup — Status
 
-**Current Step:** 1
+**Current Step:** 3
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-08-03
 **Review Level:** 1
@@ -12,13 +12,12 @@
 
 ## Step 1: Top-1 + offline A/B measurements
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Confirm SP-218 heads load or Partial path — Partial confirmed: `loadModernBertK4HeadWeights()` returns `null` at DEFAULT path (verified 2026-08-03); SP-218 Partial `spine-tasks/_authoring/release-v0.16.0/modernbert-k4-heads-partial.md`
 - [x] Top-1 / shortfall vs 0.1 on packs or documented proxy — trained-head Top-1 BLOCKED (no heads, no [CLS] inputs, no K=4 labels per SP-218); synthetic-proxy Top-1 measured via new `scoreHeadModeTop1` (formula + sample sizes recorded below)
 - [x] Offline A/B beyond fixture QR; archive measurements — new `--k4-ab` CLI (trace fixtures + TwinRouterBench ci-subset, 148 steps / 68 sessions); archived `.pi-smart-router/measurements/sp-219/k4-head-mode-ab.json` (gitignored)
-- [ ] ECE PASS alone does not warrant K=4 — statement recorded in artifact (Step 2)
-
+- [x] ECE PASS alone does not warrant K=4 — recorded explicitly in artifact recommendation table
 **Measurement sources & sample sizes (plan-review checkpoint):**
 - Trace fixtures: `tests/eval/fixtures/` top-level — 2 fixtures, 5 steps (`debug-session-cheap-escalation`, `trivial-pin-session`)
 - TwinRouterBench ci-subset: `tests/eval/corpus/twinrouterbench/ci-subset.json` — 148 records / 68 sessions, execution-verified target tiers (downgrade-and-cascade); adapted via `adaptTwinRouterBenchStaticTrack`
@@ -29,15 +28,15 @@
 
 ## Step 2: Decision writeup + #96 link
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Write modernbert-k4-top1-artifact.md with recommendation
-- [ ] defaults.ts / release-gates.json unchanged
-- [ ] Comment #96; close #114; leave #96 open
+- [x] Write modernbert-k4-top1-artifact.md with recommendation — `spine-tasks/_authoring/release-v0.16.0/modernbert-k4-top1-artifact.md`; recommendation: **keep default** (insufficient evidence for opt-in / flip)
+- [x] defaults.ts / release-gates.json unchanged — `git diff` empty (verified 2026-08-03)
+- [x] Comment #96; close #114; leave #96 open — #96 commented (issuecomment-5172555283, remains OPEN); #114 closed with AC disposition
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Artifact complete
 - [ ] Contract `testCommand`
@@ -59,11 +58,14 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
+| 2026-08-03 | 1 | plan | SKIPPED (engine-owned; nested spawn blocked, SP-195) |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
+| 2026-08-03 | Local `.pi-smart-router/state.db` has 0 dataset/outcomes/telemetry rows | #96 Phase 1 outcome-linked proxy not computable in this worktree; documented as gap |
+| 2026-08-03 | Hash-derived synthetic embeddings yield identical implied tiers for both head modes (agreement 1.0, qr_delta 0) and 0.885 synthetic Top-1 error vs verified tiers on TRB ci-subset | Confirms synthetic proxy carries no signal about verified tiers — cannot evaluate the 0.1 gate; enablement stays blocked on trained heads + real [CLS] inputs |
 
 ## Notes
 
