@@ -1,0 +1,24 @@
+spine-tasks/SP-216-local-placement-plan-doctor/STATUS.md
+  h_ae151c586ac6c5 4-5,15,17-20
+src/infrastructure/hardware/placement-plan.ts
+  h_ae151c586ac6c5 1-453
+src/infrastructure/hardware/throughput-meter.ts
+  h_ae151c586ac6c5 17-68,76-84,86-87,89-91,110-111,116-120,127-130,163-184,193-194,199-203,206-213,224-263,270-271
+tests/unit/local-zero-prefer-trivial.test.ts
+  h_ae151c586ac6c5 107-114
+tests/unit/placement-plan.test.ts
+  h_ae151c586ac6c5 1-402
+tests/unit/router-pipeline.test.ts
+  h_ae151c586ac6c5 1490-1497
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "31ec8da2a77bca2cf2bce57e48e5d949586485f0",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
