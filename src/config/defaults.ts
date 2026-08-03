@@ -8,6 +8,7 @@ import {
   DEFAULT_LOCAL_ZERO_CONFIG,
   DEFAULT_PLANNING_DELEGATE_CONFIG,
   DEFAULT_SAAR_CONFIG,
+  DEFAULT_SPECULATIVE_PREWARM_CONFIG,
   resolvePlanningDelegateConfigFromEnv,
   resolveSaarConfigFromEnv,
   type OperatorConfig,
@@ -18,6 +19,7 @@ export {
   DEFAULT_LOCAL_ZERO_CONFIG,
   DEFAULT_PLANNING_DELEGATE_CONFIG,
   DEFAULT_SAAR_CONFIG,
+  DEFAULT_SPECULATIVE_PREWARM_CONFIG,
   resolvePlanningDelegateConfigFromEnv,
   resolveSaarConfigFromEnv,
 } from '../domain/types/schemas.js';
@@ -65,5 +67,7 @@ export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
   planning_delegate: DEFAULT_PLANNING_DELEGATE_CONFIG,
   local_zero: DEFAULT_LOCAL_ZERO_CONFIG,
   degraded_route: DEFAULT_DEGRADED_ROUTE_CONFIG,
+  /** Speculative prewarm (SP-217, #117): default OFF; opt-in via operator config. */
+  speculative_prewarm: DEFAULT_SPECULATIVE_PREWARM_CONFIG,
   pin_only_fallback: false,
 } as const;

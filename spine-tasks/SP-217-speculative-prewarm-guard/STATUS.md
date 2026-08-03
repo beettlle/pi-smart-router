@@ -1,8 +1,8 @@
 # SP-217: Speculative Prewarm with Acceptance Guard — Status
 
 **Current Step:** 1
-**Status:** ⬜ Not Started
-**Last Updated:** 2026-08-02
+**Status:** 🔄 In Progress
+**Last Updated:** 2026-08-03
 **Review Level:** 1
 **Review Counter:** 0
 **Iteration:** 0
@@ -12,12 +12,12 @@
 
 ## Step 1: Prewarm module + config (default off)
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress (work done; plan review pending)
 
-- [ ] Speculative prewarm module (injectable clock/cancel)
-- [ ] Config default off
-- [ ] Hard deadline fail-open
-- [ ] Unit tests default-off + timeout
+- [x] Speculative prewarm module (injectable clock/cancel)
+- [x] Config default off
+- [x] Hard deadline fail-open
+- [x] Unit tests default-off + timeout
 
 **Plan-review checkpoint** — Pre-generation only.
 

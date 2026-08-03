@@ -402,6 +402,33 @@ export const DEFAULT_DEGRADED_ROUTE_CONFIG: Readonly<DegradedRouteConfig> = {
   pattern_tool_use_ceiling: 0.3,
 } as const;
 
+/**
+ * Speculative prewarm knobs (SP-217, #117 — Colibri PILOT pattern).
+ * Optional local/encoder prewarm within a strict TTFT deadline, with an
+ * adaptive acceptance guard. Default OFF; fail open to the normal route.
+ * Pre-generation only — the warm probe never waits on generated tokens.
+ */
+export const SpeculativePrewarmConfigSchema = z.object({
+  /** When false (default), no speculative prewarm is attempted. */
+  enabled: z.boolean().default(false),
+  /** Hard deadline for a prewarm attempt; timeout cancels and proceeds (no hang). */
+  deadline_ms: z.number().int().min(1).max(5000).default(50),
+  /** Guard band: session acceptance rate below this disables prewarm. */
+  min_acceptance_rate: z.number().min(0).max(1).default(0.5),
+  /** Minimum recorded attempts before the acceptance guard may trip. */
+  min_attempts_before_guard: z.number().int().min(1).max(100).default(4),
+});
+
+export type SpeculativePrewarmConfig = z.infer<typeof SpeculativePrewarmConfigSchema>;
+
+/** Speculative prewarm defaults per #117 (SP-217): default off, fail open. */
+export const DEFAULT_SPECULATIVE_PREWARM_CONFIG: Readonly<SpeculativePrewarmConfig> = {
+  enabled: false,
+  deadline_ms: 50,
+  min_acceptance_rate: 0.5,
+  min_attempts_before_guard: 4,
+} as const;
+
 /** SAAR defaults per routing-roadmap.md §2 P0 (SP-121). */
 export const DEFAULT_SAAR_CONFIG: Readonly<SaarConfig> = {
   planning_turn_buffer: 2,
@@ -579,6 +606,8 @@ export const OperatorConfigSchema = z.object({
   routing_clusters: RoutingClustersConfigSchema.optional(),
   /** Degraded neural failover sandwich knobs (SP-212, #119). */
   degraded_route: DegradedRouteConfigSchema.optional(),
+  /** Speculative prewarm with acceptance guard (SP-217, #117). Default off. */
+  speculative_prewarm: SpeculativePrewarmConfigSchema.optional(),
   /**
    * Emergency pin-on-first-turn fallback (#83, SP-161).
    * When true, subsequent turns use the session pin only — multi-stage routing
