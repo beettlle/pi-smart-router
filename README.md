@@ -225,8 +225,30 @@ Cursor models bill against your **Cursor Pro subscription quota**, not per-token
 | `/smart-router export telemetry-contrib [--limit N]` | Export privacy-safe community telemetry JSON for calibration contributions |
 | `/smart-router feedback good\|bad` | Label the last auto-routed request outcome (requires `SMART_ROUTER_DATASET=1`) |
 | `/smart-router unpin` | Clear the current session pin (in-memory and SQLite) so the next request runs the full routing pipeline |
+| `/smart-router plan [--json]` | **Read-only** local placement report: encoder resident status, local model warm/cold, RAM/disk constraints, cold vs warm TPS, and bottleneck guess. `--json` prints the schema-stable report for automation |
+| `/smart-router doctor` | **Read-only** local readiness checklist (✓/✗) with bottleneck guess and recommendation — validate placement without starting a route |
 
 Fleet mode persists in the session. Use `scoped` to respect your `/model` enable-list; use `all` when you want the router to consider every provider you have logged into.
+
+### Local placement plan / doctor (read-only, #116)
+
+`/smart-router plan` and `/smart-router doctor` report **local placement readiness without mutating anything** — no route, pin, or gate is touched. Inspired by Colibrì's `coli plan` / `coli doctor`.
+
+The report covers:
+
+- **Encoder** — whether HyDRA ONNX artifacts are resident in the cache (`.pi-smart-router/models/`) or will download on first route
+- **Local model warm/cold** — LM Studio / Ollama reachability and whether a model is actually loaded (`warm`) vs reachable-but-unloaded (`cold-start expected`)
+- **Hardware** — platform/arch, total/free RAM, hardware-probe verdict (`full_local` / `classification_only` / `disabled`), battery state
+- **Disk** — free GiB; flagged constrained below 2 GiB
+- **Throughput (cold vs warm TPS)** — see formula below
+- **Bottleneck guess** — one of `none`, `unsupported-platform`, `battery`, `memory`, `disk`, `no-local-runtime`, `cold-start`, `cold-throughput`, `warm-throughput`, with a rationale string
+- **Recommendation** — `local-ready`, `local-warmup-needed`, or `local-unavailable`
+
+`/smart-router plan --json` prints the same report as schema-stable JSON (`schemaVersion: 1`, `kind: "smart-router-placement-plan"`; all keys always present, unknowns are `null`) for automation.
+
+**Cold vs warm TPS formula.** Throughput samples are tagged by phase: `warm` samples measure steady-state generation after model load; `cold` samples include cold-start load cost and never count toward viability. `warmMedianTps = median(tps where phase='warm')`; viability is `warmSamples > 0 AND warmMedianTps >= threshold` (default 25 tok/s). **Cold-only windows fail closed**: when only cold samples exist, local viability is false by policy (`requireWarmSamples: true`) — cold-start cost must not masquerade as steady-state throughput.
+
+**Quality-preserving resource policy.** Under RAM/disk/battery pressure the router prefers **"local unavailable / escalate safely"** to a cloud default over silently weakening encoder fidelity (no quantization flips, no cheaper cascades, no FrugalGPT-style downgrade chains). `plan`/`doctor` surface this policy verbatim in the report's `policy` block.
 
 After typing `/smart-router ` (with a trailing space), press **TAB** to see subcommands. Continue TAB-completing after `mode` or `pricing` for sub-options (`scoped`/`all`, `refresh`).
 

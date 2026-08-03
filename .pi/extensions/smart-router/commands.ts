@@ -1,20 +1,24 @@
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
+import { join } from 'node:path';
 
 import {
+  formatDoctorMessage,
   formatHistoryMessage,
+  formatPlacementPlanMessage,
   formatStatsMessage,
   formatStatusMessage,
   parseSmartRouterArgs,
 } from './command-formatters.js';
 import { exportDatasetToFile } from './dataset-export.js';
 import { exportTelemetryContrib } from '../../../src/cli/smart-router-cli.js';
+import { collectPlacementPlan } from '../../../src/infrastructure/hardware/placement-plan.js';
 import { bindSharedModelRegistry, rebuildFleet } from './fleet-bootstrap.js';
 import { refreshPricingCatalog } from './pricing-lifecycle.js';
 import { FLEET_MODE_ENTRY_TYPE } from './session-lifecycle.js';
 import type { SmartRouterRuntime } from './types.js';
 
 export const SMART_ROUTER_USAGE =
-  '/smart-router [status] | history [limit] | stats [limit] | mode scoped|all | pricing refresh | export dataset [--limit N] | export telemetry-contrib [--limit N] | feedback good|bad | unpin';
+  '/smart-router [status] | history [limit] | stats [limit] | mode scoped|all | pricing refresh | export dataset [--limit N] | export telemetry-contrib [--limit N] | feedback good|bad | unpin | plan [--json] | doctor';
 
 type CompletionItem = { value: string; label: string };
 
@@ -27,6 +31,8 @@ const TOP_LEVEL: CompletionItem[] = [
   { value: 'export', label: 'Export opt-in routing dataset' },
   { value: 'feedback', label: 'Label last routing outcome good or bad' },
   { value: 'unpin', label: 'Clear current session pin' },
+  { value: 'plan', label: 'Read-only local placement report (warm/cold, bottleneck)' },
+  { value: 'doctor', label: 'Read-only local readiness checklist' },
 ];
 
 const MODE_COMPLETIONS: CompletionItem[] = [
@@ -66,6 +72,9 @@ export const SMART_ROUTER_FULL_INVOCATIONS = [
   'feedback good',
   'feedback bad',
   'unpin',
+  'plan',
+  'plan --json',
+  'doctor',
 ] as const;
 
 function filterByPrefix(items: CompletionItem[], prefix: string): CompletionItem[] {
@@ -262,6 +271,27 @@ export function registerSmartRouterCommand(
 
           ctx.ui.notify(
             `Recorded ${parsed.rating} feedback for request ${snapshot.lastRequestId}.`,
+            'info',
+          );
+          return;
+        }
+
+        if (parsed.command === 'plan' || parsed.command === 'doctor') {
+          throwIfCommandAborted(signal);
+          // Read-only: pings + fs stats only; never mutates route/pin/gates.
+          const report = await collectPlacementPlan({
+            encoderCachePath: join(ctx.cwd, '.pi-smart-router/models'),
+            diskPath: ctx.cwd,
+          });
+          throwIfCommandAborted(signal);
+          if (parsed.command === 'plan' && parsed.format === 'json') {
+            ctx.ui.notify(JSON.stringify(report, null, 2), 'info');
+            return;
+          }
+          ctx.ui.notify(
+            parsed.command === 'doctor'
+              ? formatDoctorMessage(report)
+              : formatPlacementPlanMessage(report),
             'info',
           );
           return;
