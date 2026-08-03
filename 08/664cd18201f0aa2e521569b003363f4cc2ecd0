@@ -1,0 +1,22 @@
+spine-tasks/_authoring/release-v0.15.0/manifest.md
+  s_fc978bbba68ab8::t_47e3a78ffd3022 139,141-146
+spine-tasks/CONTEXT.md
+  s_fc978bbba68ab8::t_a20d643f5a6db7 8-9
+  s_fc978bbba68ab8::t_1a064962965746 714
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "08664cd18201f0aa2e521569b003363f4cc2ecd0",
+  "prompts": {},
+  "sessions": {
+    "s_fc978bbba68ab8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-6efe6441-5bdd-426e-8d42-bf32bf53925f",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
