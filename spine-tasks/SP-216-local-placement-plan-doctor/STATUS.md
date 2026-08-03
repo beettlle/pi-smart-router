@@ -1,8 +1,8 @@
 # SP-216: Local Placement Plan / Doctor + Cold vs Warm TPS — Status
 
 **Current Step:** 1
-**Status:** ⬜ Not Started
-**Last Updated:** 2026-08-02
+**Status:** 🔄 In Progress
+**Last Updated:** 2026-08-03
 **Review Level:** 1
 **Review Counter:** 0
 **Iteration:** 0
@@ -12,12 +12,12 @@
 
 ## Step 1: Placement report + cold/warm TPS
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Placement plan module (read-only)
-- [ ] Cold vs warm TPS classification
-- [ ] JSON-stable report shape
-- [ ] Unit tests
+- [x] Placement plan module (read-only)
+- [x] Cold vs warm TPS classification
+- [x] JSON-stable report shape
+- [x] Unit tests
 
 **Plan-review checkpoint** — Report never mutates route / pin / gates.
 

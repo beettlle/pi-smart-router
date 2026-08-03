@@ -1487,6 +1487,14 @@ describe('RouterPipeline', () => {
         getMedianTps: vi.fn(() => (aboveThreshold ? 30 : 10)),
         isAboveThreshold: vi.fn(() => aboveThreshold),
         getSampleCount: vi.fn(() => 1),
+        getBreakdown: vi.fn(() => ({
+          warmMedianTps: aboveThreshold ? 30 : 10,
+          coldMedianTps: null,
+          warmSamples: 1,
+          coldSamples: 0,
+          classification: 'warm' as const,
+        })),
+        isViable: vi.fn(() => aboveThreshold),
         clear: vi.fn(),
       };
     }
