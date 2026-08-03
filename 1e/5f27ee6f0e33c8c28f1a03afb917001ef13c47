@@ -1,0 +1,29 @@
+config/benchmark-profiles.json
+  s_d09bea591d2f9e::t_303ae3e563c809 10-11
+package-lock.json
+  s_d09bea591d2f9e::t_eda71d8b5f5b95 39,43-45
+tests/fixtures/benchmark-leaderboards/recorded/bfcl.json
+  s_d09bea591d2f9e::t_32a6a3e221b53f 4
+tests/fixtures/benchmark-leaderboards/recorded/livecodebench.json
+  s_d09bea591d2f9e::t_12e6044b4da7fc 4
+tests/fixtures/benchmark-leaderboards/recorded/swebench_verified.json
+  s_d09bea591d2f9e::t_484786f9c157e6 4
+tests/fixtures/benchmark-leaderboards/recorded/terminal_bench.json
+  s_d09bea591d2f9e::t_6a09df01581e2d 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "1e5f27ee6f0e33c8c28f1a03afb917001ef13c47",
+  "prompts": {},
+  "sessions": {
+    "s_d09bea591d2f9e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-b02c9565-4241-4647-84a2-23e9b1508114",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
