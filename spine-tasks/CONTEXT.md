@@ -5,8 +5,8 @@
 **Next Task ID:** SP-218
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.14.0 (2026-08-03) — SP-212–SP-214 routing session resilience (#119/#120/#125). Prior v0.13.0 SP-208–SP-211 multi-fleet dogfood (#124/#121/#122/#123).
-**In progress:** Release **v0.15.0** readiness — SP-215–SP-217 landed on `main` (batch `20260803T002645`); awaiting publish approval. Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 remains open until real exports.
+**Released:** v0.15.0 (2026-08-03) — SP-215–SP-217 Colibri local affinity & placement (#115/#116/#117). Prior v0.14.0 SP-212–SP-214 routing session resilience (#119/#120/#125).
+**In progress:** Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 remains open until real exports.
 
 ---
 
@@ -711,7 +711,7 @@
 |------|-------|-------|
 | 0 | SP-215, SP-216, SP-217 | Parallel — disjoint scopes (heat/expected-cost · hardware/commands · prewarm/pipeline) |
 
-**Status:** Landed on `main` (batch `20260803T002645`; lane-3 merge conflict on `defaults.ts`/`schemas.ts` resolved manually on orch). #115/#116/#117 closable. Awaiting Phase 6 publish approval (`npm version minor`).
+**Status:** Published as **v0.15.0** (tag `v0.15.0`, commit `88d5be9`). Batch `20260803T002645` integrated; #115/#116/#117 closed.
 
 **Deferred:** #95/#110 (human/exports), #96/#114 encoder, #1/#25/#26 hardware.
 

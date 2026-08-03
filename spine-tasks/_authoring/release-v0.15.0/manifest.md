@@ -136,10 +136,11 @@ Deps: none (all independent)
 
 - [x] All release-scoped tasks `.DONE` on `main` (batch `20260803T002645`; manual orch merge of lane-3 for config conflicts)
 - [x] Post-integrate `release:check` green after wave 0 (`/tmp/pi-smart-router-post-integrate-wave-0.log`, SKIP live refresh, exit 0)
-- [ ] `spine preflight` green (re-run after readiness commit / push)
+- [x] `spine preflight` green (at bump; tree clean)
 - [x] `npm run release:check` green on final `HEAD` (exit 0 verified; SKIP live refresh)
-- [ ] CI workflow green on `HEAD` (`gh run list` / `gh run watch`) — pending push
-- [ ] `git status` clean
-- [ ] Operator approved publish bump type: minor (matches Phase 2)
-- [ ] `npm version minor` + `git push && git push --tags`
-- [ ] `release.yml` succeeded; `npm view pi-smart-router version` matches 0.15.0
+- [x] CI workflow green on `HEAD` — https://github.com/beettlle/pi-smart-router/actions/runs/30775822901
+- [x] `git status` clean
+- [x] Operator approved publish bump type: minor (matches Phase 2) — 2026-08-03
+- [x] `npm version minor` + `git push && git push --tags` — tag `v0.15.0`, commit `88d5be9`
+- [x] `release.yml` succeeded; `npm view pi-smart-router version` = 0.15.0 — https://github.com/beettlle/pi-smart-router/actions/runs/30791047938
+- [x] GitHub Release — https://github.com/beettlle/pi-smart-router/releases/tag/v0.15.0
