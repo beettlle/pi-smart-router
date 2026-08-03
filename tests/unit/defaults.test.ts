@@ -16,6 +16,8 @@ const ENV_KEYS = [
   'SMART_ROUTER_PLANNING_DELEGATE_MAX_MESSAGES',
   'SMART_ROUTER_PLANNING_DELEGATE_MAX_TOKENS',
   'SMART_ROUTER_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY',
+  'SMART_ROUTER_PLANNING_DELEGATE_GLOBAL_TIMEOUT_MS',
+  'SMART_ROUTER_PLANNING_DELEGATE_SUB_CALL_TIMEOUT_MS',
 ] as const;
 
 afterEach(() => {
@@ -32,6 +34,8 @@ describe('DEFAULT_PLANNING_DELEGATE_CONFIG', () => {
     expect(DEFAULT_PLANNING_DELEGATE_CONFIG.compressed_context.exclude_execution_history).toBe(
       true,
     );
+    expect(DEFAULT_PLANNING_DELEGATE_CONFIG.global_timeout_ms).toBe(120_000);
+    expect(DEFAULT_PLANNING_DELEGATE_CONFIG.sub_call_timeout_ms).toBe(30_000);
   });
 });
 
@@ -45,6 +49,8 @@ describe('resolvePlanningDelegateConfigFromEnv', () => {
     process.env.SMART_ROUTER_PLANNING_DELEGATE_MAX_MESSAGES = '8';
     process.env.SMART_ROUTER_PLANNING_DELEGATE_MAX_TOKENS = '8192';
     process.env.SMART_ROUTER_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY = '0';
+    process.env.SMART_ROUTER_PLANNING_DELEGATE_GLOBAL_TIMEOUT_MS = '60000';
+    process.env.SMART_ROUTER_PLANNING_DELEGATE_SUB_CALL_TIMEOUT_MS = '5000';
 
     expect(resolvePlanningDelegateConfigFromEnv()).toEqual({
       enabled: false,
@@ -53,12 +59,16 @@ describe('resolvePlanningDelegateConfigFromEnv', () => {
         max_tokens: 8192,
         exclude_execution_history: false,
       },
+      global_timeout_ms: 60_000,
+      sub_call_timeout_ms: 5_000,
     });
   });
 
   it('ignores invalid env values', () => {
     process.env.SMART_ROUTER_PLANNING_DELEGATE_MAX_MESSAGES = '0';
     process.env.SMART_ROUTER_PLANNING_DELEGATE_MAX_TOKENS = 'not-a-number';
+    process.env.SMART_ROUTER_PLANNING_DELEGATE_GLOBAL_TIMEOUT_MS = '-5';
+    process.env.SMART_ROUTER_PLANNING_DELEGATE_SUB_CALL_TIMEOUT_MS = 'soonish';
 
     expect(resolvePlanningDelegateConfigFromEnv()).toEqual(DEFAULT_PLANNING_DELEGATE_CONFIG);
   });

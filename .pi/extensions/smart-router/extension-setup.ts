@@ -77,6 +77,7 @@ export async function createSmartRouterRuntime(cwd: string): Promise<{
       fleet: [],
       executionLedger,
       lifecycleHookState,
+      planningDelegateConfig: operatorConfig.planning_delegate,
       datasetRecorder,
       outcomeRecorder,
       sessionPinner,

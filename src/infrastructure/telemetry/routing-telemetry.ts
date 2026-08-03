@@ -81,6 +81,8 @@ export const PLANNING_DELEGATE = 'planning_delegate' as const;
 export const PLANNING_DIRECT_FRONTIER = 'planning_direct_frontier' as const;
 export const PLANNING_DELEGATE_DISABLED = 'planning_delegate_disabled' as const;
 export const PLANNING_DELEGATE_UNAVAILABLE = 'planning_delegate_unavailable' as const;
+/** Reason recorded when a delegate sub-call exceeds its timeout budget (SP-213, #120). */
+export const PLANNING_DELEGATE_TIMEOUT = 'planning_delegate_timeout' as const;
 
 export const THROUGHPUT_BELOW_THRESHOLD = 'throughput_below_threshold' as const;
 /** Pre-local_zero tool-use capability shortfall (SP-177, #98). */
@@ -593,6 +595,10 @@ export function createPlanningDelegateObservability(input: {
   compressed_context?: PlanningDelegateObservability['compressed_context'];
   planning_delegate_reason_code: string;
   fallback_reason?: string | null;
+  /** Worker telemetry analogs (SP-213, #120); null when not yet executed. */
+  workers_spawned?: number | null;
+  workers_succeeded?: number | null;
+  worker_timeout_count?: number | null;
 }): PlanningDelegateObservability {
   return {
     path: input.path,
@@ -601,6 +607,9 @@ export function createPlanningDelegateObservability(input: {
     compressed_context: input.compressed_context ?? null,
     planning_delegate_reason_code: input.planning_delegate_reason_code,
     fallback_reason: input.fallback_reason ?? null,
+    workers_spawned: input.workers_spawned ?? null,
+    workers_succeeded: input.workers_succeeded ?? null,
+    worker_timeout_count: input.worker_timeout_count ?? null,
   };
 }
 
@@ -816,6 +825,9 @@ function defaultPlanningDelegateTelemetry(): Pick<
   | 'planning_delegate_max_messages'
   | 'planning_delegate_max_tokens'
   | 'planning_delegate_exclude_execution_history'
+  | 'planning_delegate_workers_spawned'
+  | 'planning_delegate_workers_succeeded'
+  | 'planning_delegate_worker_timeout_count'
 > {
   return {
     planning_delegate_path: null,
@@ -826,6 +838,9 @@ function defaultPlanningDelegateTelemetry(): Pick<
     planning_delegate_max_messages: null,
     planning_delegate_max_tokens: null,
     planning_delegate_exclude_execution_history: null,
+    planning_delegate_workers_spawned: null,
+    planning_delegate_workers_succeeded: null,
+    planning_delegate_worker_timeout_count: null,
   };
 }
 
@@ -872,6 +887,9 @@ function planningDelegateTelemetryFromDecision(
     planning_delegate_max_tokens: observability.compressed_context?.max_tokens ?? null,
     planning_delegate_exclude_execution_history:
       observability.compressed_context?.exclude_execution_history ?? null,
+    planning_delegate_workers_spawned: observability.workers_spawned,
+    planning_delegate_workers_succeeded: observability.workers_succeeded,
+    planning_delegate_worker_timeout_count: observability.worker_timeout_count,
   };
 }
 
@@ -1182,6 +1200,9 @@ export function buildRoutingDecisionLogPayload(
           compressed_context: planningDelegate.compressed_context,
           planning_delegate_reason_code: planningDelegate.planning_delegate_reason_code,
           fallback_reason: planningDelegate.fallback_reason,
+          workers_spawned: planningDelegate.workers_spawned,
+          workers_succeeded: planningDelegate.workers_succeeded,
+          worker_timeout_count: planningDelegate.worker_timeout_count,
         }
       : null,
     flip_flop_summary: flipFlop

@@ -249,6 +249,18 @@ export interface PlanningDelegateConfig {
   /** Prefer ephemeral frontier sub-call over primary model switch on planning turns. */
   readonly enabled: boolean;
   readonly compressed_context: CompressedContextSpec;
+  /**
+   * Global cap (ms) on the whole planning-delegate stage per planning turn
+   * (context compression + sub-call). Mirrors llm-use WORKER_GLOBAL_TIMEOUT;
+   * bounds fan-out wall-clock so a stalled worker cannot hang TTFT (SP-213, #120).
+   */
+  readonly global_timeout_ms: number;
+  /**
+   * Per-call cap (ms) on each delegate sub-call worker. On expiry the worker is
+   * cancelled/abandoned and routing falls back to the safe direct path (SP-213, #120).
+   * Mirrors llm-use WORKER_CALL_TIMEOUT.
+   */
+  readonly sub_call_timeout_ms: number;
 }
 
 /** Planning delegate observability for explain and telemetry (SP-142, #71). */
@@ -268,6 +280,12 @@ export interface PlanningDelegateObservability {
   readonly planning_delegate_reason_code: string | null;
   /** Operator-visible fallback explanation when path is not delegate. */
   readonly fallback_reason: string | null;
+  /** Delegate worker sub-calls spawned this planning turn (SP-213, #120). */
+  readonly workers_spawned: number | null;
+  /** Delegate worker sub-calls that completed within budget (SP-213, #120). */
+  readonly workers_succeeded: number | null;
+  /** Delegate worker sub-calls cancelled/abandoned on timeout (SP-213, #120). */
+  readonly worker_timeout_count: number | null;
 }
 
 /** SAAR pin policy observability (SP-126, #72). */
@@ -517,6 +535,12 @@ export interface RoutingTelemetry {
   readonly planning_delegate_max_messages: number | null;
   readonly planning_delegate_max_tokens: number | null;
   readonly planning_delegate_exclude_execution_history: boolean | null;
+  /** Delegate workers spawned this turn (SP-213, #120). */
+  readonly planning_delegate_workers_spawned: number | null;
+  /** Delegate workers that completed within budget this turn (SP-213, #120). */
+  readonly planning_delegate_workers_succeeded: number | null;
+  /** Delegate workers timed out this turn (SP-213, #120). */
+  readonly planning_delegate_worker_timeout_count: number | null;
   /** True when emergency pin-only fallback routed this request (SP-162, #83). */
   readonly pin_only_fallback_active: boolean;
   /** Degraded failover path classification (SP-212, #119); absent on legacy paths. */

@@ -798,12 +798,11 @@ describe('Pi extension integration (SP-043)', () => {
           switch_threshold: 0.8,
         });
         expect(options.planningDelegateConfig).toEqual({
+          ...DEFAULT_PLANNING_DELEGATE_CONFIG,
           enabled: false,
           compressed_context: {
+            ...DEFAULT_PLANNING_DELEGATE_CONFIG.compressed_context,
             max_messages: 6,
-            max_tokens: DEFAULT_PLANNING_DELEGATE_CONFIG.compressed_context.max_tokens,
-            exclude_execution_history:
-              DEFAULT_PLANNING_DELEGATE_CONFIG.compressed_context.exclude_execution_history,
           },
         });
         expect(options.pinOnlyFallback).toBe(false);

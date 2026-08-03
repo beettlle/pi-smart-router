@@ -12,6 +12,7 @@ import { ExecutionLedger } from '../../../src/domain/delegation/execution-ledger
 import { SessionPinner } from '../../../src/domain/pinning/session-pinner.js';
 import type {
   ModelProfile,
+  PlanningDelegateConfig,
   PriceCatalog,
   RoutingDecision,
 } from '../../../src/domain/types/index.js';
@@ -60,6 +61,8 @@ export interface StreamDelegationDeps {
   delegateStream?: DelegateStreamFn;
   /** Injectable planning delegate sub-call; production uses frontier stream delegate. */
   spawnPlanningDelegate?: PlanningDelegateSpawnFn;
+  /** Planning delegate knobs incl. global + per-call timeout bounds (SP-213, #120). */
+  readonly planningDelegateConfig?: PlanningDelegateConfig;
   readonly lifecycleHookState?: LifecycleHookState;
   readonly datasetRecorder?: DatasetRecorder;
   readonly outcomeRecorder?: OutcomeRecorder;

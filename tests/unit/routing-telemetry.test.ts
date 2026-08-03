@@ -18,6 +18,7 @@ import {
   SAAR_BUFFER_ACTIVE,
   SAAR_HARD_LOCK,
   PLANNING_DELEGATE,
+  PLANNING_DELEGATE_TIMEOUT,
   PLANNING_DIRECT_FRONTIER,
   PIN_ONLY_FALLBACK,
   RoutingTelemetryEmitter,
@@ -806,6 +807,49 @@ describe('planning delegate observability (SP-142)', () => {
     expect(buildPlanningDelegateObservability(decision)).toMatchObject({
       path: 'delegate',
       primary_model_id: 'warm-econ',
+    });
+  });
+
+  it('serializes delegate worker timeout telemetry (SP-213, #120)', () => {
+    const onRecord = vi.fn();
+    const emitter = new RoutingTelemetryEmitter({ onRecord });
+    const decision = enrichRoutingDecisionWithPlanningDelegate(
+      makeDecision({
+        stage: 'turn_envelope',
+        reason_code: PLANNING_DIRECT_FRONTIER,
+        selected_model_id: 'warm-frontier',
+        tier: 'frontier-cloud',
+      }),
+      createPlanningDelegateObservability({
+        path: 'direct',
+        delegate_model_id: 'warm-frontier',
+        planning_delegate_reason_code: PLANNING_DIRECT_FRONTIER,
+        fallback_reason: PLANNING_DELEGATE_TIMEOUT,
+        workers_spawned: 1,
+        workers_succeeded: 0,
+        worker_timeout_count: 1,
+      }),
+    );
+
+    emitter.emit(makeRequest({ turn_type: 'planning' }), decision);
+
+    expect(onRecord.mock.calls[0]?.[0]).toMatchObject({
+      planning_delegate_path: 'direct',
+      planning_delegate_fallback_reason: 'planning_delegate_timeout',
+      planning_delegate_workers_spawned: 1,
+      planning_delegate_workers_succeeded: 0,
+      planning_delegate_worker_timeout_count: 1,
+    });
+
+    const payload = buildRoutingDecisionLogPayload(
+      makeRequest({ turn_type: 'planning' }),
+      decision,
+    );
+    expect(payload.planning_delegate_summary).toMatchObject({
+      fallback_reason: 'planning_delegate_timeout',
+      workers_spawned: 1,
+      workers_succeeded: 0,
+      worker_timeout_count: 1,
     });
   });
 
