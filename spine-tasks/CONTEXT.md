@@ -5,8 +5,8 @@
 **Next Task ID:** SP-220
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.15.0 (2026-08-03) — SP-215–SP-217 Colibri local affinity & placement (#115/#116/#117). Prior v0.14.0 SP-212–SP-214 routing session resilience (#119/#120/#125).
-**In progress:** Release **v0.16.0** ModernBERT K=4 measurement (SP-218–SP-219 / #114 → informs #96). Human #95 dogfood remains. #110 open until real exports.
+**Released:** v0.16.0 (2026-08-03) — SP-218–SP-219 ModernBERT K=4 measurement (#114; #96 remains open). Prior v0.15.0 SP-215–SP-217 Colibri local affinity & placement (#115/#116/#117).
+**In progress:** Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 open until real exports. #96 enablement decision remains open (keep default).
 
 ---
 
@@ -733,7 +733,7 @@
 | 0 | SP-218 | Heads artifact first |
 | 1 | SP-219 | Measurement + writeup (depends SP-218) |
 
-**Status:** Packets authored; awaiting batch execution.
+**Status:** Published as **v0.16.0** (tag `v0.16.0`, commit `ce03be7`). Batches `20260803T070043` (SP-218) + `20260803T223631` (SP-219) integrated; #114 closed; #96 remains open (keep default).
 
 **Deferred:** #95/#110 (human/exports), #96 close (operator enablement), #1/#25/#26 hardware.
 
