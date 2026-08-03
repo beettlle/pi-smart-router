@@ -1,0 +1,18 @@
+README.md
+  h_ae151c586ac6c5 737
+spine-tasks/SP-219-modernbert-k4-top1-ab/STATUS.md
+  h_ae151c586ac6c5 3,15,20,31,33-35,39,61,67-68
+spine-tasks/_authoring/release-v0.16.0/modernbert-k4-top1-artifact.md
+  h_ae151c586ac6c5 1-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "f388ae622dff268642a36271f0b28e80996b9d5a",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
