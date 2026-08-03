@@ -1,0 +1,28 @@
+tests/unit/dataset-limits.test.ts
+  s_60b57272e944f3::t_cf43864a3929b9 64-65,67,69,75
+tests/unit/quota-window-feed.test.ts
+  s_60b57272e944f3::t_489d161d3bab0d 78-80
+tests/unit/memory-store.test.ts
+  s_60b57272e944f3::t_c5b18f8e98509b 97
+  s_60b57272e944f3::t_bb04c95df336bf 10,46
+  s_60b57272e944f3::t_87525738b879b1 50
+tests/unit/sqlite-store.test.ts
+  s_60b57272e944f3::t_32c25bb5bb638c 80,392
+  s_60b57272e944f3::t_69df4580a08d3e 396
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "dcfcf41beaf0e0a07d356c76c5dd982d64d625ce",
+  "prompts": {},
+  "sessions": {
+    "s_60b57272e944f3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-66c3c7b8-3634-4815-882d-6b496e3492a0",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
