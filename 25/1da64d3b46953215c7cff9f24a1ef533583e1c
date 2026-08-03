@@ -1,0 +1,20 @@
+package.json
+  h_ae151c586ac6c5 72
+scripts/eval/counterfactual-replay.ts
+  h_ae151c586ac6c5 8-13,16,23,25,38,45-49,302-451,676-684,687-689,699-706,709,712-717,722-754,759-762
+spine-tasks/SP-219-modernbert-k4-top1-ab/STATUS.md
+  h_ae151c586ac6c5 4,15-20,22-26
+tests/unit/k4-head-mode-ab.test.ts
+  h_ae151c586ac6c5 1-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "251da64d3b46953215c7cff9f24a1ef533583e1c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
