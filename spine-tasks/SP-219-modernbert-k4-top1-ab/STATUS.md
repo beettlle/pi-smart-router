@@ -1,7 +1,7 @@
 # SP-219: K=4 Top-1 + Offline A/B + Enablement Writeup — Status
 
-**Current Step:** 3
-**Status:** 🔄 In Progress
+**Current Step:** 3 (done)
+**Status:** ✅ Complete (all criteria met)
 **Last Updated:** 2026-08-03
 **Review Level:** 1
 **Review Counter:** 0
@@ -36,21 +36,22 @@
 
 ## Step 3: Testing & Verification
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
-- [ ] Artifact complete
-- [ ] Contract `testCommand`
-- [ ] Related eval tests if touched
-- [ ] verify:ci / coverage as applicable
+- [x] Artifact complete — Top-1 gate table + A/B evidence (sources, formulas, sample sizes) + blockers + recommendation in `modernbert-k4-top1-artifact.md`
+- [x] Contract `testCommand` — typecheck clean; 25/25 `modernbert-heads.test.ts` green
+- [x] Related eval tests — 48/48 green (`k4-head-mode-ab`, `eval-harness`, `tests/eval/**`)
+- [x] verify:ci — build + typecheck + lint + coverage:check all pass (exit 0; 1856 tests)
+- [x] Coverage: `npm run coverage:check` — overall 93.04% lines (≥77% gate)
 
 ---
 
 ## Completion Criteria
 
-- [ ] Top-1 measured or blocker documented
-- [ ] Offline A/B beyond fixtures (or proxy)
-- [ ] Recommendation + #96 link; no default flip
-- [ ] #114 closable; #96 open
+- [x] Top-1 measured or blocker documented — blocker documented (no trained heads / [CLS] inputs / K=4 labels / local outcome rows); synthetic-proxy formula + sample sizes recorded, no invented metrics
+- [x] Offline A/B beyond fixtures (or proxy) — `--k4-ab` on trace fixtures (5 steps) + TwinRouterBench ci-subset (148 verified steps / 68 sessions); archived `.pi-smart-router/measurements/sp-219/`
+- [x] Recommendation + #96 link; no default flip — keep default; #96 commented (OPEN); `git diff` empty for defaults.ts / release-gates.json
+- [x] #114 closable; #96 open — #114 closed with AC disposition; #96 OPEN
 
 ---
 
