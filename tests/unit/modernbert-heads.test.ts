@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  DEFAULT_MODERNBERT_K4_HEADS_PATH,
   K4_CAPABILITY_DIMENSIONS,
   MODERNBERT_CLS_DIM,
   MODERNBERT_K4_ENABLE_TOP1_ERROR_THRESHOLD,
@@ -174,6 +175,50 @@ describe('ModernBertK4HeadWeights loading', () => {
 
   it('returns null when artifact file is missing', () => {
     expect(loadModernBertK4HeadWeights({ filePath: '/nonexistent/k4-heads.json' })).toBeNull();
+  });
+
+  it('loads a schema-valid artifact from an explicit path (temp file round-trip)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'modernbert-k4-'));
+    const filePath = join(dir, 'k4-heads.json');
+    writeFileSync(filePath, JSON.stringify(makeK4HeadWeights({ reasoningScale: 2 })));
+
+    try {
+      const weights = loadModernBertK4HeadWeights({ filePath });
+
+      expect(weights).not.toBeNull();
+      expect(weights?.version).toBe(1);
+      expect(weights?.cls_dim).toBe(MODERNBERT_CLS_DIM);
+      expect(weights?.weights).toHaveLength(MODERNBERT_K4_HEAD_COUNT);
+      expect(weights?.weights[0]).toHaveLength(MODERNBERT_CLS_DIM);
+      expect(weights?.weights[0]?.[0]).toBe(2);
+      expect(weights?.bias).toHaveLength(MODERNBERT_K4_HEAD_COUNT);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('SP-218 Partial: DEFAULT path yields null (operator-local) or schema-valid weights, never throws', () => {
+    // Path (B): no config/modernbert-k4-heads.json ships in this repo — see
+    // spine-tasks/_authoring/release-v0.16.0/modernbert-k4-heads-partial.md.
+    // If an operator later drops a trained artifact at the DEFAULT path, the
+    // loader must return schema-valid weights instead; either way the runtime
+    // falls back safely (no invented weights, no crash).
+    expect(DEFAULT_MODERNBERT_K4_HEADS_PATH).toMatch(/config[/\\]modernbert-k4-heads\.json$/);
+
+    const weights = loadModernBertK4HeadWeights();
+
+    if (weights === null) {
+      // Placeholder fallback remains deterministic and in [0,1].
+      const vector = projectClsToK4Capabilities(makeClsEmbedding(0.5), weights);
+      expect(k4CapabilityVectorToArray(vector)).toHaveLength(MODERNBERT_K4_HEAD_COUNT);
+      assertVectorInUnitInterval(vector);
+      validateK4CapabilityVector(vector);
+    } else {
+      expect(weights.version).toBe(1);
+      expect(weights.cls_dim).toBe(MODERNBERT_CLS_DIM);
+      expect(weights.weights).toHaveLength(MODERNBERT_K4_HEAD_COUNT);
+      expect(weights.bias).toHaveLength(MODERNBERT_K4_HEAD_COUNT);
+    }
   });
 
   it('throws on invalid artifact shape', () => {
