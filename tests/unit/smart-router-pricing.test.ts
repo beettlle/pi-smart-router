@@ -190,6 +190,8 @@ describe('getSmartRouterArgumentCompletions', () => {
       'export',
       'feedback',
       'unpin',
+      'plan',
+      'doctor',
     ]);
   });
 

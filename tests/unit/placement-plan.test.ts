@@ -24,6 +24,11 @@ import {
   DEFAULT_LOCAL_VIABILITY_POLICY,
 } from '../../src/infrastructure/hardware/throughput-meter.js';
 import type { LocalReadinessResult } from '../../src/infrastructure/local/local-zero-tier.js';
+import {
+  formatDoctorMessage,
+  formatPlacementPlanMessage,
+  parseSmartRouterArgs,
+} from '../../.pi/extensions/smart-router/command-formatters.js';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -398,5 +403,65 @@ describe('collectPlacementPlan', () => {
 
     expect(report.throughput.classification).toBe('no-samples');
     expect(report.throughput.viable).toBe(false);
+  });
+});
+
+// ─── Operator command parsing + formatting (read-only surface) ───────────────
+
+describe('/smart-router plan + doctor command surface', () => {
+  it('parses plan, plan --json, and doctor', () => {
+    expect(parseSmartRouterArgs('plan')).toEqual({ command: 'plan', format: 'text' });
+    expect(parseSmartRouterArgs('plan --json')).toEqual({ command: 'plan', format: 'json' });
+    expect(parseSmartRouterArgs('doctor')).toEqual({ command: 'doctor' });
+  });
+
+  it('rejects invalid plan/doctor invocations with usage', () => {
+    expect(() => parseSmartRouterArgs('plan --xml')).toThrow(/Usage:/);
+    expect(() => parseSmartRouterArgs('plan extra arg')).toThrow(/Usage:/);
+    expect(() => parseSmartRouterArgs('doctor now')).toThrow(/Usage:/);
+  });
+
+  it('formats the human plan message with cold/warm and bottleneck', () => {
+    const report = buildPlacementPlan(
+      makeInputs({
+        throughput: {
+          warmMedianTps: 40,
+          coldMedianTps: 6,
+          warmSamples: 4,
+          coldSamples: 2,
+          classification: 'warm',
+        },
+      }),
+    );
+    const message = formatPlacementPlanMessage(report);
+    expect(message).toContain('read-only');
+    expect(message).toContain('Recommendation: local-ready');
+    expect(message).toContain('Bottleneck guess: none');
+    expect(message).toContain('warm median 40.0 tok/s (4 samples)');
+    expect(message).toContain('cold median 6.0 tok/s (2 samples)');
+    expect(message).toContain('quality-preserving');
+  });
+
+  it('formats the doctor checklist with fail-closed cold-only note', () => {
+    const report = buildPlacementPlan(
+      makeInputs({
+        localReadiness: readiness({
+          lmStudio: { available: true, hasLoadedModel: false, latencyMs: 3 },
+          anyModelReady: false,
+        }),
+        throughput: {
+          warmMedianTps: null,
+          coldMedianTps: 8,
+          warmSamples: 0,
+          coldSamples: 2,
+          classification: 'cold-only',
+        },
+      }),
+    );
+    const message = formatDoctorMessage(report);
+    expect(message).toContain('smart-router doctor (read-only)');
+    expect(message).toContain('cold-only windows fail closed');
+    expect(message).toContain('Recommendation: local-warmup-needed');
+    expect(message).toContain('✗ local model cold/not loaded');
   });
 });

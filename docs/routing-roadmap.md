@@ -127,6 +127,7 @@ Beyond Top 6. “P2/P3” here means after P0–P1, not a renumber of Top 6.
 | P3 | Local zero decoupled from trivial-only | More local share | local_zero | SP-111 | M | Phase 33 | SP-111 |
 | P3 | Pin-only operator mode | Emergency fallback | session_pin, config | SAAR | S | Landed | [#83](https://github.com/beettlle/pi-smart-router/issues/83) |
 | P3 | Hardware `tokens_per_second` gate | Better local routing | hardware_probe | LiteLLM | M | Landed (`src/infrastructure/hardware/throughput-meter.ts`) | [#84](https://github.com/beettlle/pi-smart-router/issues/84) |
+| P3 | Local placement plan/doctor + cold vs warm TPS | Operator honesty | hardware_probe, local_zero | Colibrì plan/doctor | M | Landed (`src/infrastructure/hardware/placement-plan.ts`, `/smart-router plan\|doctor`) | [#116](https://github.com/beettlle/pi-smart-router/issues/116) |
 | — | Pipeline integration pass | Stage order | all | SP-119 | M | Phase 33 | SP-119 last |
 | **Deferred** | SeqRoute MDP + HBR + CQL | Quota RL | — | Gemini §7 | L | Deferred | v2+ research |
 | **Deferred** | SAE residual-stream defense | Adversarial | hydra | Gemini §8 | L | Deferred | Phase 2 security |

@@ -17,6 +17,7 @@ import {
   DEFAULT_TELEMETRY_CONTRIB_EXPORT_LIMIT,
   parseExportTelemetryContribArgs,
 } from '../../../src/cli/smart-router-cli.js';
+import type { PlacementPlanReport } from '../../../src/infrastructure/hardware/placement-plan.js';
 import {
   DEFAULT_DATASET_EXPORT_LIMIT,
   MAX_DATASET_EXPORT_LIMIT,
@@ -146,10 +147,18 @@ export function parseExportLimit(tokens: string[]): number {
   return limit;
 }
 
-export function parseSmartRouterArgs(args: string): SmartRouterCommand {
+export function parseSmartRouterArgs(args: string): ParsedSmartRouterCommand {
   const tokens = args.trim().split(/\s+/).filter(Boolean);
   if (tokens.length === 0 || tokens[0] === 'status') {
     return { command: 'status' };
+  }
+
+  if (tokens[0] === 'plan' && (tokens.length === 1 || (tokens.length === 2 && tokens[1] === '--json'))) {
+    return { command: 'plan', format: tokens[1] === '--json' ? 'json' : 'text' };
+  }
+
+  if (tokens[0] === 'doctor' && tokens.length === 1) {
+    return { command: 'doctor' };
   }
 
   if (tokens[0] === 'history') {
@@ -339,3 +348,70 @@ export function buildStatsSnapshot(
 }
 
 export type { FleetMode };
+
+/**
+ * Read-only placement commands (SP-216, #116). Declared here instead of
+ * types.ts to keep the SmartRouterCommand union untouched.
+ */
+export type SmartRouterPlacementCommand =
+  | { command: 'plan'; format: 'text' | 'json' }
+  | { command: 'doctor' };
+
+export type ParsedSmartRouterCommand = SmartRouterCommand | SmartRouterPlacementCommand;
+
+function formatTps(value: number | null): string {
+  return value === null ? 'n/a' : `${value.toFixed(1)} tok/s`;
+}
+
+function formatGb(value: number | null): string {
+  return value === null ? 'unknown' : `${value.toFixed(1)} GiB`;
+}
+
+function formatPing(label: string, ping: PlacementPlanReport['localModel']['lmStudio']): string {
+  if (!ping.available) {
+    return `  ${label}: unreachable`;
+  }
+  return `  ${label}: up, model ${ping.hasLoadedModel ? 'loaded (warm)' : 'not loaded (cold)'}`;
+}
+
+/** Human-readable placement report for `/smart-router plan` (read-only). */
+export function formatPlacementPlanMessage(report: PlacementPlanReport): string {
+  const lines = [
+    `Placement plan (read-only, schema v${report.schemaVersion}) — ${report.generatedAt}`,
+    `Recommendation: ${report.recommendation}`,
+    `Bottleneck guess: ${report.bottleneck.guess} — ${report.bottleneck.rationale}`,
+    `Encoder: ${report.encoder.resident ? 'resident' : 'not resident'} (${report.encoder.model}) at ${report.encoder.cachePath}`,
+    `Local model: ${report.localModel.warm ? 'warm' : report.localModel.coldStartExpected ? 'cold (load on first request)' : 'unavailable'}`,
+    formatPing('LM Studio', report.localModel.lmStudio),
+    formatPing('Ollama', report.localModel.ollama),
+    `Hardware: ${report.hardware.platform}/${report.hardware.arch}, total ${formatGb(report.hardware.totalMemoryGb)}, free ${formatGb(report.hardware.freeMemoryGb)}, probe=${report.hardware.probe}`,
+    `Disk (${report.disk.path}): free ${formatGb(report.disk.freeGb)}${report.disk.constrained ? ' [constrained]' : ''}`,
+    `Throughput: ${report.throughput.classification} | warm median ${formatTps(report.throughput.warmMedianTps)} (${report.throughput.warmSamples} samples) | cold median ${formatTps(report.throughput.coldMedianTps)} (${report.throughput.coldSamples} samples) | threshold ${report.throughput.thresholdTps} tok/s | viable=${report.throughput.viable}`,
+    `Policy: quality-preserving — on resource pressure: ${report.policy.onResourcePressure}`,
+  ];
+  return lines.join('\n');
+}
+
+/** Checklist-style readiness verdict for `/smart-router doctor` (read-only). */
+export function formatDoctorMessage(report: PlacementPlanReport): string {
+  const check = (ok: boolean, label: string): string => `${ok ? '✓' : '✗'} ${label}`;
+  const lines = [
+    'smart-router doctor (read-only)',
+    check(report.encoder.resident, `encoder resident (${report.encoder.model})`),
+    check(report.hardware.probe === 'full_local', `hardware probe: ${report.hardware.probe}`),
+    check(!report.disk.constrained, `disk: ${formatGb(report.disk.freeGb)} free${report.disk.constrained ? ' [constrained]' : ''}`),
+    check(
+      report.localModel.lmStudio.available || report.localModel.ollama.available,
+      'local runtime reachable (LM Studio / Ollama)',
+    ),
+    check(report.localModel.warm, `local model ${report.localModel.warm ? 'warm' : 'cold/not loaded'}`),
+    check(
+      report.throughput.viable,
+      `throughput: ${report.throughput.classification}, viable=${report.throughput.viable}${report.throughput.classification === 'cold-only' ? ' (cold-only windows fail closed)' : ''}`,
+    ),
+    `Bottleneck guess: ${report.bottleneck.guess} — ${report.bottleneck.rationale}`,
+    `Recommendation: ${report.recommendation}`,
+    'Policy: quality-preserving — under resource pressure local is reported unavailable and routing escalates safely; encoder fidelity is never weakened.',
+  ];
+  return lines.join('\n');
+}

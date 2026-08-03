@@ -1,6 +1,6 @@
 # SP-216: Local Placement Plan / Doctor + Cold vs Warm TPS — Status
 
-**Current Step:** 1
+**Current Step:** 3
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-08-03
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Placement report + cold/warm TPS
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Placement plan module (read-only)
 - [x] Cold vs warm TPS classification
@@ -23,15 +23,15 @@
 
 ## Step 2: Operator commands + README policy
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] `/smart-router plan` and/or `doctor`
-- [ ] Quality-preserving policy documented
-- [ ] README operator docs
+- [x] `/smart-router plan` and/or `doctor`
+- [x] Quality-preserving policy documented
+- [x] README operator docs
 
 ## Step 3: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Contract `testCommand`
 - [ ] Related hardware / command tests if touched
@@ -54,6 +54,8 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
+| 2026-08-03 | 1 | plan | SKIPPED (engine-owned, SP-195) |
+| 2026-08-03 | 2 | plan | SKIPPED (engine-owned, SP-195) |
 
 ## Discoveries
 
