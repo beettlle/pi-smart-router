@@ -1,0 +1,35 @@
+spine-tasks/SP-219-modernbert-k4-top1-ab/STATUS.md
+  s_67fc328ab510a2::t_7758332457ebfb 1-64
+spine-tasks/dependencies.json
+  s_67fc328ab510a2::t_60a93d8a4c88d4 622-626
+spine-tasks/SP-218-modernbert-k4-heads-artifact/PROMPT.md
+  s_67fc328ab510a2::t_c75a282f911ce7 1-115
+spine-tasks/SP-218-modernbert-k4-heads-artifact/STATUS.md
+  s_67fc328ab510a2::t_8fe4cafa5daaed 1-64
+spine-tasks/CONTEXT.md
+  s_67fc328ab510a2::t_faf68a0463a16f 720-741
+  s_67fc328ab510a2::t_83cf0e34ec6c47 3,5,9
+spine-tasks/_authoring/release-v0.16.0/manifest.md
+  s_67fc328ab510a2::t_7d6e70c800f0ed 9
+  s_67fc328ab510a2::t_ba6ce8af5ee138 1-8,10-65,67-89,91-96,100-146
+  s_67fc328ab510a2::t_943bd492721204 66
+  s_67fc328ab510a2::t_9cbacca284c983 90,97-99
+spine-tasks/SP-219-modernbert-k4-top1-ab/PROMPT.md
+  s_67fc328ab510a2::t_9dbbe3b9bb73dd 1-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "1dfec49a3f079db9c227ae3fff89ec853cee68dd",
+  "prompts": {},
+  "sessions": {
+    "s_67fc328ab510a2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-4dd2093f-6af2-479f-86bd-33af9369e8df",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
