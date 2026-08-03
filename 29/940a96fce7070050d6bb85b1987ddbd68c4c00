@@ -1,0 +1,14 @@
+spine-tasks/SP-219-modernbert-k4-top1-ab/STATUS.md
+  h_ae151c586ac6c5 3-4,39,41-45,51-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "29940a96fce7070050d6bb85b1987ddbd68c4c00",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
