@@ -69,6 +69,7 @@
     "routing:verify-calibration": "bash -c 'if [[ \" $* \" == *\" --skip-embed \"* ]]; then vitest run tests/unit/train-routing-calibration.test.ts -t \"verifyRoutingCalibration passes|evaluates benchmark triage gates\"; else npm run build && tsx scripts/verify-routing-calibration.ts \"$@\"; fi' --",
     "routing:calibration-dry-run": "tsx scripts/verify-routing-calibration.ts --dry-run-packs",
     "routing:eval-replay": "tsx scripts/eval/counterfactual-replay.ts",
+    "routing:eval-k4-ab": "tsx scripts/eval/counterfactual-replay.ts --k4-ab --corpus tests/eval/corpus/twinrouterbench/ci-subset.json",
     "routing:eval-harness": "tsx scripts/eval/run-harness.ts",
     "routing:eval-harness:smoke": "tsx scripts/eval/run-harness.ts --summary-only",
     "routing:eval-harness:corpus-smoke": "tsx scripts/eval/run-harness.ts --fixtures tests/eval/corpus/twinrouterbench --summary-only",
