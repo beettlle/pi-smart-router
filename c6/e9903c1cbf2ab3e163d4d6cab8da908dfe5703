@@ -1,0 +1,21 @@
+spine-tasks/SP-218-modernbert-k4-heads-artifact/PROMPT.md
+  s_cab15e0565adab::t_b956ebe277c457 87
+  s_cab15e0565adab::t_8ff305920ae898 47,49,56,58
+  s_cab15e0565adab::t_c1add1a07be054 115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "c6e9903c1cbf2ab3e163d4d6cab8da908dfe5703",
+  "prompts": {},
+  "sessions": {
+    "s_cab15e0565adab": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-4d90756f-994e-478f-b9f2-9f9bc4bce997",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
