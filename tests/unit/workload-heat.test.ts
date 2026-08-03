@@ -18,6 +18,12 @@ import {
   MAX_HEAT_BIAS_STRENGTH,
 } from '../../src/domain/routing/expected-cost.js';
 import {
+  AFFINITY_SWAP_HEAT_DECAY,
+  HeatAffinityController,
+  isPinSafeBoundary,
+} from '../../src/domain/pinning/heat-affinity.js';
+import type { PinLookupResult } from '../../src/domain/pinning/session-pinner.js';
+import {
   isValidHeatKey,
   WorkloadHeatMap,
   WORKLOAD_HEAT_ARTIFACT_VERSION,
@@ -412,3 +418,257 @@ describe('soft heat bias in selectTierByExpectedCost (SP-215)', () => {
     expect(result.reasonCode).toBe('expected_cost_pin_cache_economics');
   });
 });
+
+// ─── Export / import / clear (llm-use router-export / router-reset analog) ──
+
+describe('heat export / import / clear (SP-215)', () => {
+  it('exports a versioned artifact and imports it into a fresh map', () => {
+    const map = new WorkloadHeatMap();
+    for (let i = 0; i < 4; i += 1) {
+      map.recordOutcome(fpKey(), 'economical-cloud', 'econ-a', true);
+    }
+
+    const artifact = map.exportArtifact({
+      created_at: '2026-08-03T00:00:00.000Z',
+      source: 'dogfood-export',
+      note: 'export analog of router-export',
+    });
+
+    const imported = WorkloadHeatMap.importArtifact(JSON.parse(JSON.stringify(artifact)));
+    expect(imported.getCell('fingerprint', FP_A)!.tiers.get('economical-cloud')).toEqual({
+      attempts: 4,
+      successes: 4,
+    });
+    expect(
+      imported.resolveAffinity(fpKey(), heatConfig())!.tier,
+    ).toBe('economical-cloud');
+  });
+
+  it('clear() drops all heat (router-reset analog)', () => {
+    const map = new WorkloadHeatMap();
+    map.recordOutcome(fpKey(), 'economical-cloud', 'econ-a', true);
+    map.recordOutcome(
+      { requirementFingerprint: null, clusterId: 'code_edit' },
+      'frontier-cloud',
+      'frontier-a',
+      true,
+    );
+    expect(map.size).toBe(2);
+
+    map.clear();
+    expect(map.size).toBe(0);
+    expect(map.summarize(fpKey())).toBeNull();
+  });
+
+  it('import clamps successes to attempts and skips invalid cells', () => {
+    const artifact = {
+      version: WORKLOAD_HEAT_ARTIFACT_VERSION,
+      provenance: { created_at: '2026-08-03T00:00:00.000Z', source: 'imported' },
+      cells: [
+        {
+          key_space: 'fingerprint',
+          key: FP_A,
+          tiers: { 'economical-cloud': { attempts: 2, successes: 9 } },
+          updated_at: '2026-08-03T00:00:00.000Z',
+        },
+        {
+          key_space: 'cluster',
+          key: 'not a valid cluster id',
+          tiers: { 'economical-cloud': { attempts: 1, successes: 1 } },
+          updated_at: '2026-08-03T00:00:00.000Z',
+        },
+      ],
+    };
+
+    const imported = WorkloadHeatMap.importArtifact(artifact);
+    expect(imported.getCell('fingerprint', FP_A)!.tiers.get('economical-cloud')).toEqual({
+      attempts: 2,
+      successes: 2,
+    });
+    expect(imported.size).toBe(1);
+  });
+});
+
+// ─── Live affinity hysteresis at pin-safe boundaries (Colibri REPIN analog) ─
+
+describe('live heat affinity hysteresis (SP-215)', () => {
+  const pinBreak: PinLookupResult = { action: 'break', breakReason: 'compaction' };
+  const idleReopen: PinLookupResult = {
+    action: 'no_pin',
+    saarReason: 'saar_idle_reopen',
+  };
+  const warmPin: PinLookupResult = {
+    action: 'use_pin',
+    pinnedModel: biasFleet[1]!,
+  };
+
+  function hotHeatMap(): WorkloadHeatMap {
+    const map = new WorkloadHeatMap();
+    // Economical 6/6 = 1.0 vs frontier 1/4 = 0.25 → advantage 0.75.
+    for (let i = 0; i < 6; i += 1) {
+      map.recordOutcome(fpKey(), 'economical-cloud', 'econ-a', true);
+    }
+    for (let i = 0; i < 4; i += 1) {
+      map.recordOutcome(fpKey(), 'frontier-cloud', 'frontier-a', i === 0);
+    }
+    return map;
+  }
+
+  it('detects pin-safe boundaries only on breaks / idle reopen', () => {
+    expect(isPinSafeBoundary(pinBreak)).toBe(true);
+    expect(isPinSafeBoundary(idleReopen)).toBe(true);
+    expect(isPinSafeBoundary(warmPin)).toBe(false);
+    expect(isPinSafeBoundary({ action: 'no_pin' })).toBe(false);
+    expect(
+      isPinSafeBoundary({ action: 'saar_route', pinnedModel: biasFleet[1]! }),
+    ).toBe(false);
+  });
+
+  it('does nothing when live updates are disabled (default)', () => {
+    const controller = new HeatAffinityController(
+      heatConfig({ live_update_enabled: false }),
+    );
+    const decision = controller.evaluateSwap(
+      'sess-1',
+      pinBreak,
+      fpKey(),
+      'frontier-cloud',
+      hotHeatMap(),
+    );
+    expect(decision.shouldSwap).toBe(false);
+    expect(decision.reasonCode).toBe('live_update_disabled');
+  });
+
+  it('refuses to swap at a warm pin (never smashes the pin)', () => {
+    const controller = new HeatAffinityController(
+      heatConfig({ live_update_enabled: true }),
+    );
+    const decision = controller.evaluateSwap(
+      'sess-1',
+      warmPin,
+      fpKey(),
+      'frontier-cloud',
+      hotHeatMap(),
+    );
+    expect(decision.shouldSwap).toBe(false);
+    expect(decision.reasonCode).toBe('not_pin_safe_boundary');
+  });
+
+  it('swaps at a pin-safe boundary when advantage clears the ~25% band', () => {
+    const controller = new HeatAffinityController(
+      heatConfig({ live_update_enabled: true }),
+    );
+    const heat = hotHeatMap();
+    const decision = controller.evaluateSwap(
+      'sess-1',
+      pinBreak,
+      fpKey(),
+      'frontier-cloud',
+      heat,
+    );
+
+    expect(decision.shouldSwap).toBe(true);
+    expect(decision.targetTier).toBe('economical-cloud');
+    expect(decision.reasonCode).toBe('heat_affinity_swap');
+    expect(decision.advantage).toBeCloseTo(0.75, 5);
+    expect(controller.getState('sess-1')).toEqual({
+      activeTier: 'economical-cloud',
+      swapsThisSession: 1,
+    });
+
+    // Decaying heat applied at swap (Colibri analog).
+    const cell = heat.getCell('fingerprint', FP_A)!;
+    expect(cell.tiers.get('economical-cloud')!.attempts).toBe(
+      Math.floor(6 * AFFINITY_SWAP_HEAT_DECAY),
+    );
+  });
+
+  it('holds inside the hysteresis band (~25%)', () => {
+    const controller = new HeatAffinityController(
+      heatConfig({ live_update_enabled: true }),
+    );
+    const heat = new WorkloadHeatMap();
+    // Frontier (active) 3/4 = 0.75; economical 4/4 = 1.0 → advantage 0.25 boundary.
+    for (let i = 0; i < 4; i += 1) {
+      mapRecord(heat, 'frontier-cloud', 'frontier-a', i > 0);
+      mapRecord(heat, 'economical-cloud', 'econ-a', true);
+    }
+
+    const justUnder = controller.evaluateSwap(
+      'sess-hold',
+      pinBreak,
+      fpKey(),
+      'frontier-cloud',
+      heatWithRates(0.99, 0.75),
+    );
+    expect(justUnder.shouldSwap).toBe(false);
+    expect(justUnder.reasonCode).toBe('hysteresis_hold');
+
+    const atBand = controller.evaluateSwap(
+      'sess-band',
+      pinBreak,
+      fpKey(),
+      'frontier-cloud',
+      heat,
+    );
+    expect(atBand.shouldSwap).toBe(true);
+  });
+
+  it('enforces the swap cap per session (thrash guard)', () => {
+    const controller = new HeatAffinityController(
+      heatConfig({ live_update_enabled: true, swap_cap: 1 }),
+    );
+    const heat = hotHeatMap();
+
+    const first = controller.evaluateSwap('sess-cap', pinBreak, fpKey(), 'frontier-cloud', heat);
+    expect(first.shouldSwap).toBe(true);
+
+    // Heat shifts to frontier (econ failures + frontier successes post-decay);
+    // a second live swap would exceed the cap.
+    for (let i = 0; i < 3; i += 1) {
+      mapRecord(heat, 'economical-cloud', 'econ-a', false);
+    }
+    for (let i = 0; i < 8; i += 1) {
+      mapRecord(heat, 'frontier-cloud', 'frontier-a', true);
+    }
+    const second = controller.evaluateSwap('sess-cap', pinBreak, fpKey(), 'economical-cloud', heat);
+    expect(second.shouldSwap).toBe(false);
+    expect(second.reasonCode).toBe('swap_cap_reached');
+  });
+
+  it('clearSession resets the swap window', () => {
+    const controller = new HeatAffinityController(
+      heatConfig({ live_update_enabled: true, swap_cap: 1 }),
+    );
+    controller.evaluateSwap('sess-reset', pinBreak, fpKey(), 'frontier-cloud', hotHeatMap());
+    expect(controller.getState('sess-reset')!.swapsThisSession).toBe(1);
+
+    controller.clearSession('sess-reset');
+    expect(controller.getState('sess-reset')).toBeNull();
+  });
+});
+
+// ─── Hysteresis helpers ──────────────────────────────────────────────────────
+
+function mapRecord(
+  map: WorkloadHeatMap,
+  tier: ModelProfile['tier'],
+  modelId: string,
+  success: boolean,
+): void {
+  map.recordOutcome(fpKey(), tier, modelId, success);
+}
+
+/** Heat map with exact success rates (min_samples satisfied on both tiers). */
+function heatWithRates(econRate: number, frontierRate: number): WorkloadHeatMap {
+  const map = new WorkloadHeatMap();
+  const paint = (tier: ModelProfile['tier'], modelId: string, rate: number): void => {
+    const attempts = 100;
+    for (let i = 0; i < attempts; i += 1) {
+      mapRecord(map, tier, modelId, i < Math.round(rate * attempts));
+    }
+  };
+  paint('economical-cloud', 'econ-a', econRate);
+  paint('frontier-cloud', 'frontier-a', frontierRate);
+  return map;
+}

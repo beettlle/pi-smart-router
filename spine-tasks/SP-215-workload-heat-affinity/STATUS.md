@@ -1,6 +1,6 @@
 # SP-215: Workload Heat Map + Soft Fleet Affinity — Status
 
-**Current Step:** 1
+**Current Step:** 3
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-08-03
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Heat schema + persistence + soft bias
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Privacy-safe heat record (no prompt text)
 - [x] Persist histogram with provenance
@@ -23,12 +23,12 @@
 
 ## Step 2: Hysteresis + export/clear + dogfood pointer
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Pin-safe hysteresis (~25% + swap cap)
-- [ ] Export/import/clear documented
-- [ ] Dogfood protocol pointer
-- [ ] No frugality/gate flips
+- [x] Pin-safe hysteresis (~25% + swap cap)
+- [x] Export/import/clear documented
+- [x] Dogfood protocol pointer
+- [x] No frugality/gate flips
 
 ## Step 3: Testing & Verification
 
@@ -56,6 +56,8 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
+| 2026-08-03 | 1 | plan | skipped (engine-owned, SP-195) |
+| 2026-08-03 | 2 | plan | skipped (engine-owned, SP-195) |
 
 ## Discoveries
 

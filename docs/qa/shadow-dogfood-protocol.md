@@ -105,6 +105,19 @@ npm run routing:verify-calibration -- config/routing-calibration.json
 
 Checked-in `config/p-success-weights.json` remains **synthetic/fixture** until the train/ship slice (SP-206) replaces it with non-synthetic provenance. Docs for the zero-manual-label path live in the README [behavioral-first bootstrap](../../README.md#behavioral-first-bootstrap-zero-manual-labels) section.
 
+### Workload heat + soft fleet affinity ([#115](https://github.com/beettlle/pi-smart-router/issues/115))
+
+Dogfood windows also feed the **workload heat map** (Colibri learning-cache analog, SP-215): a privacy-safe histogram of successful routes keyed by requirement fingerprint / cluster id → `(tier, model id, success proxy, count)` — never prompt text, messages, or tool arguments. Heat soft-biases **first-turn / cold-start** expected-cost selection (bounded discount, ≤25%); it never overrides capability shortfall, the price-delta gate, pin cache economics, or absolute release gates, and it does **not** flip frugality defaults. Optional live affinity updates (`workload_heat.live_update_enabled`, default **off**) apply only at pin-safe boundaries with ~25% hysteresis + a per-session swap cap.
+
+Operator paths (llm-use `router-export` / `router-reset` analogs):
+
+- **Persist/export:** `.pi-smart-router/workload-heat.json` — versioned artifact with provenance (`operator-local` / `dogfood-export` / `imported`). Copy the file to export; it is already gitignored.
+- **Import:** place a valid artifact at the same path (schema-validated on load; malformed files load cold with a warning).
+- **Clear:** delete the file (`clearWorkloadHeatFile`) or `WorkloadHeatMap.clear()` for the in-memory histogram.
+- **Knobs:** `workload_heat` operator config (`src/config/defaults.ts`): `bias_strength`, `min_samples`, `min_success_margin`, `max_entries`, `live_update_enabled`, `hysteresis_band`, `swap_cap`.
+
+Privacy check: include `workload-heat.json` in the export review above — keys must match `^[0-9a-f]{16}$` (fingerprint) or `^[a-z][a-z0-9_]*$` (cluster id) only.
+
 ## Offline companion commands
 
 After sessions, or anytime — from this package (cwd optional; `npm run` / the script bind to the package root):
@@ -168,6 +181,7 @@ Recommend relaxing frugality / flipping encoder defaults: no / yes (requires #96
 | [#95](https://github.com/beettlle/pi-smart-router/issues/95) | Shadow dogfood + public-track soft-feed protocol |
 | [#110](https://github.com/beettlle/pi-smart-router/issues/110) | Behavioral calibration — zero-manual-label bootstrap → aggregate → train → verify (docs SP-205; train/ship SP-206) |
 | [#111](https://github.com/beettlle/pi-smart-router/issues/111) | Track B dogfood export → harness adapter (labeled exports only; never invent labels) |
+| [#115](https://github.com/beettlle/pi-smart-router/issues/115) | Workload heat map + soft fleet affinity (SP-215) — first-turn soft bias, optional pin-boundary live affinity |
 | Over-routing analysis (authoring draft) | Why corpus ≈0.85 (autonomous) |
 | [#75](https://github.com/beettlle/pi-smart-router/issues/75) (closed) | Original profile ingest/mapper — keep closed |
 | [#108](https://github.com/beettlle/pi-smart-router/issues/108) | Mapper coverage metric over a fixed fixture ID list (`benchmark` vs `pattern_default`) |
