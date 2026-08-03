@@ -2,11 +2,11 @@
 
 **Last Updated:** 2026-08-02
 **Status:** Active
-**Next Task ID:** SP-215
+**Next Task ID:** SP-218
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** v0.14.0 (2026-08-03) — SP-212–SP-214 routing session resilience (#119/#120/#125). Prior v0.13.0 SP-208–SP-211 multi-fleet dogfood (#124/#121/#122/#123).
-**In progress:** Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 remains open until real exports.
+**In progress:** Release **v0.15.0** Colibri local affinity & placement (SP-215–SP-217 / #115–#117). Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 remains open until real exports.
 
 ---
 
@@ -694,6 +694,28 @@
 **Deferred:** #95/#110 (human/exports), #96/#114 encoder, #115–#117 Colibri, #1/#25/#26 hardware.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.14.0/manifest.md`
+
+### Phase 47 — Release v0.15.0 Colibri Local Affinity & Placement (SP-215–SP-217)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-215 | Workload heat map + soft fleet affinity + hysteresis | M | — | Closes #115 |
+| SP-216 | Honest local placement plan/doctor + cold vs warm TPS | M | — | Closes #116 |
+| SP-217 | Speculative local/encoder prewarm with acceptance guard | M | — | Closes #117 |
+
+**Source:** Operator-approved **v0.15.0** (2026-08-02). Theme: Colibri-inspired local affinity & placement.
+
+**Wave order (proposed):**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| 0 | SP-215, SP-216, SP-217 | Parallel — disjoint scopes (heat/expected-cost · hardware/commands · prewarm/pipeline) |
+
+**Status:** Packets authored; awaiting batch execution.
+
+**Deferred:** #95/#110 (human/exports), #96/#114 encoder, #1/#25/#26 hardware.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.15.0/manifest.md`
 
 ---
 
