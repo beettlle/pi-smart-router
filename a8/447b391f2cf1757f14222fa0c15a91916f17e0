@@ -1,0 +1,14 @@
+spine-tasks/SP-219-modernbert-k4-top1-ab/.reviews/final-20260803T225444.md
+  h_ae151c586ac6c5 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "a8447b391f2cf1757f14222fa0c15a91916f17e0",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
