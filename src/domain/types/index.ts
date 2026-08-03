@@ -41,6 +41,7 @@ export type {
   PinReason,
   PriceSource,
   OutcomeSignalType,
+  RoutePath,
   RoutingStage,
   Tier,
   TurnType,

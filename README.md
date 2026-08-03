@@ -442,6 +442,25 @@ When a **planning** turn would route primary inference to frontier while a warm 
 
 See [routing-roadmap.md](docs/routing-roadmap.md) §2 P0 and GitHub [#71](https://github.com/beettlle/pi-smart-router/issues/71) for acceptance criteria.
 
+### Degraded neural failover sandwich (#119)
+
+When the encoder/neural stage (HyDRA) **fails, is misconfigured, or exceeds its latency budget without a selection**, routing fails open through a cheap chain instead of crashing the host agent ([#119](https://github.com/beettlle/pi-smart-router/issues/119)):
+
+1. **learned** — optional privacy-safe map keyed by requirement fingerprint (SHA-256 of the rounded requirement vector) or cluster id → preferred tier. **Raw prompt text is never stored.** Exact-key policy: fingerprint match first, cluster id second (no fuzzy matching). Writes are validated (bounded floats, snake_case cluster ids, tier enum) and capped (FIFO eviction) so confounder attacks cannot poison routing memory.
+2. **heuristic** — optional operator **pattern pack** (router_rules-style regex overlay) for known-simple intents. Deny-by-default (no match → no decision) and **fail closed on invalid regex** (the rule is rejected at load and never applies).
+3. **safe_default** — context-fit aware safe economical/frontier default (`degraded_safe_default`).
+
+Explain/telemetry expose `route_path` (`neural` \| `learned` \| `heuristic` \| `safe_default`) plus `route_path_confidence` on every decision; degraded decisions carry reason codes `degraded_learned_route`, `degraded_pattern_<rule_id>`, or `degraded_safe_default`. A learned/pattern suggestion toward a cheaper tier is only honored when the cheap tool-use cue estimate is below `pattern_tool_use_ceiling` — a cheap overlay **never alone overrides a predicted capability shortfall**.
+
+| Knob (`degraded_route` operator config) | Default | Effect |
+|------|---------|--------|
+| `enabled` | `true` | When `false`, neural failures use the legacy `safe_default` stage pass-through |
+| `learned_min_confidence` | `0.6` | Minimum learned-entry confidence to honor a tier suggestion |
+| `learned_max_entries` | `512` | Learned-map cap per key space (FIFO eviction) |
+| `pattern_tool_use_ceiling` | `0.3` | Tool-use cue ceiling for honoring cheaper-tier learned/pattern suggestions |
+
+Distinct from soft heat affinity (healthy-path bias): this is failover / skip-expensive-stage only. Routing remains **pre-generation** — no FrugalGPT-style cascades (see [routing-roadmap.md](docs/routing-roadmap.md) §1).
+
 ### Virtual cost v2 (v0.5.0 subscription economics)
 
 **Virtual cost v2** extends SP-096 flat `quota_cost_per_1m` with deterministic subscription-window economics ([#78](https://github.com/beettlle/pi-smart-router/issues/78)). It inflates effective frontier cost late in a rolling quota window and credits warm prefix-cache value on active pins — without MDP or reinforcement-learning quota policy (SeqRoute HBR+CQL is deferred).

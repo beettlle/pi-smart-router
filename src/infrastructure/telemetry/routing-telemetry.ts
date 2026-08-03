@@ -34,6 +34,7 @@ import type {
   PlanningDelegatePath,
   PriceCatalog,
   RejectedTierEntry,
+  RoutePath,
   RoutingDecision,
   RoutingRequest,
   RoutingTelemetry,
@@ -1305,6 +1306,12 @@ export const DEFAULT_TIER_SELECTION_DATASET_FIELDS = {
 
 // ─── Emitter ─────────────────────────────────────────────────────────────────
 
+/** Optional route_path classification supplied by the pipeline (SP-212, #119). */
+export interface RoutePathTelemetryExtras {
+  readonly routePath?: RoutePath | null;
+  readonly routePathConfidence?: number | null;
+}
+
 export class RoutingTelemetryEmitter {
   private readonly entries: RoutingTelemetry[] = [];
   private readonly maxEntries: number;
@@ -1337,8 +1344,12 @@ export class RoutingTelemetryEmitter {
    * Emit a telemetry record from a completed routing decision.
    * Enforces the rolling window (time + count) before appending.
    */
-  emit(request: RoutingRequest, decision: RoutingDecision): RoutingTelemetry {
-    return this.appendRecord(request, decision);
+  emit(
+    request: RoutingRequest,
+    decision: RoutingDecision,
+    extras?: RoutePathTelemetryExtras,
+  ): RoutingTelemetry {
+    return this.appendRecord(request, decision, extras);
   }
 
   /**
@@ -1348,18 +1359,20 @@ export class RoutingTelemetryEmitter {
     request: RoutingRequest,
     failedStage: string,
     fallback: RoutingDecision,
+    extras?: RoutePathTelemetryExtras,
   ): RoutingTelemetry {
     const errorDecision: RoutingDecision = {
       ...fallback,
       stage: failedStage as RoutingDecision['stage'],
       reason_code: 'pipeline_error',
     };
-    return this.appendRecord(request, errorDecision);
+    return this.appendRecord(request, errorDecision, extras);
   }
 
   private appendRecord(
     request: RoutingRequest,
     decision: RoutingDecision,
+    extras?: RoutePathTelemetryExtras,
   ): RoutingTelemetry {
     makeTelemetryRoom(this.entries, this.maxEntries);
 
@@ -1432,6 +1445,8 @@ export class RoutingTelemetryEmitter {
       flip_flop_shadow_event: pinEconomicsFields.flip_flop_shadow_event,
       ...planningDelegateFields,
       ...pinOnlyFallbackFields,
+      route_path: extras?.routePath ?? null,
+      route_path_confidence: extras?.routePathConfidence ?? null,
     };
 
     this.entries.push(record);
