@@ -1,0 +1,37 @@
+spine-tasks/SP-217-speculative-prewarm-guard/STATUS.md
+  s_b1b8d0f17dbdff::t_db720e451cbe31 3-5,15,17-20,26,28-31,35,37-41,47-50,58-59,69-76
+spine-tasks/SP-217-speculative-prewarm-guard/.reviews/final-20260803T004935.md
+  s_b1b8d0f17dbdff::t_db720e451cbe31 1-8
+src/domain/routing/speculative-prewarm.ts
+  s_b1b8d0f17dbdff::t_db720e451cbe31 1-252
+src/infrastructure/telemetry/routing-telemetry.ts
+  s_b1b8d0f17dbdff::t_db720e451cbe31 859-884,1454,1496
+src/config/defaults.ts
+  s_b1b8d0f17dbdff::t_adce6dd6fbf7c4 24
+  s_b1b8d0f17dbdff::t_db720e451cbe31 11,23,74-75
+tests/unit/speculative-prewarm.test.ts
+  s_b1b8d0f17dbdff::t_db720e451cbe31 1-530
+src/domain/types/entities.ts
+  s_b1b8d0f17dbdff::t_db720e451cbe31 366-371,556-561
+src/domain/types/schemas.ts
+  s_b1b8d0f17dbdff::t_db720e451cbe31 456-482,662-663
+src/domain/pipeline/router-pipeline.ts
+  s_b1b8d0f17dbdff::t_db720e451cbe31 30,103-109,281-284,335-338,391,491-499,928-937,960-1027
+  s_b1b8d0f17dbdff::t_ac7a1e3441f656 1028
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "c731eba56a49e19ef4b2c790f1ab27f8bc9b544d",
+  "prompts": {},
+  "sessions": {
+    "s_b1b8d0f17dbdff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-6adb86ef-b1d9-4d24-a429-2646632d6f93",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
