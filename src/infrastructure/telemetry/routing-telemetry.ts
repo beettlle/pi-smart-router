@@ -856,6 +856,32 @@ function defaultPinOnlyFallbackTelemetry(): Pick<RoutingTelemetry, 'pin_only_fal
 /** Default pin-only fallback telemetry scalars for tests and legacy store reads. */
 export const DEFAULT_PIN_ONLY_FALLBACK_TELEMETRY_FIELDS = defaultPinOnlyFallbackTelemetry();
 
+function defaultPrewarmTelemetry(): Pick<
+  RoutingTelemetry,
+  'prewarm_attempted' | 'prewarm_accepted' | 'prewarm_disabled_reason'
+> {
+  return {
+    prewarm_attempted: false,
+    prewarm_accepted: null,
+    prewarm_disabled_reason: null,
+  };
+}
+
+/** Default speculative prewarm telemetry scalars for tests and legacy store reads (SP-217). */
+export const DEFAULT_PREWARM_TELEMETRY_FIELDS = defaultPrewarmTelemetry();
+
+/** Prewarm explain/telemetry fields from the decision feature sidecar (SP-217, #117). */
+export function prewarmTelemetryFromDecision(
+  decision: RoutingDecision,
+): ReturnType<typeof defaultPrewarmTelemetry> {
+  const features = decision.features;
+  return {
+    prewarm_attempted: features?.prewarm_attempted ?? false,
+    prewarm_accepted: features?.prewarm_accepted ?? null,
+    prewarm_disabled_reason: features?.prewarm_disabled_reason ?? null,
+  };
+}
+
 /** True when routing used emergency pin-only fallback for this decision (SP-162). */
 export function resolvePinOnlyFallbackActive(decision: RoutingDecision): boolean {
   return decision.reason_code === PIN_ONLY_FALLBACK;
@@ -1425,6 +1451,7 @@ export class RoutingTelemetryEmitter {
     });
     const planningDelegateFields = planningDelegateTelemetryFromDecision(decision);
     const pinOnlyFallbackFields = pinOnlyFallbackTelemetryFromDecision(decision);
+    const prewarmFields = prewarmTelemetryFromDecision(decision);
 
     const record: RoutingTelemetry & FlipFlopTelemetryFields = {
       timestamp: this.clock(),
@@ -1466,6 +1493,7 @@ export class RoutingTelemetryEmitter {
       flip_flop_shadow_event: pinEconomicsFields.flip_flop_shadow_event,
       ...planningDelegateFields,
       ...pinOnlyFallbackFields,
+      ...prewarmFields,
       route_path: extras?.routePath ?? null,
       route_path_confidence: extras?.routePathConfidence ?? null,
     };

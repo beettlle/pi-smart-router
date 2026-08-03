@@ -27,7 +27,7 @@ import type { LowIntensityConfig, LocalZeroConfig, VirtualCostV2Config } from '.
 import { DEFAULT_LOCAL_ZERO_CONFIG } from '../types/schemas.js';
 import type { HardwareProbeConfig, HardwareProbeResult, SystemInfo } from '../../infrastructure/hardware/hardware-probe.js';
 import type { ThroughputMeter } from '../../infrastructure/hardware/throughput-meter.js';
-import type { HttpFetchPort, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
+import type { HttpFetchPort, LocalReadinessResult, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
 import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
 import { pingLocalServices } from '../../infrastructure/local/local-zero-tier.js';
 import { triage as triageClassify } from '../triage/triage-engine.js';
@@ -100,6 +100,13 @@ import {
   selectTierByExpectedCost,
   type ExpectedCostBreakdown,
 } from '../routing/expected-cost.js';
+import {
+  DEFAULT_SPECULATIVE_PREWARM_CONFIG,
+  PREWARM_DISABLED_LOW_ACCEPTANCE,
+  SpeculativePrewarmGuard,
+  type PrewarmOutcome,
+  type SpeculativePrewarmConfig,
+} from '../routing/speculative-prewarm.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
 
@@ -271,6 +278,10 @@ export interface PipelineOptions {
   readonly localZeroConfig?: LocalZeroConfig;
   /** Degraded neural failover sandwich knobs (SP-212, #119). */
   readonly degradedRouteConfig?: DegradedRouteConfig;
+  /** Speculative prewarm knobs (SP-217, #117). Default off; fail open. */
+  readonly prewarmConfig?: SpeculativePrewarmConfig;
+  /** Injected prewarm guard for tests; lazily created from prewarmConfig when omitted. */
+  readonly prewarmGuard?: SpeculativePrewarmGuard;
   /** Privacy-safe learned map for the degraded sandwich (SP-212, #119). */
   readonly learnedRouteStore?: LearnedRouteStore;
   /** Compiled operator pattern pack overlay for the degraded sandwich (SP-212, #119). */
@@ -321,6 +332,10 @@ export class RouterPipeline {
   /** Degraded sandwich route path for explain/telemetry (SP-212, #119). */
   private currentRoutePath: RoutePath | null = null;
   private currentRoutePathConfidence: number | null = null;
+  /** Speculative prewarm outcome for explain/telemetry (SP-217, #117). */
+  private currentPrewarmOutcome: PrewarmOutcome | null = null;
+  /** Lazily created session-scoped prewarm guard (acceptance state spans routes). */
+  private prewarmGuardInstance: SpeculativePrewarmGuard | null = null;
 
   constructor(fleet: readonly ModelProfile[], options?: PipelineOptions) {
     this.fleet = fleet;
@@ -373,6 +388,7 @@ export class RouterPipeline {
     this.currentLocalZeroGateSkipReasons = [];
     this.currentRoutePath = null;
     this.currentRoutePathConfidence = null;
+    this.currentPrewarmOutcome = null;
 
     let currentStage: NamedPipelineStage | undefined;
 
@@ -472,6 +488,15 @@ export class RouterPipeline {
         : {}),
       route_path: this.resolveRoutePathTelemetry(decision).routePath,
       route_path_confidence: this.resolveRoutePathTelemetry(decision).routePathConfidence,
+      ...(this.currentPrewarmOutcome
+        ? {
+            prewarm_attempted: this.currentPrewarmOutcome.attempted,
+            prewarm_accepted: this.currentPrewarmOutcome.accepted,
+            prewarm_disabled_reason: this.currentPrewarmOutcome.attempted
+              ? null
+              : this.currentPrewarmOutcome.reason,
+          }
+        : {}),
     };
 
     const withBaseFeatures = { ...decision, features };
@@ -900,10 +925,16 @@ export class RouterPipeline {
       };
     }
 
-    const readiness = await pingLocalServices(
-      this.options.localConfig,
-      this.options.httpFetchPort,
-    );
+    // SP-217 / #117: speculative prewarm of the local runtime within a strict
+    // deadline when early signals lean local. Fail open — on timeout/miss we
+    // fall back to the normal unbounded readiness probe below (no hang).
+    const prewarmedReadiness = await this.attemptSpeculativePrewarm(request);
+    const readiness =
+      prewarmedReadiness ??
+      (await pingLocalServices(
+        this.options.localConfig,
+        this.options.httpFetchPort,
+      ));
 
     if (!readiness.anyModelReady) {
       return { decided: false, stage: 'local_zero' };
@@ -924,6 +955,75 @@ export class RouterPipeline {
         pin_reason: null,
       },
     };
+  }
+
+  // ─── Speculative prewarm (SP-217, #117) ─────────────────────────────────
+
+  private resolvePrewarmGuard(): SpeculativePrewarmGuard {
+    if (this.options.prewarmGuard) {
+      return this.options.prewarmGuard;
+    }
+    if (!this.prewarmGuardInstance) {
+      this.prewarmGuardInstance = new SpeculativePrewarmGuard(
+        this.options.prewarmConfig ??
+          DEFAULT_OPERATOR_CONFIG.speculative_prewarm ??
+          DEFAULT_SPECULATIVE_PREWARM_CONFIG,
+      );
+    }
+    return this.prewarmGuardInstance;
+  }
+
+  /**
+   * Bounded speculative prewarm of the local runtime (Colibri PILOT pattern).
+   * Runs only when local_zero eligibility already passed and the operator
+   * opted in. Returns the warm readiness result to reuse when accepted; null
+   * otherwise (caller falls back to the normal readiness probe — fail open).
+   * Pre-generation only: the warm probe is an I/O readiness ping; it never
+   * waits on generated tokens.
+   */
+  private async attemptSpeculativePrewarm(
+    request: RoutingRequest,
+  ): Promise<LocalReadinessResult | null> {
+    const guard = this.resolvePrewarmGuard();
+    if (!guard.isEnabled()) {
+      return null;
+    }
+
+    if (!guard.shouldAttempt(request.session_id)) {
+      this.currentPrewarmOutcome = {
+        attempted: false,
+        accepted: null,
+        target: 'local_runtime',
+        elapsed_ms: null,
+        reason:
+          guard.disabledReason(request.session_id) ??
+          PREWARM_DISABLED_LOW_ACCEPTANCE,
+      };
+      return null;
+    }
+
+    let captured: LocalReadinessResult | null = null;
+    const outcome = await guard.attempt(
+      request.session_id,
+      'local_runtime',
+      async (signal) => {
+        const readiness = await pingLocalServices(
+          this.options.localConfig,
+          this.options.httpFetchPort,
+        );
+        if (signal.aborted) {
+          return false;
+        }
+        captured = readiness;
+        return readiness.anyModelReady;
+      },
+    );
+    this.currentPrewarmOutcome = outcome;
+
+    if (outcome.accepted === true && captured !== null) {
+      return captured;
+    }
+    return null;
   }
 
   // ─── Triage stage (FR-003, SC-004 <5ms budget) ──────────────────────────────

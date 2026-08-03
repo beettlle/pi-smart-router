@@ -1,6 +1,6 @@
 # SP-217: Speculative Prewarm with Acceptance Guard — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** 🔄 In Progress
 **Last Updated:** 2026-08-03
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 1: Prewarm module + config (default off)
 
-**Status:** 🔄 In Progress (work done; plan review pending)
+**Status:** ✅ Complete (plan review skipped by engine — SP-195; reviewed post-.DONE)
 
 - [x] Speculative prewarm module (injectable clock/cancel)
 - [x] Config default off
@@ -23,7 +23,7 @@
 
 ## Step 2: Pipeline wire + adaptive guard + telemetry
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Pipeline hook for local/economical lean
 - [ ] Adaptive session disable
@@ -55,6 +55,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
+| 2026-08-03 | 1 | plan | SKIPPED (engine-owned post-.DONE, SP-195) |
 
 ## Discoveries
 
