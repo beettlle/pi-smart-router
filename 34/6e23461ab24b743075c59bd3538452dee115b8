@@ -1,0 +1,14 @@
+spine-tasks/SP-215-workload-heat-affinity/.reviews/final-20260803T005204.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "346e23461ab24b743075c59bd3538452dee115b8",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
