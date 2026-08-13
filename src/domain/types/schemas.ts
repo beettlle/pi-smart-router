@@ -63,6 +63,8 @@ export const MessageSchema = z.object({
   content: z.string(),
   tool_call_id: z.string().optional(),
   tool_calls: z.array(z.unknown()).optional(),
+  is_error: z.boolean().optional(),
+  status: z.number().optional(),
 });
 
 // ─── RoutingRequest (contract: routing-request.schema.json) ──────────────────
