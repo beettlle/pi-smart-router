@@ -116,6 +116,28 @@ describe('mapPiModelToProfile', () => {
       expect(profile.tier).toBe('economical-cloud');
       expect(profile.pricing.fallback_cost_per_1m).toBe(0.8);
     });
+
+    it('maps gpt-5.6 to frontier tier (B: latest flagship)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'openai', id: 'gpt-5.6' }),
+      );
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capability_source).toBe('pattern_default');
+    });
+
+    it('maps gpt-5.6-luna to frontier tier (B: id with suffix)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'openai', id: 'gpt-5.6-luna' }),
+      );
+      expect(profile.tier).toBe('frontier-cloud');
+    });
+
+    it('maps gpt-5.7 to frontier tier (B: forward-compatible)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'openai', id: 'gpt-5.7' }),
+      );
+      expect(profile.tier).toBe('frontier-cloud');
+    });
   });
 
   describe('Gemini family', () => {
