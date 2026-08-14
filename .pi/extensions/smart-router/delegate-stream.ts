@@ -227,6 +227,8 @@ function recordDelegateOutcome(
     deps.onDelegatedModel?.({
       provider: targetModel.provider,
       id: targetModel.id,
+      contextWindow: targetModel.contextWindow,
+      maxTokens: targetModel.maxTokens,
     });
   }
 }

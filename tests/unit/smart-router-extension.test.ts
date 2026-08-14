@@ -1136,6 +1136,8 @@ describe('createStreamSimple', () => {
     expect(onDelegatedModel).toHaveBeenCalledWith({
       provider: 'openai',
       id: 'gpt-4o-mini',
+      contextWindow: 128_000,
+      maxTokens: 4096,
     });
     expect(executionLedger.getLastExecution('ledger-sess-1')).toEqual({
       provider: 'openai',

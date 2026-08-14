@@ -70,7 +70,13 @@ export interface StreamDelegationDeps {
   readonly sessionRouting?: Map<string, SessionRoutingSnapshot>;
   onRoutingDecision?: (decision: RoutingDecision) => void;
   /** Fired when a delegated provider stream completes successfully. */
-  onDelegatedModel?: (model: { readonly provider: string; readonly id: string }) => void;
+  onDelegatedModel?: (model: {
+    readonly provider: string;
+    readonly id: string;
+    /** Real limits of the delegated model, used to sync the registered auto entry. */
+    readonly contextWindow?: number;
+    readonly maxTokens?: number;
+  }) => void;
 }
 
 export interface SmartRouterRuntime {
@@ -94,4 +100,10 @@ export interface SmartRouterRuntime {
   setLmuStatus?: (modelId: string) => void;
   clearLmuStatus?: () => void;
   notifyDatasetEnabled?: (message: string) => void;
+  /**
+   * Re-register the smart-router/auto model entry with the delegated model's real
+   * context window / max output, so pi's footer and compaction use the actual
+   * model limits instead of a hardcoded 200k (SP-092 fallback).
+   */
+  syncRegisteredLimits?: (limits: { contextWindow?: number; maxTokens?: number }) => void;
 }
