@@ -431,7 +431,9 @@ describe('SqliteStore', () => {
       return {
         request_id: 'req-1',
         session_id: 'sess-1',
-        timestamp: '2026-07-05T00:00:00.000Z',
+        // Relative timestamp so fixtures never age out of the 30-day retention
+        // window (fixed dates silently evict and break release:check later).
+        timestamp: new Date(Date.now() - 60_000).toISOString(),
         signal_type: 'model_override',
         routed_model_id: 'gpt-5-mini',
         override_model_id: 'gpt-4o',
@@ -442,11 +444,11 @@ describe('SqliteStore', () => {
     it('appends and lists outcome records newest first', async () => {
       store.appendOutcomeRecord(makeOutcome({
         request_id: 'req-1',
-        timestamp: '2026-07-05T00:00:00.000Z',
+        timestamp: new Date(Date.now() - 60_000).toISOString(),
       }));
       store.appendOutcomeRecord(makeOutcome({
         request_id: 'req-2',
-        timestamp: '2026-07-05T00:01:00.000Z',
+        timestamp: new Date(Date.now() - 30_000).toISOString(),
         signal_type: 'feedback_good',
         override_model_id: null,
       }));
