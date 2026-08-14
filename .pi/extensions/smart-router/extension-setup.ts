@@ -28,6 +28,20 @@ const PROVIDER_NAME = 'smart-router' as const;
 const AUTO_MODEL_ID = 'auto' as const;
 
 /**
+ * Static provider registration fields. `api`/`baseUrl` must be present on EVERY
+ * registration: pi's `ModelRuntime.registerProvider` validates the raw config
+ * (via `validateExtensionProvider`/`applyExtension`) BEFORE merging with the
+ * previous registration, so a models-only re-registration throws
+ * "no \"api\" specified" and silently breaks the footer context-window sync.
+ */
+const PROVIDER_BASE_CONFIG = {
+  name: 'Smart Router',
+  baseUrl: 'https://smart-router.local',
+  apiKey: 'local',
+  api: 'openai-responses',
+} as const;
+
+/**
  * Conservative fallback limits for the registered auto entry (SP-092) when no
  * real model has been delegated yet. Once the router selects a model, the entry
  * is re-registered with that model's actual context window / max output.
@@ -156,16 +170,19 @@ export async function wireSmartRouterExtension(
     }
     const nextLimits: ModelLimits = { ...limits };
     registeredLimits = nextLimits;
-    pi.registerProvider(PROVIDER_NAME, {
-      models: [buildAutoModelEntry(nextLimits)],
-    });
+    try {
+      pi.registerProvider(PROVIDER_NAME, {
+        ...PROVIDER_BASE_CONFIG,
+        models: [buildAutoModelEntry(nextLimits)],
+      });
+    } catch (error) {
+      // A footer display issue must never fail the routed request.
+      console.error('[smart-router] failed to sync auto model limits:', error);
+    }
   };
 
   pi.registerProvider(PROVIDER_NAME, {
-    name: 'Smart Router',
-    baseUrl: 'https://smart-router.local',
-    apiKey: 'local',
-    api: 'openai-responses',
+    ...PROVIDER_BASE_CONFIG,
     models: [buildAutoModelEntry()],
     streamSimple: createStreamSimple(runtime.streamDeps),
   });

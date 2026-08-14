@@ -70,4 +70,30 @@ describe('smart-router auto model limits (context window from selected model)', 
     const lastModels = registerProvider.mock.calls[2]![1]!.models;
     expect(lastModels[0].contextWindow).toBe(128_000);
   });
+
+  it('includes api/baseUrl on every registration (pi validates raw config before merging)', async () => {
+    const registerProvider = vi.fn();
+    const pi = {
+      registerProvider,
+      registerCommand: vi.fn(),
+      on: vi.fn(),
+    } as never;
+    const runtime = {
+      setLmuStatus: undefined,
+      sessionPinner: {},
+      streamDeps: {},
+    } as never;
+
+    await wireSmartRouterExtension(pi, runtime, { fn: undefined });
+    const sync = (runtime as { syncRegisteredLimits: (l: object) => void }).syncRegisteredLimits;
+    sync({ contextWindow: 1_000_000, maxTokens: 384_000 });
+
+    // Every payload must carry api + baseUrl; a models-only re-registration is
+    // rejected by pi's validateExtensionProvider before the merge runs.
+    for (const call of registerProvider.mock.calls) {
+      const payload = call[1];
+      expect(payload.api).toBe('openai-responses');
+      expect(payload.baseUrl).toBe('https://smart-router.local');
+    }
+  });
 });
