@@ -756,7 +756,7 @@
 | pre | Merge PR #128, #129 | Community land path |
 | 0 | SP-220 | After PR merges; disjoint from extension/mapper |
 
-**Status:** In progress — packets authored; PR merges + SP-220 batch pending.
+**Status:** SP-220 landed on main (manual cherry-pick after review timeout); #130/#133/#134 closed. Awaiting publish approval for v0.16.1.
 
 **Deferred:** #131/#132 (CHANGES_REQUESTED PRs), #95/#110, #96, #1/#25/#26 hardware.
 

@@ -112,13 +112,19 @@ Wave 0 · 1 task
 
 ## Publish checklist (Phase 5–6)
 
-- [ ] PR #128 and #129 merged; #133/#134 closable
-- [ ] SP-220 `.DONE` on `main`
-- [ ] Post-merge and post-integrate `release:check` green (exit 0 verified)
-- [ ] `spine preflight` green
-- [ ] `npm run release:check` green on final `HEAD`
+- [x] PR #128 and #129 merged; #133/#134 closed
+- [x] SP-220 `.DONE` on `main` (manual land after final-review timeout; batch 20260820T174253 aborted)
+- [x] Post-merge `release:check` green (offline skip live refresh; EXIT=0)
+- [ ] Final `spine preflight` green
+- [ ] Final `npm run release:check` green on publish HEAD
 - [ ] CI workflow green on `HEAD`
 - [ ] `git status` clean
 - [ ] Operator approved publish bump type: **patch**
 - [ ] `npm version patch` + `git push && git push --tags`
 - [ ] `release.yml` succeeded; `npm view pi-smart-router version` = 0.16.1
+
+## Land notes
+
+- Community PRs merged 2026-08-20: #128 → #133, #129 → #134
+- SP-220 worker completed in lane (mkdir + 12/12 tests); spine final review timed out; salvage `lane_not_salvageable`
+- Manual land: abort batch → cherry-pick `b0a2597`/`0728705` → commit `.DONE` → close #130
