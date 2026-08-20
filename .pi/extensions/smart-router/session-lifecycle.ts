@@ -51,6 +51,25 @@ function restoreLmuFromLedger(runtime: SmartRouterRuntime, sessionId: string): v
   }
 }
 
+/**
+ * Restore the registered auto entry's limits from the last delegated model so
+ * the footer/compaction are correct immediately on session resume (instead of
+ * showing the 200k fallback until the first routed turn completes).
+ */
+function restoreLimitsFromLedger(runtime: SmartRouterRuntime, sessionId: string): void {
+  const lastExec = runtime.executionLedger.getLastExecution(sessionId);
+  if (!lastExec) {
+    return;
+  }
+  const model = runtime.modelRegistry.find(lastExec.provider, lastExec.id);
+  if (model) {
+    runtime.syncRegisteredLimits?.({
+      contextWindow: model.contextWindow,
+      maxTokens: model.maxTokens,
+    });
+  }
+}
+
 function wireLmuStatusHandlers(
   runtime: SmartRouterRuntime,
   ctx: ExtensionContext,
@@ -113,6 +132,7 @@ export function setupSessionHooks(
 
     if (ctx.model !== undefined && isSmartRouterActive(ctx.model)) {
       restoreLmuFromLedger(runtime, sessionId);
+      restoreLimitsFromLedger(runtime, sessionId);
     } else {
       runtime.clearLmuStatus?.();
     }
@@ -122,6 +142,7 @@ export function setupSessionHooks(
     activeModel = event.model;
     if (isSmartRouterActive(event.model)) {
       restoreLmuFromLedger(runtime, ctx.sessionManager.getSessionId());
+      restoreLimitsFromLedger(runtime, ctx.sessionManager.getSessionId());
     } else {
       runtime.clearLmuStatus?.();
     }
@@ -131,6 +152,7 @@ export function setupSessionHooks(
     activeModel = undefined;
     delete runtime.setLmuStatus;
     delete runtime.clearLmuStatus;
+    delete runtime.syncRegisteredLimits;
     delete runtime.notifyDatasetEnabled;
     delete runtime.sessionCwd;
     delete runtime.streamDeps.ensureFleetFresh;
