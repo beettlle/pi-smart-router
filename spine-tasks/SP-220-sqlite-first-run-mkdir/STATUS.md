@@ -1,7 +1,7 @@
 # SP-220: SQLite first-run parent mkdir — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 1: Ensure parent dir before open
+**Status:** In Progress
 **Last Updated:** 2026-08-20
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,11 +12,11 @@
 
 ## Step 1: Ensure parent dir before open
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Ensure parent of `dbPath` exists via recursive `mkdir` (skip `:memory:`)
-- [ ] Missing-parent / ENOENT not logged as corrupt-DB recovery
-- [ ] Preserve corrupt rename+recreate and unwritable MemoryStore fallback
+- [x] Ensure parent of `dbPath` exists via recursive `mkdir` (skip `:memory:`)
+- [x] Missing-parent / ENOENT not logged as corrupt-DB recovery
+- [x] Preserve corrupt rename+recreate and unwritable MemoryStore fallback
 
 **Plan-review checkpoint** — First-run vs corrupt path branched.
 

@@ -8,7 +8,8 @@
  * Maps to T013 in the routing pipeline spec.
  */
 
-import { renameSync } from 'node:fs';
+import { mkdirSync, renameSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 import Database from 'better-sqlite3';
 import type BetterSqlite3 from 'better-sqlite3';
@@ -240,6 +241,14 @@ export class SqliteStore implements StorePort {
   private readonly consumeTokenTx: (key: string, cost: number) => TokenBucketResult;
 
   constructor(options: SqliteStoreOptions) {
+    // First-run: ensure the parent directory exists before opening so a
+    // missing directory is not misclassified as a corrupt database (#130).
+    // Skip for ':memory:' (no filesystem path). If the parent cannot be
+    // created (e.g. unwritable ancestor), the error propagates so callers
+    // like createResilientStore can fall back to MemoryStore.
+    if (options.dbPath !== ':memory:') {
+      mkdirSync(dirname(options.dbPath), { recursive: true });
+    }
     this.db = new Database(options.dbPath);
     this.models = options.models;
     this.initialize();
