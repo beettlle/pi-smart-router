@@ -1,12 +1,12 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-08-03
+**Last Updated:** 2026-08-20
 **Status:** Active
-**Next Task ID:** SP-220
+**Next Task ID:** SP-221
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** v0.16.0 (2026-08-03) — SP-218–SP-219 ModernBERT K=4 measurement (#114; #96 remains open). Prior v0.15.0 SP-215–SP-217 Colibri local affinity & placement (#115/#116/#117).
-**In progress:** Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 open until real exports. #96 enablement decision remains open (keep default).
+**In progress:** Release v0.16.1 — SP-220 (#130) + community PRs #128/#129 (#133/#134). Human #95 dogfood. #110 open until real exports. #96 enablement decision remains open (keep default).
 
 ---
 
@@ -738,6 +738,29 @@
 **Deferred:** #95/#110 (human/exports), #96 close (operator enablement), #1/#25/#26 hardware.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.16.0/manifest.md`
+
+### Phase 49 — Release v0.16.1 First-run store + community mapper/limits (SP-220 + PRs)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| PR #128 | Classify gpt-5.5+ as frontier-cloud | S | — | Closes #133 |
+| PR #129 | Sync `auto` context window from delegated model | M | — | Closes #134 |
+| SP-220 | SQLite first-run parent mkdir (no corrupt-DB theater) | S | — | Closes #130 |
+
+**Source:** Operator-approved **v0.16.1** (2026-08-20). Theme: First-run SQLite correctness + GPT-5.6+ frontier mapping + auto context-window sync.
+
+**Wave order (proposed):**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| pre | Merge PR #128, #129 | Community land path |
+| 0 | SP-220 | After PR merges; disjoint from extension/mapper |
+
+**Status:** In progress — packets authored; PR merges + SP-220 batch pending.
+
+**Deferred:** #131/#132 (CHANGES_REQUESTED PRs), #95/#110, #96, #1/#25/#26 hardware.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.16.1/manifest.md`
 
 ---
 
