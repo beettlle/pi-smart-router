@@ -115,13 +115,13 @@ Wave 0 · 1 task
 - [x] PR #128 and #129 merged; #133/#134 closed
 - [x] SP-220 `.DONE` on `main` (manual land after final-review timeout; batch 20260820T174253 aborted)
 - [x] Post-merge `release:check` green (offline skip live refresh; EXIT=0)
-- [ ] Final `spine preflight` green
-- [ ] Final `npm run release:check` green on publish HEAD
-- [ ] CI workflow green on `HEAD`
-- [ ] `git status` clean
-- [ ] Operator approved publish bump type: **patch**
-- [ ] `npm version patch` + `git push && git push --tags`
-- [ ] `release.yml` succeeded; `npm view pi-smart-router version` = 0.16.1
+- [x] Final `spine preflight` green
+- [x] Final `npm run release:check` green on publish HEAD (`/tmp/pi-smart-router-release-check-v0161-final.log`)
+- [x] CI workflow green on `HEAD` (https://github.com/beettlle/pi-smart-router/actions/runs/32415296090)
+- [x] `git status` clean
+- [x] Operator approved publish bump type: **patch** (2026-08-20)
+- [x] `npm version patch` + `git push && git push --tags` → `v0.16.1` / `d37e579`
+- [x] `release.yml` succeeded (https://github.com/beettlle/pi-smart-router/actions/runs/32415527512); verify `npm view pi-smart-router version` = 0.16.1
 
 ## Land notes
 

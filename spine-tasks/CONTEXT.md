@@ -5,8 +5,8 @@
 **Next Task ID:** SP-221
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.16.0 (2026-08-03) — SP-218–SP-219 ModernBERT K=4 measurement (#114; #96 remains open). Prior v0.15.0 SP-215–SP-217 Colibri local affinity & placement (#115/#116/#117).
-**In progress:** Release v0.16.1 — SP-220 (#130) + community PRs #128/#129 (#133/#134). Human #95 dogfood. #110 open until real exports. #96 enablement decision remains open (keep default).
+**Released:** v0.16.1 (2026-08-20) — SP-220 first-run SQLite mkdir (#130) + community PRs #128/#129 (#133/#134). Prior v0.16.0 SP-218–SP-219 ModernBERT K=4 measurement (#114; #96 remains open).
+**In progress:** Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 open until real exports. #96 enablement decision remains open (keep default).
 
 ---
 
@@ -756,7 +756,7 @@
 | pre | Merge PR #128, #129 | Community land path |
 | 0 | SP-220 | After PR merges; disjoint from extension/mapper |
 
-**Status:** SP-220 landed on main (manual cherry-pick after review timeout); #130/#133/#134 closed. Awaiting publish approval for v0.16.1.
+**Status:** Published v0.16.1 (2026-08-20). #130/#133/#134 closed.
 
 **Deferred:** #131/#132 (CHANGES_REQUESTED PRs), #95/#110, #96, #1/#25/#26 hardware.
 
