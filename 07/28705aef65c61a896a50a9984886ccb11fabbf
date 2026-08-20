@@ -1,0 +1,16 @@
+spine-tasks/SP-220-sqlite-first-run-mkdir/STATUS.md
+  h_ae151c586ac6c5 3-4,15,25,27-31,37-41,49
+tests/unit/sqlite-store-fallback.test.ts
+  h_ae151c586ac6c5 1,5,72-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0728705aef65c61a896a50a9984886ccb11fabbf",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
