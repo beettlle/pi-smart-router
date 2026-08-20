@@ -1,0 +1,30 @@
+spine-tasks/SP-220-sqlite-first-run-mkdir/PROMPT.md
+  s_b00d77ba4142f4::t_aeeb1316843625 1-92
+  s_b00d77ba4142f4::t_542f74e5d1b9b8 93-108
+spine-tasks/dependencies.json
+  s_b00d77ba4142f4::t_d027f12439e70c 626-627
+spine-tasks/CONTEXT.md
+  s_b00d77ba4142f4::t_610c2c60890a3a 3,5,9
+  s_b00d77ba4142f4::t_ae8f9cac0b82c6 742-764
+spine-tasks/_authoring/release-v0.16.1/manifest.md
+  s_b00d77ba4142f4::t_b3b7fa9563ab42 1-8,10-124
+  s_b00d77ba4142f4::t_bbff069e4103af 9
+spine-tasks/SP-220-sqlite-first-run-mkdir/STATUS.md
+  s_b00d77ba4142f4::t_2bae52fdabe27f 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "afb64e0fe6324ada0afbef1fe252f52e3b029c27",
+  "prompts": {},
+  "sessions": {
+    "s_b00d77ba4142f4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-907fcb5a-4b90-4abe-9dd7-98819a4c5ff7",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
