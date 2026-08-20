@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ModelProfile } from '../../src/domain/types/entities.js';
 import { MemoryStore } from '../../src/infrastructure/persistence/memory-store.js';
@@ -68,6 +68,24 @@ describe('createResilientStore', () => {
     expect(degraded).toBe(false);
     expect(store).toBeInstanceOf(SqliteStore);
     (store as SqliteStore).close();
+  });
+
+  it('creates missing parent directories on first run without corrupt-DB recovery (#130)', () => {
+    const dbPath = join(tempDir, 'nested', 'deeper', 'state.db');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const { store, degraded } = createResilientStore({ dbPath, models: TEST_MODELS });
+
+      expect(degraded).toBe(false);
+      expect(store).toBeInstanceOf(SqliteStore);
+      expect(existsSync(dbPath)).toBe(true);
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      (store as SqliteStore).close();
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });
 
