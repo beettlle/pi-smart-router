@@ -1,0 +1,19 @@
+spine-tasks/SP-220-sqlite-first-run-mkdir/.reviews/1-20260820T180819.md
+  s_f7b3dd147e6fd3::t_eaa6a80136f2bf 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9d043bd8029e0991157f70aa36b09558c59575b9",
+  "prompts": {},
+  "sessions": {
+    "s_f7b3dd147e6fd3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-8b4e1534-e831-4156-96f4-bcfa4526510a",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
