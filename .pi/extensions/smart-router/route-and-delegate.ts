@@ -52,6 +52,11 @@ function isPipedResult(
   return 'heldTerminal' in result;
 }
 
+/** Fail-open reason codes (SP-226) — emitted in telemetry and SMART_ROUTER_LOG_ROUTING=1. */
+export const NO_REGISTRY_MODEL = 'no_registry_model';
+export const FAILOVER_EXHAUSTED = 'failover_exhausted';
+export const DELEGATION_ABORTED = 'delegation_aborted';
+
 function isRoutingLogEnabled(): boolean {
   return process.env.SMART_ROUTER_LOG_ROUTING === '1';
 }
@@ -150,6 +155,68 @@ function emitContextOverflowNoFit(
 
 function isZeroOutputLengthStop(message: AssistantMessage): boolean {
   return message.stopReason === 'length' && message.usage.output === 0;
+}
+
+/** Minimal model identity for degraded terminal messages when no Model resolved. */
+interface DegradedModelRef {
+  readonly api: Api;
+  readonly provider: string;
+  readonly id: string;
+}
+
+function createDegradedErrorMessage(
+  model: DegradedModelRef,
+  reasonCode: string,
+  detail: string,
+): AssistantMessage {
+  return {
+    role: 'assistant',
+    content: [],
+    api: model.api,
+    provider: model.provider,
+    model: model.id,
+    usage: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
+    stopReason: 'error',
+    errorMessage: `Smart router degraded response (${reasonCode}): ${detail}`,
+    timestamp: Date.now(),
+  };
+}
+
+/**
+ * Fail-open terminal (SP-226): never throw to the host on exhaustion paths.
+ * Emit a structured warning with the reason code and end the outer stream with
+ * a degraded error message so the pi host receives an actionable response.
+ */
+function emitDegradedFailure(
+  outer: AssistantMessageEventStream,
+  model: DegradedModelRef | undefined,
+  selectedModelId: string,
+  reasonCode: string,
+  detail: string,
+): void {
+  console.warn(
+    '[smart-router] fail-open degraded response',
+    JSON.stringify({
+      reason_code: reasonCode,
+      selected_model_id: selectedModelId,
+      detail,
+    }),
+  );
+  const ref: DegradedModelRef = model ?? {
+    api: 'unknown',
+    provider: 'unknown',
+    id: selectedModelId,
+  };
+  const errorMessage = createDegradedErrorMessage(ref, reasonCode, detail);
+  outer.push({ type: 'error', reason: 'error', error: errorMessage });
+  outer.end(errorMessage);
 }
 
 function buildOverflowRoutingDecision(
@@ -357,9 +424,18 @@ export async function routeAndDelegate(
     if (decision.selected_model_id === 'unknown' && guardResult) {
       assertRoutableFleetAfterGeminiToolHistoryGuard(guardResult);
     }
-    throw new Error(
+    // SP-226 fail-open: no registry model resolved — degrade instead of throwing.
+    deps.router.dispatch.recordOutcome(decision.selected_model_id, {
+      code: 'NO_REGISTRY_MODEL',
+    });
+    emitDegradedFailure(
+      outer,
+      undefined,
+      decision.selected_model_id,
+      NO_REGISTRY_MODEL,
       `No registry model available for routing decision ${decision.selected_model_id}`,
     );
+    return;
   }
 
   logRoutingDecision(decision, {
@@ -546,6 +622,16 @@ export async function routeAndDelegate(
       return;
     } catch (error) {
       if (isAbortError(error, options)) {
+        // SP-226: telemetry for phase-boundary aborts (previously silent).
+        if (isRoutingLogEnabled()) {
+          console.warn(
+            '[smart-router] delegation aborted',
+            JSON.stringify({
+              reason_code: DELEGATION_ABORTED,
+              model_id: targetModel.id,
+            }),
+          );
+        }
         const abortMessage = createErrorMessage(targetModel, options, error);
         outer.push({ type: 'error', reason: 'aborted', error: abortMessage });
         outer.end(abortMessage);
@@ -565,7 +651,7 @@ export async function routeAndDelegate(
       );
       const alternateModel = failover ? resolveTargetModel(deps, failover) : undefined;
 
-      if (alternateModel && alternateModel.id !== targetModel.id) {
+      if (failover && alternateModel && alternateModel.id !== targetModel.id) {
         console.warn(
           '[smart-router] stream delegation failed, failing over',
           error instanceof Error ? error.message : String(error),
@@ -575,9 +661,6 @@ export async function routeAndDelegate(
           alternateModelId: alternateModel.id,
           errorObj: { message: error instanceof Error ? error.message : String(error) },
         };
-        if (!failover) {
-          throw error;
-        }
         decision = failover;
         targetModel = alternateModel;
         continue;
@@ -585,7 +668,16 @@ export async function routeAndDelegate(
 
       const fallbackModel = resolveFallbackModel(deps, effectiveFleet);
       if (!fallbackModel || fallbackModel.id === targetModel.id) {
-        throw error;
+        // SP-226 fail-open: fleet/failover exhausted and no distinct safe
+        // default — degrade instead of throwing to the host.
+        emitDegradedFailure(
+          outer,
+          targetModel,
+          decision.selected_model_id,
+          FAILOVER_EXHAUSTED,
+          error instanceof Error ? error.message : String(error),
+        );
+        return;
       }
 
       console.warn(

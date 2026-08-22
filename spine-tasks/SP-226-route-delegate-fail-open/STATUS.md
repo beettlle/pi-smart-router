@@ -10,18 +10,18 @@
 
 ## Step 1: Replace throws with fail-open paths
 
-**Status:** Not started
+**Status:** Complete
 
-- [ ] Safe fallback on missing registry model
-- [ ] Degraded response on stream exhaustion
-- [ ] Reason codes in telemetry/explain
+- [x] Safe fallback on missing registry model
+- [x] Degraded response on stream exhaustion
+- [x] Reason codes in telemetry/explain
 
 ## Step 2: Testing and verification
 
-**Status:** Not started
+**Status:** In progress
 
-- [ ] Exhausted fleet test — no throw
-- [ ] Contract `testCommand`
+- [x] Exhausted fleet test — no throw
+- [x] Contract `testCommand`
 - [ ] `npm run verify:ci`
 
 ---
