@@ -1,0 +1,18 @@
+spine-tasks/SP-223-expected-cost-log-gate/STATUS.md
+  h_ae151c586ac6c5 13,15-16
+src/domain/pipeline/router-pipeline.ts
+  h_ae151c586ac6c5 1661-1666
+tests/unit/router-pipeline.test.ts
+  h_ae151c586ac6c5 1696-1748
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "7d02e5248eb7256a642387065cf9e570199fdd0c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
