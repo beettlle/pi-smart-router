@@ -1,0 +1,16 @@
+spine-tasks/SP-228-ci-quality-gates/.reviews/1-20260822T205451.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-228-ci-quality-gates/.reviews/final-20260822T205522.md
+  h_ae151c586ac6c5 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "aabeb9f724dd36e31efcf8f6fa922c53da037b3d",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
