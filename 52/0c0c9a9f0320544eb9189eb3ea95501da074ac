@@ -1,0 +1,14 @@
+spine-tasks/SP-227-docs-reconcile-0162/STATUS.md
+  h_ae151c586ac6c5 3-4,26,28-29,35-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "520c0c9a9f0320544eb9189eb3ea95501da074ac",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
