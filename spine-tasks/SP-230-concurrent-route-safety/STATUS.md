@@ -1,7 +1,7 @@
 # SP-230: RouterPipeline concurrent route() safety — Status
 
-**Current Step:** Step 3
-**Status:** In Progress
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-08-22
 **Review Level:** 1
 **Size:** M
@@ -28,17 +28,17 @@ Enforce the single-flight contract in code: serialize `RouterPipeline.route()` v
 
 ## Step 3: Testing and verification
 
-**Status:** In progress
+**Status:** Complete
 
-- [ ] Contract `testCommand`
-- [ ] `npm run verify:ci`
+- [x] Contract `testCommand` — typecheck clean; 81/81 tests pass (incl. 2 new SP-230 concurrency tests)
+- [x] `npm run verify:ci` — exit 0 (build, typecheck, lint, coverage 93.06% overall)
 
 ---
 
 ## Completion Criteria
 
-- [ ] Concurrency contract clear and tested
-- [ ] #141 closable
+- [x] Concurrency contract clear and tested
+- [x] #141 closable
 
 ## Discoveries
 
