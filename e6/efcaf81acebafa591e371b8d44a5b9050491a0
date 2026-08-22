@@ -1,0 +1,21 @@
+.github/workflows/calibration-verify.yml
+  s_25c26ba6fc0c7c::t_f0825b793e887c 9,12-13,15-18
+.github/workflows/eval-harness-smoke.yml
+  s_25c26ba6fc0c7c::t_0bb98149617830 9-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "e6efcaf81acebafa591e371b8d44a5b9050491a0",
+  "prompts": {},
+  "sessions": {
+    "s_25c26ba6fc0c7c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-064994cb-22ce-406c-9b7e-13fe359320ac",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
