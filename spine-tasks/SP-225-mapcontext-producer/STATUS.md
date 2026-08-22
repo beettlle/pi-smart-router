@@ -10,11 +10,11 @@
 
 ## Step 1: Wire mapContextMessages producer
 
-**Status:** Not started
+**Status:** Complete (pending plan review)
 
-- [ ] Map status and tool_blocks
-- [ ] Fix thinking concatenation
-- [ ] Preserve is_error mapping
+- [x] Map status and tool_blocks
+- [x] Fix thinking concatenation
+- [x] Preserve is_error mapping
 
 ## Step 2: Testing and verification
 

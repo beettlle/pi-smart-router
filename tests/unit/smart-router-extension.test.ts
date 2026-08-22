@@ -61,6 +61,7 @@ import { LifecycleHookState } from '../../src/index.js';
 import { ExecutionLedger } from '../../src/domain/delegation/execution-ledger.js';
 import { GEMINI_SKIP_THOUGHT_SIGNATURE_SENTINEL } from '../../src/domain/delegation/delegation-context.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
+import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import {
   HydraMatcher,
   type EmbeddingProvider,
@@ -342,14 +343,52 @@ describe('smart-router extension helpers', () => {
     expect(deriveTurnType([toolResultMessage('ok')])).toBe('tool_result');
   });
 
-  it('mapContextMessages normalizes pi messages for routing', () => {
+  it('mapContextMessages excludes assistant thinking by default (SP-225, #137)', () => {
+    const assistant = {
+      role: 'assistant',
+      content: [
+        { type: 'thinking', thinking: 'hmm' },
+        { type: 'text', text: 'answer' },
+      ],
+      api: 'openai-responses',
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      usage: {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        totalTokens: 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+      },
+      stopReason: 'stop',
+      timestamp: 2,
+    } as Message;
+
+    const mapped = mapContextMessages([userMessage('hello'), assistant]);
+
+    expect(mapped[0]).toEqual({ role: 'user', content: 'hello' });
+    expect(mapped[1]?.content).toBe('answer');
+    expect(mapped[1]?.content).not.toContain('hmm');
+
+    // Explicit opt-in restores the legacy thinking-in-content behavior.
+    const optedIn = mapContextMessages([assistant], { includeThinking: true });
+    expect(optedIn[0]?.content).toContain('hmm');
+    expect(optedIn[0]?.content).toContain('answer');
+  });
+
+  it('mapContextMessages maps assistant toolCall blocks into tool_blocks', () => {
     const mapped = mapContextMessages([
-      userMessage('hello'),
       {
         role: 'assistant',
         content: [
-          { type: 'thinking', thinking: 'hmm' },
-          { type: 'text', text: 'answer' },
+          { type: 'text', text: 'calling a tool' },
+          {
+            type: 'toolCall',
+            id: 'call-1',
+            name: 'web_search',
+            arguments: { query: 'scuba' },
+          },
         ],
         api: 'openai-responses',
         provider: 'openai',
@@ -362,14 +401,42 @@ describe('smart-router extension helpers', () => {
           totalTokens: 0,
           cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
         },
-        stopReason: 'stop',
+        stopReason: 'toolUse',
         timestamp: 2,
       },
     ]);
 
-    expect(mapped[0]).toEqual({ role: 'user', content: 'hello' });
-    expect(mapped[1]?.content).toContain('hmm');
-    expect(mapped[1]?.content).toContain('answer');
+    expect(mapped[0]?.tool_blocks).toEqual([
+      { type: 'tool_call', tool_call_id: 'call-1', tool_name: 'web_search' },
+    ]);
+    expect(mapped[0]?.content).toBe('calling a tool');
+  });
+
+  it('mapContextMessages maps tool result metadata and status into structured fields', () => {
+    const withDetailsStatus: Message = {
+      role: 'toolResult',
+      toolCallId: 'call-http',
+      toolName: 'web_fetch',
+      content: [{ type: 'text', text: 'Upstream gateway answered during maintenance window' }],
+      details: { status: 503 },
+      isError: false,
+      timestamp: 1,
+    };
+    const mapped = mapContextMessages([withDetailsStatus]);
+
+    expect(mapped[0]?.status).toBe(503);
+    expect(mapped[0]?.tool_blocks).toEqual([
+      { type: 'tool_result', tool_call_id: 'call-http', tool_name: 'web_fetch' },
+    ]);
+    // is_error left undefined so the domain status>=400 rule arbitrates (#137);
+    // a bare isError=false would otherwise mask the structured status.
+    expect(mapped[0]?.is_error).toBeUndefined();
+  });
+
+  it('mapContextMessages preserves is_error:false when no structured status exists', () => {
+    const mapped = mapContextMessages([toolResultMessage('all good')]);
+    expect(mapped[0]?.is_error).toBe(false);
+    expect(mapped[0]?.status).toBeUndefined();
   });
 
   it('buildRoutingRequest maps session and turn metadata', () => {
@@ -495,6 +562,44 @@ describe('smart-router extension helpers', () => {
 
     expect(mapped[0]?.is_error).toBe(false);
     expect(mapped[1]?.is_error).toBe(true);
+  });
+
+  it('producer → route(): structured status>=400 escalates without body keyword grep (SP-225, #137)', async () => {
+    const pinner = new SessionPinner();
+    const pipeline = new RouterPipeline(fleet, {
+      sessionPinner: pinner,
+      loopEscalationConfig: { threshold: 2 },
+    });
+    const sessionId = 'sess-structured-status';
+    pinner.recordPin(sessionId, 'gpt-4o-mini', 'initial');
+
+    // Body deliberately avoids every failure keyword in loop-escalation.ts so
+    // only the structured `status` signal can trip escalation.
+    const failingToolResult: Message = {
+      role: 'toolResult',
+      toolCallId: 'call-http',
+      toolName: 'web_fetch',
+      content: [{ type: 'text', text: 'Upstream gateway answered during maintenance window' }],
+      details: { status: 503 },
+      isError: false,
+      timestamp: 2,
+    };
+
+    for (let turn = 0; turn < 2; turn++) {
+      const request = buildRoutingRequest(
+        makeContext([userMessage('fetch the status page'), failingToolResult]),
+        { sessionId },
+      );
+      expect(request.turn_type).toBe('tool_result');
+      const toolMessage = request.messages?.at(-1);
+      expect(toolMessage?.status).toBe(503);
+      expect(toolMessage?.is_error).toBeUndefined();
+      await pipeline.route(request);
+    }
+
+    const pin = pinner.getPin(sessionId);
+    expect(pin?.pin_reason).toBe('loop_escalation');
+    expect(pin?.pinned_model_id).toBe('claude-opus');
   });
 });
 

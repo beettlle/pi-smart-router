@@ -733,4 +733,32 @@ describe('structured failure signals (is_error / status)', () => {
     expect(result.shouldEscalate).toBe(true);
     expect(result.escalationTarget!.tier).toBe('frontier-cloud');
   });
+
+  it('escalates on producer-mapped status>=400 with no body keywords (SP-225, #137)', () => {
+    // Shape the extension producer (mapContextMessages) emits for Pi traffic:
+    // status present, is_error omitted so the status>=400 rule arbitrates,
+    // tool_blocks populated, body free of failure keywords.
+    const pin = makePin({ consecutive_tool_failures: 2 });
+    const result = evaluateLoopEscalation(
+      pin,
+      makeRequest({
+        turn_type: 'tool_result',
+        messages: [
+          {
+            role: 'tool',
+            content: 'Upstream gateway answered during maintenance window',
+            status: 503,
+            tool_blocks: [
+              { type: 'tool_result', tool_call_id: 'call-http', tool_name: 'web_fetch' },
+            ],
+          },
+        ],
+      }),
+      fleet,
+      defaultConfig,
+    );
+    expect(result.shouldEscalate).toBe(true);
+    expect(result.escalationTarget!.id).toBe('frontier-model');
+    expect(result.reason).toBe('threshold_exceeded');
+  });
 });
