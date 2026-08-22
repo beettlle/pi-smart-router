@@ -1,0 +1,20 @@
+.pi/extensions/smart-router/routing-context.ts
+  h_ae151c586ac6c5 79-107,149-153,163-170,172-179,181-188,191-197,201-209,226-228
+spine-tasks/SP-225-mapcontext-producer/STATUS.md
+  h_ae151c586ac6c5 13,15-17
+tests/unit/loop-escalation.test.ts
+  h_ae151c586ac6c5 736-763
+tests/unit/smart-router-extension.test.ts
+  h_ae151c586ac6c5 64,346-380,385-391,404,409-439,566-603
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "e7f3d798ccdeb8dea1521d0080d318c3895b7c06",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
