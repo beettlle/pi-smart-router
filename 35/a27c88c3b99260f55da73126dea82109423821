@@ -1,0 +1,16 @@
+spine-tasks/SP-224-sc004-latency-stabilize/.reviews/1-20260822T203925.md
+  h_ae151c586ac6c5 1-13
+spine-tasks/SP-224-sc004-latency-stabilize/.reviews/final-20260822T203956.md
+  h_ae151c586ac6c5 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "35a27c88c3b99260f55da73126dea82109423821",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
