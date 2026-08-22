@@ -949,7 +949,7 @@ Contributors must run `npm run build` before publishing or consuming the library
 | `npm run release:check` | Pre-release gate: `verify:ci` + consumer pack + Tier 0 functional smoke |
 | `npm run release:functional-smoke` | Tier 0 functional smoke: calibration verify (`--skip-embed`), benchmark profiles, release gate assertions |
 | `npm run release:consumer-pack` | Pack tarball and verify production dependencies resolve (catches missing runtime deps) |
-| `npm run verify:ci` | Full CI parity: build, typecheck, lint, test, coverage |
+| `npm run verify:ci` | Full CI parity: build, typecheck, lint, test, coverage (baseline PR gate; see [PR and pre-release quality gate set](#pr-and-pre-release-quality-gate-set)) |
 | `npm run typecheck` | TypeScript strict mode check (`tsc --noEmit`) |
 | `npm test` | Run test suite (`vitest run`) |
 | `npm run coverage:check` | Tests with line-coverage thresholds |
@@ -1008,7 +1008,9 @@ npm run routing:eval-replay
 npm run routing:twinrouterbench:full-track
 ```
 
-**CI smoke:** `.github/workflows/eval-harness-smoke.yml` runs on PRs that touch eval scripts, fixtures, or the workflow. It executes `routing:eval-harness:smoke`, `routing:eval-harness:corpus-smoke`, and eval unit tests — fast, offline, no provider network calls. Job timeout stays at 10 minutes. The optional full-track nightly (`.github/workflows/twinrouterbench-full-nightly.yml`, `schedule` + `workflow_dispatch` only) is **not** on `pull_request` and must not be configured as a required status check — failures there do not gate PR CI or `release:functional-smoke`.
+**CI smoke:** `.github/workflows/eval-harness-smoke.yml` runs on PRs that touch eval scripts, fixtures, **any `src/**` or `.pi/extensions/smart-router/**` change**, or the workflow. It executes `routing:eval-harness:smoke`, `routing:eval-harness:corpus-smoke`, and eval unit tests — fast, offline, no provider network calls. Job timeout stays at 10 minutes. The optional full-track nightly (`.github/workflows/twinrouterbench-full-nightly.yml`, `schedule` + `workflow_dispatch` only) is **not** on `pull_request` and must not be configured as a required status check — failures there do not gate PR CI or `release:functional-smoke`.
+
+**Calibration verify:** `.github/workflows/calibration-verify.yml` runs on PRs that touch calibration config/scripts (`config/routing-calibration.json*`, `config/p-success-weights.json`, `scripts/train-routing-calibration.ts`, `scripts/verify-routing-calibration.ts`, `scripts/lib/isotonic-calibrator.ts`, `scripts/lib/oats-centroid-refinement.ts`) **or calibration-consuming routing code** (`src/domain/routing/**`, `src/domain/pipeline/**`, `src/domain/types/**`, `src/cli/**`). It builds the library and verifies `config/routing-calibration.json.example` against benchmark prompts via `npm run routing:verify-calibration`.
 
 **TwinRouterBench static track:** import step-level router-visible prefixes with execution-verified target tiers (`track: "static"`). The adapter in `scripts/eval/twinrouterbench-adapter.ts` converts static track records into native eval fixtures for the three-track harness. See `docs/gemini-research.md` §9 for methodology context.
 
@@ -1177,6 +1179,21 @@ npm run routing:verify-benchmark-profiles
 ### Releasing
 
 Tag-triggered publish via GitHub Actions (requires `NPMSECRET` repository secret). pi.dev gallery listing syncs automatically from npm (`pi-package` keyword); no separate submit step.
+
+#### PR and pre-release quality gate set
+
+Operators should treat the following as the full gate set before merging routing changes and before tagging a release ([#135](https://github.com/beettlle/pi-smart-router/issues/135)):
+
+| Gate | Workflow / command | Runs when |
+|------|--------------------|-----------|
+| Build / typecheck / lint / coverage | `.github/workflows/ci.yml` (`npm run verify:ci`) | Every PR and push to `main` |
+| Eval harness smoke (offline) | `.github/workflows/eval-harness-smoke.yml` | PRs touching `scripts/eval/**`, `tests/eval/**`, **`src/**`**, **`.pi/extensions/smart-router/**`**, `package.json`, or the workflow |
+| Calibration verify | `.github/workflows/calibration-verify.yml` | PRs touching calibration config/scripts or calibration-consuming routing code (`src/domain/routing/**`, `src/domain/pipeline/**`, `src/domain/types/**`, `src/cli/**`) |
+| Benchmark profile smoke | `.github/workflows/benchmark-profile-refresh.yml` (`routing:verify-benchmark-profiles`) | PRs touching fixtures / ingest / profiles |
+| Pre-release functional smoke | `npm run release:check` (Tier 0: calibration `--skip-embed` + benchmark profiles + release-gate assertions) | Operator-run before `npm version` / tag |
+| TwinRouterBench full track | `.github/workflows/twinrouterbench-full-nightly.yml` | Nightly / manual only — **never** a required PR check |
+
+Required-check configuration for branch protection is a human-operator repo-settings decision; the workflow path filters above guarantee the jobs **run** on routing code edits regardless of which subset the operator marks required.
 
 **Scope composition:** use `/skill:router-release-operator` for themed release planning (not open-ended backlog cycles). **Patch** = docs + bugfixes only; **minor** = new capability (1–3 related issues under one theme). Budgets and audit rules: [`skills/router-release-operator/references/release-profiles.md`](skills/router-release-operator/references/release-profiles.md).
 
