@@ -5,8 +5,8 @@
 **Next Task ID:** SP-231
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.16.2 — SP-221 self-recursion guard (#131) + SP-222 loop-escalation signals (#132). Prior v0.16.1 SP-220.
-**In progress:** Release v0.17.0 manifest `spine-tasks/_authoring/release-v0.17.0/manifest.md` — SP-223–SP-230 (audit P0 production safety). Human #95 dogfood. #110 open until real exports. #96 enablement open.
+**Released:** v0.16.2 on npm. **v0.17.0** SP-223–SP-230 landed on `main` (pending publish).
+**In progress:** Publish gate — `npm version minor` after CI green. Human #95 dogfood. #110 open. #96 enablement open.
 
 ---
 

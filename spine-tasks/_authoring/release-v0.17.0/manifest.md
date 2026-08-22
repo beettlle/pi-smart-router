@@ -111,12 +111,12 @@ Wave 3 · 1 task (pipeline concurrency)
 
 ## Publish checklist (Phase 5–6)
 
-- [ ] All release-scoped tasks `.DONE` on `main`
-- [ ] Post-integrate `release:check` green after **each wave**
-- [ ] `spine preflight` green
-- [ ] `npm run release:check` green on final `HEAD` (exit 0 verified)
+- [x] All release-scoped tasks `.DONE` on `main`
+- [x] Post-integrate `release:check` green after **each wave**
+- [x] `spine preflight` green
+- [x] `npm run release:check` green on final `HEAD` (exit 0 verified)
 - [ ] CI workflow green on `HEAD`
-- [ ] `git status` clean
-- [ ] Operator approved publish bump type: **minor**
+- [x] `git status` clean
+- [x] Operator approved publish bump type: **minor**
 - [ ] `npm version minor` + `git push && git push --tags`
 - [ ] `release.yml` succeeded; `npm view pi-smart-router version` matches 0.17.0
