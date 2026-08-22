@@ -204,6 +204,12 @@ export async function discoverFleet(
     }
   }
 
+  // The virtual router model must remain selectable in Pi's scoped model list,
+  // but it cannot be a delegation target for its own routing pipeline.
+  models = models.filter(
+    (model) => !(model.provider === 'smart-router' && model.id === 'auto'),
+  );
+
   const mappedFleet = mapFleetFromRegistry(registryModelsToFleetInput(models));
   const catalog = await store.getPriceCatalog();
   const fleet = applyCatalogPricesToFleet(mappedFleet, catalog);

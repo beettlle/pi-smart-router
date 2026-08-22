@@ -38,6 +38,14 @@
           },
           "tool_calls": {
             "type": "array"
+          },
+          "is_error": {
+            "type": "boolean",
+            "description": "Host/agent flag: the tool/provider result represented a failure"
+          },
+          "status": {
+            "type": "number",
+            "description": "HTTP-ish status of the tool/provider result (4xx/5xx => failure)"
           }
         }
       }

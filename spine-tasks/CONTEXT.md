@@ -1,11 +1,11 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-08-20
+**Last Updated:** 2026-08-22
 **Status:** Active
-**Next Task ID:** SP-221
+**Next Task ID:** SP-223
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.16.1 (2026-08-20) — SP-220 first-run SQLite mkdir (#130) + community PRs #128/#129 (#133/#134). Prior v0.16.0 SP-218–SP-219 ModernBERT K=4 measurement (#114; #96 remains open).
+**Released:** v0.16.2 (pending publish) — SP-221 self-recursion guard (#131 / PR #126) + SP-222 loop-escalation signals (#132 / PR #127). Prior v0.16.1 SP-220 + PRs #128/#129.
 **In progress:** Human #95 dogfood (`docs/qa/shadow-dogfood-protocol.md`). #110 open until real exports. #96 enablement decision remains open (keep default).
 
 ---
@@ -758,9 +758,25 @@
 
 **Status:** Published v0.16.1 (2026-08-20). #130/#133/#134 closed.
 
-**Deferred:** #131/#132 (CHANGES_REQUESTED PRs), #95/#110, #96, #1/#25/#26 hardware.
+**Deferred:** #95/#110, #96, #1/#25/#26 hardware.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.16.1/manifest.md`
+
+---
+
+## Release v0.16.2 (patch)
+
+**Source:** Operator-approved **v0.16.2** (2026-08-22). Theme: Self-recursion guard + structured loop-escalation failure detection.
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| 0 | SP-221, SP-222 | Parallel — disjoint scopes; addresses PR #126/#127 review |
+
+**Status:** Implemented on `main`; awaiting `release:check` + publish approval.
+
+**Closes:** #131, #132 (on publish). Close PRs #126, #127 with attribution.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.16.2/manifest.md`
 
 ---
 

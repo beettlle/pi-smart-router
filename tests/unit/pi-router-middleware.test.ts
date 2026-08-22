@@ -122,6 +122,22 @@ describe('createPiRouterMiddleware', () => {
 
       expect(lifecycleHookState.consume('auto-sess')).toEqual({});
     });
+
+    it('does not set force_model_id for smart-router/auto selector', () => {
+      const lifecycleHookState = new LifecycleHookState();
+      const middleware = createPiRouterMiddleware({ lifecycleHookState });
+      const { hooks, handlers } = createMockHooks();
+      middleware.register(hooks);
+
+      const selectEvent: PiModelSelectEvent = {
+        source: 'set',
+        model: { provider: 'smart-router', id: 'auto' },
+      };
+
+      handlers.model_select[0]!(selectEvent, makeCtx({ sessionId: 'router-auto-sess' }));
+
+      expect(lifecycleHookState.consume('router-auto-sess')).toEqual({});
+    });
   });
 
   describe('lifecycleHookState', () => {

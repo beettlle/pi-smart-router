@@ -642,6 +642,24 @@ describe('discoverFleet shared registry parity (SP-087)', () => {
     const members = fleet.map((profile) => `${profile.provider}/${profile.id}`).sort();
     expect(members).toEqual(['cursor/auto', 'lmstudio/local-model', 'openai/gpt-4o-mini']);
   });
+
+  it('excludes smart-router/auto from the scoped delegation fleet but keeps cursor/auto', async () => {
+    const store = new MemoryStore([]);
+    const registry = createMockRegistry([
+      makePackageRegistryModel('openai', 'gpt-4o-mini'),
+      makePackageRegistryModel('smart-router', 'auto'),
+      makePackageRegistryModel('cursor', 'auto'),
+    ]);
+
+    const { fleet } = await discoverFleet(registry, 'scoped', '/tmp', store, {
+      settingsFactory: () => ({
+        getEnabledModels: () => ['openai/*', 'smart-router/*', 'cursor/*'],
+      }),
+    });
+
+    const members = fleet.map((profile) => `${profile.provider}/${profile.id}`).sort();
+    expect(members).toEqual(['cursor/auto', 'openai/gpt-4o-mini']);
+  });
 });
 
 describe('fleet cache fingerprint (SP-087)', () => {

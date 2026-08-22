@@ -147,6 +147,7 @@ export function mapContextMessages(messages: readonly Message[]): RoutingMessage
       role: 'tool',
       content: messageContentToString(message.content),
       tool_blocks: [],
+      is_error: message.isError,
     };
   });
 }

@@ -473,6 +473,29 @@ describe('smart-router extension helpers', () => {
 
     expect(request.force_model_id).toBe('gpt-4o');
   });
+
+  it('mapContextMessages maps toolResult isError to is_error', () => {
+    const successResult: Message = {
+      role: 'toolResult',
+      toolCallId: 'tool-1',
+      toolName: 'read',
+      content: [{ type: 'text', text: 'failed' }],
+      isError: false,
+      timestamp: 1,
+    };
+    const errorResult: Message = {
+      role: 'toolResult',
+      toolCallId: 'tool-2',
+      toolName: 'read',
+      content: [{ type: 'text', text: 'ok' }],
+      isError: true,
+      timestamp: 2,
+    };
+    const mapped = mapContextMessages([successResult, errorResult]);
+
+    expect(mapped[0]?.is_error).toBe(false);
+    expect(mapped[1]?.is_error).toBe(true);
+  });
 });
 
 describe('createStreamSimple', () => {
