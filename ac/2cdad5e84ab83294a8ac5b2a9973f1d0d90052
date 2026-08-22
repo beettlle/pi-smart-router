@@ -1,0 +1,57 @@
+spine-tasks/CONTEXT.md
+  s_d9025a4324ee6b::t_54f4e01615ba90 5
+  s_d9025a4324ee6b::t_36af2bf7e1f84a 8-9
+spine-tasks/SP-226-route-delegate-fail-open/STATUS.md
+  s_d9025a4324ee6b::t_2dcd186f99f0f4 1-32
+spine-tasks/SP-227-docs-reconcile-0162/PROMPT.md
+  s_d9025a4324ee6b::t_f4685c4d01dfbb 1-78
+spine-tasks/SP-225-mapcontext-producer/STATUS.md
+  s_d9025a4324ee6b::t_4cc67552539bc2 1-32
+spine-tasks/SP-224-sc004-latency-stabilize/PROMPT.md
+  s_d9025a4324ee6b::t_03be86d5ca7bca 1-71
+spine-tasks/SP-224-sc004-latency-stabilize/STATUS.md
+  s_d9025a4324ee6b::t_c2b2bb70c536a1 1-30
+spine-tasks/dependencies.json
+  s_d9025a4324ee6b::t_004870f7386128 629-639
+spine-tasks/SP-227-docs-reconcile-0162/STATUS.md
+  s_d9025a4324ee6b::t_c0c0cf834999b8 1-36
+spine-tasks/SP-223-expected-cost-log-gate/PROMPT.md
+  s_d9025a4324ee6b::t_f9ec5d9adf2e6c 1-71
+spine-tasks/SP-225-mapcontext-producer/PROMPT.md
+  s_d9025a4324ee6b::t_bc4d3d6da6a0d4 1-76
+spine-tasks/SP-229-sync-routing-contracts/PROMPT.md
+  s_d9025a4324ee6b::t_59aa450b00c86d 1-78
+spine-tasks/_authoring/release-v0.17.0/manifest.md
+  s_d9025a4324ee6b::t_7d8523a8d795e0 9
+  s_d9025a4324ee6b::t_8eca028ff7057d 1-8,10-122
+spine-tasks/SP-228-ci-quality-gates/STATUS.md
+  s_d9025a4324ee6b::t_7543596cac2cd2 1-35
+spine-tasks/SP-230-concurrent-route-safety/PROMPT.md
+  s_d9025a4324ee6b::t_feca43ff2541a9 1-75
+spine-tasks/SP-223-expected-cost-log-gate/STATUS.md
+  s_d9025a4324ee6b::t_023f1ca3c0588d 1-32
+spine-tasks/SP-226-route-delegate-fail-open/PROMPT.md
+  s_d9025a4324ee6b::t_dbb8d4845018c2 1-72
+spine-tasks/SP-228-ci-quality-gates/PROMPT.md
+  s_d9025a4324ee6b::t_71db9a0d77c02c 1-75
+spine-tasks/SP-229-sync-routing-contracts/STATUS.md
+  s_d9025a4324ee6b::t_ef9060689a8f05 1-37
+spine-tasks/SP-230-concurrent-route-safety/STATUS.md
+  s_d9025a4324ee6b::t_9d492d4db5044e 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "ac2cdad5e84ab83294a8ac5b2a9973f1d0d90052",
+  "prompts": {},
+  "sessions": {
+    "s_d9025a4324ee6b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-95aaa66d-24b8-4a1e-9387-f1d8697f60ba",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
