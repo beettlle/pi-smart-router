@@ -1,6 +1,6 @@
 # SP-229: Sync routing contracts with live pipeline — Status
 
-**Current Step:** Step 1
+**Current Step:** Step 3
 **Status:** In Progress
 **Last Updated:** 2026-08-22
 **Review Level:** 1
@@ -10,21 +10,21 @@
 
 ## Step 1: Extend decision/request schemas and types
 
-**Status:** In progress
+**Status:** Complete (plan review engine-skipped, SP-195)
 
 - [x] Stage enum + features sidecar
 - [x] Message fields aligned with SP-225
 
 ## Step 2: Strict Zod and live round-trip test
 
-**Status:** Not started
+**Status:** Complete (plan review engine-skipped, SP-195)
 
-- [ ] Strict schemas
-- [ ] Live route() contract test
+- [x] Strict schemas
+- [x] Live route() contract test
 
 ## Step 3: Testing and verification
 
-**Status:** Not started
+**Status:** In progress
 
 - [ ] Contract `testCommand`
 - [ ] `npm run verify:ci`
