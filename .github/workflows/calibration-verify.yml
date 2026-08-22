@@ -6,9 +6,16 @@ on:
     paths:
       - 'config/routing-calibration.json'
       - 'config/routing-calibration.json.example'
+      - 'config/p-success-weights.json'
       - 'scripts/train-routing-calibration.ts'
       - 'scripts/verify-routing-calibration.ts'
+      - 'scripts/lib/isotonic-calibrator.ts'
+      - 'scripts/lib/oats-centroid-refinement.ts'
       - 'specs/001-build-smart-router/contracts/routing-calibration.schema.json'
+      - 'src/domain/routing/**'
+      - 'src/domain/pipeline/**'
+      - 'src/domain/types/**'
+      - 'src/cli/**'
 
 jobs:
   verify-calibration:

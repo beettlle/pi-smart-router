@@ -6,6 +6,8 @@ on:
     paths:
       - 'scripts/eval/**'
       - 'tests/eval/**'
+      - 'src/**'
+      - '.pi/extensions/smart-router/**'
       - '.github/workflows/eval-harness-smoke.yml'
       - 'package.json'
 
