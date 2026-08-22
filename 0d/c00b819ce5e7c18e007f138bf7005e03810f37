@@ -1,0 +1,16 @@
+spine-tasks/SP-229-sync-routing-contracts/.reviews/1-20260822T234026.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-229-sync-routing-contracts/.reviews/final-20260822T234050.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "0dc00b819ce5e7c18e007f138bf7005e03810f37",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
