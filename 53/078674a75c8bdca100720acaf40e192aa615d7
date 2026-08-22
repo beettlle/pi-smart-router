@@ -1,0 +1,16 @@
+spine-tasks/SP-226-route-delegate-fail-open/.reviews/1-20260822T205900.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-226-route-delegate-fail-open/.reviews/final-20260822T205922.md
+  h_ae151c586ac6c5 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "53078674a75c8bdca100720acaf40e192aa615d7",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
