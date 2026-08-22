@@ -667,3 +667,54 @@ describe('evaluateLoopEscalation', () => {
     });
   });
 });
+
+// ─── structured failure signals (A: status / flag over body) ──────────────────
+
+describe('structured failure signals (A: is_error / status)', () => {
+  it('treats is_error:true as a failure even with a benign body', () => {
+    const request = makeRequest({
+      turn_type: 'tool_result',
+      messages: [{ role: 'tool', content: 'All good', is_error: true }],
+    });
+    expect(extractToolFailureSignature(request)).toMatch(/^tf:/);
+  });
+
+  it('treats status>=400 as a failure even with a benign body', () => {
+    const request = makeRequest({
+      turn_type: 'tool_result',
+      messages: [{ role: 'tool', content: 'Rate limit exceeded', status: 429 }],
+    });
+    expect(extractToolFailureSignature(request)).toMatch(/^tf:/);
+  });
+
+  it('does not flag a benign "no error" body as failure', () => {
+    const request = makeRequest({
+      turn_type: 'tool_result',
+      messages: [{ role: 'tool', content: 'No error occurred during the operation' }],
+    });
+    expect(extractToolFailureSignature(request)).toBeNull();
+  });
+
+  it('flags a rate-limit body that lacks the word "error"', () => {
+    const request = makeRequest({
+      turn_type: 'tool_result',
+      messages: [{ role: 'tool', content: 'Rate limit exceeded, retry later' }],
+    });
+    expect(extractToolFailureSignature(request)).toMatch(/^tf:/);
+  });
+
+  it('escalates when tool result carries is_error:true and a frontier exists', () => {
+    const pin = makePin({ consecutive_tool_failures: 2 });
+    const result = evaluateLoopEscalation(
+      pin,
+      makeRequest({
+        turn_type: 'tool_result',
+        messages: [{ role: 'tool', content: 'ok', is_error: true }],
+      }),
+      fleet,
+      defaultConfig,
+    );
+    expect(result.shouldEscalate).toBe(true);
+    expect(result.escalationTarget!.tier).toBe('frontier-cloud');
+  });
+});

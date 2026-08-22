@@ -47,6 +47,10 @@ export interface Message {
   readonly role: string;
   readonly content: string;
   readonly tool_blocks?: readonly unknown[];
+  /** Host/agent flag: the tool/provider result represented a failure. */
+  readonly is_error?: boolean;
+  /** HTTP-ish status of the tool/provider result (4xx/5xx => failure). */
+  readonly status?: number;
 }
 
 // ─── RoutingRequest ──────────────────────────────────────────────────────────

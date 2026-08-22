@@ -21,7 +21,7 @@
  * responsible for applying pin state updates via SessionPinner.
  */
 
-import type { ModelProfile, RoutingRequest, SessionPin } from '../types/index.js';
+import type { Message, ModelProfile, RoutingRequest, SessionPin } from '../types/index.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,6 +58,16 @@ const FAILURE_PATTERNS = [
   'epipe',
 ] as const;
 
+/** Real failures whose body text lacks the FAILURE_PATTERNS keywords. */
+const RATE_LIMIT_PATTERNS = [
+  'rate limit',
+  '429',
+  'too many requests',
+  'quota exceeded',
+  'permission denied',
+  'access denied',
+] as const;
+
 /** Host/agent signals that the model invoked a tool the runtime does not expose. */
 const UNSUPPORTED_TOOL_PATTERNS = [
   'unknown tool',
@@ -78,10 +88,10 @@ const UNSUPPORTED_TOOL_PATTERNS = [
  * carry observational failure signals (FR-014: no post-generation judging).
  */
 export function extractToolFailureSignature(request: RoutingRequest): string | null {
-  const content = latestToolContent(request);
-  if (content === null) return null;
-  if (looksLikeFailure(content)) {
-    return computeSignature(content);
+  const msg = lastToolMessage(request);
+  if (msg === null) return null;
+  if (isToolFailure(msg)) {
+    return computeSignature(msg.content ?? '');
   }
   return null;
 }
@@ -91,29 +101,47 @@ export function extractToolFailureSignature(request: RoutingRequest): string | n
  * (capability mismatch — escalate immediately on zero-tier pins).
  */
 export function isUnsupportedOrUnknownToolResult(request: RoutingRequest): boolean {
-  const content = latestToolContent(request);
-  if (content === null) return false;
-  const lower = content.toLowerCase();
+  const msg = lastToolMessage(request);
+  if (msg === null) return false;
+  const lower = (msg.content ?? '').toLowerCase();
   return UNSUPPORTED_TOOL_PATTERNS.some((p) => lower.includes(p));
 }
 
-function latestToolContent(request: RoutingRequest): string | null {
+/** Return the most recent `tool`-role message, or null when none exists. */
+function lastToolMessage(request: RoutingRequest): Message | null {
   const msgs = request.messages;
   if (!msgs || msgs.length === 0) return null;
 
   for (let i = msgs.length - 1; i >= 0; i--) {
     const msg = msgs[i]!;
     if (msg.role === 'tool') {
-      return msg.content;
+      return msg;
     }
     return null;
   }
   return null;
 }
 
+/**
+ * Decide whether a tool-result message represents a failure.
+ * Prefers structured host signals (`is_error` / `status`); falls back to a
+ * tightened body heuristic when no structured signal is present.
+ */
+function isToolFailure(msg: Message): boolean {
+  if (msg.is_error === true) return true;
+  if (msg.status !== undefined && msg.status >= 400) return true;
+  return looksLikeFailure(msg.content ?? '');
+}
+
 function looksLikeFailure(content: string): boolean {
   const lower = content.toLowerCase();
-  return FAILURE_PATTERNS.some((p) => lower.includes(p));
+  // Benign negations must not be counted as failures.
+  if (/\bno (error|errors|failure|failures)\b/.test(lower)) return false;
+  if (/\bwithout (an? )?(error|failure)\b/.test(lower)) return false;
+  return (
+    FAILURE_PATTERNS.some((p) => lower.includes(p)) ||
+    RATE_LIMIT_PATTERNS.some((p) => lower.includes(p))
+  );
 }
 
 /** Deterministic djb2 hash of normalised error content. */
