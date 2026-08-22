@@ -159,7 +159,10 @@ export function createPiRouterMiddleware(
     });
 
     hooks.on('model_select', (event: PiModelSelectEvent, ctx: PiExtensionContext) => {
-      if (event.source === 'set') {
+      if (
+        event.source === 'set' &&
+        !(event.model.provider === 'smart-router' && event.model.id === 'auto')
+      ) {
         lifecycleHookState.setForceModel(resolveHookSessionId(ctx), event.model.id);
       }
     });

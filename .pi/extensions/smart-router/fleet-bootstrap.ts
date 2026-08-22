@@ -204,6 +204,11 @@ export async function discoverFleet(
     }
   }
 
+  // The virtual router model dispatches through this fleet; including it would recurse.
+  models = models.filter(
+    (model) => !(model.provider === 'smart-router' && model.id === 'auto'),
+  );
+
   const mappedFleet = mapFleetFromRegistry(registryModelsToFleetInput(models));
   const catalog = await store.getPriceCatalog();
   const fleet = applyCatalogPricesToFleet(mappedFleet, catalog);
