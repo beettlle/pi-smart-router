@@ -1,0 +1,63 @@
+spine-tasks/_authoring/issues/audit-v017/B2-extension-coverage.md
+  s_bcf8ca5af9754d::t_cfd8c4b9154ae0 1-50
+spine-tasks/_authoring/issues/audit-v017/B6-degraded-hydra-mode.md
+  s_bcf8ca5af9754d::t_f87ad7bc970baf 1-52
+spine-tasks/_authoring/issues/audit-v017/A7-concurrent-route-safety.md
+  s_bcf8ca5af9754d::t_983555581b3ee2 1-51
+spine-tasks/_authoring/issues/audit-v017/D2-eslint-flat-config.md
+  s_bcf8ca5af9754d::t_b7cb9f274c77cb 1-50
+spine-tasks/_authoring/issues/audit-v017/A1-ci-quality-gates.md
+  s_bcf8ca5af9754d::t_e46ca5881c89c3 1-57
+spine-tasks/_authoring/issues/audit-v017/A5-flaky-sc004-test.md
+  s_bcf8ca5af9754d::t_3e56d32615b0a5 1-51
+spine-tasks/_authoring/issues/audit-v017/A2-sync-contracts.md
+  s_bcf8ca5af9754d::t_0836cf79ede8f1 1-56
+spine-tasks/_authoring/issues/audit-v017/C2-hardware-probe-tests.md
+  s_bcf8ca5af9754d::t_aead26d437cc73 1-53
+spine-tasks/_authoring/issues/audit-v017/C6-fragment-pipeline-tests.md
+  s_bcf8ca5af9754d::t_5dc42b65bb98e5 1-52
+spine-tasks/_authoring/issues/audit-v017/B4-telemetry-hmac.md
+  s_bcf8ca5af9754d::t_f6795ad93465d2 1-52
+spine-tasks/_authoring/issues/audit-v017/C5-node-engine.md
+  s_bcf8ca5af9754d::t_4501a268753e67 1-51
+spine-tasks/_authoring/issues/audit-v017/C4-extension-parity-docs.md
+  s_bcf8ca5af9754d::t_b98d2eb6816070 1-53
+spine-tasks/_authoring/issues/audit-v017/A8-sqlite-blocking.md
+  s_bcf8ca5af9754d::t_5fd10ce686dab3 1-55
+spine-tasks/_authoring/issues/audit-v017/B7-extension-facade.md
+  s_bcf8ca5af9754d::t_7876a2ddcdb21c 1-55
+spine-tasks/_authoring/issues/audit-v017/C1-scripts-artifacts.md
+  s_bcf8ca5af9754d::t_9f6dbfd263ac82 1-49
+spine-tasks/_authoring/issues/audit-v017/B3-session-teardown.md
+  s_bcf8ca5af9754d::t_1af7b54aeaef30 1-52
+spine-tasks/_authoring/issues/audit-v017/C3-docs-reconcile.md
+  s_bcf8ca5af9754d::t_635c4eb6f01d36 1-54
+spine-tasks/_authoring/issues/audit-v017/A6-route-delegate-fail-open.md
+  s_bcf8ca5af9754d::t_154cf9483676a9 1-53
+spine-tasks/_authoring/issues/audit-v017/A4-expected-cost-log-gate.md
+  s_bcf8ca5af9754d::t_781219377359fc 1-50
+spine-tasks/_authoring/issues/audit-v017/B5-onnx-pinning.md
+  s_bcf8ca5af9754d::t_f629e624b8c9b6 1-53
+spine-tasks/_authoring/issues/audit-v017/A3-sp222-producer.md
+  s_bcf8ca5af9754d::t_d03252ead087bc 1-57
+spine-tasks/_authoring/issues/audit-v017/D1-spine-hygiene.md
+  s_bcf8ca5af9754d::t_9491567e06fa83 1-49
+spine-tasks/_authoring/issues/audit-v017/B1-split-router-pipeline.md
+  s_bcf8ca5af9754d::t_560e072fb1bfc1 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "28efdd886b02f05c4564de6ae967251a5c4c9708",
+  "prompts": {},
+  "sessions": {
+    "s_bcf8ca5af9754d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bdfab953-4e85-4134-8cde-1073932ca8c6",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
