@@ -1,0 +1,16 @@
+spine-tasks/SP-225-mapcontext-producer/.reviews/1-20260822T204633.md
+  h_ae151c586ac6c5 1-14
+spine-tasks/SP-225-mapcontext-producer/.reviews/final-20260822T204657.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "7f0b67425da3e0218bc6dff93a729914b10e15c3",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
