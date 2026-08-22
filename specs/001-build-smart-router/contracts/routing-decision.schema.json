@@ -12,6 +12,288 @@
     "reason_code",
     "routing_latency_ms"
   ],
+  "$defs": {
+    "tier": {
+      "type": "string",
+      "enum": ["zero-tier", "economical-cloud", "frontier-cloud"]
+    },
+    "candidateScore": {
+      "type": "object",
+      "required": ["model_id", "score"],
+      "properties": {
+        "model_id": { "type": "string" },
+        "score": { "type": "number" },
+        "shortfall": { "type": "number" },
+        "rejected_reason": { "type": ["string", "null"] }
+      }
+    },
+    "featureSidecar": {
+      "type": "object",
+      "description": "Privacy-safe routing feature sidecar attached by live routing (RoutingFeatureSidecar, SP-057); metadata and routing signals only — no prompt text",
+      "required": [
+        "triage",
+        "requirements",
+        "candidates",
+        "tier_hint",
+        "tier_hint_reason_code",
+        "low_intensity_score",
+        "p_success_cheap",
+        "p_success_raw",
+        "p_success_calibrated",
+        "p_success_alpha",
+        "local_eligible_reason"
+      ],
+      "properties": {
+        "triage": {
+          "type": ["object", "null"],
+          "required": ["verdict", "reason_code", "cyclomatic_score"],
+          "properties": {
+            "verdict": { "type": "string", "enum": ["trivial", "complex", "ambiguous"] },
+            "reason_code": { "type": "string" },
+            "cyclomatic_score": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        "requirements": {
+          "type": ["object", "null"],
+          "required": ["reasoning", "code_gen", "tool_use"],
+          "properties": {
+            "reasoning": { "type": "number" },
+            "code_gen": { "type": "number" },
+            "tool_use": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        "candidates": {
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/candidateScore" }
+        },
+        "tier_hint": {
+          "anyOf": [{ "$ref": "#/$defs/tier" }, { "type": "null" }]
+        },
+        "tier_hint_reason_code": { "type": ["string", "null"] },
+        "low_intensity_score": { "type": ["number", "null"] },
+        "p_success_cheap": { "type": ["number", "null"] },
+        "p_success_raw": { "type": ["number", "null"] },
+        "p_success_calibrated": { "type": ["number", "null"] },
+        "p_success_alpha": { "type": ["number", "null"] },
+        "context_fit": {
+          "type": "object",
+          "required": [
+            "estimated_input_tokens",
+            "context_fit_viable_count",
+            "context_fit_rejected_json",
+            "context_overflow_pin_break",
+            "selected_model_max_input_tokens",
+            "context_fit_reason_code"
+          ],
+          "properties": {
+            "estimated_input_tokens": { "type": ["number", "null"] },
+            "context_fit_viable_count": { "type": ["number", "null"] },
+            "context_fit_rejected_json": { "type": ["string", "null"] },
+            "context_overflow_pin_break": { "type": "boolean" },
+            "selected_model_max_input_tokens": { "type": ["number", "null"] },
+            "context_fit_reason_code": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "tier_selection": {
+          "type": "object",
+          "required": [
+            "cluster_id",
+            "cluster_similarity",
+            "cluster_margin",
+            "low_intensity_score",
+            "tier_hint",
+            "p_success_cheap",
+            "local_eligible_reason",
+            "tier_selection_reason_code",
+            "cluster_match_table",
+            "tier_feature_summary",
+            "low_intensity_breakdown",
+            "local_zero_skip_reasons"
+          ],
+          "properties": {
+            "cluster_id": { "type": ["string", "null"] },
+            "cluster_similarity": { "type": ["number", "null"] },
+            "cluster_margin": { "type": ["number", "null"] },
+            "low_intensity_score": { "type": ["number", "null"] },
+            "tier_hint": {
+              "anyOf": [{ "$ref": "#/$defs/tier" }, { "type": "null" }]
+            },
+            "p_success_cheap": { "type": ["number", "null"] },
+            "local_eligible_reason": { "type": ["string", "null"] },
+            "tier_selection_reason_code": { "type": ["string", "null"] },
+            "cluster_match_table": {
+              "type": ["array", "null"],
+              "items": {
+                "type": "object",
+                "required": ["cluster_id", "tier_bias", "similarity", "margin", "confidence", "selected"],
+                "properties": {
+                  "cluster_id": { "type": "string" },
+                  "tier_bias": { "$ref": "#/$defs/tier" },
+                  "similarity": { "type": "number" },
+                  "margin": { "type": ["number", "null"] },
+                  "confidence": { "type": "string", "enum": ["high", "none"] },
+                  "selected": { "type": "boolean" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "tier_feature_summary": {
+              "type": ["object", "null"],
+              "required": [
+                "triage_verdict",
+                "triage_reason_code",
+                "cyclomatic_score",
+                "requirement_reasoning",
+                "requirement_code_gen",
+                "requirement_tool_use"
+              ],
+              "properties": {
+                "triage_verdict": { "type": ["string", "null"] },
+                "triage_reason_code": { "type": ["string", "null"] },
+                "cyclomatic_score": { "type": ["number", "null"] },
+                "requirement_reasoning": { "type": ["number", "null"] },
+                "requirement_code_gen": { "type": ["number", "null"] },
+                "requirement_tool_use": { "type": ["number", "null"] }
+              },
+              "additionalProperties": false
+            },
+            "low_intensity_breakdown": {
+              "type": ["object", "null"],
+              "required": [
+                "score",
+                "tier_hint",
+                "tier_hint_reason_code",
+                "tier_selection_reason_code",
+                "p_success_cheap",
+                "p_success_raw",
+                "p_success_calibrated",
+                "p_success_alpha",
+                "rejected_tiers"
+              ],
+              "properties": {
+                "score": { "type": ["number", "null"] },
+                "tier_hint": {
+                  "anyOf": [{ "$ref": "#/$defs/tier" }, { "type": "null" }]
+                },
+                "tier_hint_reason_code": { "type": ["string", "null"] },
+                "tier_selection_reason_code": { "type": ["string", "null"] },
+                "p_success_cheap": { "type": ["number", "null"] },
+                "p_success_raw": { "type": ["number", "null"] },
+                "p_success_calibrated": { "type": ["number", "null"] },
+                "p_success_alpha": { "type": ["number", "null"] },
+                "rejected_tiers": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["tier", "expected_cost_usd", "adjusted_expected_cost_usd", "reason"],
+                    "properties": {
+                      "tier": { "type": "string" },
+                      "expected_cost_usd": { "type": "number" },
+                      "adjusted_expected_cost_usd": { "type": "number" },
+                      "reason": { "type": "string" }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "local_zero_skip_reasons": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "breakeven": {
+          "type": "object",
+          "required": [
+            "marginal_savings",
+            "future_cache_value",
+            "cache_reprime_cost",
+            "decision",
+            "breakeven_reason_code"
+          ],
+          "properties": {
+            "marginal_savings": { "type": ["number", "null"] },
+            "future_cache_value": { "type": ["number", "null"] },
+            "cache_reprime_cost": { "type": ["number", "null"] },
+            "decision": { "type": ["string", "null"], "enum": ["pass", "blocked", null] },
+            "breakeven_reason_code": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "saar": {
+          "type": "object",
+          "required": [
+            "buffer_active",
+            "hard_lock",
+            "turn_index_in_session",
+            "planning_turn_buffer",
+            "idle_timeout_seconds",
+            "saar_reason_code"
+          ],
+          "properties": {
+            "buffer_active": { "type": "boolean" },
+            "hard_lock": { "type": "boolean" },
+            "turn_index_in_session": { "type": ["number", "null"] },
+            "planning_turn_buffer": { "type": ["number", "null"] },
+            "idle_timeout_seconds": { "type": ["number", "null"] },
+            "saar_reason_code": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "planning_delegate": {
+          "type": "object",
+          "required": [
+            "path",
+            "primary_model_id",
+            "delegate_model_id",
+            "compressed_context",
+            "planning_delegate_reason_code",
+            "fallback_reason",
+            "workers_spawned",
+            "workers_succeeded",
+            "worker_timeout_count"
+          ],
+          "properties": {
+            "path": { "type": "string", "enum": ["delegate", "direct", "none"] },
+            "primary_model_id": { "type": ["string", "null"] },
+            "delegate_model_id": { "type": ["string", "null"] },
+            "compressed_context": {
+              "type": ["object", "null"],
+              "required": ["max_messages", "max_tokens", "exclude_execution_history"],
+              "properties": {
+                "max_messages": { "type": "integer", "minimum": 1 },
+                "max_tokens": { "type": "integer", "minimum": 1 },
+                "exclude_execution_history": { "type": "boolean" }
+              },
+              "additionalProperties": false
+            },
+            "planning_delegate_reason_code": { "type": ["string", "null"] },
+            "fallback_reason": { "type": ["string", "null"] },
+            "workers_spawned": { "type": ["number", "null"] },
+            "workers_succeeded": { "type": ["number", "null"] },
+            "worker_timeout_count": { "type": ["number", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "local_eligible_reason": { "type": ["string", "null"] },
+        "route_path": {
+          "type": ["string", "null"],
+          "enum": ["neural", "learned", "heuristic", "safe_default", null]
+        },
+        "route_path_confidence": { "type": ["number", "null"] },
+        "prewarm_attempted": { "type": ["boolean", "null"] },
+        "prewarm_accepted": { "type": ["boolean", "null"] },
+        "prewarm_disabled_reason": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  },
   "properties": {
     "request_id": {
       "type": "string",
@@ -26,12 +308,20 @@
     },
     "stage": {
       "type": "string",
+      "description": "Full PIPELINE_STAGE_ORDER from src/domain/pipeline/router-pipeline.ts plus 'fallback' (decision-level degradation marker)",
       "enum": [
-        "triage",
+        "hardware_probe",
+        "loop_escalation",
         "turn_envelope",
+        "context_fit",
+        "low_intensity",
         "session_pin",
+        "triage",
         "local_zero",
+        "triage_cloud_fallback",
         "hydra_match",
+        "safe_default",
+        "context_overflow_fallback",
         "fallback"
       ]
     },
@@ -41,16 +331,7 @@
     },
     "candidates": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["model_id", "score"],
-        "properties": {
-          "model_id": { "type": "string" },
-          "score": { "type": "number" },
-          "shortfall": { "type": "number" },
-          "rejected_reason": { "type": ["string", "null"] }
-        }
-      }
+      "items": { "$ref": "#/$defs/candidateScore" }
     },
     "estimated_cost_usd": {
       "type": "number",
@@ -71,6 +352,9 @@
         "context_overflow",
         null
       ]
+    },
+    "features": {
+      "$ref": "#/$defs/featureSidecar"
     }
   },
   "additionalProperties": false

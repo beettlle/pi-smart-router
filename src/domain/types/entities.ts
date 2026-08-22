@@ -22,12 +22,30 @@ export type PinReason =
 
 export type Tier = 'zero-tier' | 'economical-cloud' | 'frontier-cloud';
 
+/**
+ * Stage names emitted on a RoutingDecision.
+ *
+ * Decision stages are the full `PIPELINE_STAGE_ORDER` from
+ * `src/domain/pipeline/router-pipeline.ts` plus `'fallback'` — the
+ * decision-level degradation marker used when the pipeline errors or
+ * exhausts all stages without deciding (safe-cloud default).
+ * Sync guard: tests/contract/routing-schemas.test.ts asserts this union,
+ * `RoutingStageSchema`, and the JSON-schema enum match
+ * `[...PIPELINE_STAGE_ORDER, 'fallback']` (SP-229, #136).
+ */
 export type RoutingStage =
-  | 'triage'
+  | 'hardware_probe'
+  | 'loop_escalation'
   | 'turn_envelope'
+  | 'context_fit'
+  | 'low_intensity'
   | 'session_pin'
+  | 'triage'
   | 'local_zero'
+  | 'triage_cloud_fallback'
   | 'hydra_match'
+  | 'safe_default'
+  | 'context_overflow_fallback'
   | 'fallback';
 
 /**
@@ -46,6 +64,11 @@ export type PriceSource = 'override' | 'registry' | 'yaml_fallback';
 export interface Message {
   readonly role: string;
   readonly content: string;
+  /** Tool call identifier for tool-result messages (contract field). */
+  readonly tool_call_id?: string;
+  /** Tool invocations requested by an assistant message (contract field). */
+  readonly tool_calls?: readonly unknown[];
+  /** Internal normalized tool blocks (mapped from `tool_calls` at boundaries). */
   readonly tool_blocks?: readonly unknown[];
   /** Host/agent flag: the tool/provider result represented a failure. */
   readonly is_error?: boolean;

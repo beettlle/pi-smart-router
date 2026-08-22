@@ -34,12 +34,26 @@ export const TierSchema = z.enum([
   'frontier-cloud',
 ]);
 
+/**
+ * Stage names emitted on a RoutingDecision — full `PIPELINE_STAGE_ORDER`
+ * (`src/domain/pipeline/router-pipeline.ts`) plus `'fallback'` (decision-level
+ * degradation marker). Kept as a literal list to avoid a circular import with
+ * the pipeline module; tests/contract/routing-schemas.test.ts asserts this
+ * enum matches `[...PIPELINE_STAGE_ORDER, 'fallback']` (SP-229, #136).
+ */
 export const RoutingStageSchema = z.enum([
-  'triage',
+  'hardware_probe',
+  'loop_escalation',
   'turn_envelope',
+  'context_fit',
+  'low_intensity',
   'session_pin',
+  'triage',
   'local_zero',
+  'triage_cloud_fallback',
   'hydra_match',
+  'safe_default',
+  'context_overflow_fallback',
   'fallback',
 ]);
 
@@ -58,28 +72,32 @@ export const MessageRoleSchema = z.enum([
 
 // ─── Message (contract: routing-request.schema.json) ─────────────────────────
 
-export const MessageSchema = z.object({
-  role: MessageRoleSchema,
-  content: z.string(),
-  tool_call_id: z.string().optional(),
-  tool_calls: z.array(z.unknown()).optional(),
-  is_error: z.boolean().optional(),
-  status: z.number().optional(),
-});
+export const MessageSchema = z
+  .object({
+    role: MessageRoleSchema,
+    content: z.string(),
+    tool_call_id: z.string().optional(),
+    tool_calls: z.array(z.unknown()).optional(),
+    is_error: z.boolean().optional(),
+    status: z.number().optional(),
+  })
+  .strict();
 
 // ─── RoutingRequest (contract: routing-request.schema.json) ──────────────────
 
-export const RoutingRequestSchema = z.object({
-  request_id: z.string().uuid(),
-  session_id: z.string().min(1),
-  prompt_text: z.string(),
-  messages: z.array(MessageSchema).optional(),
-  turn_type: TurnTypeSchema.optional(),
-  compaction_flag: z.boolean().optional(),
-  force_model_id: z.string().optional(),
-  candidate_model_id: z.string().optional(),
-  estimated_input_tokens: z.number().int().nonnegative().optional(),
-});
+export const RoutingRequestSchema = z
+  .object({
+    request_id: z.string().uuid(),
+    session_id: z.string().min(1),
+    prompt_text: z.string(),
+    messages: z.array(MessageSchema).optional(),
+    turn_type: TurnTypeSchema.optional(),
+    compaction_flag: z.boolean().optional(),
+    force_model_id: z.string().optional(),
+    candidate_model_id: z.string().optional(),
+    estimated_input_tokens: z.number().int().nonnegative().optional(),
+  })
+  .strict();
 
 // ─── SessionPin (data-model.md) ──────────────────────────────────────────────
 
@@ -136,26 +154,202 @@ export type ValidatedModelProfile = z.infer<typeof ModelProfileSchema>;
 
 // ─── CandidateScore (contract: routing-decision.schema.json) ─────────────────
 
-export const CandidateScoreSchema = z.object({
-  model_id: z.string(),
-  score: z.number(),
-  shortfall: z.number(),
-  rejected_reason: z.string().nullable(),
-});
+export const CandidateScoreSchema = z
+  .object({
+    model_id: z.string(),
+    score: z.number(),
+    shortfall: z.number(),
+    rejected_reason: z.string().nullable(),
+  })
+  .strict();
+
+// ─── RoutingFeatureSidecar (contract: routing-decision.schema.json) ──────────
+
+/** Degraded failover path classification (SP-212, #119). */
+export const RoutePathSchema = z.enum(['neural', 'learned', 'heuristic', 'safe_default']);
+
+export const TriageFeatureSummarySchema = z
+  .object({
+    verdict: z.enum(['trivial', 'complex', 'ambiguous']),
+    reason_code: z.string(),
+    cyclomatic_score: z.number(),
+  })
+  .strict();
+
+export const RequirementVectorSchema = z
+  .object({
+    reasoning: z.number(),
+    code_gen: z.number(),
+    tool_use: z.number(),
+  })
+  .strict();
+
+export const ContextFitObservabilitySchema = z
+  .object({
+    estimated_input_tokens: z.number().nullable(),
+    context_fit_viable_count: z.number().nullable(),
+    context_fit_rejected_json: z.string().nullable(),
+    context_overflow_pin_break: z.boolean(),
+    selected_model_max_input_tokens: z.number().nullable(),
+    context_fit_reason_code: z.string().nullable(),
+  })
+  .strict();
+
+export const ClusterMatchTableEntrySchema = z
+  .object({
+    cluster_id: z.string(),
+    tier_bias: TierSchema,
+    similarity: z.number(),
+    margin: z.number().nullable(),
+    confidence: z.enum(['high', 'none']),
+    selected: z.boolean(),
+  })
+  .strict();
+
+export const TierFeatureSummarySchema = z
+  .object({
+    triage_verdict: z.string().nullable(),
+    triage_reason_code: z.string().nullable(),
+    cyclomatic_score: z.number().nullable(),
+    requirement_reasoning: z.number().nullable(),
+    requirement_code_gen: z.number().nullable(),
+    requirement_tool_use: z.number().nullable(),
+  })
+  .strict();
+
+export const RejectedTierEntrySchema = z
+  .object({
+    tier: z.string(),
+    expected_cost_usd: z.number(),
+    adjusted_expected_cost_usd: z.number(),
+    reason: z.string(),
+  })
+  .strict();
+
+export const LowIntensityBreakdownSchema = z
+  .object({
+    score: z.number().nullable(),
+    tier_hint: TierSchema.nullable(),
+    tier_hint_reason_code: z.string().nullable(),
+    tier_selection_reason_code: z.string().nullable(),
+    p_success_cheap: z.number().nullable(),
+    p_success_raw: z.number().nullable(),
+    p_success_calibrated: z.number().nullable(),
+    p_success_alpha: z.number().nullable(),
+    rejected_tiers: z.array(RejectedTierEntrySchema),
+  })
+  .strict();
+
+export const TierSelectionObservabilitySchema = z
+  .object({
+    cluster_id: z.string().nullable(),
+    cluster_similarity: z.number().nullable(),
+    cluster_margin: z.number().nullable(),
+    low_intensity_score: z.number().nullable(),
+    tier_hint: TierSchema.nullable(),
+    p_success_cheap: z.number().nullable(),
+    local_eligible_reason: z.string().nullable(),
+    tier_selection_reason_code: z.string().nullable(),
+    cluster_match_table: z.array(ClusterMatchTableEntrySchema).nullable(),
+    tier_feature_summary: TierFeatureSummarySchema.nullable(),
+    low_intensity_breakdown: LowIntensityBreakdownSchema.nullable(),
+    local_zero_skip_reasons: z.array(z.string()),
+  })
+  .strict();
+
+export const BreakevenObservabilitySchema = z
+  .object({
+    marginal_savings: z.number().nullable(),
+    future_cache_value: z.number().nullable(),
+    cache_reprime_cost: z.number().nullable(),
+    decision: z.enum(['pass', 'blocked']).nullable(),
+    breakeven_reason_code: z.string().nullable(),
+  })
+  .strict();
+
+export const SaarObservabilitySchema = z
+  .object({
+    buffer_active: z.boolean(),
+    hard_lock: z.boolean(),
+    turn_index_in_session: z.number().nullable(),
+    planning_turn_buffer: z.number().nullable(),
+    idle_timeout_seconds: z.number().nullable(),
+    saar_reason_code: z.string().nullable(),
+  })
+  .strict();
+
+export const PlanningDelegatePathSchema = z.enum(['delegate', 'direct', 'none']);
+
+export const PlanningDelegateObservabilitySchema = z
+  .object({
+    path: PlanningDelegatePathSchema,
+    primary_model_id: z.string().nullable(),
+    delegate_model_id: z.string().nullable(),
+    // Mirrors CompressedContextSpecSchema (defined in the operator-config
+    // section below); inlined to avoid a module-evaluation-order dependency.
+    compressed_context: z
+      .object({
+        max_messages: z.number().int().positive(),
+        max_tokens: z.number().int().positive(),
+        exclude_execution_history: z.boolean(),
+      })
+      .strict()
+      .nullable(),
+    planning_delegate_reason_code: z.string().nullable(),
+    fallback_reason: z.string().nullable(),
+    workers_spawned: z.number().nullable(),
+    workers_succeeded: z.number().nullable(),
+    worker_timeout_count: z.number().nullable(),
+  })
+  .strict();
+
+/**
+ * Privacy-safe routing feature sidecar attached to live decisions (SP-057).
+ * Mirrors {@link RoutingFeatureSidecar} in entities.ts.
+ */
+export const RoutingFeatureSidecarSchema = z
+  .object({
+    triage: TriageFeatureSummarySchema.nullable(),
+    requirements: RequirementVectorSchema.nullable(),
+    candidates: z.array(CandidateScoreSchema).nullable(),
+    tier_hint: TierSchema.nullable(),
+    tier_hint_reason_code: z.string().nullable(),
+    low_intensity_score: z.number().nullable(),
+    p_success_cheap: z.number().nullable(),
+    p_success_raw: z.number().nullable(),
+    p_success_calibrated: z.number().nullable(),
+    p_success_alpha: z.number().nullable(),
+    context_fit: ContextFitObservabilitySchema.optional(),
+    tier_selection: TierSelectionObservabilitySchema.optional(),
+    breakeven: BreakevenObservabilitySchema.optional(),
+    saar: SaarObservabilitySchema.optional(),
+    planning_delegate: PlanningDelegateObservabilitySchema.optional(),
+    local_eligible_reason: z.string().nullable(),
+    route_path: RoutePathSchema.nullable().optional(),
+    route_path_confidence: z.number().nullable().optional(),
+    prewarm_attempted: z.boolean().nullable().optional(),
+    prewarm_accepted: z.boolean().nullable().optional(),
+    prewarm_disabled_reason: z.string().nullable().optional(),
+  })
+  .strict();
 
 // ─── RoutingDecision (contract: routing-decision.schema.json) ────────────────
 
-export const RoutingDecisionSchema = z.object({
-  request_id: z.string().uuid(),
-  selected_model_id: z.string(),
-  tier: TierSchema,
-  stage: RoutingStageSchema,
-  reason_code: z.string(),
-  candidates: z.array(CandidateScoreSchema).optional(),
-  estimated_cost_usd: z.number().nonnegative().optional(),
-  routing_latency_ms: z.number().nonnegative(),
-  pin_reason: PinReasonSchema.nullable(),
-});
+export const RoutingDecisionSchema = z
+  .object({
+    request_id: z.string().uuid(),
+    selected_model_id: z.string(),
+    tier: TierSchema,
+    stage: RoutingStageSchema,
+    reason_code: z.string(),
+    candidates: z.array(CandidateScoreSchema).optional(),
+    estimated_cost_usd: z.number().nonnegative().optional(),
+    routing_latency_ms: z.number().nonnegative(),
+    pin_reason: PinReasonSchema.nullable(),
+    /** Privacy-safe feature sidecar attached by live routing (SP-057, SP-229). */
+    features: RoutingFeatureSidecarSchema.optional(),
+  })
+  .strict();
 
 // ─── PriceCatalog (data-model.md) ────────────────────────────────────────────
 

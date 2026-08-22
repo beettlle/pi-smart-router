@@ -10,10 +10,10 @@
 
 ## Step 1: Extend decision/request schemas and types
 
-**Status:** Not started
+**Status:** In progress
 
-- [ ] Stage enum + features sidecar
-- [ ] Message fields aligned with SP-225
+- [x] Stage enum + features sidecar
+- [x] Message fields aligned with SP-225
 
 ## Step 2: Strict Zod and live round-trip test
 
