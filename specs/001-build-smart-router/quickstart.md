@@ -7,7 +7,7 @@
 ## Prerequisites
 
 - macOS Apple Silicon
-- Node.js 20 LTS
+- Node.js >= 22 (matches README prerequisites and `package.json` engines)
 - SQLite via `better-sqlite3` (default: `.pi-smart-router/state.db` — created automatically)
 - Optional: LM Studio (port 1234) or Ollama (port 11434) with a model loaded
 
@@ -63,7 +63,7 @@ See [data-model.md](./data-model.md) ModelProfile and PRD §5 schema.
 |----------|----------|---------|
 | `ROUTER_STATE_DB_PATH` | No | Default `./.pi-smart-router/state.db` — override SQLite location |
 | `SMART_ROUTER_LOG_ROUTING` | No | Set to `1` to log routing decisions to stderr (extension dogfooding) |
-| `SMART_ROUTER_DATASET` | No | **Future** ([#8](https://github.com/beettlle/pi-smart-router/issues/8)) — planned opt-in dataset capture; not implemented |
+| `SMART_ROUTER_DATASET` | No | Shipped (closed [#8](https://github.com/beettlle/pi-smart-router/issues/8)) — set to `1` to opt in to privacy-safe routing dataset capture (metadata and feature fields only; 30-day / 10k-row retention; prompt text, messages, and tool arguments are never stored). Required for `/smart-router export dataset` and outcome labels |
 | `MODELS_YAML_PATH` | No | Default `./config/models.yaml` |
 | `ROUTER_SAFE_DEFAULT_TIER` | No | Default `economical-cloud` |
 | `LITELLM_PRICING_URL` | No | LiteLLM pricing JSON source |

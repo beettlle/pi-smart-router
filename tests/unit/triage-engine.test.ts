@@ -630,12 +630,22 @@ describe('Pipeline triage stage (T027, T028)', () => {
     });
   });
 
-  describe('SC-004 latency budget (<5ms)', () => {
-    // Wall-clock: assert p95 after warmup. Local/dev keeps the SC-004 5ms ceiling;
-    // CI runners share CPU so full pipeline.route() p95 can land ~6–20ms even when
-    // the triage path itself is fine (same flake class as isotonic lookup harden).
+  describe('SC-004 latency budget (<5ms triage path)', () => {
+    // Wall-clock: assert p95 after warmup over full RouterPipeline.route().
+    // SP-224 / #139: the non-CI budget is 15ms (was 5ms). The 5ms ceiling flaked
+    // under parallel Vitest fork workers (default maxWorkers=4 sharing host CPU):
+    // each `await pipeline.route()` yields to the event loop, and cross-fork CPU
+    // contention adds scheduler jitter that pushed p95 to ~6.6ms even though the
+    // synchronous triage path itself is sub-millisecond. The 15ms budget still
+    // guards against order-of-magnitude regressions in the triage fast path (the
+    // intent of SC-004 latency-budget discipline) while excluding scheduler noise
+    // from parallel workers. CI runners keep the existing 50ms budget (shared CPU
+    // can land p95 ~6–20ms; same flake class as isotonic lookup harden).
+    // Rejected alternatives: (A) isolated pool — a dedicated fork still contends
+    // with sibling forks for CPU; (C) mocked stages — SC-004's contract is the
+    // full pipeline path.
     const onCi = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
-    const TRIAGE_LATENCY_BUDGET_MS = onCi ? 50 : 5;
+    const TRIAGE_LATENCY_BUDGET_MS = onCi ? 50 : 15;
     const WARMUP_SAMPLES = onCi ? 20 : 5;
     const TIMED_SAMPLES = onCi ? 60 : 40;
 
