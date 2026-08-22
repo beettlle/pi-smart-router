@@ -1,0 +1,18 @@
+.pi/extensions/smart-router/route-and-delegate.ts
+  h_ae151c586ac6c5 55-59,160-221,427-435,438,625-634,654,671-680
+spine-tasks/SP-226-route-delegate-fail-open/STATUS.md
+  h_ae151c586ac6c5 13,15-17,21,23-24
+tests/unit/smart-router-extension.test.ts
+  h_ae151c586ac6c5 2668-2798
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "5b4ddd4754c35d90428caa0ae91607f1196331b1",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
