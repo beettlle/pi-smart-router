@@ -1,0 +1,20 @@
+README.md
+  h_ae151c586ac6c5 5,21-22,37
+docs/routing-roadmap.md
+  h_ae151c586ac6c5 3,70-71,118,155,159,177,366-380
+specs/001-build-smart-router/quickstart.md
+  h_ae151c586ac6c5 10,66
+spine-tasks/SP-227-docs-reconcile-0162/STATUS.md
+  h_ae151c586ac6c5 3,20,22,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "6ad48333cbd90e473df296c7fa0405a3e2a06d7e",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
