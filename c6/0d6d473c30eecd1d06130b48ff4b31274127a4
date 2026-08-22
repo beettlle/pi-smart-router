@@ -1,0 +1,58 @@
+src/api/middleware/pi-router-middleware.ts
+  s_9d38be5b96fd1e::t_7a2401dfe3d5c4 162-165
+spine-tasks/SP-221-exclude-virtual-router/PROMPT.md
+  s_9d38be5b96fd1e::t_b5a6f94d22981d 1-46
+spine-tasks/SP-222-loop-escalation-signals/STATUS.md
+  s_9d38be5b96fd1e::t_6ce92faf681ba4 1-14
+.pi/extensions/smart-router/fleet-bootstrap.ts
+  s_9d38be5b96fd1e::t_2a69bb1ef1b877 207-212
+spine-tasks/dependencies.json
+  s_9d38be5b96fd1e::t_82bbb1e524e537 627-629
+src/domain/types/schemas.ts
+  s_9d38be5b96fd1e::t_7c1101b42ac5fd 66-67
+tests/unit/pi-router-middleware.test.ts
+  s_9d38be5b96fd1e::t_318526408f3b22 125-140
+specs/001-build-smart-router/contracts/routing-request.schema.json
+  s_9d38be5b96fd1e::t_79e94498df2b4e 41-48
+src/domain/pinning/loop-escalation.ts
+  s_9d38be5b96fd1e::t_6d33f0149895ad 61-74
+  s_9d38be5b96fd1e::t_e8488acb8b9266 95-98
+  s_9d38be5b96fd1e::t_2104e3b90408b7 24
+  s_9d38be5b96fd1e::t_3551c95d6775bb 108-110,114,121,128-141,144-151
+src/domain/types/entities.ts
+  s_9d38be5b96fd1e::t_69a0fcc2047dcc 50-53
+tests/unit/smart-router-extension.test.ts
+  s_9d38be5b96fd1e::t_40127ea2d2ba92 478-494
+  s_9d38be5b96fd1e::t_e6306dea011521 476-477,495-498
+spine-tasks/CONTEXT.md
+  s_9d38be5b96fd1e::t_af4cb83d46fdb8 3,5,8
+  s_9d38be5b96fd1e::t_f7d32eb1681078 761,767-782
+spine-tasks/SP-222-loop-escalation-signals/PROMPT.md
+  s_9d38be5b96fd1e::t_38b08f911e53cc 1-48
+.pi/extensions/smart-router/routing-context.ts
+  s_9d38be5b96fd1e::t_f2b6cee535ef72 150
+spine-tasks/_authoring/release-v0.16.2/manifest.md
+  s_9d38be5b96fd1e::t_95e42ccb9d998b 1-73
+tests/unit/loop-escalation.test.ts
+  s_9d38be5b96fd1e::t_fd70a48fd2bb29 670-736
+spine-tasks/SP-221-exclude-virtual-router/STATUS.md
+  s_9d38be5b96fd1e::t_26d83408489e9b 1-13
+tests/unit/smart-router-pricing.test.ts
+  s_9d38be5b96fd1e::t_744203f79f7af8 645-662
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "c60d6d473c30eecd1d06130b48ff4b31274127a4",
+  "prompts": {},
+  "sessions": {
+    "s_9d38be5b96fd1e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-fc9263ab-8efd-4e3a-a0f3-96cd0269dfac",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
