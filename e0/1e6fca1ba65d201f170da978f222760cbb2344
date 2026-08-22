@@ -1,0 +1,20 @@
+README.md
+  h_ae151c586ac6c5 261-264
+spine-tasks/SP-230-concurrent-route-safety/STATUS.md
+  h_ae151c586ac6c5 3,17,24,26-27,31,42-45
+src/index.ts
+  h_ae151c586ac6c5 46-56
+tests/unit/router-pipeline.test.ts
+  h_ae151c586ac6c5 1999-2116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "e01e6fca1ba65d201f170da978f222760cbb2344",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
