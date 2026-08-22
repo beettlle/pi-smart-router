@@ -1,0 +1,19 @@
+src/domain/types/schemas.ts
+  s_6a33b7df7667a5::t_8b80febe936fd3 37-43,45-46,48-49,51,53,55-56,75-84,88-100,157-334,338-352
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "daf66bdee2309970a104c80626a945a3ddf3130c",
+  "prompts": {},
+  "sessions": {
+    "s_6a33b7df7667a5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-97dda078-ce6c-4470-acc7-ed5640763e99",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
