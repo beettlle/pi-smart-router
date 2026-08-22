@@ -1,0 +1,18 @@
+.github/workflows/calibration-verify.yml
+  h_ae151c586ac6c5 9,12-13,15-18
+.github/workflows/eval-harness-smoke.yml
+  h_ae151c586ac6c5 9-10
+spine-tasks/SP-228-ci-quality-gates/STATUS.md
+  h_ae151c586ac6c5 13,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "ea7b81528aee263359c08201591c1abb6b0f841d",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
