@@ -1,7 +1,7 @@
 # SP-229: Sync routing contracts with live pipeline — Status
 
-**Current Step:** Step 3
-**Status:** In Progress
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-08-22
 **Review Level:** 1
 **Size:** M
@@ -24,14 +24,16 @@
 
 ## Step 3: Testing and verification
 
-**Status:** In progress
+**Status:** Complete
 
-- [ ] Contract `testCommand`
-- [ ] `npm run verify:ci`
+- [x] Contract `testCommand` — `npm run typecheck && npx vitest run tests/contract/routing-schemas.test.ts` (38 tests pass)
+- [x] `npm run verify:ci` — build + typecheck + lint + coverage:check exit 0 (93.15% lines)
+- [x] Full `npm test` — 113 files, 1895 tests pass
 
 ---
 
 ## Completion Criteria
 
-- [ ] Contracts match live pipeline
-- [ ] #136 closable
+- [x] Contracts match live pipeline
+- [x] Live round-trip contract test passes
+- [x] #136 closable
