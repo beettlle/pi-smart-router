@@ -1,0 +1,16 @@
+spine-tasks/SP-223-expected-cost-log-gate/.reviews/1-20260822T204031.md
+  h_ae151c586ac6c5 1-11
+spine-tasks/SP-223-expected-cost-log-gate/.reviews/final-20260822T204051.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "a35c0ea4ed690a3ab9ed49db0e98089a99e1d3f5",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
