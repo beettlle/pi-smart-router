@@ -1,6 +1,6 @@
 # SP-230: RouterPipeline concurrent route() safety — Status
 
-**Current Step:** Step 1
+**Current Step:** Step 3
 **Status:** In Progress
 **Last Updated:** 2026-08-22
 **Review Level:** 1
@@ -14,21 +14,21 @@ Enforce the single-flight contract in code: serialize `RouterPipeline.route()` v
 
 ## Step 1: Refactor or document concurrency contract
 
-**Status:** In progress
+**Status:** Complete (plan review skipped — engine-owned, SP-195)
 
 - [x] Per-call RoutingContext or documented single-flight
 - [x] Code comments on concurrency
 
 ## Step 2: Test and document
 
-**Status:** Not started
+**Status:** Complete (plan review skipped — engine-owned, SP-195)
 
-- [ ] Concurrent or contract test
-- [ ] createRouter / README note
+- [x] Concurrent or contract test
+- [x] createRouter / README note
 
 ## Step 3: Testing and verification
 
-**Status:** Not started
+**Status:** In progress
 
 - [ ] Contract `testCommand`
 - [ ] `npm run verify:ci`
@@ -39,3 +39,7 @@ Enforce the single-flight contract in code: serialize `RouterPipeline.route()` v
 
 - [ ] Concurrency contract clear and tested
 - [ ] #141 closable
+
+## Discoveries
+
+- File Scope lists `README.md` as the only may-change doc, but the Contract completion criteria explicitly require "createRouter docs". Interpreted this as authorizing a doc-only JSDoc addition on `createRouter()` in `src/index.ts` (no code change). README carries the full concurrency contract section.

@@ -43,6 +43,17 @@ export interface RouterHandle {
 
 // ─── Router factory (T022) ───────────────────────────────────────────────────
 
+/**
+ * Create a router handle from the default fleet catalog (T022).
+ *
+ * Concurrency contract (SP-230, #141): the underlying `RouterPipeline`
+ * serializes concurrent `route()` calls (single-flight) because per-route
+ * transient state lives on instance fields while stages run. A shared handle
+ * is therefore safe under overlapping requests — a concurrent caller queues
+ * behind the in-flight route for at most one routing latency, and routing
+ * policy outcomes are unchanged. Create separate handles for parallel
+ * routing throughput.
+ */
 export function createRouter(options?: RouterFactoryOptions): RouterHandle {
   const catalog = loadModels(
     options?.modelsPath ? { filePath: options.modelsPath } : undefined,
