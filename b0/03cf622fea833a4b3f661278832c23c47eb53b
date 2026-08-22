@@ -1,0 +1,29 @@
+specs/001-build-smart-router/contracts/routing-decision.schema.json
+  s_25c26ba6fc0c7c::t_8a5d357fdab9ea 15-296,311,313-314,316-317,319,321,323-324,334,355-357
+specs/001-build-smart-router/contracts/routing-request.schema.json
+  s_25c26ba6fc0c7c::t_3f8a2f54974813 50-51
+spine-tasks/SP-229-sync-routing-contracts/STATUS.md
+  s_25c26ba6fc0c7c::t_44f279f4bb6ddc 3-4,13,15-16,20,22-23,27,29-31,37-39
+src/domain/types/entities.ts
+  s_25c26ba6fc0c7c::t_83559194e21411 25-35,37-38,40-41,43,45,47-48,67-71
+src/domain/types/schemas.ts
+  s_25c26ba6fc0c7c::t_ce608634739327 37-43,45-46,48-49,51,53,55-56,75-84,88-100,157-334,338-352
+tests/contract/routing-schemas.test.ts
+  s_25c26ba6fc0c7c::t_88c7624eed6b7f 18,22,24,57-59,85-192,325-334,383-384,391-396,463-472,516-571
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "b003cf622fea833a4b3f661278832c23c47eb53b",
+  "prompts": {},
+  "sessions": {
+    "s_25c26ba6fc0c7c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-064994cb-22ce-406c-9b7e-13fe359320ac",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
