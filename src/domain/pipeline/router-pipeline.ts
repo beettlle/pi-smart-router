@@ -337,6 +337,27 @@ export class RouterPipeline {
   /** Lazily created session-scoped prewarm guard (acceptance state spans routes). */
   private prewarmGuardInstance: SpeculativePrewarmGuard | null = null;
 
+  /**
+   * Single-flight serialization tail (SP-230, #141).
+   *
+   * Concurrency contract: `route()` calls on one RouterPipeline instance are
+   * serialized — a concurrent caller queues behind the in-flight call. The
+   * pipeline keeps per-route transient state on instance fields (the
+   * `current*` / `activeFleet` / `fullFleet` members above), which every stage
+   * reads and writes; overlapping route() executions would race on that state
+   * and corrupt routing decisions (e.g. a second call's reset swapping
+   * `activeFleet` mid-flight for the first). Routing is a fast, bounded,
+   * in-memory computation, so serialization costs at most one routing latency
+   * of queuing and never changes routing policy outcomes.
+   *
+   * Safety notes:
+   * - No reentrancy: nothing on a route() execution path awaits another
+   *   route()/dispatch() on the same instance, so the chain cannot deadlock.
+   * - The tail is chained with a rejection handler so a rejected call (the
+   *   zero-crash catch makes this defensive-only) cannot wedge the queue.
+   */
+  private routeTail: Promise<void> = Promise.resolve();
+
   constructor(fleet: readonly ModelProfile[], options?: PipelineOptions) {
     this.fleet = fleet;
     this.options = options ?? {};
@@ -356,7 +377,29 @@ export class RouterPipeline {
     ];
   }
 
+  /**
+   * Route a request through the pipeline. Concurrent calls are serialized
+   * (single-flight) — see `routeTail` for the concurrency contract (SP-230).
+   */
   async route(
+    request: RoutingRequest,
+    fleetOverride?: readonly ModelProfile[],
+  ): Promise<RoutingDecision> {
+    const queued = this.routeTail.then(() =>
+      this.routeExclusive(request, fleetOverride),
+    );
+    // Keep the tail alive even if a call rejects (defensive: routeExclusive
+    // catches stage errors, but a throw outside that catch must not wedge the
+    // queue for subsequent callers).
+    this.routeTail = queued.then(
+      () => undefined,
+      () => undefined,
+    );
+    return queued;
+  }
+
+  /** Exclusive-route body — never invoke concurrently; see `route()` (SP-230). */
+  private async routeExclusive(
     request: RoutingRequest,
     fleetOverride?: readonly ModelProfile[],
   ): Promise<RoutingDecision> {

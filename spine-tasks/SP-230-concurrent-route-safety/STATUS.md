@@ -8,12 +8,16 @@
 
 ---
 
+## Plan (SP-230)
+
+Enforce the single-flight contract in code: serialize `RouterPipeline.route()` via an internal promise-chain mutex. Chosen over the full per-call `RoutingContext` refactor because that touches ~138 instance-field references across every stage — adjacent to the B1 god-object split (#143), which PROMPT explicitly excludes. Verified safe: no reentrancy (nothing inside a route() execution calls route()/dispatch()), route() never rejects to the caller (zero-crash catch; queue chained defensively anyway).
+
 ## Step 1: Refactor or document concurrency contract
 
-**Status:** Not started
+**Status:** In progress
 
-- [ ] Per-call RoutingContext or documented single-flight
-- [ ] Code comments on concurrency
+- [x] Per-call RoutingContext or documented single-flight
+- [x] Code comments on concurrency
 
 ## Step 2: Test and document
 
