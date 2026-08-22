@@ -2665,6 +2665,137 @@ describe('ensureFleetFresh before routed turn (SP-087)', () => {
   });
 });
 
+describe('route-and-delegate fail-open (SP-226)', () => {
+  beforeEach(() => {
+    mockDelegateStreamSimple.mockReset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete process.env.SMART_ROUTER_LOG_ROUTING;
+  });
+
+  it('emits degraded response instead of throwing when failover fleet is exhausted', async () => {
+    const singleFleet = [
+      makeProfile({ id: 'gpt-4o-mini', tier: 'economical-cloud', provider: 'openai' }),
+    ];
+    const router = createMockRouter(vi.fn(async () => makeDecision()), singleFleet);
+    mockDelegateStreamSimple.mockImplementation(() => {
+      throw new Error('provider connection reset');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const outer = createAssistantMessageEventStream();
+    const eventsPromise = collectEvents(outer);
+
+    await expect(
+      routeAndDelegate(
+        makeContext([userMessage('hello')]),
+        { sessionId: 'fail-open-exhausted' },
+        makeStreamDeps({
+          router,
+          fleet: singleFleet,
+          modelRegistry: createMockRegistry([
+            makeRegistryModel({ provider: 'openai', id: 'gpt-4o-mini', api: 'openai-responses' }),
+          ]),
+        }),
+        outer,
+      ),
+    ).resolves.toBeUndefined();
+
+    const events = await eventsPromise;
+    const errorEvent = events.find((event) => event.type === 'error');
+    expect(errorEvent?.type).toBe('error');
+    if (errorEvent?.type === 'error') {
+      expect(errorEvent.error.stopReason).toBe('error');
+      expect(errorEvent.error.errorMessage).toContain('failover_exhausted');
+    }
+    expect(
+      warnSpy.mock.calls.some((call) =>
+        call.some((arg) => typeof arg === 'string' && arg.includes('failover_exhausted')),
+      ),
+    ).toBe(true);
+  });
+
+  it('emits degraded response instead of throwing when no registry model resolves', async () => {
+    const router = createMockRouter(
+      vi.fn(async () => makeDecision({ selected_model_id: 'ghost-model' })),
+    );
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const outer = createAssistantMessageEventStream();
+    const eventsPromise = collectEvents(outer);
+
+    await expect(
+      routeAndDelegate(
+        makeContext([userMessage('hello')]),
+        { sessionId: 'fail-open-no-registry' },
+        makeStreamDeps({ router, modelRegistry: createMockRegistry([]) }),
+        outer,
+      ),
+    ).resolves.toBeUndefined();
+
+    const events = await eventsPromise;
+    const errorEvent = events.find((event) => event.type === 'error');
+    expect(errorEvent?.type).toBe('error');
+    if (errorEvent?.type === 'error') {
+      expect(errorEvent.error.stopReason).toBe('error');
+      expect(errorEvent.error.errorMessage).toContain('no_registry_model');
+    }
+    expect(mockDelegateStreamSimple).not.toHaveBeenCalled();
+    expect(
+      warnSpy.mock.calls.some((call) =>
+        call.some((arg) => typeof arg === 'string' && arg.includes('no_registry_model')),
+      ),
+    ).toBe(true);
+  });
+
+  it('emits abort telemetry with reason code when routing log is enabled', async () => {
+    process.env.SMART_ROUTER_LOG_ROUTING = '1';
+    const singleFleet = [
+      makeProfile({ id: 'gpt-4o-mini', tier: 'economical-cloud', provider: 'openai' }),
+    ];
+    const router = createMockRouter(vi.fn(async () => makeDecision()), singleFleet);
+    const controller = new AbortController();
+    mockDelegateStreamSimple.mockImplementation(() => {
+      controller.abort();
+      throw new Error('Request was aborted');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const outer = createAssistantMessageEventStream();
+    const eventsPromise = collectEvents(outer);
+
+    await expect(
+      routeAndDelegate(
+        makeContext([userMessage('hello')]),
+        { sessionId: 'fail-open-abort', signal: controller.signal },
+        makeStreamDeps({
+          router,
+          fleet: singleFleet,
+          modelRegistry: createMockRegistry([
+            makeRegistryModel({ provider: 'openai', id: 'gpt-4o-mini', api: 'openai-responses' }),
+          ]),
+        }),
+        outer,
+      ),
+    ).resolves.toBeUndefined();
+
+    const events = await eventsPromise;
+    const errorEvent = events.find((event) => event.type === 'error');
+    expect(errorEvent?.type).toBe('error');
+    if (errorEvent?.type === 'error') {
+      expect(errorEvent.reason).toBe('aborted');
+      expect(errorEvent.error.stopReason).toBe('aborted');
+    }
+    expect(
+      warnSpy.mock.calls.some((call) =>
+        call.some((arg) => typeof arg === 'string' && arg.includes('delegation_aborted')),
+      ),
+    ).toBe(true);
+  });
+});
+
 describe('delegation output headroom guard (SP-108)', () => {
   beforeEach(() => {
     mockDelegateStreamSimple.mockReset();

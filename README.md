@@ -258,6 +258,10 @@ After typing `/smart-router ` (with a trailing space), press **TAB** to see subc
 npm run verify:ci
 ```
 
+## Concurrency contract
+
+`RouterPipeline.route()` calls on a single router instance are **single-flight**: concurrent calls are serialized internally (SP-230, [#141](https://github.com/beettlle/pi-smart-router/issues/141)). The pipeline keeps per-route transient state on instance fields while stages run, so overlapping executions are queued rather than interleaved — each queued call waits at most one routing latency. This applies to `createRouter()` / `createRouterFromFleet()` handles: a shared `router.dispatch` is safe to call concurrently, and serialization does not change routing policy outcomes. For parallel routing throughput, create separate router instances.
+
 ## Fleet behavior
 
 When you use `smart-router/auto`, the extension does **not** read `config/models.yaml`. Instead:
