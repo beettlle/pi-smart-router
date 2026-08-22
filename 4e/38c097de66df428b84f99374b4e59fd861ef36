@@ -1,0 +1,16 @@
+spine-tasks/SP-224-sc004-latency-stabilize/STATUS.md
+  h_ae151c586ac6c5 13,15-27
+tests/unit/triage-engine.test.ts
+  h_ae151c586ac6c5 633-646,648
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "4e38c097de66df428b84f99374b4e59fd861ef36",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
