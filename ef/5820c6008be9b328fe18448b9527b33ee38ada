@@ -1,0 +1,37 @@
+docs/research/README.md
+  s_bcf8ca5af9754d::t_a0c86a2498ef49 3
+scripts/github/create-audit-v017-issues.sh
+  s_bcf8ca5af9754d::t_1194c2136fd606 1-57,59-211
+  s_bcf8ca5af9754d::t_5fa4bd5cd64ae3 58
+scripts/github/audit-v017-issues-created.txt
+  s_bcf8ca5af9754d::t_9d41d5e5ab1e64 1-24
+docs/routing-roadmap.md
+  s_25c26ba6fc0c7c::t_3d816de6fdbaad 379,381,383,385-386
+  s_bcf8ca5af9754d::t_23597367daf1dd 380,382,384,387-403
+spine-tasks/_authoring/issues/README.md
+  s_bcf8ca5af9754d::t_a28d117f5236c0 5-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "ef5820c6008be9b328fe18448b9527b33ee38ada",
+  "prompts": {},
+  "sessions": {
+    "s_25c26ba6fc0c7c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-064994cb-22ce-406c-9b7e-13fe359320ac",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    },
+    "s_bcf8ca5af9754d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bdfab953-4e85-4134-8cde-1073932ca8c6",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
