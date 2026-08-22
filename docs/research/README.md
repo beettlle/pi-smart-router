@@ -1,6 +1,6 @@
 # Research Provenance Index
 
-This folder holds **machine-readable research outputs**. The **actionable implementation backlog** lives in [`../routing-roadmap.md`](../routing-roadmap.md) — start there for priorities, pipeline mapping, and spine follow-ons. **Execution tracking:** open GitHub issues [#71–#84](https://github.com/beettlle/pi-smart-router/issues?q=is%3Aissue+is%3Aopen+routing%3A+P+in%3Atitle) (`routing: P0|P1|P2|P3 —` titles).
+This folder holds **machine-readable research outputs**. The **actionable implementation backlog** lives in [`../routing-roadmap.md`](../routing-roadmap.md) — start there for priorities, pipeline mapping, and spine follow-ons. **Execution tracking:** GitHub issues with `priority/P0`–`priority/P3` labels; 0.17 audit backlog [#135–#157](https://github.com/beettlle/pi-smart-router/issues?q=is%3Aissue+label%3Apriority%2FP0) (see routing-roadmap §0.17 audit backlog); historical `#71–#84` batch closed/landed.
 
 ## Sources
 

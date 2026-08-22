@@ -2,7 +2,37 @@
 
 Paste-ready bodies for the post-assessment four outcomes. Created because GitHub API may be unavailable from CI/agent environments.
 
-## Files
+## 0.17 audit backlog (`audit-v017/`)
+
+Created 2026-08-22 via `scripts/github/create-audit-v017-issues.sh`. Manifest: `scripts/github/audit-v017-issues-created.txt`.
+
+| File | Priority | GitHub |
+|------|----------|--------|
+| [A1-ci-quality-gates.md](./audit-v017/A1-ci-quality-gates.md) | P0 | [#135](https://github.com/beettlle/pi-smart-router/issues/135) |
+| [A2-sync-contracts.md](./audit-v017/A2-sync-contracts.md) | P0 | [#136](https://github.com/beettlle/pi-smart-router/issues/136) |
+| [A3-sp222-producer.md](./audit-v017/A3-sp222-producer.md) | P0 | [#137](https://github.com/beettlle/pi-smart-router/issues/137) |
+| [A4-expected-cost-log-gate.md](./audit-v017/A4-expected-cost-log-gate.md) | P0 | [#138](https://github.com/beettlle/pi-smart-router/issues/138) |
+| [A5-flaky-sc004-test.md](./audit-v017/A5-flaky-sc004-test.md) | P0 | [#139](https://github.com/beettlle/pi-smart-router/issues/139) |
+| [A6-route-delegate-fail-open.md](./audit-v017/A6-route-delegate-fail-open.md) | P0 | [#140](https://github.com/beettlle/pi-smart-router/issues/140) |
+| [A7-concurrent-route-safety.md](./audit-v017/A7-concurrent-route-safety.md) | P0 | [#141](https://github.com/beettlle/pi-smart-router/issues/141) |
+| [A8-sqlite-blocking.md](./audit-v017/A8-sqlite-blocking.md) | P0 | [#142](https://github.com/beettlle/pi-smart-router/issues/142) |
+| [B1-split-router-pipeline.md](./audit-v017/B1-split-router-pipeline.md) | P1 | [#143](https://github.com/beettlle/pi-smart-router/issues/143) |
+| [B2-extension-coverage.md](./audit-v017/B2-extension-coverage.md) | P1 | [#144](https://github.com/beettlle/pi-smart-router/issues/144) |
+| [B3-session-teardown.md](./audit-v017/B3-session-teardown.md) | P1 | [#145](https://github.com/beettlle/pi-smart-router/issues/145) |
+| [B4-telemetry-hmac.md](./audit-v017/B4-telemetry-hmac.md) | P1 | [#146](https://github.com/beettlle/pi-smart-router/issues/146) |
+| [B5-onnx-pinning.md](./audit-v017/B5-onnx-pinning.md) | P1 | [#147](https://github.com/beettlle/pi-smart-router/issues/147) |
+| [B6-degraded-hydra-mode.md](./audit-v017/B6-degraded-hydra-mode.md) | P1 | [#148](https://github.com/beettlle/pi-smart-router/issues/148) |
+| [B7-extension-facade.md](./audit-v017/B7-extension-facade.md) | P1 | [#149](https://github.com/beettlle/pi-smart-router/issues/149) |
+| [C1-scripts-artifacts.md](./audit-v017/C1-scripts-artifacts.md) | P2 | [#150](https://github.com/beettlle/pi-smart-router/issues/150) |
+| [C2-hardware-probe-tests.md](./audit-v017/C2-hardware-probe-tests.md) | P2 | [#151](https://github.com/beettlle/pi-smart-router/issues/151) |
+| [C3-docs-reconcile.md](./audit-v017/C3-docs-reconcile.md) | P2 | [#152](https://github.com/beettlle/pi-smart-router/issues/152) |
+| [C4-extension-parity-docs.md](./audit-v017/C4-extension-parity-docs.md) | P2 | [#153](https://github.com/beettlle/pi-smart-router/issues/153) |
+| [C5-node-engine.md](./audit-v017/C5-node-engine.md) | P2 | [#154](https://github.com/beettlle/pi-smart-router/issues/154) |
+| [C6-fragment-pipeline-tests.md](./audit-v017/C6-fragment-pipeline-tests.md) | P2 | [#155](https://github.com/beettlle/pi-smart-router/issues/155) |
+| [D1-spine-hygiene.md](./audit-v017/D1-spine-hygiene.md) | P3 | [#156](https://github.com/beettlle/pi-smart-router/issues/156) |
+| [D2-eslint-flat-config.md](./audit-v017/D2-eslint-flat-config.md) | P3 | [#157](https://github.com/beettlle/pi-smart-router/issues/157) |
+
+## Files (prior batches)
 
 | File | GitHub action |
 |------|----------------|

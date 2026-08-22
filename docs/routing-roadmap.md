@@ -376,7 +376,31 @@ Audit-driven tasks targeting v0.17.0 (manifest: `spine-tasks/_authoring/release-
 | [#139](https://github.com/beettlle/pi-smart-router/issues/139) | SP-224 | bug | Stabilize SC-004 triage p95 latency test |
 | [#140](https://github.com/beettlle/pi-smart-router/issues/140) | SP-226 | bug | route-and-delegate fail-open when fleet exhausted |
 | [#141](https://github.com/beettlle/pi-smart-router/issues/141) | SP-230 | enhancement | Validate RouterPipeline concurrent route() safety |
-| [#152](https://github.com/beettlle/pi-smart-router/issues/152) | SP-227 | documentation | Reconcile operator config and docs with 0.16.2 runtime (this sync) |
+| [#152](https://github.com/beettlle/pi-smart-router/issues/152) | SP-227 | documentation | Reconcile operator config and docs with 0.16.2 runtime |
+
+### 0.17 audit backlog — deferred (2026-08-22)
+
+Four-way brutal audit (Grok, Sonnet, Gemini). Labels: `priority/P0`–`priority/P3`. Repro: `scripts/github/create-audit-v017-issues.sh`. Draft bodies: `spine-tasks/_authoring/issues/audit-v017/`.
+
+**Implement order:** P0 (#142) → P1 (#143–#149) → P2 (#150–#155) → P3 (#156–#157). Also labeled: [#95](https://github.com/beettlle/pi-smart-router/issues/95) P0, [#110](https://github.com/beettlle/pi-smart-router/issues/110) P1, [#96](https://github.com/beettlle/pi-smart-router/issues/96) P2, [#1](https://github.com/beettlle/pi-smart-router/issues/1)/[#25](https://github.com/beettlle/pi-smart-router/issues/25)/[#26](https://github.com/beettlle/pi-smart-router/issues/26) P3.
+
+| Priority | Issue | Title |
+|----------|-------|-------|
+| P0 | [#142](https://github.com/beettlle/pi-smart-router/issues/142) | mitigate SQLite sync blocking on hot path |
+| P1 | [#143](https://github.com/beettlle/pi-smart-router/issues/143) | split RouterPipeline; domain→infra ports |
+| P1 | [#144](https://github.com/beettlle/pi-smart-router/issues/144) | extension coverage gate in Vitest |
+| P1 | [#145](https://github.com/beettlle/pi-smart-router/issues/145) | session teardown evicts in-memory state |
+| P1 | [#146](https://github.com/beettlle/pi-smart-router/issues/146) | HMAC-pepper community telemetry session hashes |
+| P1 | [#147](https://github.com/beettlle/pi-smart-router/issues/147) | ONNX artifact pinning and embedder lifecycle |
+| P1 | [#148](https://github.com/beettlle/pi-smart-router/issues/148) | explicit degraded mode when HyDRA/K4 weights missing |
+| P1 | [#149](https://github.com/beettlle/pi-smart-router/issues/149) | extension public facade (replace deep src imports) |
+| P2 | [#150](https://github.com/beettlle/pi-smart-router/issues/150) | remove or CI-guard scripts/src build artifacts |
+| P2 | [#151](https://github.com/beettlle/pi-smart-router/issues/151) | hardware probe SystemInfoPort unit tests |
+| P2 | [#153](https://github.com/beettlle/pi-smart-router/issues/153) | document library vs extension parity gap |
+| P2 | [#154](https://github.com/beettlle/pi-smart-router/issues/154) | align Node engine requirements (EBADENGINE) |
+| P2 | [#155](https://github.com/beettlle/pi-smart-router/issues/155) | fragment router-pipeline.test.ts by stage |
+| P3 | [#156](https://github.com/beettlle/pi-smart-router/issues/156) | spine STATUS.md and .DONE marker hygiene |
+| P3 | [#157](https://github.com/beettlle/pi-smart-router/issues/157) | modernize ESLint to flat config (v9+) |
 
 ---
 
