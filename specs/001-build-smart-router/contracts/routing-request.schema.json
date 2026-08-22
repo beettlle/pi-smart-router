@@ -47,7 +47,8 @@
             "type": "number",
             "description": "HTTP-ish status of the tool/provider result (4xx/5xx => failure)"
           }
-        }
+        },
+        "additionalProperties": false
       }
     },
     "turn_type": {
