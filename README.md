@@ -2,7 +2,7 @@
 
 **Auto-model router middleware for the [pi](https://pi.dev) coding agent.**
 
-> **v0.1.0** is initial development (SemVer `0.y.z`). The public API and routing behavior may change until `1.0.0`.
+> Current release: **v0.16.2** (mirrors `package.json`; SemVer `0.y.z`). The public API and routing behavior may change until `1.0.0`.
 
 pi-smart-router intercepts every LLM inference request and dynamically routes it to the optimal execution engine — balancing cost, capability, latency, and time-to-first-token (TTFT) — without requiring you to manually pick a model for each turn.
 
@@ -18,8 +18,8 @@ pi-smart-router intercepts every LLM inference request and dynamically routes it
 ```text
 request → hardware probe → loop escalation → turn envelope → context-fit gate
         → low-intensity tier gate → session pin → deterministic triage
-        → local zero-tier → HyDRA embedding matcher → safe cloud default
-        → context overflow fallback
+        → local zero-tier → triage cloud fallback → HyDRA embedding matcher
+        → safe cloud default → context overflow fallback
 ```
 
 The pipeline runs **12 stages sequentially with early exit** — the moment any stage reaches a routing decision, subsequent stages are skipped. Every decision includes the stage name, reason code, candidates considered, estimated cost, and routing latency for full observability.
@@ -34,6 +34,7 @@ The pipeline runs **12 stages sequentially with early exit** — the moment any 
 | Session Pin | <1ms | Returns pinned model if session has one; breaks pin on compaction or overflow |
 | Deterministic Triage | <5ms | Aho-Corasick keyword scan + cyclomatic complexity analysis |
 | Local Zero-Tier | <15ms | Pings LM Studio + Ollama in parallel; routes locally when eligible |
+| Triage Cloud Fallback | <2ms | Trivial prompts not claimed locally route to the first healthy economical-cloud model |
 | HyDRA Matcher | 80-120ms | ONNX embeddings, 3D requirement projection, shortfall gate, multi-objective scoring |
 | Safe Cloud Default | — | First healthy economical-cloud model (context-fit aware) |
 | Context Overflow Fallback | — | Escalates to largest-fit model when economical tiers cannot fit |

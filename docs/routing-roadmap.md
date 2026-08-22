@@ -1,6 +1,6 @@
 # Routing Quality Roadmap
 
-**Last updated:** 2026-07-11  
+**Last updated:** 2026-08-22 (synced with 0.16.2 runtime; closes [#152](https://github.com/beettlle/pi-smart-router/issues/152))  
 **Purpose:** Prioritized implementation backlog for pre-generation routing quality (task success per dollar), ordered by impact.  
 **Audience:** Implementers and spine task authors.  
 **Companion docs:** [PRD](PRD.md) (pipeline contract), [deep-research](deep-research.md) (architecture survey), [constitution](constitution.md) (non-negotiables), [research/README.md](research/README.md) (provenance index).  
@@ -67,8 +67,8 @@ Ordered for **task success per dollar**. Status reflects the codebase as of 2026
 | **Pipeline stages** | `hydra_matcher`, `mapPiModelToProfile`, `models.yaml` |
 | **Evidence** | [HyDRA arXiv:2605.17106](https://arxiv.org/abs/2605.17106); Switchcraft (gemini-research §4). Confidence: medium–high (methodology). |
 | **Effort** | M |
-| **Status** | **Landed** — ingest / mapper / aliases (`config/benchmark-profiles.json`, `src/config/pi-model-mapper.ts`, closed [#75](https://github.com/beettlle/pi-smart-router/issues/75)). **Partial-remaining:** dogfood fleet `benchmark` vs `pattern_default` coverage — [#108](https://github.com/beettlle/pi-smart-router/issues/108) (do not reopen #75). |
-| **Follow-on** | Closed [#75](https://github.com/beettlle/pi-smart-router/issues/75); coverage follow-on [#108](https://github.com/beettlle/pi-smart-router/issues/108). |
+| **Status** | **Landed** — ingest / mapper / aliases (`config/benchmark-profiles.json`, `src/config/pi-model-mapper.ts`, closed [#75](https://github.com/beettlle/pi-smart-router/issues/75)). **Coverage closed:** dogfood fleet `benchmark` vs `pattern_default` coverage — [#108](https://github.com/beettlle/pi-smart-router/issues/108) closed via [#124](https://github.com/beettlle/pi-smart-router/issues/124) (capability aliases + Copilot/Gemini/Anthropic dogfood fleet coverage; do not reopen #75). |
+| **Follow-on** | Closed [#75](https://github.com/beettlle/pi-smart-router/issues/75), [#108](https://github.com/beettlle/pi-smart-router/issues/108) (via [#124](https://github.com/beettlle/pi-smart-router/issues/124)). |
 
 ### P2 — OATS offline centroid refinement
 
@@ -115,7 +115,7 @@ Beyond Top 6. “P2/P3” here means after P0–P1, not a renumber of Top 6.
 | P0 | Planning buffer + SAAR pin knobs | Continuity / $ | turn_envelope, session_pin | SAAR | M | Landed | [#72](https://github.com/beettlle/pi-smart-router/issues/72) |
 | P0 | Cache breakeven in sub-route / pin-break | Prevent $3 cache miss for $0.30 save | session_pin, expected-cost | Gemini §2, SAAR | M | Landed | [#73](https://github.com/beettlle/pi-smart-router/issues/73) |
 | P1 | Isotonic P(success) calibrator | Honest thresholds | low_intensity, calibration | UCCI | M | Landed | [#74](https://github.com/beettlle/pi-smart-router/issues/74) |
-| P1 | Benchmark profiles + AST tool validation | Quality floor | hydra, mapper | HyDRA, Switchcraft | M | Landed; Partial-remaining coverage [#108](https://github.com/beettlle/pi-smart-router/issues/108) | [#75](https://github.com/beettlle/pi-smart-router/issues/75) |
+| P1 | Benchmark profiles + AST tool validation | Quality floor | hydra, mapper | HyDRA, Switchcraft | M | Landed; coverage closed [#108](https://github.com/beettlle/pi-smart-router/issues/108) via [#124](https://github.com/beettlle/pi-smart-router/issues/124) | [#75](https://github.com/beettlle/pi-smart-router/issues/75) |
 | P1 | HyDRA 7-flag metadata prefix (vs SP-112 4-flag) | Better requirement prediction | hydra input | HyDRA | S–M | Landed | [#76](https://github.com/beettlle/pi-smart-router/issues/76) |
 | P2 | OATS centroid refinement | Fewer false-low cluster matches | low_intensity, clusters | OATS | S–M | Landed | [#77](https://github.com/beettlle/pi-smart-router/issues/77) |
 | P2 | Virtual cost v2 | Subscription-aware $ | pin, pricing | SP-096, SeqRoute* | M | Landed | [#78](https://github.com/beettlle/pi-smart-router/issues/78) |
@@ -152,10 +152,11 @@ flowchart TD
     pin[session_pin]
     triage[deterministic_triage]
     local[local_zero]
+    tcf[triage_cloud_fallback]
     hydra[hydra_matcher]
     safe[safe_default]
   end
-  hw --> loop --> env --> fit --> low --> pin --> triage --> local --> hydra --> safe
+  hw --> loop --> env --> fit --> low --> pin --> triage --> local --> tcf --> hydra --> safe
   env -.->|P0 subagent_or_buffer| pin
   low -.->|P1 isotonic_psuccess| low
   hydra -.->|P1 profiles| hydra
@@ -173,6 +174,7 @@ flowchart TD
 | session_pin | SAAR knobs; breakeven on break; hard-lock in tool loops |
 | deterministic_triage | Confounder sanitization + entropy check for adversarial suffixes |
 | local_zero | SP-111: not trivial-only; respect HW + cold-start |
+| triage_cloud_fallback | Trivial prompts not claimed locally route to the first healthy economical-cloud model (PRD Step 4 cloud fallback) |
 | hydra_matcher | Grounded profiles; Granite trial; SP-115 = learned approximation; SP-212 = degraded failover sandwich (learned → pattern → safe_default) with `route_path` telemetry |
 | safe_default / overflow | Never silent ceiling downgrade |
 
@@ -360,6 +362,21 @@ Flat issues created 2026-07-08 from this roadmap. Titles use `routing: P0|P1|P2|
 | P3 | [#82](https://github.com/beettlle/pi-smart-router/issues/82) | entropy-based adversarial suffix checks |
 | P3 | [#83](https://github.com/beettlle/pi-smart-router/issues/83) | pin-only operator fallback |
 | P3 | [#84](https://github.com/beettlle/pi-smart-router/issues/84) | rolling tokens_per_second gate |
+
+### v0.17.0 audit backlog (production safety)
+
+Audit-driven tasks targeting v0.17.0 (manifest: `spine-tasks/_authoring/release-v0.17.0/manifest.md`). Theme: extension fail-open, producer completion, CI trust on routing changes, contract/schema alignment.
+
+| Issue | SP task | Bucket | Title |
+|-------|---------|--------|-------|
+| [#135](https://github.com/beettlle/pi-smart-router/issues/135) | SP-228 | enhancement | CI quality gates on src and extension changes |
+| [#136](https://github.com/beettlle/pi-smart-router/issues/136) | SP-229 | enhancement | Sync RoutingDecision/RoutingRequest contracts with live pipeline |
+| [#137](https://github.com/beettlle/pi-smart-router/issues/137) | SP-225 | bug | Finish SP-222 producer: map Pi status/tool metadata |
+| [#138](https://github.com/beettlle/pi-smart-router/issues/138) | SP-223 | bug | Gate expected-cost explain logging behind SMART_ROUTER_LOG_ROUTING |
+| [#139](https://github.com/beettlle/pi-smart-router/issues/139) | SP-224 | bug | Stabilize SC-004 triage p95 latency test |
+| [#140](https://github.com/beettlle/pi-smart-router/issues/140) | SP-226 | bug | route-and-delegate fail-open when fleet exhausted |
+| [#141](https://github.com/beettlle/pi-smart-router/issues/141) | SP-230 | enhancement | Validate RouterPipeline concurrent route() safety |
+| [#152](https://github.com/beettlle/pi-smart-router/issues/152) | SP-227 | documentation | Reconcile operator config and docs with 0.16.2 runtime (this sync) |
 
 ---
 

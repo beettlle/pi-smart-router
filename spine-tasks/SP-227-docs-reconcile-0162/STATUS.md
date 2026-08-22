@@ -1,6 +1,6 @@
 # SP-227: Reconcile docs with 0.16.2 runtime — Status
 
-**Current Step:** Step 1
+**Current Step:** Step 3
 **Status:** In Progress
 **Last Updated:** 2026-08-22
 **Review Level:** 1
@@ -17,13 +17,13 @@
 
 ## Step 2: Refresh operator-facing docs
 
-**Status:** Not started
+**Status:** Complete
 
-- [ ] README, quickstart, roadmap updates
+- [x] README, quickstart, roadmap updates
 
 ## Step 3: Testing and verification
 
-**Status:** Not started
+**Status:** In progress
 
 - [ ] Contract `testCommand`
 - [ ] `npm run verify:ci`
