@@ -10,9 +10,9 @@
 
 ## Step 1: Update workflow path filters
 
-**Status:** Not started
+**Status:** In progress
 
-- [ ] eval-harness-smoke paths
+- [x] eval-harness-smoke paths
 - [ ] calibration-verify paths
 
 ## Step 2: Document operator gate set
