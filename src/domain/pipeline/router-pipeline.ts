@@ -1658,6 +1658,12 @@ export class RouterPipeline {
       readonly calibration_applied: boolean;
     },
   ): void {
+    // SP-223 / #138: gate stdout explain behind SMART_ROUTER_LOG_ROUTING —
+    // the full payload is already captured in decision features/telemetry, so
+    // default runs must not flood stdout on every eligible route.
+    if (process.env.SMART_ROUTER_LOG_ROUTING !== '1') {
+      return;
+    }
     console.info('Expected-cost tier gate', {
       reason: selection.reasonCode,
       p_success_cheap: pSuccessCheap,

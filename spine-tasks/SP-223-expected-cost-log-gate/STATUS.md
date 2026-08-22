@@ -10,10 +10,10 @@
 
 ## Step 1: Gate explain logging
 
-**Status:** Not started
+**Status:** In Progress
 
-- [ ] Wrap `logExpectedCostExplain` behind `SMART_ROUTER_LOG_ROUTING`
-- [ ] Preserve explain when env enabled
+- [x] Wrap `logExpectedCostExplain` behind `SMART_ROUTER_LOG_ROUTING`
+- [x] Preserve explain when env enabled
 
 ## Step 2: Testing and verification
 

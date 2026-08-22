@@ -1693,6 +1693,59 @@ describe('RouterPipeline', () => {
       expect(decision.features?.tier_hint_reason_code).toMatch(/^expected_cost_/);
     });
 
+    describe('expected-cost explain logging gate (SP-223, #138)', () => {
+      function makeGatePipeline(): RouterPipeline {
+        return new RouterPipeline(fleet, {
+          pSuccessWeights: makeHighPWeights(),
+          lowIntensityConfig: {
+            ...DEFAULT_OPERATOR_CONFIG.low_intensity,
+            high_threshold: 0.9,
+            low_threshold: 0.1,
+            p_success_alpha: 0.5,
+          },
+        });
+      }
+
+      it('does not emit Expected-cost tier gate stdout by default', async () => {
+        delete process.env.SMART_ROUTER_LOG_ROUTING;
+        const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+        try {
+          const pipeline = makeGatePipeline();
+          await pipeline.route(
+            makeRequest({ prompt_text: 'Hello, how are you today?' }),
+          );
+          expect(infoSpy).not.toHaveBeenCalledWith(
+            'Expected-cost tier gate',
+            expect.anything(),
+          );
+        } finally {
+          infoSpy.mockRestore();
+        }
+      });
+
+      it('emits Expected-cost tier gate explain when SMART_ROUTER_LOG_ROUTING=1', async () => {
+        process.env.SMART_ROUTER_LOG_ROUTING = '1';
+        const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+        try {
+          const pipeline = makeGatePipeline();
+          await pipeline.route(
+            makeRequest({ prompt_text: 'Hello, how are you today?' }),
+          );
+          expect(infoSpy).toHaveBeenCalledWith(
+            'Expected-cost tier gate',
+            expect.objectContaining({
+              p_success_cheap: expect.any(Number),
+              chosen_tier: expect.anything(),
+              expected_cost_by_tier: expect.any(Array),
+            }),
+          );
+        } finally {
+          infoSpy.mockRestore();
+          delete process.env.SMART_ROUTER_LOG_ROUTING;
+        }
+      });
+    });
+
     it('routes frontier when P_success is below alpha and structural score is low', async () => {
       const clusterMatcher = makeClusterMatcher({
         clusterId: 'architecture',
