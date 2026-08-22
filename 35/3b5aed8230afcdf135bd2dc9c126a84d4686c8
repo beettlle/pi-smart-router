@@ -1,0 +1,16 @@
+README.md
+  h_ae151c586ac6c5 952,1011-1013,1183-1197
+spine-tasks/SP-228-ci-quality-gates/STATUS.md
+  h_ae151c586ac6c5 3,13,16,20,22,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "353b5aed8230afcdf135bd2dc9c126a84d4686c8",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
