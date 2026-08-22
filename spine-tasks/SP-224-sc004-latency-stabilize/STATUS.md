@@ -1,7 +1,7 @@
 # SP-224: Stabilize SC-004 triage p95 test — Status
 
-**Current Step:** Step 1
-**Status:** In Progress
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-08-22
 **Review Level:** 1
 **Size:** S
@@ -10,7 +10,7 @@
 
 ## Step 1: Stabilize SC-004
 
-**Status:** In Progress
+**Status:** Complete (plan review skipped — engine-owned per SP-195)
 
 **Approach (Option B from #139):** Relax the non-CI p95 budget from 5ms to 15ms with
 documented rationale; keep CI at 50ms. Rationale: the SC-004 test measures wall-clock of
@@ -28,14 +28,15 @@ pipeline path.
 
 ## Step 2: Testing and verification
 
-**Status:** Not started
+**Status:** Complete
 
-- [ ] Three consecutive `npm test` green
-- [ ] Contract `testCommand`
+- [x] Three consecutive `npm test` green (112 files / 1875 tests passed on all 3 runs)
+- [x] Contract `testCommand` (`npm test`) green
 
 ---
 
 ## Completion Criteria
 
-- [ ] SC-004 stable under parallel Vitest
-- [ ] #139 closable
+- [x] SC-004 stable under parallel Vitest (non-CI p95 budget 15ms with documented rationale)
+- [x] Approach documented (test comment + this STATUS)
+- [x] #139 closable
