@@ -1,0 +1,16 @@
+spine-tasks/SP-227-docs-reconcile-0162/.reviews/1-20260822T205558.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-227-docs-reconcile-0162/.reviews/final-20260822T205619.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "3db2d0a3fa91bb101da74d69a871893449fa822a",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
