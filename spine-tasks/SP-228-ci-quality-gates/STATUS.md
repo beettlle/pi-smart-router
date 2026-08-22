@@ -1,7 +1,7 @@
 # SP-228: CI quality gates on src and extension — Status
 
-**Current Step:** Step 3
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-08-22
 **Review Level:** 1
 **Size:** M
@@ -23,13 +23,14 @@
 
 ## Step 3: Testing and verification
 
-**Status:** In progress
+**Status:** Complete
 
-- [ ] Contract `testCommand`
+- [x] Contract `testCommand` (`npm run verify:ci` — exit 0; workflow YAML parsed successfully)
 
 ---
 
 ## Completion Criteria
 
-- [ ] Workflows trigger on routing edits
-- [ ] #135 closable
+- [x] Workflows trigger on routing edits (eval-harness-smoke: `src/**`, `.pi/extensions/smart-router/**`; calibration-verify: `src/domain/routing|pipeline|types/**`, `src/cli/**`)
+- [x] Operator docs updated (README: gate-set table, verify:ci row, CI smoke + calibration verify trigger notes)
+- [x] #135 closable (branch-protection required-check policy remains human-operator repo-settings decision, noted in README)
