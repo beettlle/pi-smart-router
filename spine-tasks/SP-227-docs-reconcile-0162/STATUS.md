@@ -10,10 +10,10 @@
 
 ## Step 1: Fix operator-config example and CI test
 
-**Status:** Not started
+**Status:** Complete
 
-- [ ] Example passes OperatorConfigSchema
-- [ ] CI test loads example file
+- [x] Example passes OperatorConfigSchema
+- [x] CI test loads example file
 
 ## Step 2: Refresh operator-facing docs
 

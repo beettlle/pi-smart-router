@@ -58,6 +58,12 @@
       "max_messages": 12,
       "max_tokens": 16384,
       "exclude_execution_history": true
+    },
+    "global_timeout_ms": 120000,
+    "sub_call_timeout_ms": 30000,
+    "_timeouts_documentation": {
+      "global_timeout_ms": "Global cap (ms) for the whole delegate stage; mirrors llm-use WORKER_GLOBAL_TIMEOUT. Default 120000 (SP-213, #120).",
+      "sub_call_timeout_ms": "Per-call cap (ms) for each delegate sub-call worker; mirrors llm-use WORKER_CALL_TIMEOUT. Default 30000 (SP-213, #120)."
     }
   },
   "local_zero": {
