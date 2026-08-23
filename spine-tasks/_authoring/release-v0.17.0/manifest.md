@@ -115,8 +115,8 @@ Wave 3 · 1 task (pipeline concurrency)
 - [x] Post-integrate `release:check` green after **each wave**
 - [x] `spine preflight` green
 - [x] `npm run release:check` green on final `HEAD` (exit 0 verified)
-- [ ] CI workflow green on `HEAD`
+- [x] CI workflow green on `HEAD` (release.yml run 32608625707 succeeded)
 - [x] `git status` clean
 - [x] Operator approved publish bump type: **minor**
-- [ ] `npm version minor` + `git push && git push --tags`
-- [ ] `release.yml` succeeded; `npm view pi-smart-router version` matches 0.17.0
+- [x] `npm version minor` + `git push && git push --tags` (tag v0.17.0, commit 332da7e)
+- [x] `release.yml` succeeded; `npm view pi-smart-router version` matches 0.17.0

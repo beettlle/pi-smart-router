@@ -5,8 +5,8 @@
 **Next Task ID:** SP-231
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.16.2 on npm. **v0.17.0** SP-223–SP-230 landed on `main` (pending publish).
-**In progress:** Publish gate — `npm version minor` after CI green. Human #95 dogfood. #110 open. #96 enablement open.
+**Released:** v0.17.0 on npm (2026-08-23). Prior v0.16.2 SP-221/SP-222.
+**In progress:** Human #95 dogfood. #110 open. #96 enablement open. v0.18 backlog (#142+).
 
 ---
 
