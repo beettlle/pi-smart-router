@@ -1,0 +1,21 @@
+spine-tasks/SP-232-gemini-tool-history-guard/.reviews/1-20260827T223040.md
+  s_a7ab168c79a118::t_4a1b1984425684 1-11
+spine-tasks/SP-232-gemini-tool-history-guard/.reviews/final-20260827T223110.md
+  s_a7ab168c79a118::t_f6fece7810d947 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "55edd5281a8a26eafb6a93155456e02753eef17b",
+  "prompts": {},
+  "sessions": {
+    "s_a7ab168c79a118": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a044dc-cc82-7c17-870c-45cc8fe5617d",
+        "model": "auto"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
