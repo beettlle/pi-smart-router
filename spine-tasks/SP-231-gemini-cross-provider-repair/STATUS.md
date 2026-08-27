@@ -1,7 +1,7 @@
 # SP-231: Broaden Gemini replay repair — Status
 
 **Current Step:** 1
-**Status:** Not Started
+**Status:** In Progress
 **Last Updated:** 2026-08-27
 **Review Level:** 1
 **Size:** M
@@ -10,10 +10,10 @@
 
 ## Step 1: Broaden repairGeminiReplayContext
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Sentinel on all unsigned toolCalls for Google targets
-- [ ] Preserve signatures; keep Google-origin behavior
+- [x] Sentinel on all unsigned toolCalls for Google targets
+- [x] Preserve signatures; keep Google-origin behavior
 
 ## Step 2: Unit and extension coverage
 

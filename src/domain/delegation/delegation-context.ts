@@ -2,7 +2,8 @@
  * Delegation context normalization — provider-agnostic replay identity fix.
  *
  * pi-ai transformMessages compares assistant message provider/api/model to the
- * target model. Virtual smart-router tags break isSameModel and strip replay
+ * target model. Foreign identities (virtual smart-router tags or any prior
+ * provider such as OpenAI/Anthropic/GLM) break isSameModel and strip replay
  * state (thoughtSignature, thinkingSignature, etc.).
  */
 
@@ -129,7 +130,7 @@ function rewriteAssistantIdentity(
   };
 }
 
-function repairGoogleOriginAssistantMessage(
+function repairAssistantForGoogleReplay(
   message: AssistantMessage,
   targetExecution: ExecutionModel,
 ): AssistantMessage {
@@ -194,11 +195,17 @@ export function normalizeDelegationContext<TApi extends Api>(
 }
 
 /**
- * Repair Gemini tool-call replay for cross-model Google delegation.
+ * Repair Gemini tool-call replay for Google delegation targets.
  *
- * Call after {@link normalizeDelegationContext}. Aligns Google-origin assistant
- * identity to the delegation target and injects the thought-signature sentinel
- * when tool calls lack a captured signature.
+ * Call after {@link normalizeDelegationContext}. Aligns assistant identity to
+ * the delegation target and injects the thought-signature sentinel on every
+ * unsigned tool call, regardless of which provider produced the prior turn
+ * (Google, OpenAI, Anthropic, GLM, …). Captured signatures are preserved.
+ *
+ * Cross-provider repair (SP-231, #158): pi-ai strips replay state from any
+ * assistant message whose identity fails isSameModel, so a Gemini target
+ * would receive unsigned tool calls from non-Google turns and the Google API
+ * would reject the replay with a thought_signature error.
  */
 export function repairGeminiReplayContext<TApi extends Api>(
   context: Context,
@@ -224,11 +231,7 @@ export function repairGeminiReplayContext<TApi extends Api>(
       return message;
     }
 
-    if (!isGoogleOriginAssistantMessage(message)) {
-      return message;
-    }
-
-    return repairGoogleOriginAssistantMessage(message, targetExecution);
+    return repairAssistantForGoogleReplay(message, targetExecution);
   });
 
   return { ...context, messages };
