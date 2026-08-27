@@ -1,0 +1,16 @@
+spine-tasks/SP-231-gemini-cross-provider-repair/STATUS.md
+  h_ae151c586ac6c5 3,13,20,22-23
+tests/unit/smart-router-extension.test.ts
+  h_ae151c586ac6c5 1243-1353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9998b69fe202a1a0a744bed7353d026314cce8f7",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
