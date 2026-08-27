@@ -1,0 +1,16 @@
+spine-tasks/SP-233-gemini-protocol-affinity-failover/.reviews/1-20260827T230342.md
+  h_ae151c586ac6c5 1-11
+spine-tasks/SP-233-gemini-protocol-affinity-failover/.reviews/final-20260827T230435.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7f959bc496ca71f94b1c3f047d710f2dca47115e",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
