@@ -36,18 +36,17 @@ Closes #142 — After SP-235 queue wiring: remove remaining `void … .catch()` 
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `src/domain/pinning/session-pinner.ts`, StorePort interface path, `tests/unit/session-pinner.test.ts` |
-| May change | `src/infrastructure/persistence/sqlite-store.ts`, benchmark under `scripts/` or `tests/`, README/docs StorePort sync note |
+| Must change | `src/domain/types/store-port.ts`, `tests/unit/write-queue-lag.test.ts` (create), residual `void … .catch` cleanup in `src/domain/pinning/session-pinner.ts` |
+| May change | `src/infrastructure/persistence/sqlite-store.ts`, `tests/unit/session-pinner.test.ts`, `docs/sqlite-write-queue-design.md` |
 | Must NOT change | Gemini paths (#158/#159); full sqlite repository split epic |
 
 ## Contract
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run typecheck && npx vitest run tests/unit/sqlite-store.test.ts tests/unit/session-pinner.test.ts` |
-| fileScopeMustChange | `src/domain/pinning/session-pinner.ts` |
+| testCommand | `npm run typecheck && npx vitest run tests/unit/sqlite-store.test.ts tests/unit/session-pinner.test.ts tests/unit/write-queue-lag.test.ts` |
+| fileScopeMustChange | `src/domain/types/store-port.ts`, `tests/unit/write-queue-lag.test.ts` |
 | fileScopeMustNotChange | `src/domain/delegation/delegation-context.ts` |
-| completionCriteria | No void.catch fire-and-forget on sync SQLite hot path; StorePort sync docs; lag reduction evidence; #142 closable |
 
 ## Steps
 
@@ -80,3 +79,10 @@ Closes #142 — After SP-235 queue wiring: remove remaining `void … .catch()` 
 ## Git Commit Convention
 
 - `feat(SP-236): description`
+
+## Amendments
+
+### Amendment 1 — 2026-08-27
+
+**Issue:** Preflight `prelanded-file-scope` — SP-235 already changed `src/domain/pinning/session-pinner.ts` on main (queue wiring). Contract `fileScopeMustChange` on that path alone would not prove SP-236 delivery in a new lane.
+**Resolution:** Redirect `fileScopeMustChange` to StorePort sync docs (`src/domain/types/store-port.ts`) and new lag evidence test (`tests/unit/write-queue-lag.test.ts`). Residual `void … .catch` cleanup in `session-pinner.ts` remains in File Scope Must change but is not the sole contract proof.

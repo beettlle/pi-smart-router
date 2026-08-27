@@ -36,4 +36,4 @@
 
 ## Discoveries
 
-(none yet)
+- 2026-08-27: SP-235 pre-landed queue wiring in `session-pinner.ts`; residual `void … .catch` still present (~900/913). Contract redirected to `store-port.ts` + `tests/unit/write-queue-lag.test.ts` (see PROMPT Amendment 1).
