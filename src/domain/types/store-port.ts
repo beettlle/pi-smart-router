@@ -1,6 +1,13 @@
 /**
  * Persistence port for routing state.
  * Implementations live in infrastructure/ (SQLite, in-memory for tests).
+ *
+ * SP-234 / #142 — sync semantics: the SQLite implementation (SqliteStore) is
+ * backed by better-sqlite3, whose calls are SYNCHRONOUS even on methods
+ * declared `async` (the body runs on the event loop before the promise is
+ * returned). Callers must not assume `void store.putSessionPin(p).catch(...)`
+ * moves work off the hot path. Write batching/off-loading is handled by the
+ * bounded write queue (docs/sqlite-write-queue-design.md; SP-235 wiring).
  */
 
 import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingTelemetry, SessionPin } from './entities.js';
