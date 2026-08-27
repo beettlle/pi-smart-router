@@ -1,0 +1,16 @@
+spine-tasks/SP-236-sqlite-remove-fire-and-forget/.reviews/1-20260827T230153.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-236-sqlite-remove-fire-and-forget/.reviews/final-20260827T230221.md
+  h_ae151c586ac6c5 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "31ebb21251c11cc81c52486e8749776ecc1f1b1f",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
