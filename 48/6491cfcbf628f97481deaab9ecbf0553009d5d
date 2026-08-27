@@ -1,0 +1,19 @@
+tests/unit/write-queue-lag.test.ts
+  s_263c6eca4001ae::t_2bf6ddc2d902c5 1-238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "486491cfcbf628f97481deaab9ecbf0553009d5d",
+  "prompts": {},
+  "sessions": {
+    "s_263c6eca4001ae": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-bf2e410e-1a78-4e21-9d60-134aef83abff",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
