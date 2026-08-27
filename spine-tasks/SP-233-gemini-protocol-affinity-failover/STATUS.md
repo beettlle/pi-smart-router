@@ -1,7 +1,7 @@
 # SP-233: One-shot non-Google failover on thought_signature — Status
 
-**Current Step:** 1
-**Status:** Not Started
+**Current Step:** 2
+**Status:** In Progress
 **Last Updated:** 2026-08-27
 **Review Level:** 1
 **Size:** M
@@ -10,14 +10,14 @@
 
 ## Step 1: Protocol-affinity failover path
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] One non-Google failover candidate
-- [ ] Empty-fleet / no-loop terminal path
+- [x] One non-Google failover candidate
+- [x] Empty-fleet / no-loop terminal path
 
 ## Step 2: Telemetry, tests, README
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Distinct reason_code
 - [ ] Update #37 tests + README
