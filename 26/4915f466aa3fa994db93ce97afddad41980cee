@@ -1,0 +1,31 @@
+docs/sqlite-write-queue-design.md
+  s_19d262ee506e9f::t_d7a4df96c46563 5,130-159
+spine-tasks/SP-236-sqlite-remove-fire-and-forget/.reviews/1-20260827T230153.md
+  s_19d262ee506e9f::t_1783802cba7774 1-8
+spine-tasks/SP-236-sqlite-remove-fire-and-forget/.reviews/final-20260827T230221.md
+  s_19d262ee506e9f::t_8affe77c69f9f6 1-18
+spine-tasks/SP-236-sqlite-remove-fire-and-forget/STATUS.md
+  s_19d262ee506e9f::t_67fab5a636580a 3-4,13,15-16,20,22,26,28-29,35,40-49
+src/domain/pinning/session-pinner.ts
+  s_19d262ee506e9f::t_af0b8bca6eebb1 888-897,903,906-909,915
+src/domain/types/store-port.ts
+  s_19d262ee506e9f::t_4fff24c6224dde 11-24,48-55,58-62,74-78,84-87,93-96
+tests/unit/write-queue-lag.test.ts
+  s_19d262ee506e9f::t_21342d0fc02eb7 1-238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "264915f466aa3fa994db93ce97afddad41980cee",
+  "prompts": {},
+  "sessions": {
+    "s_19d262ee506e9f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-f84be725-3625-43b6-8838-a465bc1b71fe",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
