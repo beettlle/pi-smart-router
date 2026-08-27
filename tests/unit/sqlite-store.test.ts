@@ -533,4 +533,90 @@ describe('SqliteStore', () => {
       expect(result.remaining).toBeGreaterThan(9);
     });
   });
+
+  // ─── Write queue wiring (SP-235 / #142) ────────────────────────────────
+
+  describe('write queue', () => {
+    it('queues hot-path writes instead of writing synchronously', () => {
+      store.appendTelemetry({
+        timestamp: new Date().toISOString(),
+        session_id: 'sess-q',
+        request_id: 'req-q',
+        turn_type: 'main_loop',
+        stage: 'triage',
+        reason_code: 'keyword_frontier',
+        selected_model_id: 'claude-sonnet',
+        estimated_cost_usd: 0.003,
+        routing_latency_ms: 12,
+        pin_reason: null,
+        ...baseTelemetryFields(),
+      });
+
+      // Enqueued but not yet flushed (single op, below the size trigger).
+      expect(store.writeQueueStats.enqueued).toBe(1);
+      expect(store.writeQueueStats.flushed).toBe(0);
+    });
+
+    it('flushes queued writes before reads (read-your-writes)', async () => {
+      await store.putSessionPin(makePin());
+      expect(store.writeQueueStats.flushed).toBe(0);
+
+      const pin = await store.getSessionPin('sess-1');
+      expect(pin?.pinned_model_id).toBe('claude-sonnet');
+      expect(store.writeQueueStats.flushed).toBe(1);
+    });
+
+    it('applies queued ops in a single batch transaction per flush', async () => {
+      for (let i = 0; i < 10; i++) {
+        store.appendOutcomeRecord({
+          request_id: `req-batch-${i}`,
+          session_id: 'sess-batch',
+          timestamp: new Date().toISOString(),
+          signal_type: 'feedback_good',
+          routed_model_id: 'claude-sonnet',
+          override_model_id: null,
+        });
+      }
+
+      const rows = await store.listOutcomeRecords({ limit: 20 });
+      expect(rows).toHaveLength(10);
+      // 10 ops applied in one flush cycle (one transaction), not ten.
+      expect(store.writeQueueStats.flushed).toBe(10);
+      expect(store.writeQueueStats.flushCount).toBe(1);
+    });
+
+    it('size trigger flushes a burst before the interval', async () => {
+      // Default maxBatchSize is 64 — the 64th enqueue forces a flush.
+      for (let i = 0; i < 64; i++) {
+        store.appendOutcomeRecord({
+          request_id: `req-burst-${i}`,
+          session_id: 'sess-burst',
+          timestamp: new Date().toISOString(),
+          signal_type: 'feedback_good',
+          routed_model_id: 'claude-sonnet',
+          override_model_id: null,
+        });
+      }
+
+      expect(store.writeQueueStats.flushed).toBe(64);
+
+      const rows = await store.listOutcomeRecords({ limit: 100 });
+      expect(rows).toHaveLength(64);
+    });
+
+    it('close() flushes pending writes', () => {
+      const closing = new SqliteStore({ dbPath: ':memory:', models: TEST_MODELS });
+      closing.appendOutcomeRecord({
+        request_id: 'req-close',
+        session_id: 'sess-close',
+        timestamp: new Date().toISOString(),
+        signal_type: 'model_override',
+        routed_model_id: 'claude-sonnet',
+        override_model_id: 'gpt-4o-mini',
+      });
+
+      closing.close();
+      expect(closing.writeQueueStats.flushed).toBe(1);
+    });
+  });
 });

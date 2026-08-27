@@ -18,6 +18,13 @@ import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRe
 import type { ListDatasetOptions, ListOutcomeOptions, ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
 import { MemoryStore } from './memory-store.js';
 import {
+  createWriteQueue,
+  type WriteOp,
+  type WriteQueue,
+  type WriteQueueOptions,
+  type WriteQueueStats,
+} from './write-queue.js';
+import {
   DEFAULT_HISTORY_LIMIT,
   MAX_HISTORY_LIMIT,
   TELEMETRY_MAX_ENTRIES,
@@ -187,6 +194,11 @@ export interface SqliteStoreOptions {
   readonly dbPath: string;
   /** Fleet catalog (loaded from YAML config, not persisted in SQLite). */
   readonly models: readonly ModelProfile[];
+  /**
+   * SP-235 / #142: bounded write-queue tuning (flush interval, size trigger,
+   * capacity). Defaults per docs/sqlite-write-queue-design.md §3.2–3.3.
+   */
+  readonly writeQueue?: WriteQueueOptions;
 }
 
 // ─── Factory with resilient fallback (FR-025, T013b) ─────────────────────────
@@ -239,6 +251,12 @@ export class SqliteStore implements StorePort {
   private readonly db: BetterSqlite3.Database;
   private readonly models: readonly ModelProfile[];
   private readonly consumeTokenTx: (key: string, cost: number) => TokenBucketResult;
+  /**
+   * SP-235 / #142: hot-path writes (pins, telemetry, dataset, outcomes)
+   * enqueue here and are applied in one transaction per flush. Rate limiting
+   * (consumeToken) stays synchronous — see design doc §2 W6.
+   */
+  private readonly writeQueue: WriteQueue;
 
   constructor(options: SqliteStoreOptions) {
     // First-run: ensure the parent directory exists before opening so a
@@ -253,11 +271,17 @@ export class SqliteStore implements StorePort {
     this.models = options.models;
     this.initialize();
     this.consumeTokenTx = this.buildConsumeTokenTx();
+    this.writeQueue = createWriteQueue(
+      (batch) => this.applyWriteBatch(batch),
+      options.writeQueue,
+    );
   }
 
   // ─── StorePort: SessionPin ──────────────────────────────────────────────
 
   async getSessionPin(sessionId: string): Promise<SessionPin | null> {
+    // SP-235: flush first so reads see queued pin writes (read-your-writes).
+    this.writeQueue.flush();
     const row = this.db
       .prepare('SELECT * FROM pins WHERE session_id = ?')
       .get(sessionId) as PinRow | undefined;
@@ -265,52 +289,18 @@ export class SqliteStore implements StorePort {
     return row ? pinRowToEntity(row) : null;
   }
 
-  // SP-234 / #142 audit (W1): pseudo-async hot-path write. Declared async but
-  // the body is fully synchronous better-sqlite3 — the INSERT blocks the event
-  // loop before the promise is returned (callers use `void … .catch()`).
-  // Queue candidate, DURABLE class (never dropped). See
-  // docs/sqlite-write-queue-design.md. Wiring lands in SP-235.
+  // SP-235 / #142 (W1): enqueued on the bounded write queue (DURABLE class —
+  // never dropped; a full queue forces a synchronous flush). The async
+  // signature now returns after the in-memory enqueue instead of a blocking
+  // SQLite INSERT; the write lands in the next flush transaction (≤
+  // flushIntervalMs, default 250 ms). See docs/sqlite-write-queue-design.md.
   async putSessionPin(pin: SessionPin): Promise<void> {
-    this.db
-      .prepare(
-        `INSERT INTO pins (
-          session_id, pinned_model_id, pin_reason,
-          has_ever_switched, consecutive_upstream_errors,
-          consecutive_tool_failures, last_tool_failure_signature,
-          created_at, updated_at
-        ) VALUES (
-          @session_id, @pinned_model_id, @pin_reason,
-          @has_ever_switched, @consecutive_upstream_errors,
-          @consecutive_tool_failures, @last_tool_failure_signature,
-          @created_at, @updated_at
-        )
-        ON CONFLICT(session_id) DO UPDATE SET
-          pinned_model_id = excluded.pinned_model_id,
-          pin_reason = excluded.pin_reason,
-          has_ever_switched = excluded.has_ever_switched,
-          consecutive_upstream_errors = excluded.consecutive_upstream_errors,
-          consecutive_tool_failures = excluded.consecutive_tool_failures,
-          last_tool_failure_signature = excluded.last_tool_failure_signature,
-          updated_at = excluded.updated_at`,
-      )
-      .run({
-        session_id: pin.session_id,
-        pinned_model_id: pin.pinned_model_id,
-        pin_reason: pin.pin_reason,
-        has_ever_switched: pin.has_ever_switched ? 1 : 0,
-        consecutive_upstream_errors: pin.consecutive_upstream_errors,
-        consecutive_tool_failures: pin.consecutive_tool_failures,
-        last_tool_failure_signature: pin.last_tool_failure_signature,
-        created_at: pin.created_at,
-        updated_at: pin.updated_at,
-      });
+    this.writeQueue.enqueue({ kind: 'put-pin', pin });
   }
 
-  // SP-234 / #142 audit (W2): same pseudo-async pattern as putSessionPin.
-  // Sync DELETE on the event loop from breakPin on the lookupPin hot path.
-  // Queue candidate, DURABLE class.
+  // SP-235 / #142 (W2): same queue routing as putSessionPin (DURABLE class).
   async deleteSessionPin(sessionId: string): Promise<void> {
-    this.db.prepare('DELETE FROM pins WHERE session_id = ?').run(sessionId);
+    this.writeQueue.enqueue({ kind: 'delete-pin', sessionId });
   }
 
   // ─── StorePort: ModelProfile (read-only, from fleet catalog) ────────────
@@ -357,29 +347,16 @@ export class SqliteStore implements StorePort {
 
   // ─── Telemetry (append-only) ────────────────────────────────────────────
 
-  // SP-234 / #142 audit (W3): sync hot-path append, called once per routing
-  // decision via RoutingTelemetryEmitter.onRecord. Runs INSERT + full eviction
-  // cycle (DELETE + COUNT + optional DELETE) on the event loop every call.
-  // Queue candidate, LOSSY class; eviction moves to once-per-flush in SP-235.
+  // SP-235 / #142 (W3): queued hot-path append (LOSSY class — drop-oldest
+  // under backpressure). The INSERT + eviction now run once per flush batch
+  // instead of per call. See docs/sqlite-write-queue-design.md.
   appendTelemetry(entry: RoutingTelemetry): void {
-    this.db
-      .prepare(
-        `INSERT INTO telemetry (
-          timestamp, session_id, request_id, turn_type,
-          stage, reason_code, selected_model_id,
-          estimated_cost_usd, routing_latency_ms, pin_reason
-        ) VALUES (
-          @timestamp, @session_id, @request_id, @turn_type,
-          @stage, @reason_code, @selected_model_id,
-          @estimated_cost_usd, @routing_latency_ms, @pin_reason
-        )`,
-      )
-      .run(entry);
-
-    this.evictTelemetryRows();
+    this.writeQueue.enqueue({ kind: 'append-telemetry', entry });
   }
 
   async listTelemetry(options?: ListTelemetryOptions): Promise<readonly RoutingTelemetry[]> {
+    // SP-235: flush first so reads see queued telemetry (read-your-writes).
+    this.writeQueue.flush();
     const limit = clampHistoryLimit(options?.limit);
     const sessionId = options?.sessionId;
 
@@ -430,66 +407,17 @@ export class SqliteStore implements StorePort {
 
   // ─── Dataset (append-only, privacy-safe) ────────────────────────────────
 
-  // SP-234 / #142 audit (W4): sync hot-path append via DatasetRecorder.onRecord
-  // (route-and-delegate). Same INSERT + eviction-per-call blocking as W3.
-  // Queue candidate, LOSSY class.
+  // SP-235 / #142 (W4): queued hot-path append via DatasetRecorder.onRecord
+  // (LOSSY class). Same batch + once-per-flush eviction as W3.
   appendDatasetRecord(entry: RoutingDatasetRecord): void {
-    this.db
-      .prepare(
-        `INSERT INTO dataset (
-          request_id, timestamp, turn_type, stage, reason_code,
-          selected_model_id, tier, candidates_json,
-          prompt_length_chars, estimated_input_tokens, message_count,
-          has_tool_context, compaction_flag,
-          triage_verdict, triage_reason_code, triage_cyclomatic_score,
-          triage_trivial_hits, triage_complex_hits, triage_sanitized_length_delta,
-          requirement_reasoning, requirement_code_gen, requirement_tool_use,
-          routing_latency_ms, estimated_cost_usd, prompt_fingerprint
-        ) VALUES (
-          @request_id, @timestamp, @turn_type, @stage, @reason_code,
-          @selected_model_id, @tier, @candidates_json,
-          @prompt_length_chars, @estimated_input_tokens, @message_count,
-          @has_tool_context, @compaction_flag,
-          @triage_verdict, @triage_reason_code, @triage_cyclomatic_score,
-          @triage_trivial_hits, @triage_complex_hits, @triage_sanitized_length_delta,
-          @requirement_reasoning, @requirement_code_gen, @requirement_tool_use,
-          @routing_latency_ms, @estimated_cost_usd, @prompt_fingerprint
-        )`,
-      )
-      .run({
-        request_id: entry.request_id,
-        timestamp: entry.timestamp,
-        turn_type: entry.turn_type,
-        stage: entry.stage,
-        reason_code: entry.reason_code,
-        selected_model_id: entry.selected_model_id,
-        tier: entry.tier,
-        candidates_json: entry.candidates_json,
-        prompt_length_chars: entry.prompt_length_chars,
-        estimated_input_tokens: entry.estimated_input_tokens,
-        message_count: entry.message_count,
-        has_tool_context: entry.has_tool_context ? 1 : 0,
-        compaction_flag: entry.compaction_flag ? 1 : 0,
-        triage_verdict: entry.triage_verdict,
-        triage_reason_code: entry.triage_reason_code,
-        triage_cyclomatic_score: entry.triage_cyclomatic_score,
-        triage_trivial_hits: entry.triage_trivial_hits,
-        triage_complex_hits: entry.triage_complex_hits,
-        triage_sanitized_length_delta: entry.triage_sanitized_length_delta,
-        requirement_reasoning: entry.requirement_reasoning,
-        requirement_code_gen: entry.requirement_code_gen,
-        requirement_tool_use: entry.requirement_tool_use,
-        routing_latency_ms: entry.routing_latency_ms,
-        estimated_cost_usd: entry.estimated_cost_usd,
-        prompt_fingerprint: entry.prompt_fingerprint,
-      });
-
-    this.evictDatasetRows();
+    this.writeQueue.enqueue({ kind: 'append-dataset', entry });
   }
 
   async listDatasetRecords(
     options?: ListDatasetOptions,
   ): Promise<readonly RoutingDatasetRecord[]> {
+    // SP-235: flush first so reads see queued dataset rows (read-your-writes).
+    this.writeQueue.flush();
     const limit = clampHistoryLimit(options?.limit);
 
     const rows = this.db
@@ -530,35 +458,17 @@ export class SqliteStore implements StorePort {
 
   // ─── Outcomes (append-only, privacy-safe) ───────────────────────────────
 
-  // SP-234 / #142 audit (W5): sync append via OutcomeRecorder.onRecord
-  // (model override / compaction pin break). Lower frequency than W3/W4 but
-  // same blocking shape. Queue candidate, LOSSY class.
+  // SP-235 / #142 (W5): queued append via OutcomeRecorder.onRecord (LOSSY
+  // class). Lower frequency than W3/W4; shares the same flush batch.
   appendOutcomeRecord(entry: RoutingOutcomeRecord): void {
-    this.db
-      .prepare(
-        `INSERT INTO outcomes (
-          request_id, session_id, timestamp, signal_type,
-          routed_model_id, override_model_id
-        ) VALUES (
-          @request_id, @session_id, @timestamp, @signal_type,
-          @routed_model_id, @override_model_id
-        )`,
-      )
-      .run({
-        request_id: entry.request_id,
-        session_id: entry.session_id,
-        timestamp: entry.timestamp,
-        signal_type: entry.signal_type,
-        routed_model_id: entry.routed_model_id,
-        override_model_id: entry.override_model_id,
-      });
-
-    this.evictOutcomeRows();
+    this.writeQueue.enqueue({ kind: 'append-outcome', entry });
   }
 
   async listOutcomeRecords(
     options?: ListOutcomeOptions,
   ): Promise<readonly RoutingOutcomeRecord[]> {
+    // SP-235: flush first so reads see queued outcome rows (read-your-writes).
+    this.writeQueue.flush();
     const limit = clampHistoryLimit(options?.limit);
     const requestId = options?.requestId;
     const sessionId = options?.sessionId;
@@ -655,12 +565,201 @@ export class SqliteStore implements StorePort {
     }
   }
 
-  /** Close the database connection. */
+  /**
+   * SP-235 / #142: write-queue stats (enqueued / dropped / flushed /
+   * flushCount) for observability and the SP-236 benchmark.
+   */
+  get writeQueueStats(): WriteQueueStats {
+    return this.writeQueue.stats;
+  }
+
+  /** Close the database connection, flushing queued writes first (SP-235). */
   close(): void {
+    this.writeQueue.close();
     this.db.close();
   }
 
   // ─── Internals ──────────────────────────────────────────────────────────
+
+  /**
+   * SP-235 / #142: write-queue sink. Applies the drained batch in ONE
+   * SQLite transaction (amortizing WAL commit cost across the batch) and
+   * runs eviction ONCE per flush per touched append-only table, instead of
+   * once per INSERT (design doc §3.2).
+   */
+  private applyWriteBatch(batch: readonly WriteOp[]): void {
+    const runBatch = this.db.transaction((ops: readonly WriteOp[]): void => {
+      let touchedTelemetry = false;
+      let touchedDataset = false;
+      let touchedOutcome = false;
+
+      // FIFO order — pin ops for the same session apply in enqueue order, so
+      // the final upsert/delete wins (design doc §3.4).
+      for (const op of ops) {
+        switch (op.kind) {
+          case 'put-pin':
+            this.insertPinRow(op.pin);
+            break;
+          case 'delete-pin':
+            this.deletePinRow(op.sessionId);
+            break;
+          case 'append-telemetry':
+            this.insertTelemetryRow(op.entry);
+            touchedTelemetry = true;
+            break;
+          case 'append-dataset':
+            this.insertDatasetRow(op.entry);
+            touchedDataset = true;
+            break;
+          case 'append-outcome':
+            this.insertOutcomeRow(op.entry);
+            touchedOutcome = true;
+            break;
+        }
+      }
+
+      if (touchedTelemetry) {
+        this.evictTelemetryRows();
+      }
+      if (touchedDataset) {
+        this.evictDatasetRows();
+      }
+      if (touchedOutcome) {
+        this.evictOutcomeRows();
+      }
+    });
+
+    runBatch(batch);
+  }
+
+  private insertPinRow(pin: SessionPin): void {
+    this.db
+      .prepare(
+        `INSERT INTO pins (
+          session_id, pinned_model_id, pin_reason,
+          has_ever_switched, consecutive_upstream_errors,
+          consecutive_tool_failures, last_tool_failure_signature,
+          created_at, updated_at
+        ) VALUES (
+          @session_id, @pinned_model_id, @pin_reason,
+          @has_ever_switched, @consecutive_upstream_errors,
+          @consecutive_tool_failures, @last_tool_failure_signature,
+          @created_at, @updated_at
+        )
+        ON CONFLICT(session_id) DO UPDATE SET
+          pinned_model_id = excluded.pinned_model_id,
+          pin_reason = excluded.pin_reason,
+          has_ever_switched = excluded.has_ever_switched,
+          consecutive_upstream_errors = excluded.consecutive_upstream_errors,
+          consecutive_tool_failures = excluded.consecutive_tool_failures,
+          last_tool_failure_signature = excluded.last_tool_failure_signature,
+          updated_at = excluded.updated_at`,
+      )
+      .run({
+        session_id: pin.session_id,
+        pinned_model_id: pin.pinned_model_id,
+        pin_reason: pin.pin_reason,
+        has_ever_switched: pin.has_ever_switched ? 1 : 0,
+        consecutive_upstream_errors: pin.consecutive_upstream_errors,
+        consecutive_tool_failures: pin.consecutive_tool_failures,
+        last_tool_failure_signature: pin.last_tool_failure_signature,
+        created_at: pin.created_at,
+        updated_at: pin.updated_at,
+      });
+  }
+
+  private deletePinRow(sessionId: string): void {
+    this.db.prepare('DELETE FROM pins WHERE session_id = ?').run(sessionId);
+  }
+
+  private insertTelemetryRow(entry: RoutingTelemetry): void {
+    this.db
+      .prepare(
+        `INSERT INTO telemetry (
+          timestamp, session_id, request_id, turn_type,
+          stage, reason_code, selected_model_id,
+          estimated_cost_usd, routing_latency_ms, pin_reason
+        ) VALUES (
+          @timestamp, @session_id, @request_id, @turn_type,
+          @stage, @reason_code, @selected_model_id,
+          @estimated_cost_usd, @routing_latency_ms, @pin_reason
+        )`,
+      )
+      .run(entry);
+  }
+
+  private insertDatasetRow(entry: RoutingDatasetRecord): void {
+    this.db
+      .prepare(
+        `INSERT INTO dataset (
+          request_id, timestamp, turn_type, stage, reason_code,
+          selected_model_id, tier, candidates_json,
+          prompt_length_chars, estimated_input_tokens, message_count,
+          has_tool_context, compaction_flag,
+          triage_verdict, triage_reason_code, triage_cyclomatic_score,
+          triage_trivial_hits, triage_complex_hits, triage_sanitized_length_delta,
+          requirement_reasoning, requirement_code_gen, requirement_tool_use,
+          routing_latency_ms, estimated_cost_usd, prompt_fingerprint
+        ) VALUES (
+          @request_id, @timestamp, @turn_type, @stage, @reason_code,
+          @selected_model_id, @tier, @candidates_json,
+          @prompt_length_chars, @estimated_input_tokens, @message_count,
+          @has_tool_context, @compaction_flag,
+          @triage_verdict, @triage_reason_code, @triage_cyclomatic_score,
+          @triage_trivial_hits, @triage_complex_hits, @triage_sanitized_length_delta,
+          @requirement_reasoning, @requirement_code_gen, @requirement_tool_use,
+          @routing_latency_ms, @estimated_cost_usd, @prompt_fingerprint
+        )`,
+      )
+      .run({
+        request_id: entry.request_id,
+        timestamp: entry.timestamp,
+        turn_type: entry.turn_type,
+        stage: entry.stage,
+        reason_code: entry.reason_code,
+        selected_model_id: entry.selected_model_id,
+        tier: entry.tier,
+        candidates_json: entry.candidates_json,
+        prompt_length_chars: entry.prompt_length_chars,
+        estimated_input_tokens: entry.estimated_input_tokens,
+        message_count: entry.message_count,
+        has_tool_context: entry.has_tool_context ? 1 : 0,
+        compaction_flag: entry.compaction_flag ? 1 : 0,
+        triage_verdict: entry.triage_verdict,
+        triage_reason_code: entry.triage_reason_code,
+        triage_cyclomatic_score: entry.triage_cyclomatic_score,
+        triage_trivial_hits: entry.triage_trivial_hits,
+        triage_complex_hits: entry.triage_complex_hits,
+        triage_sanitized_length_delta: entry.triage_sanitized_length_delta,
+        requirement_reasoning: entry.requirement_reasoning,
+        requirement_code_gen: entry.requirement_code_gen,
+        requirement_tool_use: entry.requirement_tool_use,
+        routing_latency_ms: entry.routing_latency_ms,
+        estimated_cost_usd: entry.estimated_cost_usd,
+        prompt_fingerprint: entry.prompt_fingerprint,
+      });
+  }
+
+  private insertOutcomeRow(entry: RoutingOutcomeRecord): void {
+    this.db
+      .prepare(
+        `INSERT INTO outcomes (
+          request_id, session_id, timestamp, signal_type,
+          routed_model_id, override_model_id
+        ) VALUES (
+          @request_id, @session_id, @timestamp, @signal_type,
+          @routed_model_id, @override_model_id
+        )`,
+      )
+      .run({
+        request_id: entry.request_id,
+        session_id: entry.session_id,
+        timestamp: entry.timestamp,
+        signal_type: entry.signal_type,
+        routed_model_id: entry.routed_model_id,
+        override_model_id: entry.override_model_id,
+      });
+  }
 
   private initialize(): void {
     this.db.pragma('journal_mode = WAL');

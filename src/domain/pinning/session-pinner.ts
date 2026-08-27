@@ -885,12 +885,13 @@ export class SessionPinner {
 
   // ─── Persistence (StorePort) ────────────────────────────────────────────────
 
-  // SP-234 / #142 audit: pseudo-async fire-and-forget. SqliteStore.putSessionPin
-  // is declared async but executes synchronously — the SQLite INSERT blocks the
-  // event loop here on the lookupPin hot path before the promise exists. The
-  // .catch() only dresses the call as async. SP-235 routes this through the
-  // bounded write queue (durable class); SP-236 removes the void…catch pattern.
-  // See docs/sqlite-write-queue-design.md (W1/W2).
+  // SP-235 / #142: this no longer blocks the event loop — SqliteStore now
+  // routes pin writes through the bounded write queue (DURABLE class; see
+  // docs/sqlite-write-queue-design.md W1). The store's `async` body returns
+  // after an in-memory enqueue; the upsert lands in the next flush
+  // transaction (≤250 ms by default). The in-memory Map remains the routing
+  // read path, so routing behavior is unchanged. SP-236 removes the residual
+  // void…catch pattern.
   private persistPin(pin: SessionPin): void {
     if (!this.store) {
       return;
@@ -901,8 +902,9 @@ export class SessionPinner {
     });
   }
 
-  // SP-234 / #142 audit (W2): same pseudo-async pattern as persistPin —
-  // sync DELETE on the event loop. Routed via the write queue in SP-235.
+  // SP-235 / #142 (W2): same queue routing as persistPin — the DELETE is
+  // enqueued (DURABLE class) instead of running synchronously on the
+  // lookupPin hot path. SP-236 removes the residual void…catch pattern.
   private deletePersistedPin(sessionId: string): void {
     if (!this.store) {
       return;
