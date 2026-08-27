@@ -1,0 +1,18 @@
+spine-tasks/SP-235-sqlite-bounded-write-queue/STATUS.md
+  h_ae151c586ac6c5 4,13
+src/infrastructure/persistence/write-queue.ts
+  h_ae151c586ac6c5 4-6,97-98,102-226,231
+tests/unit/write-queue.test.ts
+  h_ae151c586ac6c5 1-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a481ffada7c09ab47cd84e3ae94f5636d5c5e4e1",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
