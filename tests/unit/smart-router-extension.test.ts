@@ -1240,6 +1240,117 @@ describe('createStreamSimple', () => {
     expect(events.some((event) => event.type === 'error')).toBe(false);
   });
 
+  it('repairs cross-provider tool history when delegating to Gemini (SP-231)', async () => {
+    const geminiFlash = makeRegistryModel({
+      provider: 'google',
+      id: 'gemini-flash',
+      api: 'google-generative-ai',
+    });
+    const crossProviderFleet: ModelProfile[] = [
+      makeProfile({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
+      makeProfile({ id: 'gpt-4o-mini', tier: 'economical-cloud', provider: 'openai' }),
+    ];
+
+    mockDelegateStreamSimple.mockImplementation((_model, context: Context) => {
+      const assistants = context.messages.filter(
+        (message: Message): message is AssistantMessage => message.role === 'assistant',
+      );
+      expect(assistants).toHaveLength(2);
+
+      for (const turn of assistants) {
+        expect(turn.provider).toBe('google');
+        expect(turn.model).toBe('gemini-flash');
+        expect(turn.api).toBe('google-generative-ai');
+        const toolCall = turn.content[0];
+        if (toolCall?.type === 'toolCall') {
+          expect(toolCall.thoughtSignature).toBe(GEMINI_SKIP_THOUGHT_SIGNATURE_SENTINEL);
+        }
+      }
+
+      return makeSuccessStream(geminiFlash);
+    });
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router: createMockRouter(
+          vi.fn(async () => makeDecision({ selected_model_id: 'gemini-flash' })),
+          crossProviderFleet,
+        ),
+        fleet: crossProviderFleet,
+        modelRegistry: createMockRegistry([
+          geminiFlash,
+          makeRegistryModel({ provider: 'openai', id: 'gpt-4o-mini', api: 'openai-responses' }),
+        ]),
+      }),
+    );
+
+    const events = await collectEvents(
+      streamSimple(
+        makeAutoModel(),
+        makeContext([
+          userMessage('search scuba tanks'),
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'toolCall',
+                id: 'call-openai-1',
+                name: 'web_search',
+                arguments: { query: 'scuba' },
+              },
+            ],
+            api: 'openai-responses',
+            provider: 'openai',
+            model: 'gpt-4o-mini',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: 'toolUse',
+            timestamp: 2,
+          },
+          toolResultMessage('results'),
+          userMessage('summarize the results', 4),
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'toolCall',
+                id: 'call-anthropic-1',
+                name: 'read',
+                arguments: { path: '/tmp/results' },
+              },
+            ],
+            api: 'anthropic-messages',
+            provider: 'anthropic',
+            model: 'claude-opus',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: 'toolUse',
+            timestamp: 5,
+          },
+          toolResultMessage('summary source', 6),
+          userMessage('write a short recap', 7),
+        ]),
+        { sessionId: 'cross-provider-gemini-repair' },
+      ),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+    expect(events.some((event) => event.type === 'done')).toBe(true);
+    expect(events.some((event) => event.type === 'error')).toBe(false);
+  });
+
   it('records success outcome and execution ledger after delegated stream completes', async () => {
     const target = registryModels[0]!;
     mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));

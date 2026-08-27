@@ -118,6 +118,33 @@ function makeAnthropicToolAssistant(): Message {
   };
 }
 
+function makeGlmToolAssistant(): Message {
+  return {
+    role: 'assistant',
+    content: [
+      {
+        type: 'toolCall',
+        id: 'call-glm',
+        name: 'bash',
+        arguments: { command: 'ls' },
+      },
+    ],
+    api: 'openai-completions',
+    provider: 'zai',
+    model: 'glm-4.6',
+    usage: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
+    stopReason: 'toolUse',
+    timestamp: 1,
+  };
+}
+
 describe('delegation-context', () => {
   it('detects virtual router identity', () => {
     expect(isVirtualRouterIdentity('smart-router', 'auto')).toBe(true);
@@ -347,13 +374,67 @@ describe('repairGeminiReplayContext', () => {
     }
   });
 
-  it('leaves OpenAI and Anthropic assistant messages unchanged', () => {
+  it('repairs unsigned toolCalls from non-Google providers when targeting Google (SP-231)', () => {
     const context: Context = {
-      messages: [makeOpenAiToolAssistant(), makeAnthropicToolAssistant()],
+      messages: [
+        makeOpenAiToolAssistant(),
+        makeAnthropicToolAssistant(),
+        makeGlmToolAssistant(),
+      ],
     };
 
     const repaired = repairGeminiReplayContext(context, targetModel);
-    expect(repaired.messages).toEqual(context.messages);
+    expect(repaired.messages).toHaveLength(3);
+
+    for (const message of repaired.messages) {
+      expect(message.role).toBe('assistant');
+      if (message.role !== 'assistant') {
+        continue;
+      }
+      expect(message.provider).toBe('google');
+      expect(message.model).toBe('gemini-2.5-flash');
+      expect(message.api).toBe('google-generative-ai');
+
+      const toolCall = message.content[0];
+      expect(toolCall?.type).toBe('toolCall');
+      if (toolCall?.type === 'toolCall') {
+        expect(toolCall.thoughtSignature).toBe(GEMINI_SKIP_THOUGHT_SIGNATURE_SENTINEL);
+      }
+    }
+  });
+
+  it('preserves captured signatures on non-Google-tagged toolCalls', () => {
+    const signature = 'b3BlbmFpLXNpZw==';
+    const openAiSigned = makeOpenAiToolAssistant();
+    expect(openAiSigned.role).toBe('assistant');
+    if (openAiSigned.role !== 'assistant') {
+      return;
+    }
+    const context: Context = {
+      messages: [
+        {
+          ...openAiSigned,
+          content: [
+            {
+              type: 'toolCall' as const,
+              id: 'call-openai-signed',
+              name: 'grep',
+              arguments: { pattern: 'foo' },
+              thoughtSignature: signature,
+            },
+          ],
+        },
+      ],
+    };
+
+    const repaired = repairGeminiReplayContext(context, targetModel);
+    const assistant = repaired.messages[0];
+    if (assistant?.role === 'assistant') {
+      const toolCall = assistant.content[0];
+      if (toolCall?.type === 'toolCall') {
+        expect(toolCall.thoughtSignature).toBe(signature);
+      }
+    }
   });
 
   it('repairs virtual-router tagged messages without prior normalizeDelegationContext', () => {
