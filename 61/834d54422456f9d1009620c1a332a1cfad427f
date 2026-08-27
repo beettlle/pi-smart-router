@@ -1,0 +1,14 @@
+spine-tasks/SP-234-sqlite-hotpath-write-audit/STATUS.md
+  h_ae151c586ac6c5 4,27,29-30,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "61834d54422456f9d1009620c1a332a1cfad427f",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
