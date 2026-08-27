@@ -1,0 +1,19 @@
+src/infrastructure/persistence/write-queue.ts
+  s_7d6d7423a00d89::t_95aff13abb517b 104-105,107-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "60d3f51a91b5b51d5d1c7b727abe240d73365c96",
+  "prompts": {},
+  "sessions": {
+    "s_7d6d7423a00d89": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-6993caa0-6135-4a9e-bfe5-952ced950e80",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
