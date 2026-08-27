@@ -1,7 +1,7 @@
 # SP-235: Implement bounded async write queue — Status
 
 **Current Step:** 1
-**Status:** Not Started
+**Status:** In Progress
 **Last Updated:** 2026-08-27
 **Review Level:** 1
 **Size:** M
@@ -10,7 +10,7 @@
 
 ## Step 1: Implement bounded write queue
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Queue + unit tests
 
