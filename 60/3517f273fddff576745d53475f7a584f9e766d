@@ -1,0 +1,19 @@
+docs/sqlite-write-queue-design.md
+  s_7d6d7423a00d89::t_5f0dd53ea2269b 1-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "603517f273fddff576745d53475f7a584f9e766d",
+  "prompts": {},
+  "sessions": {
+    "s_7d6d7423a00d89": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-6993caa0-6135-4a9e-bfe5-952ced950e80",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
