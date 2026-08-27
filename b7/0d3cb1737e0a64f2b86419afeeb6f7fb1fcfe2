@@ -1,0 +1,19 @@
+spine-tasks/SP-232-gemini-tool-history-guard/STATUS.md
+  s_4479c219bd1152::t_f3c376d2f682a9 3,13,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b70d3cb1737e0a64f2b86419afeeb6f7fb1fcfe2",
+  "prompts": {},
+  "sessions": {
+    "s_4479c219bd1152": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-6bd90f12-387b-40b9-a19d-e13835151480",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
