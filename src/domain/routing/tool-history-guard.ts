@@ -1,15 +1,19 @@
 /**
- * Gemini tool-history guard — SP-077, narrowed SP-129.
+ * Gemini tool-history guard — SP-077, narrowed SP-129, expanded SP-232.
  *
  * Excludes Google/Gemini fleet entries only when session history contains
- * Google-origin assistant tool calls with replay state SP-128 repair cannot fix.
- * OpenAI-only tool sessions may route to economical Gemini; repairable Google
- * tool history relies on delegation replay repair instead of a blunt ban.
+ * tool-call replay state that delegation repair cannot make Google-safe.
+ * Unsigned cross-provider toolCalls are silently sentinel-repaired (SP-231)
+ * and stay routable to Gemini; the guard fires on repair-unsafe state:
+ * redacted thinking (any origin — SP-231 identity alignment replays it to
+ * Google as-is) and foreign non-Google signatures that repair preserves but
+ * Google rejects, plus unrepairable Google-origin replay state (SP-129).
  */
 
 import type { Message as PiMessage } from '@earendil-works/pi-ai/compat';
 
 import {
+  GEMINI_SKIP_THOUGHT_SIGNATURE_SENTINEL,
   isGoogleOriginAssistantMessage,
 } from '../delegation/delegation-context.js';
 import type { Message as RoutingMessage, ModelProfile, RoutingRequest } from '../types/index.js';
@@ -188,6 +192,80 @@ export function hasUnrepairableGoogleReplayRiskFromContext(
   );
 }
 
+/**
+ * Replay state repair cannot make Google-safe on cross-provider turns (SP-232, #158).
+ *
+ * SP-231 aligns every assistant identity to the Google delegation target, so
+ * replay-sensitive blocks from ANY origin reach the Google API. Redacted
+ * thinking cannot be fabricated and foreign signatures (Claude/GLM/OpenAI
+ * thinking, text, or toolCall signatures) are preserved by repair but rejected
+ * by Google — the previously injected skip sentinel is Google-accepted and
+ * does not count as a foreign signature.
+ */
+export function hasCrossProviderUnrepairableReplayStateFromContext(
+  messages: readonly PiMessage[],
+): boolean {
+  for (const message of messages) {
+    if (message.role !== 'assistant') {
+      continue;
+    }
+
+    const googleOrigin = isGoogleOriginAssistantMessage(message);
+
+    for (const block of message.content) {
+      if (block.type === 'thinking') {
+        // Redacted thinking is unrepairable from any origin; Google-origin
+        // signed thinking is covered by hasUnrepairableGoogleReplayStateFromContext.
+        if (block.redacted) {
+          return true;
+        }
+        if (
+          !googleOrigin &&
+          block.thinkingSignature &&
+          block.thinkingSignature.length > 0
+        ) {
+          return true;
+        }
+      }
+
+      if (
+        !googleOrigin &&
+        block.type === 'text' &&
+        block.textSignature &&
+        block.textSignature.length > 0
+      ) {
+        return true;
+      }
+
+      if (
+        !googleOrigin &&
+        block.type === 'toolCall' &&
+        block.thoughtSignature &&
+        block.thoughtSignature.length > 0 &&
+        block.thoughtSignature !== GEMINI_SKIP_THOUGHT_SIGNATURE_SENTINEL
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Cross-provider replay risk: tool history present AND repair-unsafe replay
+ * state on a non-Google turn (SP-232). Tool-history coupling keeps text-only
+ * sessions routable to Gemini.
+ */
+export function hasUnrepairableCrossProviderReplayRiskFromContext(
+  messages: readonly PiMessage[],
+): boolean {
+  return (
+    hasToolCallHistoryFromContext(messages) &&
+    hasCrossProviderUnrepairableReplayStateFromContext(messages)
+  );
+}
+
 function sessionHasGoogleReplayRisk(
   request: RoutingRequest,
   contextMessages?: readonly PiMessage[],
@@ -199,20 +277,24 @@ function sessionHasGoogleReplayRisk(
   return hasGoogleReplayRisk(request.messages ?? []);
 }
 
-function sessionHasUnrepairableGoogleReplayRisk(
+function sessionHasGoogleUnsafeToolHistory(
   request: RoutingRequest,
   contextMessages?: readonly PiMessage[],
 ): boolean {
   if (contextMessages !== undefined && contextMessages.length > 0) {
-    return hasUnrepairableGoogleReplayRiskFromContext(contextMessages);
+    return (
+      hasUnrepairableGoogleReplayRiskFromContext(contextMessages) ||
+      hasUnrepairableCrossProviderReplayRiskFromContext(contextMessages)
+    );
   }
 
   return false;
 }
 
 /**
- * Apply Gemini exclusion when unrepairable Google replay risk is present.
- * Honors `force_model_id` by returning the unfiltered fleet.
+ * Apply Gemini exclusion when tool history is Google-unsafe (unrepairable
+ * Google-origin replay state or cross-provider state SP-231 repair cannot
+ * make safe). Honors `force_model_id` by returning the unfiltered fleet.
  */
 export function resolveEffectiveFleet(
   fleet: readonly ModelProfile[],
@@ -223,7 +305,7 @@ export function resolveEffectiveFleet(
     return { effectiveFleet: fleet, excluded: false };
   }
 
-  if (!sessionHasUnrepairableGoogleReplayRisk(request, contextMessages)) {
+  if (!sessionHasGoogleUnsafeToolHistory(request, contextMessages)) {
     return { effectiveFleet: fleet, excluded: false };
   }
 

@@ -5,14 +5,17 @@ import {
   GEMINI_TOOL_HISTORY_EXCLUDED,
   GEMINI_TOOL_HISTORY_EMPTY_FLEET,
   GeminiToolHistoryEmptyFleetError,
+  hasCrossProviderUnrepairableReplayStateFromContext,
   hasGoogleReplayRisk,
   hasGoogleReplayRiskFromContext,
   hasToolCallHistory,
   hasToolCallHistoryFromContext,
+  hasUnrepairableCrossProviderReplayRiskFromContext,
   hasUnrepairableGoogleReplayRiskFromContext,
   isGoogleGeminiProfile,
   resolveEffectiveFleet,
 } from '../../src/domain/routing/tool-history-guard.js';
+import { GEMINI_SKIP_THOUGHT_SIGNATURE_SENTINEL } from '../../src/domain/delegation/delegation-context.js';
 import type { Message, ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 
 function makeProfile(
@@ -104,6 +107,60 @@ const googleUnrepairableAssistant = {
   ],
 };
 
+/** SP-232: Anthropic-origin turn with Claude-signed thinking + unsigned toolCall. */
+const anthropicSignedThinkingAssistant = {
+  ...openAiToolCallAssistant,
+  api: 'anthropic-messages' as const,
+  provider: 'anthropic' as const,
+  model: 'claude-opus',
+  content: [
+    {
+      type: 'thinking' as const,
+      thinking: 'plan',
+      thinkingSignature: 'claude-sig-abc',
+    },
+    openAiToolCallAssistant.content[0]!,
+  ],
+};
+
+/** SP-232: GLM-origin turn with redacted thinking + toolCall. */
+const glmRedactedThinkingAssistant = {
+  ...openAiToolCallAssistant,
+  api: 'openai-completions' as const,
+  provider: 'zai' as const,
+  model: 'glm-5.3',
+  content: [
+    {
+      type: 'thinking' as const,
+      thinking: '',
+      redacted: true,
+    },
+    openAiToolCallAssistant.content[0]!,
+  ],
+};
+
+/** SP-232: non-Google toolCall carrying a foreign provider signature. */
+const openAiForeignSignedToolCallAssistant = {
+  ...openAiToolCallAssistant,
+  content: [
+    {
+      ...openAiToolCallAssistant.content[0]!,
+      thoughtSignature: 'openai-side-signature',
+    },
+  ],
+};
+
+/** SP-232: previously repaired turn carrying the Google skip sentinel. */
+const sentinelRepairedAssistant = {
+  ...openAiToolCallAssistant,
+  content: [
+    {
+      ...openAiToolCallAssistant.content[0]!,
+      thoughtSignature: GEMINI_SKIP_THOUGHT_SIGNATURE_SENTINEL,
+    },
+  ],
+};
+
 describe('hasToolCallHistoryFromContext', () => {
   it('returns false for user-only history', () => {
     expect(
@@ -170,6 +227,58 @@ describe('hasUnrepairableGoogleReplayRiskFromContext', () => {
   it('returns true when Google-origin history has redacted thinking', () => {
     expect(
       hasUnrepairableGoogleReplayRiskFromContext([googleUnrepairableAssistant]),
+    ).toBe(true);
+  });
+});
+
+describe('hasCrossProviderUnrepairableReplayStateFromContext (SP-232)', () => {
+  it('returns false for unsigned non-Google tool history (SP-231 repair path)', () => {
+    expect(
+      hasCrossProviderUnrepairableReplayStateFromContext([openAiToolCallAssistant]),
+    ).toBe(false);
+  });
+
+  it('returns true for foreign signed thinking on a non-Google turn', () => {
+    expect(
+      hasCrossProviderUnrepairableReplayStateFromContext([
+        anthropicSignedThinkingAssistant,
+      ]),
+    ).toBe(true);
+  });
+
+  it('returns true for redacted thinking on a non-Google turn', () => {
+    expect(
+      hasCrossProviderUnrepairableReplayStateFromContext([glmRedactedThinkingAssistant]),
+    ).toBe(true);
+  });
+
+  it('returns true for a foreign signature on a non-Google toolCall', () => {
+    expect(
+      hasCrossProviderUnrepairableReplayStateFromContext([
+        openAiForeignSignedToolCallAssistant,
+      ]),
+    ).toBe(true);
+  });
+
+  it('returns false for a toolCall carrying the Google skip sentinel', () => {
+    expect(
+      hasCrossProviderUnrepairableReplayStateFromContext([sentinelRepairedAssistant]),
+    ).toBe(false);
+  });
+
+  it('requires tool history for cross-provider replay risk', () => {
+    const signedThinkingOnly = {
+      ...anthropicSignedThinkingAssistant,
+      content: [anthropicSignedThinkingAssistant.content[0]!],
+      stopReason: 'stop' as const,
+    };
+    expect(
+      hasUnrepairableCrossProviderReplayRiskFromContext([signedThinkingOnly]),
+    ).toBe(false);
+    expect(
+      hasUnrepairableCrossProviderReplayRiskFromContext([
+        anthropicSignedThinkingAssistant,
+      ]),
     ).toBe(true);
   });
 });
@@ -314,6 +423,90 @@ describe('resolveEffectiveFleet', () => {
     expect(result.excluded).toBe(false);
     expect(result.effectiveFleet).toEqual(fleet);
   });
+
+  it('keeps gemini for unsigned cross-provider tool history (SP-231 repair path)', () => {
+    const request = makeRequest({
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(fleet, request, [
+      openAiToolCallAssistant,
+      {
+        role: 'toolResult',
+        toolCallId: 'call-1',
+        toolName: 'read',
+        content: [{ type: 'text', text: 'ok' }],
+        isError: false,
+        timestamp: 3,
+      },
+    ]);
+    expect(result.excluded).toBe(false);
+    expect(result.effectiveFleet).toEqual(fleet);
+  });
+
+  it('excludes gemini for foreign signed thinking with tool history (SP-232)', () => {
+    const request = makeRequest({
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(fleet, request, [
+      anthropicSignedThinkingAssistant,
+    ]);
+    expect(result.excluded).toBe(true);
+    expect(result.reasonCode).toBe(GEMINI_TOOL_HISTORY_EXCLUDED);
+    expect(result.effectiveFleet.map((profile) => profile.id)).toEqual([
+      'gpt-4o-mini',
+      'claude-opus',
+    ]);
+  });
+
+  it('excludes gemini for redacted thinking on a non-Google turn with tool history (SP-232)', () => {
+    const request = makeRequest({
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(fleet, request, [glmRedactedThinkingAssistant]);
+    expect(result.excluded).toBe(true);
+    expect(result.reasonCode).toBe(GEMINI_TOOL_HISTORY_EXCLUDED);
+    expect(result.effectiveFleet.some((profile) => isGoogleGeminiProfile(profile))).toBe(
+      false,
+    );
+  });
+
+  it('excludes gemini for a foreign signature on a non-Google toolCall (SP-232)', () => {
+    const request = makeRequest({
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(fleet, request, [
+      openAiForeignSignedToolCallAssistant,
+    ]);
+    expect(result.excluded).toBe(true);
+    expect(result.reasonCode).toBe(GEMINI_TOOL_HISTORY_EXCLUDED);
+  });
+
+  it('keeps gemini for sentinel-repaired cross-provider tool history (SP-232)', () => {
+    const request = makeRequest({
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(fleet, request, [sentinelRepairedAssistant]);
+    expect(result.excluded).toBe(false);
+    expect(result.effectiveFleet).toEqual(fleet);
+  });
+
+  it('honors force_model_id for foreign signed tool history', () => {
+    const request = makeRequest({
+      force_model_id: 'gemini-flash',
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(fleet, request, [
+      anthropicSignedThinkingAssistant,
+    ]);
+    expect(result.excluded).toBe(false);
+    expect(result.effectiveFleet).toEqual(fleet);
+  });
 });
 
 const googleOnlyFleet: ModelProfile[] = [
@@ -404,5 +597,41 @@ describe('empty fleet after gemini exclusion (SP-084)', () => {
     ]);
     expect(result.fleetEmptyAfterFilter).toBeUndefined();
     expect(result.effectiveFleet.map((profile) => profile.id)).toEqual(['cursor/auto']);
+  });
+
+  it('reroutes to cursor/auto for foreign signed cross-provider history (SP-232)', () => {
+    const fleetWithCursor = [
+      ...googleOnlyFleet,
+      makeProfile({ id: 'cursor/auto', tier: 'economical-cloud', provider: 'cursor' }),
+    ];
+    const request = makeRequest({
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(fleetWithCursor, request, [
+      anthropicSignedThinkingAssistant,
+    ]);
+    expect(result.excluded).toBe(true);
+    expect(result.reasonCode).toBe(GEMINI_TOOL_HISTORY_EXCLUDED);
+    expect(result.fleetEmptyAfterFilter).toBeUndefined();
+    expect(result.effectiveFleet.map((profile) => profile.id)).toEqual(['cursor/auto']);
+  });
+
+  it('flags actionable empty fleet for google-only fleet with foreign signed history (SP-232)', () => {
+    const request = makeRequest({
+      messages: [{ role: 'tool', content: 'ok', tool_blocks: [] }],
+    });
+
+    const result = resolveEffectiveFleet(googleOnlyFleet, request, [
+      anthropicSignedThinkingAssistant,
+    ]);
+    expect(result.fleetEmptyAfterFilter).toBe(true);
+    expect(result.excluded).toBe(true);
+    expect(() => assertRoutableFleetAfterGeminiToolHistoryGuard(result)).toThrow(
+      GeminiToolHistoryEmptyFleetError,
+    );
+    expect(() => assertRoutableFleetAfterGeminiToolHistoryGuard(result)).toThrow(
+      'non-Google model',
+    );
   });
 });
