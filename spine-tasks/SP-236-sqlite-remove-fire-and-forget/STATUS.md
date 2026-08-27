@@ -1,7 +1,7 @@
 # SP-236: Remove fire-and-forget SQLite writes + benchmark — Status
 
 **Current Step:** 1
-**Status:** Not Started
+**Status:** In Progress
 **Last Updated:** 2026-08-27
 **Review Level:** 1
 **Size:** S
@@ -10,10 +10,10 @@
 
 ## Step 1: Remove fire-and-forget + document StorePort
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Remove void.catch hot-path patterns
-- [ ] StorePort sync docs
+- [x] Remove void.catch hot-path patterns
+- [x] StorePort sync docs
 
 ## Step 2: Benchmark evidence
 

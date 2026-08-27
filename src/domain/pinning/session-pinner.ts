@@ -885,34 +885,34 @@ export class SessionPinner {
 
   // ─── Persistence (StorePort) ────────────────────────────────────────────────
 
-  // SP-235 / #142: this no longer blocks the event loop — SqliteStore now
-  // routes pin writes through the bounded write queue (DURABLE class; see
-  // docs/sqlite-write-queue-design.md W1). The store's `async` body returns
-  // after an in-memory enqueue; the upsert lands in the next flush
-  // transaction (≤250 ms by default). The in-memory Map remains the routing
-  // read path, so routing behavior is unchanged. SP-236 removes the residual
-  // void…catch pattern.
+  // SP-236 / #142: explicit queue/async boundary. StorePort documents pin
+  // writes as non-blocking enqueue operations (store-port.ts sync semantics):
+  // the returned promise settles after the in-memory enqueue and must NOT
+  // reject asynchronously — write failures surface at flush time via the
+  // bounded write queue (console.warn + stats.dropped/flushed; see
+  // write-queue.ts and docs/sqlite-write-queue-design.md §3). The sync
+  // lookupPin hot path therefore discards the promise WITHOUT .catch() —
+  // under better-sqlite3 the .catch() never moved work off the event loop
+  // anyway (sync body; SP-234 audit §1) and only dressed a blocking call up
+  // as async.
   private persistPin(pin: SessionPin): void {
     if (!this.store) {
       return;
     }
 
-    void this.store.putSessionPin(pin).catch((error: unknown) => {
-      console.warn('Failed to persist session pin', { sessionId: pin.session_id, error });
-    });
+    void this.store.putSessionPin(pin);
   }
 
-  // SP-235 / #142 (W2): same queue routing as persistPin — the DELETE is
-  // enqueued (DURABLE class) instead of running synchronously on the
-  // lookupPin hot path. SP-236 removes the residual void…catch pattern.
+  // SP-236 / #142: same explicit queue/async boundary as persistPin — the
+  // DELETE is enqueued (DURABLE class) and the promise is discarded per the
+  // StorePort sync-semantics contract (no asynchronous rejection; flush-time
+  // failures are logged by the write queue).
   private deletePersistedPin(sessionId: string): void {
     if (!this.store) {
       return;
     }
 
-    void this.store.deleteSessionPin(sessionId).catch((error: unknown) => {
-      console.warn('Failed to delete persisted session pin', { sessionId, error });
-    });
+    void this.store.deleteSessionPin(sessionId);
   }
 
   // ─── Sub-routing (FR-024) ───────────────────────────────────────────────────
