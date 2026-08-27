@@ -1,6 +1,6 @@
 # SP-232: Expand Gemini tool-history guard + README — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** In Progress
 **Last Updated:** 2026-08-27
 **Review Level:** 1
@@ -10,14 +10,14 @@
 
 ## Step 1: Expand tool-history guard
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete (plan review engine-skipped per SP-195)
 
 - [x] Exclude Gemini / prefer non-Google with reason_code
 - [x] Empty-fleet actionable path
 
 ## Step 2: README + tests
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [x] README repair/reroute primary
 - [x] Guard unit tests

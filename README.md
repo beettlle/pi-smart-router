@@ -201,7 +201,7 @@ pi exposes two different **auto** models. They are easy to confuse but play diff
 
 - You want cost/capability-aware model selection across your full authenticated fleet
 - You rely on session pinning, failover, or `/smart-router status` / `history` / `stats` telemetry
-- Tool-heavy sessions with Gemini economical models work via in-repo replay repair; add `cursor/auto` for unrepairable Google replay edge cases (see [pi-smart-router#85](https://github.com/beettlle/pi-smart-router/issues/85))
+- Tool-heavy sessions with Gemini economical models work via in-repo replay repair (cross-provider included); the tool-history guard reroutes to non-Google models such as `cursor/auto` for unrepairable replay state (see [pi-smart-router#85](https://github.com/beettlle/pi-smart-router/issues/85), [pi-smart-router#158](https://github.com/beettlle/pi-smart-router/issues/158))
 
 Cursor models (`cursor/*`, `composer-*`, and the opaque fleet id `default`) map to **frontier-cloud** tier in `pi-model-mapper.ts` so HyDRA can score them against Gemini and Claude instead of treating them as unknown economical models ([pi-smart-router#40](https://github.com/beettlle/pi-smart-router/issues/40), [pi-smart-router#70](https://github.com/beettlle/pi-smart-router/issues/70)). Related: [pi-smart-router#23](https://github.com/beettlle/pi-smart-router/issues/23) (turn envelope / pin order), [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37) (Gemini `thought_signature` errors).
 
@@ -882,19 +882,19 @@ If Gemini returns **400 INVALID_ARGUMENT** mentioning `thought_signature`, the r
 
 See [Google's thought signatures documentation](https://ai.google.dev/gemini-api/docs/generate-content/thought-signatures).
 
-**Primary fix — replay repair (SP-127/128):** before every Google-target delegation, smart-router repairs tool-call replay state: prior turns keep captured `thoughtSignature` values; tool calls missing a signature receive the Google-accepted skip sentinel so pi-ai can replay without a 400. Typical Gemini-first tool loops on `/model smart-router/auto` no longer require `/new` or switching away from Google models.
+**Primary path — silent repair and reroute (SP-127/128, SP-231/232):** in the common cross-provider case (tool-heavy turns on OpenAI/Anthropic/GLM/Cursor, then a Gemini selection) you do **not** need `/new` or manual model switching. Before every Google-target delegation, smart-router repairs tool-call replay state for **any** prior provider: unsigned tool calls receive the Google-accepted skip sentinel, captured signatures are preserved, and assistant identity aligns so pi-ai replays the turns without a 400. When history carries replay state repair cannot make Google-safe, the tool-history guard silently reroutes to a non-Google model instead (`reason_code: gemini_tool_history_excluded`) — see below.
 
-**Narrowed guard fail-safe (SP-129):** sessions with **unrepairable** Google-origin replay state (e.g. redacted thinking blocks paired with tool calls) exclude Gemini from routing (`reason_code: gemini_tool_history_excluded`) unless the operator sets `force_model_id` via `/model`. Repairable Google tool history is delegated normally.
+**Guard fail-safe (SP-129, expanded SP-232):** sessions with **unrepairable** replay state exclude Gemini from routing unless the operator sets `force_model_id` via `/model`. Unrepairable means: Google-origin turns with redacted thinking or captured signatures (SP-129), and — after SP-232 — **cross-provider** turns whose state repair preserves but Google rejects, such as foreign provider signatures (Claude signed thinking, signed text, or signed tool calls) or redacted thinking from any origin replayed toward a Google target. Unsigned cross-provider tool calls alone are repairable and stay routable to Gemini.
 
-**Empty fleet fail-safe (SP-084):** when the guard filters every model in the scoped fleet (e.g. Google/Gemini-only dogfood configs with unrepairable replay risk), the router throws an actionable error instead of delegating with `selected_model_id: unknown`. Add a non-Google model such as `openai/gpt-4o-mini` or `cursor/auto` to the fleet, start `/new`, or pin `/model` to force a specific model.
+**Empty fleet fail-safe (SP-084):** when the guard filters every model in the scoped fleet (e.g. Google/Gemini-only dogfood configs with unrepairable replay risk), the router throws an actionable error instead of delegating with `selected_model_id: unknown`. Add a non-Google model such as `openai/gpt-4o-mini` or `cursor/auto` to the fleet, or pin `/model` to force a specific model.
 
 **If you still see a `thought_signature` error:**
 
-1. Start a fresh session with `/new` in pi (clears unrepairable history).
-2. Switch to a non-Google model (e.g. `/model openai/gpt-4o-mini`) for that session.
+1. Switch to a non-Google model (e.g. `/model openai/gpt-4o-mini`) for that session, or add one to the scoped fleet so the guard can reroute automatically.
+2. Start a fresh session with `/new` in pi (clears unrepairable history) — rarely needed outside Google-only fleets or residual edge cases.
 3. Upstream: [pi#6342](https://github.com/earendil-works/pi/issues/6342) tracks pi preserving thought signatures in session replay; smart-router repair covers the common cross-model routing case without waiting on that fix.
 
-Related: [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37), [pi-smart-router#38](https://github.com/beettlle/pi-smart-router/issues/38), [pi-smart-router#40](https://github.com/beettlle/pi-smart-router/issues/40), [pi-smart-router#41](https://github.com/beettlle/pi-smart-router/issues/41), [pi-smart-router#85](https://github.com/beettlle/pi-smart-router/issues/85).
+Related: [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37), [pi-smart-router#38](https://github.com/beettlle/pi-smart-router/issues/38), [pi-smart-router#40](https://github.com/beettlle/pi-smart-router/issues/40), [pi-smart-router#41](https://github.com/beettlle/pi-smart-router/issues/41), [pi-smart-router#85](https://github.com/beettlle/pi-smart-router/issues/85), [pi-smart-router#158](https://github.com/beettlle/pi-smart-router/issues/158).
 
 ### Explain endpoint (library API)
 
