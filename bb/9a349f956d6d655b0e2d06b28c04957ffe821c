@@ -1,0 +1,19 @@
+tests/unit/smart-router-extension.test.ts
+  s_263c6eca4001ae::t_29dfebad400f5f 2588-2596
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bb9a349f956d6d655b0e2d06b28c04957ffe821c",
+  "prompts": {},
+  "sessions": {
+    "s_263c6eca4001ae": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-bf2e410e-1a78-4e21-9d60-134aef83abff",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
