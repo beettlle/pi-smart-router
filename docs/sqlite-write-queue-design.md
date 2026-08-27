@@ -2,7 +2,7 @@
 
 **Task:** SP-234 — phase 1 of [#142](https://github.com/beettlle/pi-smart-router/issues/142) (P0)
 **Date:** 2026-08-27
-**Status:** Design only. Implementation lands in SP-235; fire-and-forget removal + benchmark in SP-236.
+**Status:** Implemented. Queue wired in SP-235; fire-and-forget removal + benchmark evidence in SP-236 (§5).
 
 ---
 
@@ -127,3 +127,33 @@ risk. Revisit only if SP-236 benchmarks show flush-time blocking still matters.
 - **SP-236** — remove `void … .catch()` fire-and-forget in `session-pinner.ts`
   (replaced by the explicit queue boundary); benchmark event-loop lag / p95
   route latency before/after under synthetic write load.
+
+## 5. SP-236 measured evidence (2026-08-27)
+
+`tests/unit/write-queue-lag.test.ts` benchmarks the hot path under synthetic
+write load (5000 telemetry writes in 50 bursts of 100, `setImmediate` between
+bursts; per-burst latency is the p95 route-latency proxy,
+`monitorEventLoopDelay` captures lag). BEFORE simulates the pre-SP-235 pattern
+(one sync INSERT, autocommit, per write — conservative: omits the old per-call
+eviction cycle); AFTER is `SqliteStore.appendTelemetry` (enqueue only).
+
+Representative run (maintainer machine, Apple Silicon, Node 22):
+
+| Metric | Before (sync write per op) | After (queue enqueue) | Reduction |
+|--------|---------------------------|-----------------------|-----------|
+| Wall time (5000 writes) | ~94 ms | ~9 ms | ~10.6× |
+| p95 per-burst "route" latency | ~2.6 ms | ~0.17 ms | ~15.3× |
+| Event-loop lag p95 | ~11.6 ms | ~0 ms | — |
+
+The test asserts the relative reduction and prints both profiles on every run.
+The residual `void … .catch()` calls in `session-pinner.ts` were removed in
+favor of the explicit queue/async boundary: StorePort documents hot-path
+write promises as non-rejecting (failures surface at flush time via the write
+queue), so sync callers discard the promise with `void` and no `.catch()`.
+
+Optional SP-236 note — splitting `sqlite-store.ts` into repositories (B1/A8):
+the store currently mixes pin, telemetry, dataset, outcome, price-catalog, and
+rate-limit concerns in one class. A repository-per-concern split would be
+mechanical now that all hot-path writes funnel through the single
+`applyWriteBatch` sink, but is deliberately NOT executed here (tracked as the
+full repository-split epic; out of SP-236 scope).
