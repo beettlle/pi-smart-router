@@ -1,0 +1,19 @@
+README.md
+  s_263c6eca4001ae::t_8c8fe2d5451f19 881,891-892,895-896,899
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bfdc297675f998b1f05fca4d61f41f4078b32acb",
+  "prompts": {},
+  "sessions": {
+    "s_263c6eca4001ae": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-bf2e410e-1a78-4e21-9d60-134aef83abff",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
