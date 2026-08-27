@@ -1,0 +1,22 @@
+spine-tasks/SP-236-sqlite-remove-fire-and-forget/STATUS.md
+  s_263c6eca4001ae::t_9a9216d573dba7 39
+spine-tasks/SP-236-sqlite-remove-fire-and-forget/PROMPT.md
+  s_263c6eca4001ae::t_090c1da389d26f 39-40,47-48
+  s_263c6eca4001ae::t_b64ccdb2cec5a6 82-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a4ee932915bd7dbfda3e3d73642a899b01d8f4ab",
+  "prompts": {},
+  "sessions": {
+    "s_263c6eca4001ae": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-bf2e410e-1a78-4e21-9d60-134aef83abff",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
