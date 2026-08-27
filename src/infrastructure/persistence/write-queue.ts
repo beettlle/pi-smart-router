@@ -101,9 +101,12 @@ export const DEFAULT_QUEUE_CAPACITY = 1024;
 export type WriteBatchSink = (batch: readonly WriteOp[]) => void;
 
 export function createWriteQueue(
-  _sink: WriteBatchSink,
-  _options?: WriteQueueOptions,
+  sink: WriteBatchSink,
+  options?: WriteQueueOptions,
 ): WriteQueue {
+  // Preserve signature for SP-235; stub does not use args yet.
+  void sink;
+  void options;
   // SP-235: implement bounded queue (timer + size-triggered flush,
   // drop-oldest lossy backpressure, sync-flush durable backpressure).
   throw new Error('write queue not implemented — lands in SP-235 (see docs/sqlite-write-queue-design.md)');
