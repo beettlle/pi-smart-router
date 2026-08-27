@@ -16,6 +16,7 @@ import {
 import {
   assertRoutableFleetAfterGeminiToolHistoryGuard,
   GEMINI_TOOL_HISTORY_EXCLUDED,
+  isGoogleGeminiProfile,
   resolveEffectiveFleet,
 } from '../../../src/domain/routing/tool-history-guard.js';
 import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../../src/domain/types/index.js';
@@ -24,6 +25,7 @@ import {
   isGeminiThoughtSignatureAssistantError,
   parseAssistantMessageError,
 } from '../../../src/infrastructure/delegation/provider-error.js';
+import { GEMINI_REPLAY_INCOMPATIBLE } from '../../../src/infra/gemini-provider.js';
 import { shouldFailoverOnProviderError } from '../../../src/infrastructure/gateway/gateway-dispatch.js';
 import {
   commitPipedTerminal,
@@ -446,6 +448,7 @@ export async function routeAndDelegate(
 
   const failedModelIds: string[] = [];
   const headroomExcludedModelIds: string[] = [];
+  let geminiReplayFailoverAttempted = false;
   const estimatedInputTokens =
     request.estimated_input_tokens ?? request.prompt_text.length;
   let pendingFailoverInfo: FailoverNoticeInfo | undefined;
@@ -570,6 +573,60 @@ export async function routeAndDelegate(
         result.finalMessage &&
         isGeminiThoughtSignatureAssistantError(result.finalMessage)
       ) {
+        // SP-233 residual safety net: a thought_signature 400 that survived
+        // repair/guard means the session replay state is incompatible with
+        // Gemini — fail over ONCE to a non-Google fleet member so the agent
+        // loop continues. Never counted as provider infra failure; never
+        // Gemini↔Gemini.
+        if (!geminiReplayFailoverAttempted) {
+          geminiReplayFailoverAttempted = true;
+          if (!failedModelIds.includes(targetModel.id)) {
+            failedModelIds.push(targetModel.id);
+          }
+          const nonGoogleFleet = effectiveFleet.filter(
+            (profile) => !isGoogleGeminiProfile(profile),
+          );
+          const replayFailover =
+            nonGoogleFleet.length > 0
+              ? deps.router.dispatch.selectFailover(
+                  decision,
+                  failedModelIds,
+                  nonGoogleFleet,
+                )
+              : undefined;
+          const failover = replayFailover
+            ? { ...replayFailover, reason_code: GEMINI_REPLAY_INCOMPATIBLE }
+            : undefined;
+          const alternateModel = failover ? resolveTargetModel(deps, failover) : undefined;
+
+          if (failover && alternateModel && alternateModel.id !== targetModel.id) {
+            console.warn(
+              '[smart-router] gemini replay incompatible, failing over to non-Google model',
+              alternateModel.id,
+            );
+            if (isRoutingLogEnabled()) {
+              console.warn(
+                '[smart-router] routing decision',
+                JSON.stringify({
+                  reason_code: GEMINI_REPLAY_INCOMPATIBLE,
+                  failed_model_id: targetModel.id,
+                  selected_model_id: alternateModel.id,
+                }),
+              );
+            }
+            pendingFailoverInfo = {
+              failedModelId: targetModel.id,
+              alternateModelId: alternateModel.id,
+              errorObj: resolveFailoverProviderError(result.finalMessage),
+            };
+            decision = failover;
+            deps.onRoutingDecision?.(decision);
+            targetModel = alternateModel;
+            continue;
+          }
+        }
+        // No non-Google candidate (or one-shot already used): actionable
+        // terminal guidance — never a silent loop.
         commitPipedTerminal(result, { sanitizeErrors: true });
         return;
       }

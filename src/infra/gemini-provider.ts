@@ -8,6 +8,14 @@
 
 import type { AssistantMessage } from '@earendil-works/pi-ai/compat';
 
+/**
+ * Telemetry reason_code for the one-shot residual failover (SP-233): when a
+ * thought_signature 400 survives repair/guard, the session's replay state is
+ * incompatible with Gemini — fail over once to a non-Google fleet member.
+ * Distinct from infra failover codes (e.g. circuit_breaker_failover).
+ */
+export const GEMINI_REPLAY_INCOMPATIBLE = 'gemini_replay_incompatible' as const;
+
 export interface GeminiProviderError {
   readonly statusCode?: number;
   readonly code?: string;
@@ -68,7 +76,8 @@ export function formatGeminiThoughtSignatureErrorMessage(errorMessage: string): 
     '',
     'Gemini rejected this request because a prior tool call is missing its thought_signature (protocol validation, not provider outage).',
     'pi-smart-router normally repairs replay state before Google delegation (thoughtSignature preservation + skip sentinel for missing signatures).',
-    'If this error persists, the session may contain unrepairable Google replay state — start a fresh session with /new, or route to a non-Google model.',
+    'When repair is not enough, smart-router fails over once to a non-Google fleet model automatically; this terminal error means no non-Google candidate was available (or the one-shot failover was already used).',
+    'Add a non-Google model (e.g. openai/gpt-4o-mini or cursor/auto) to the scoped fleet for automatic failover, or start a fresh session with /new.',
     `Docs: ${GEMINI_THOUGHT_SIGNATURE_DOCS}`,
     `Upstream: ${PI_THOUGHT_SIGNATURE_ISSUE}`,
   ].join('\n');

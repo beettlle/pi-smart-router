@@ -1512,8 +1512,9 @@ describe('createStreamSimple', () => {
     );
   });
 
-  it('does not failover on Gemini thought_signature 400 errors', async () => {
-    const primary = registryModels[1]!;
+  it('fails over once to a non-Google model on Gemini thought_signature 400 (SP-233)', async () => {
+    const gemini = registryModels[1]!;
+    const nonGoogle = registryModels[0]!;
     const errorMessage = JSON.stringify({
       error: {
         code: 400,
@@ -1522,7 +1523,95 @@ describe('createStreamSimple', () => {
       },
     });
 
-    mockDelegateStreamSimple.mockImplementationOnce(() => makeErrorStream(primary, errorMessage));
+    mockDelegateStreamSimple
+      .mockImplementationOnce(() => makeErrorStream(gemini, errorMessage))
+      .mockImplementationOnce(() => makeSuccessStream(nonGoogle));
+
+    const router = createMockRouter(
+      vi.fn(async () =>
+        makeDecision({
+          selected_model_id: 'gemini-flash',
+          tier: 'economical-cloud',
+        }),
+      ),
+    );
+    const recordOutcome = vi.spyOn(router.dispatch, 'recordOutcome');
+    const selectFailover = vi.spyOn(router.dispatch, 'selectFailover');
+    const onRoutingDecision = vi.fn();
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({ router, onRoutingDecision }),
+    );
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(2);
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]).toEqual(gemini);
+    expect(mockDelegateStreamSimple.mock.calls[1]?.[0]).toEqual(nonGoogle);
+
+    // Protocol-affinity failover is not counted as a provider infra failure:
+    // the circuit breaker stays closed for the failed Gemini model.
+    const infraOutcomeCalls = recordOutcome.mock.calls.filter(
+      (call) =>
+        call[0] === 'gemini-flash' &&
+        typeof call[1] === 'object' &&
+        call[1] !== undefined &&
+        ((call[1] as { statusCode?: number }).statusCode ?? 0) >= 500,
+    );
+    expect(infraOutcomeCalls).toHaveLength(0);
+    expect(router.dispatch.getCircuitBreaker().canDispatch('gemini-flash')).toBe(true);
+
+    // Failover fleet excludes Google/Gemini profiles (no Gemini↔Gemini retry).
+    expect(selectFailover).toHaveBeenCalled();
+    const failoverFleet = selectFailover.mock.calls[0]?.[2] as ModelProfile[];
+    expect(failoverFleet.length).toBeGreaterThan(0);
+    expect(
+      failoverFleet.every(
+        (profile) =>
+          !/google|gemini/i.test(profile.provider) && !/gemini/i.test(profile.id),
+      ),
+    ).toBe(true);
+
+    // Distinct telemetry reason_code (not infra failover).
+    expect(onRoutingDecision).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selected_model_id: 'gpt-4o-mini',
+        reason_code: 'gemini_replay_incompatible',
+      }),
+    );
+
+    expect(events.some((event) => event.type === 'done')).toBe(true);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[smart-router] gemini replay incompatible, failing over to non-Google model',
+      'gpt-4o-mini',
+    );
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      '[smart-router] infra error, failing over to alternate model',
+      expect.anything(),
+    );
+
+    const notice = findFailoverNoticeDelta(events);
+    expect(notice).toContain('⚠️ **pi-smart-router failover:** `gemini-flash` failed');
+    expect(notice).toContain('Retrying with `gpt-4o-mini`...');
+  });
+
+  it('uses the replay-incompatible failover at most once (no infinite loop, SP-233)', async () => {
+    const gemini = registryModels[1]!;
+    const nonGoogle = registryModels[0]!;
+    const errorMessage = JSON.stringify({
+      error: {
+        code: 400,
+        status: 'INVALID_ARGUMENT',
+        message: 'Function call is missing a thought_signature',
+      },
+    });
+
+    mockDelegateStreamSimple
+      .mockImplementationOnce(() => makeErrorStream(gemini, errorMessage))
+      .mockImplementationOnce(() => makeErrorStream(nonGoogle, errorMessage));
 
     const router = createMockRouter(
       vi.fn(async () =>
@@ -1539,6 +1628,58 @@ describe('createStreamSimple', () => {
       streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
     );
 
+    // One failover, then terminal — no third delegation attempt.
+    expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(2);
+
+    const failoverWarns = warnSpy.mock.calls.filter(
+      (call) =>
+        call[0] === '[smart-router] gemini replay incompatible, failing over to non-Google model',
+    );
+    expect(failoverWarns).toHaveLength(1);
+
+    const errorEvent = events.find((event) => event.type === 'error');
+    expect(errorEvent?.type).toBe('error');
+    if (errorEvent?.type === 'error') {
+      expect(errorEvent.error.errorMessage).toContain('thought_signature');
+      expect(errorEvent.error.errorMessage).toContain('/new');
+    }
+  });
+
+  it('commits actionable terminal error when no non-Google failover candidate exists (SP-233)', async () => {
+    const gemini = registryModels[1]!;
+    const errorMessage = JSON.stringify({
+      error: {
+        code: 400,
+        status: 'INVALID_ARGUMENT',
+        message: 'Function call is missing a thought_signature',
+      },
+    });
+
+    mockDelegateStreamSimple.mockImplementationOnce(() => makeErrorStream(gemini, errorMessage));
+
+    const googleOnlyFleet = [fleet[2]!];
+    const router = createMockRouter(
+      vi.fn(async () =>
+        makeDecision({
+          selected_model_id: 'gemini-flash',
+          tier: 'economical-cloud',
+        }),
+      ),
+      googleOnlyFleet,
+    );
+
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router,
+        fleet: googleOnlyFleet,
+        modelRegistry: createMockRegistry([gemini]),
+      }),
+    );
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
+    );
+
     expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(1);
     expect(warnSpy).not.toHaveBeenCalledWith(
       '[smart-router] infra error, failing over to alternate model',
@@ -1550,7 +1691,7 @@ describe('createStreamSimple', () => {
     if (errorEvent?.type === 'error') {
       expect(errorEvent.error.errorMessage).toContain('thought_signature');
       expect(errorEvent.error.errorMessage).toContain('/new');
-      expect(errorEvent.error.errorMessage).not.toContain('failover');
+      expect(errorEvent.error.errorMessage).toContain('non-Google');
     }
   });
 

@@ -878,7 +878,7 @@ The `GatewayDispatch` layer wraps the pipeline with:
 
 #### Gemini `thought_signature` 400 errors
 
-If Gemini returns **400 INVALID_ARGUMENT** mentioning `thought_signature`, the router treats this as a **protocol validation error** (incomplete tool-call replay), not provider unavailability — it will **not** failover to another model.
+If Gemini returns **400 INVALID_ARGUMENT** mentioning `thought_signature`, the router treats this as a **protocol validation error** (incomplete tool-call replay), not provider unavailability — it is never classified as an infrastructure failure and never trips the circuit breaker. If the error survives repair and the tool-history guard, the router fails over **once** to a non-Google fleet model automatically (telemetry `reason_code: gemini_replay_incompatible`, distinct from infra failover) so the agent loop continues; only when no non-Google candidate exists does it surface a terminal error with actionable guidance.
 
 See [Google's thought signatures documentation](https://ai.google.dev/gemini-api/docs/generate-content/thought-signatures).
 
@@ -888,13 +888,15 @@ See [Google's thought signatures documentation](https://ai.google.dev/gemini-api
 
 **Empty fleet fail-safe (SP-084):** when the guard filters every model in the scoped fleet (e.g. Google/Gemini-only dogfood configs with unrepairable replay risk), the router throws an actionable error instead of delegating with `selected_model_id: unknown`. Add a non-Google model such as `openai/gpt-4o-mini` or `cursor/auto` to the fleet, or pin `/model` to force a specific model.
 
+**Residual path — one-shot non-Google failover (SP-233):** when a `thought_signature` 400 still reaches the stream (repair could not make the session replay state Google-safe), smart-router selects at most one non-Google fleet member and continues the stream with it. This is protocol-affinity failover, not infra failover: it is not recorded as a provider outage, does not trip the circuit breaker, and never retries Gemini↔Gemini for this error. If the scoped fleet has no non-Google model, the router fails fast with terminal guidance instead of looping silently.
+
 **If you still see a `thought_signature` error:**
 
-1. Switch to a non-Google model (e.g. `/model openai/gpt-4o-mini`) for that session, or add one to the scoped fleet so the guard can reroute automatically.
-2. Start a fresh session with `/new` in pi (clears unrepairable history) — rarely needed outside Google-only fleets or residual edge cases.
+1. Add a non-Google model (e.g. `openai/gpt-4o-mini` or `cursor/auto`) to the scoped fleet so the residual failover can reroute automatically — or switch manually with `/model openai/gpt-4o-mini` for that session.
+2. Start a fresh session with `/new` in pi (clears unrepairable history) — last resort, rarely needed outside Google-only fleets or residual edge cases.
 3. Upstream: [pi#6342](https://github.com/earendil-works/pi/issues/6342) tracks pi preserving thought signatures in session replay; smart-router repair covers the common cross-model routing case without waiting on that fix.
 
-Related: [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37), [pi-smart-router#38](https://github.com/beettlle/pi-smart-router/issues/38), [pi-smart-router#40](https://github.com/beettlle/pi-smart-router/issues/40), [pi-smart-router#41](https://github.com/beettlle/pi-smart-router/issues/41), [pi-smart-router#85](https://github.com/beettlle/pi-smart-router/issues/85), [pi-smart-router#158](https://github.com/beettlle/pi-smart-router/issues/158).
+Related: [pi-smart-router#37](https://github.com/beettlle/pi-smart-router/issues/37), [pi-smart-router#38](https://github.com/beettlle/pi-smart-router/issues/38), [pi-smart-router#40](https://github.com/beettlle/pi-smart-router/issues/40), [pi-smart-router#41](https://github.com/beettlle/pi-smart-router/issues/41), [pi-smart-router#85](https://github.com/beettlle/pi-smart-router/issues/85), [pi-smart-router#158](https://github.com/beettlle/pi-smart-router/issues/158), [pi-smart-router#159](https://github.com/beettlle/pi-smart-router/issues/159).
 
 ### Explain endpoint (library API)
 
