@@ -1,0 +1,57 @@
+spine-tasks/SP-235-sqlite-bounded-write-queue/STATUS.md
+  s_5dd8b0f7856969::t_1aa4e1a08eb7ef 1-38
+spine-tasks/_authoring/release-v0.18.0/manifest.md
+  s_5dd8b0f7856969::t_308adb07cd8d32 3,8-9,17-21,23,33-40,47-50,56,72,76-83,91-100,109-110,112-116,124-127
+  s_bd335ab0f246cb::t_f83f94af3ebc37 1-2,4-7,10-16,22,24-32,41-46,51-55,57-71,73-75,84-90,101-108,111,117-123,128-141
+  s_5dd8b0f7856969::t_26e95863c37ed2 142-144
+spine-tasks/SP-235-sqlite-bounded-write-queue/PROMPT.md
+  s_5dd8b0f7856969::t_c4d9c78d4d13d6 1-84
+spine-tasks/SP-231-gemini-cross-provider-repair/STATUS.md
+  s_5dd8b0f7856969::t_27f0fa87e55d94 1-41
+spine-tasks/SP-234-sqlite-hotpath-write-audit/STATUS.md
+  s_5dd8b0f7856969::t_a370277772246e 1-40
+spine-tasks/SP-236-sqlite-remove-fire-and-forget/STATUS.md
+  s_5dd8b0f7856969::t_bdaa7fcac993a8 1-39
+spine-tasks/SP-234-sqlite-hotpath-write-audit/PROMPT.md
+  s_5dd8b0f7856969::t_57918b85f7e1b6 1-84
+spine-tasks/dependencies.json
+  s_5dd8b0f7856969::t_a50d60b0413d1c 639-653
+spine-tasks/SP-233-gemini-protocol-affinity-failover/PROMPT.md
+  s_5dd8b0f7856969::t_d4f98ee888b17e 1-89
+spine-tasks/SP-231-gemini-cross-provider-repair/PROMPT.md
+  s_5dd8b0f7856969::t_bab699b5c5d42c 1-87
+spine-tasks/SP-236-sqlite-remove-fire-and-forget/PROMPT.md
+  s_5dd8b0f7856969::t_552143545ad5ea 1-82
+spine-tasks/SP-232-gemini-tool-history-guard/PROMPT.md
+  s_5dd8b0f7856969::t_e1a4981978ea58 1-85
+spine-tasks/SP-232-gemini-tool-history-guard/STATUS.md
+  s_5dd8b0f7856969::t_58cdab0ddba0ca 1-41
+spine-tasks/SP-233-gemini-protocol-affinity-failover/STATUS.md
+  s_5dd8b0f7856969::t_00f72bb7ce4f7c 1-41
+spine-tasks/CONTEXT.md
+  s_5dd8b0f7856969::t_587a632374a42f 3,5,9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bcfcab94e499ff45090fe2a2c47727760739258c",
+  "prompts": {},
+  "sessions": {
+    "s_5dd8b0f7856969": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-a30658fe-834a-4191-9413-e5feea4a26f8",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    },
+    "s_bd335ab0f246cb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-7e8e1e4a-1e6e-4b4c-b7f1-17ec038b6eb6",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
