@@ -2585,9 +2585,15 @@ describe('gemini tool history guard (SP-077, narrowed SP-129)', () => {
     ];
 
     mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(openAiModel));
-    // Args unused in body; Vitest still records them for effectiveFleet assertions below.
-    const dispatchMock = vi.fn(async () =>
-      makeDecision({ selected_model_id: 'gpt-4o-mini' }),
+    const dispatchMock = vi.fn(
+      async (
+        request: RoutingRequest,
+        options?: { effectiveFleet?: readonly ModelProfile[] },
+      ) => {
+        void request;
+        void options;
+        return makeDecision({ selected_model_id: 'gpt-4o-mini' });
+      },
     );
     const streamSimple = createStreamSimple(
       makeStreamDeps({
