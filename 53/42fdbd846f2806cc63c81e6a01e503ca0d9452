@@ -1,0 +1,18 @@
+spine-tasks/SP-231-gemini-cross-provider-repair/STATUS.md
+  h_ae151c586ac6c5 4,13,15-16
+src/domain/delegation/delegation-context.ts
+  h_ae151c586ac6c5 5-6,133,198,200-208,234
+tests/unit/delegation-context.test.ts
+  h_ae151c586ac6c5 121-147,377-412,414-427,431-437
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5342fdbd846f2806cc63c81e6a01e503ca0d9452",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
