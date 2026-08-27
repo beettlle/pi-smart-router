@@ -1,7 +1,7 @@
 # SP-232: Expand Gemini tool-history guard + README — Status
 
 **Current Step:** 1
-**Status:** Not Started
+**Status:** In Progress
 **Last Updated:** 2026-08-27
 **Review Level:** 1
 **Size:** M
@@ -10,17 +10,17 @@
 
 ## Step 1: Expand tool-history guard
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
-- [ ] Exclude Gemini / prefer non-Google with reason_code
-- [ ] Empty-fleet actionable path
+- [x] Exclude Gemini / prefer non-Google with reason_code
+- [x] Empty-fleet actionable path
 
 ## Step 2: README + tests
 
 **Status:** ⬜ Not Started
 
-- [ ] README repair/reroute primary
-- [ ] Guard unit tests
+- [x] README repair/reroute primary
+- [x] Guard unit tests
 
 ## Step 3: Testing and verification
 
@@ -38,4 +38,5 @@
 
 ## Discoveries
 
-(none yet)
+- GitNexus MCP tool params are truncated to first char in this worker session (harness bug); used grep-based impact analysis instead — guard predicates only consumed by `route-and-delegate.ts` / `index.ts` re-export / guard tests (LOW risk).
+- SP-231 sentinel repair covers unsigned cross-provider toolCalls (its extension test routes unsigned history to Gemini in a mixed fleet), so the guard must NOT exclude on unsigned-only history. SP-232 expansion targets repair-unsafe state: any-origin redacted thinking and foreign (non-Google) signatures that repair preserves but Google rejects.

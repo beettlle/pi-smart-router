@@ -2524,6 +2524,135 @@ describe('gemini tool history guard (SP-077, narrowed SP-129)', () => {
     );
     expect(result.reasonCode).toBe(GEMINI_TOOL_HISTORY_EXCLUDED);
   });
+
+  it('emits gemini_tool_history_excluded for foreign-signed cross-provider tool history (SP-232)', () => {
+    const foreignSignedContext = makeContext([
+      userMessage('refactor the parser'),
+      {
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: 'plan', thinkingSignature: 'claude-sig-abc' },
+          {
+            type: 'toolCall',
+            id: 'call-claude-1',
+            name: 'read',
+            arguments: { path: 'src/parser.ts' },
+          },
+        ],
+        api: 'anthropic-messages',
+        provider: 'anthropic',
+        model: 'claude-opus',
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 0,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+        },
+        stopReason: 'toolUse',
+        timestamp: 2,
+      },
+      toolResultMessage('parser source'),
+    ]);
+    const request = buildRoutingRequest(foreignSignedContext, {
+      sessionId: 'guard-foreign-signed',
+    });
+
+    const result = resolveEffectiveFleet(
+      fleet,
+      request,
+      foreignSignedContext.messages,
+    );
+    expect(result.excluded).toBe(true);
+    expect(result.reasonCode).toBe(GEMINI_TOOL_HISTORY_EXCLUDED);
+    expect(result.effectiveFleet.map((profile) => profile.id)).toEqual([
+      'local-llama',
+      'gpt-4o-mini',
+      'claude-opus',
+    ]);
+  });
+
+  it('reroutes to a non-Google model when foreign-signed history excludes Gemini (SP-232)', async () => {
+    const openAiModel = makeRegistryModel({
+      provider: 'openai',
+      id: 'gpt-4o-mini',
+      api: 'openai-responses',
+    });
+    const mixedFleet: ModelProfile[] = [
+      makeProfile({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
+      makeProfile({ id: 'gpt-4o-mini', tier: 'economical-cloud', provider: 'openai' }),
+    ];
+
+    mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(openAiModel));
+    const dispatchMock = vi.fn(
+      async (
+        _request: RoutingRequest,
+        _options?: { effectiveFleet?: readonly ModelProfile[] },
+      ) => makeDecision({ selected_model_id: 'gpt-4o-mini' }),
+    );
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router: createMockRouter(dispatchMock, mixedFleet),
+        fleet: mixedFleet,
+        modelRegistry: createMockRegistry([
+          makeRegistryModel({
+            provider: 'google',
+            id: 'gemini-flash',
+            api: 'google-generative-ai',
+          }),
+          openAiModel,
+        ]),
+      }),
+    );
+
+    const events = await collectEvents(
+      streamSimple(
+        makeAutoModel(),
+        makeContext([
+          userMessage('refactor the parser'),
+          {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: 'plan', thinkingSignature: 'claude-sig-abc' },
+              {
+                type: 'toolCall',
+                id: 'call-claude-1',
+                name: 'read',
+                arguments: { path: 'src/parser.ts' },
+              },
+            ],
+            api: 'anthropic-messages',
+            provider: 'anthropic',
+            model: 'claude-opus',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: 'toolUse',
+            timestamp: 2,
+          },
+          toolResultMessage('parser source'),
+          userMessage('continue', 4),
+        ]),
+        { sessionId: 'sp232-guard-reroute' },
+      ),
+    );
+
+    expect(dispatchMock).toHaveBeenCalledOnce();
+    const dispatchOptions = dispatchMock.mock.calls[0]?.[1];
+    expect(dispatchOptions?.effectiveFleet?.map((profile) => profile.id)).toEqual([
+      'gpt-4o-mini',
+    ]);
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+    expect(mockDelegateStreamSimple.mock.calls[0]?.[0]?.provider).toBe('openai');
+    expect(events.some((event) => event.type === 'done')).toBe(true);
+    expect(events.some((event) => event.type === 'error')).toBe(false);
+  });
 });
 
 describe('gemini empty-fleet fail-safe (SP-084)', () => {
@@ -2577,6 +2706,60 @@ describe('gemini empty-fleet fail-safe (SP-084)', () => {
           toolResultMessage('ok'),
         ]),
         { sessionId: 'empty-fleet-sess' },
+        deps,
+        outer,
+      ),
+    ).rejects.toThrow(GeminiToolHistoryEmptyFleetError);
+
+    expect(mockDelegateStreamSimple).not.toHaveBeenCalled();
+  });
+
+  it('throws actionable empty-fleet error for google-only fleet with foreign-signed history (SP-232)', async () => {
+    const googleOnlyFleet = [
+      makeProfile({ id: 'gemini-flash', tier: 'economical-cloud', provider: 'google' }),
+    ];
+    const router = createRouterFromFleet(googleOnlyFleet);
+    const outer = createAssistantMessageEventStream();
+    const deps = makeStreamDeps({
+      router,
+      fleet: googleOnlyFleet,
+      modelRegistry: createMockRegistry([
+        makeRegistryModel({ provider: 'google', id: 'gemini-flash', api: 'google-generative-ai' }),
+      ]),
+    });
+
+    await expect(
+      routeAndDelegate(
+        makeContext([
+          userMessage('refactor the parser'),
+          {
+            role: 'assistant',
+            content: [
+              { type: 'thinking', thinking: 'plan', thinkingSignature: 'claude-sig-abc' },
+              {
+                type: 'toolCall',
+                id: 'call-claude-1',
+                name: 'read',
+                arguments: { path: 'src/parser.ts' },
+              },
+            ],
+            api: 'anthropic-messages',
+            provider: 'anthropic',
+            model: 'claude-opus',
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 0,
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            },
+            stopReason: 'toolUse',
+            timestamp: 2,
+          },
+          toolResultMessage('parser source'),
+        ]),
+        { sessionId: 'empty-fleet-foreign-signed' },
         deps,
         outer,
       ),
