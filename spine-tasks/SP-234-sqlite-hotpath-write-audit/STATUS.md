@@ -1,7 +1,7 @@
 # SP-234: Audit hot-path StorePort writes + queue design — Status
 
 **Current Step:** 3
-**Status:** In Progress
+**Status:** Complete
 **Last Updated:** 2026-08-27
 **Review Level:** 1
 **Size:** M
@@ -24,16 +24,16 @@
 
 ## Step 3: Testing and verification
 
-**Status:** 🔵 In Progress
+**Status:** ✅ Complete
 
-- [ ] Contract `testCommand`
-- [ ] `npm test`
+- [x] Contract `testCommand` — typecheck clean; 108/108 tests pass (sqlite-store + session-pinner)
+- [x] `npm test` — 113/113 files, 1838/1838 tests pass (first run had a flaky timing timeout; clean rerun)
 
 ---
 
 ## Completion Criteria
 
-- [ ] Phase 1 of #142 ready for SP-235
+- [x] Phase 1 of #142 ready for SP-235
 
 ## Discoveries
 
