@@ -1,12 +1,12 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-08-22
+**Last Updated:** 2026-08-27
 **Status:** Active
-**Next Task ID:** SP-231
+**Next Task ID:** SP-237
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** v0.17.0 on npm (2026-08-23). Prior v0.16.2 SP-221/SP-222.
-**In progress:** Human #95 dogfood. #110 open. #96 enablement open. v0.18 backlog (#142+).
+**In progress:** Release v0.18.0 authoring — SP-231–SP-236 (#158, #159, #142). Manifest: `spine-tasks/_authoring/release-v0.18.0/manifest.md`. Human #95 dogfood. #110/#96 open.
 
 ---
 
