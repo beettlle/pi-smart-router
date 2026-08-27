@@ -885,6 +885,12 @@ export class SessionPinner {
 
   // ─── Persistence (StorePort) ────────────────────────────────────────────────
 
+  // SP-234 / #142 audit: pseudo-async fire-and-forget. SqliteStore.putSessionPin
+  // is declared async but executes synchronously — the SQLite INSERT blocks the
+  // event loop here on the lookupPin hot path before the promise exists. The
+  // .catch() only dresses the call as async. SP-235 routes this through the
+  // bounded write queue (durable class); SP-236 removes the void…catch pattern.
+  // See docs/sqlite-write-queue-design.md (W1/W2).
   private persistPin(pin: SessionPin): void {
     if (!this.store) {
       return;
@@ -895,6 +901,8 @@ export class SessionPinner {
     });
   }
 
+  // SP-234 / #142 audit (W2): same pseudo-async pattern as persistPin —
+  // sync DELETE on the event loop. Routed via the write queue in SP-235.
   private deletePersistedPin(sessionId: string): void {
     if (!this.store) {
       return;

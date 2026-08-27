@@ -265,6 +265,11 @@ export class SqliteStore implements StorePort {
     return row ? pinRowToEntity(row) : null;
   }
 
+  // SP-234 / #142 audit (W1): pseudo-async hot-path write. Declared async but
+  // the body is fully synchronous better-sqlite3 — the INSERT blocks the event
+  // loop before the promise is returned (callers use `void … .catch()`).
+  // Queue candidate, DURABLE class (never dropped). See
+  // docs/sqlite-write-queue-design.md. Wiring lands in SP-235.
   async putSessionPin(pin: SessionPin): Promise<void> {
     this.db
       .prepare(
@@ -301,6 +306,9 @@ export class SqliteStore implements StorePort {
       });
   }
 
+  // SP-234 / #142 audit (W2): same pseudo-async pattern as putSessionPin.
+  // Sync DELETE on the event loop from breakPin on the lookupPin hot path.
+  // Queue candidate, DURABLE class.
   async deleteSessionPin(sessionId: string): Promise<void> {
     this.db.prepare('DELETE FROM pins WHERE session_id = ?').run(sessionId);
   }
@@ -349,6 +357,10 @@ export class SqliteStore implements StorePort {
 
   // ─── Telemetry (append-only) ────────────────────────────────────────────
 
+  // SP-234 / #142 audit (W3): sync hot-path append, called once per routing
+  // decision via RoutingTelemetryEmitter.onRecord. Runs INSERT + full eviction
+  // cycle (DELETE + COUNT + optional DELETE) on the event loop every call.
+  // Queue candidate, LOSSY class; eviction moves to once-per-flush in SP-235.
   appendTelemetry(entry: RoutingTelemetry): void {
     this.db
       .prepare(
@@ -418,6 +430,9 @@ export class SqliteStore implements StorePort {
 
   // ─── Dataset (append-only, privacy-safe) ────────────────────────────────
 
+  // SP-234 / #142 audit (W4): sync hot-path append via DatasetRecorder.onRecord
+  // (route-and-delegate). Same INSERT + eviction-per-call blocking as W3.
+  // Queue candidate, LOSSY class.
   appendDatasetRecord(entry: RoutingDatasetRecord): void {
     this.db
       .prepare(
@@ -515,6 +530,9 @@ export class SqliteStore implements StorePort {
 
   // ─── Outcomes (append-only, privacy-safe) ───────────────────────────────
 
+  // SP-234 / #142 audit (W5): sync append via OutcomeRecorder.onRecord
+  // (model override / compaction pin break). Lower frequency than W3/W4 but
+  // same blocking shape. Queue candidate, LOSSY class.
   appendOutcomeRecord(entry: RoutingOutcomeRecord): void {
     this.db
       .prepare(
@@ -618,6 +636,10 @@ export class SqliteStore implements StorePort {
    *
    * Uses BEGIN IMMEDIATE to acquire a reserved lock before reading,
    * preventing TOCTOU races between concurrent consumers.
+   *
+   * SP-234 / #142 audit (W6): intentionally EXCLUDED from the write queue —
+   * this is an atomic read-modify-write on the rate-limit path; batching or
+   * deferring it would break token-bucket correctness. Stays synchronous.
    */
   consumeToken(key: string, cost: number = 1): TokenBucketResult {
     return this.consumeTokenTx(key, cost);

@@ -1,7 +1,7 @@
 # SP-234: Audit hot-path StorePort writes + queue design — Status
 
-**Current Step:** 1
-**Status:** Not Started
+**Current Step:** 3
+**Status:** In Progress
 **Last Updated:** 2026-08-27
 **Review Level:** 1
 **Size:** M
@@ -10,21 +10,21 @@
 
 ## Step 1: Audit hot-path StorePort writes
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Inventory write sites
-- [ ] Flag sync + fire-and-forget patterns
+- [x] Inventory write sites
+- [x] Flag sync + fire-and-forget patterns
 
 ## Step 2: Queue design
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Bounded queue API + latency tradeoff docs
-- [ ] Interface/stub only
+- [x] Bounded queue API + latency tradeoff docs
+- [x] Interface/stub only
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔵 In Progress
 
 - [ ] Contract `testCommand`
 - [ ] `npm test`
@@ -37,4 +37,6 @@
 
 ## Discoveries
 
-(none yet)
+- Write inventory (W1–W8) documented in `docs/sqlite-write-queue-design.md`; queue stub in `src/infrastructure/persistence/write-queue.ts`; audit comments at each write site in `sqlite-store.ts` / `session-pinner.ts`; sync-semantics doc on `StorePort`.
+- `consumeToken` (rate limiting) intentionally excluded from the queue — atomic read-modify-write; batching would break TOCTOU protection.
+- In-worker plan review skipped by runtime (SP-195): engine runs reviews after `.DONE`.
