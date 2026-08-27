@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   formatGeminiThoughtSignatureErrorMessage,
+  GEMINI_REPLAY_INCOMPATIBLE,
   isGeminiThoughtSignatureAssistantError,
   isGeminiThoughtSignatureError,
   shouldFailoverOnGeminiError,
@@ -69,8 +70,14 @@ describe('gemini-provider', () => {
     expect(formatted).toContain('400 INVALID_ARGUMENT: Function call is missing a thought_signature');
     expect(formatted).toContain('repairs replay state');
     expect(formatted).toContain('/new');
+    expect(formatted).toContain('non-Google');
     expect(formatted).toContain('ai.google.dev/gemini-api/docs/generate-content/thought-signatures');
     expect(formatted).toContain('github.com/earendil-works/pi/issues/6342');
+  });
+
+  it('exposes a distinct replay-incompatible reason code (SP-233)', () => {
+    expect(GEMINI_REPLAY_INCOMPATIBLE).toBe('gemini_replay_incompatible');
+    expect(GEMINI_REPLAY_INCOMPATIBLE).not.toBe('circuit_breaker_failover');
   });
 });
 

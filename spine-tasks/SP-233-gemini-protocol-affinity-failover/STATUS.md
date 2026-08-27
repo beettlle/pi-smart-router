@@ -1,6 +1,6 @@
 # SP-233: One-shot non-Google failover on thought_signature — Status
 
-**Current Step:** 2
+**Current Step:** 3
 **Status:** In Progress
 **Last Updated:** 2026-08-27
 **Review Level:** 1
@@ -17,14 +17,14 @@
 
 ## Step 2: Telemetry, tests, README
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
-- [ ] Distinct reason_code
-- [ ] Update #37 tests + README
+- [x] Distinct reason_code
+- [x] Update #37 tests + README
 
 ## Step 3: Testing and verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Contract `testCommand`
 - [ ] `npm test` + coverage gate
