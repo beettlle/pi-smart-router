@@ -1,0 +1,20 @@
+spine-tasks/SP-232-gemini-tool-history-guard/STATUS.md
+  h_ae151c586ac6c5 4,13,15-16,22-23,41-42
+src/domain/routing/tool-history-guard.ts
+  h_ae151c586ac6c5 2,5-10,16,195-268,280,285-288,295-297,308
+tests/unit/smart-router-extension.test.ts
+  h_ae151c586ac6c5 2527-2655,2717-2770
+tests/unit/tool-history-guard.test.ts
+  h_ae151c586ac6c5 8,13,18,110-163,234-285,426-509,601-636
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "63b8262f2c31e97dbd2e8cbbf76600cb0a293049",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
