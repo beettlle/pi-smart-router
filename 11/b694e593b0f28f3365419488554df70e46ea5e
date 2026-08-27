@@ -1,0 +1,16 @@
+spine-tasks/SP-234-sqlite-hotpath-write-audit/.reviews/1-20260827T211219.md
+  h_ae151c586ac6c5 1-12
+spine-tasks/SP-234-sqlite-hotpath-write-audit/.reviews/final-20260827T211348.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "11b694e593b0f28f3365419488554df70e46ea5e",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
