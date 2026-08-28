@@ -1,0 +1,18 @@
+README.md
+  h_ae151c586ac6c5 295-309
+docs/routing-roadmap.md
+  h_ae151c586ac6c5 405-406
+spine-tasks/SP-237-library-extension-parity-docs/STATUS.md
+  h_ae151c586ac6c5 3,21,23-24,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9c27363090b7f05d23fcdfe99282eb4ec84ca1f8",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
