@@ -1,0 +1,19 @@
+spine-tasks/SP-237-library-extension-parity-docs/STATUS.md
+  s_a7ab168c79a118::t_5079e1e93e306e 3-4,13,15-17,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "248e84366b60b63993f7189861f3d341014ef431",
+  "prompts": {},
+  "sessions": {
+    "s_a7ab168c79a118": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a044dc-cc82-7c17-870c-45cc8fe5617d",
+        "model": "glm-5.3"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
