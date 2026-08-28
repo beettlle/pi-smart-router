@@ -402,6 +402,8 @@ Four-way brutal audit (Grok, Sonnet, Gemini). Labels: `priority/P0`–`priority/
 | P3 | [#156](https://github.com/beettlle/pi-smart-router/issues/156) | spine STATUS.md and .DONE marker hygiene |
 | P3 | [#157](https://github.com/beettlle/pi-smart-router/issues/157) | modernize ESLint to flat config (v9+) |
 
+[#153](https://github.com/beettlle/pi-smart-router/issues/153) is documented in [README § Library vs extension](../README.md#library-vs-extension); [#149](https://github.com/beettlle/pi-smart-router/issues/149) (extension public facade) is the migration plan for closing that parity gap over time.
+
 ---
 
 ## 11. Document roles

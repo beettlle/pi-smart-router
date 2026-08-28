@@ -1,6 +1,6 @@
 # SP-237: Document library vs extension feature parity gap — Status
 
-**Current Step:** Step 2
+**Current Step:** Step 3
 **Status:** In Progress
 **Last Updated:** 2026-08-28
 **Review Level:** 0
@@ -18,14 +18,14 @@
 
 ## Step 2: Optional diagram + roadmap cross-link
 
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] ASCII/mermaid diagram of the two integration paths
-- [ ] Roadmap pointer (optional)
+- [x] ASCII/mermaid diagram of the two integration paths
+- [x] Roadmap pointer (optional)
 
 ## Step 3: Testing and verification
 
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] `npm test` green
 - [ ] README links/anchors resolve

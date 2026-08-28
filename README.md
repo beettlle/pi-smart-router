@@ -292,6 +292,21 @@ These behaviors run in `.pi/extensions/smart-router/` and have **no equivalent i
 - **pi users:** install the **extension** (`pi install npm:pi-smart-router`). It is the full product — everything in the table above works out of the box, including failover, delegate spawn, headroom escalation, and quota reaction.
 - **npm embedders:** you get the **routing core** (12-stage pipeline, fleet mapping, telemetry, gateway health tracking, failover *selection*). Plan to implement your own stream delegation, failover iteration, headroom checks, and planning-delegate spawn around the decisions the pipeline returns — or track [#149](https://github.com/beettlle/pi-smart-router/issues/149) (**extension public facade**), the migration plan for exposing the extension's stream/delegation surface as supported library API so this gap closes over time. Until #149 lands, the extension modules also import `src/**` internals directly, so deep imports into `src/` are not a stable API.
 
+```text
+pi extension path (full product)        npm library path (routing core)
+────────────────────────────────        ───────────────────────────────
+pi (host agent)                         your host application
+  └─ .pi/extensions/smart-router/         └─ createRouter() / createRouterFromFleet()
+       ├─ routing pipeline (src/)  ════════    ├─ routing pipeline (src/)        ← shared core
+       ├─ stream failover loop          ✗      ├─ GatewayDispatch: health tracking,
+       ├─ planning delegate spawn       ✗      │   failover selection only
+       ├─ output headroom escalation    ✗      ├─ lifecycle middleware (stub: hooks only)
+       └─ cursor quota failover         ✗      └─ embedder implements: stream loop,
+                                            delegate spawn, headroom checks, quota reaction
+```
+
+`✗` = capability exists only on the extension path today; [#149](https://github.com/beettlle/pi-smart-router/issues/149) is the plan to close the gap.
+
 ## Fleet behavior
 
 When you use `smart-router/auto`, the extension does **not** read `config/models.yaml`. Instead:
