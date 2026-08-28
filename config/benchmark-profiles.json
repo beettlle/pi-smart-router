@@ -7,8 +7,8 @@
       "livecodebench": "https://livecodebench.github.io/leaderboard.html",
       "bfcl": "https://gorilla.cs.berkeley.edu/leaderboard.html"
     },
-    "scrape_date": "2026-08-27",
-    "catalog_freeze_date": "2026-08-27"
+    "scrape_date": "2026-08-28",
+    "catalog_freeze_date": "2026-08-28"
   },
   "aliases": {
     "anthropic/claude-opus-4": "claude-opus-4-5",
