@@ -1,0 +1,21 @@
+tests/unit/extension-setup-bootstrap.test.ts
+  s_ef2070f612c829::t_dc6d004e43f53c 65
+tests/unit/train-routing-calibration.test.ts
+  s_ef2070f612c829::t_59ce019dcbc708 208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b4218cdb63ecc951f0b2492b9b0e3eb8313e3f8d",
+  "prompts": {},
+  "sessions": {
+    "s_ef2070f612c829": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-f8004682-01fb-41ea-bda8-d56d9a70093f",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
