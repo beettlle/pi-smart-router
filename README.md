@@ -263,6 +263,50 @@ npm run verify:ci
 
 `RouterPipeline.route()` calls on a single router instance are **single-flight**: concurrent calls are serialized internally (SP-230, [#141](https://github.com/beettlle/pi-smart-router/issues/141)). The pipeline keeps per-route transient state on instance fields while stages run, so overlapping executions are queued rather than interleaved — each queued call waits at most one routing latency. This applies to `createRouter()` / `createRouterFromFleet()` handles: a shared `router.dispatch` is safe to call concurrently, and serialization does not change routing policy outcomes. For parallel routing throughput, create separate router instances.
 
+## Library vs extension
+
+pi-smart-router ships in two shapes, and they are **not** feature-identical ([#153](https://github.com/beettlle/pi-smart-router/issues/153)):
+
+| Path | What you get |
+|------|--------------|
+| **Pi extension** (`pi install npm:pi-smart-router`, or project-local `.pi/extensions/smart-router/` when developing from clone) | The full product — the routing pipeline **plus** the stream-level behaviors below |
+| **npm library** (`createRouter()` / `createRouterFromFleet()` / `GatewayDispatch`) | The routing core — the 12-stage pipeline, fleet mapping, telemetry, and gateway health/failover *selection*. Stream-level behaviors are stubbed or left to your embedder loop |
+
+### Extension-only capabilities
+
+These behaviors run in `.pi/extensions/smart-router/` and have **no equivalent in the library API**:
+
+| Capability | Extension implementation | Library status |
+|------------|--------------------------|----------------|
+| **Planning delegate spawn** — cache-preserving ephemeral frontier sub-call on planning turns, with observation injection and bounded timeouts (SP-144, SP-213 / [#71](https://github.com/beettlle/pi-smart-router/issues/71), [#120](https://github.com/beettlle/pi-smart-router/issues/120)) | `.pi/extensions/smart-router/planning-delegate.ts` — compressed-context sub-call via `streamSimple`; falls back to direct frontier with a documented `fallback_reason` | The pipeline still emits `planning_delegate` decisions with delegate model and compressed limits, but **nothing spawns the delegate** — an embedder must implement the sub-call itself or accept direct-frontier routing |
+| **Stream failover loop** — live provider-error failover across candidate models with user-facing notices (atomic state machine, [#33](https://github.com/beettlle/pi-smart-router/issues/33)) | `.pi/extensions/smart-router/route-and-delegate.ts` (~L377–595) — retries stream delegation across alternates, emits failover notices, ends in SP-226 fail-open safe default | `GatewayDispatch.selectFailover()` only **selects** an alternate model; no stream retry loop runs. The embedder owns iterating over failures and re-dispatching |
+| **Output headroom escalation** — exclude failover candidates whose context window cannot fit input plus the required output floor (SP-108) | `route-and-delegate.ts` + `.pi/extensions/smart-router/delegation-runtime.ts` — per-attempt `computeOutputHeadroom` checks; `headroomExcludedModelIds` accumulate across the failover loop | `src/domain/delegation/output-headroom.ts` ships the helper, but **no library caller wires it** into `GatewayDispatch.dispatch()` — the embedder must apply it per attempt |
+| **Cursor quota handling** — subscription-quota exhaustion detection and failover to `cursor/auto` or economical API models with `cursor_quota_exhausted` telemetry (SP-097 / [#70](https://github.com/beettlle/pi-smart-router/issues/70)) | The extension stream loop catches quota errors from live streams and drives `selectFailover` reactively | Detection and failover *selection* exist in `src/infrastructure/gateway/gateway-dispatch.ts` (`isCursorQuotaExhaustedError`, per-model quota tracking), but the **reactive trigger lives in the extension's stream loop** — library dispatch alone does not observe provider stream errors |
+
+### The middleware is a lifecycle stub, not a router
+
+`createPiRouterMiddleware()` / `RouterHandle.register()` (`src/api/middleware/pi-router-middleware.ts`) registers **lifecycle hooks only** — compaction flags and `model_select` overrides consumed when building the next routing request. It does **not** intercept LLM streams, route requests, or delegate inference. The production stream path lives in the pi extension (`route-and-delegate.ts`, `stream-delegation.ts`, `delegate-stream.ts`), not in the npm-exported middleware. Treat `middleware` as a flag registrar; routing happens through your call to `router.dispatch.dispatch()` or the extension's stream path.
+
+### Recommended integration path
+
+- **pi users:** install the **extension** (`pi install npm:pi-smart-router`). It is the full product — everything in the table above works out of the box, including failover, delegate spawn, headroom escalation, and quota reaction.
+- **npm embedders:** you get the **routing core** (12-stage pipeline, fleet mapping, telemetry, gateway health tracking, failover *selection*). Plan to implement your own stream delegation, failover iteration, headroom checks, and planning-delegate spawn around the decisions the pipeline returns — or track [#149](https://github.com/beettlle/pi-smart-router/issues/149) (**extension public facade**), the migration plan for exposing the extension's stream/delegation surface as supported library API so this gap closes over time. Until #149 lands, the extension modules also import `src/**` internals directly, so deep imports into `src/` are not a stable API.
+
+```text
+pi extension path (full product)        npm library path (routing core)
+────────────────────────────────        ───────────────────────────────
+pi (host agent)                         your host application
+  └─ .pi/extensions/smart-router/         └─ createRouter() / createRouterFromFleet()
+       ├─ routing pipeline (src/)  ════════    ├─ routing pipeline (src/)        ← shared core
+       ├─ stream failover loop          ✗      ├─ GatewayDispatch: health tracking,
+       ├─ planning delegate spawn       ✗      │   failover selection only
+       ├─ output headroom escalation    ✗      ├─ lifecycle middleware (stub: hooks only)
+       └─ cursor quota failover         ✗      └─ embedder implements: stream loop,
+                                            delegate spawn, headroom checks, quota reaction
+```
+
+`✗` = capability exists only on the extension path today; [#149](https://github.com/beettlle/pi-smart-router/issues/149) is the plan to close the gap.
+
 ## Fleet behavior
 
 When you use `smart-router/auto`, the extension does **not** read `config/models.yaml`. Instead:
