@@ -2,10 +2,11 @@
 
 **Last Updated:** 2026-08-28
 **Status:** Active
-**Next Task ID:** SP-237
+**Next Task ID:** SP-238
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** v0.18.0 on npm (2026-08-28). Prior v0.17.0 SP-223–SP-230. Human #95 dogfood. #110/#96 open.
+**In progress:** Release v0.19.1 (patch, docs-only) — SP-237 (#153). Manifest: `spine-tasks/_authoring/release-v0.19.1/manifest.md`.
 
 ---
 
@@ -789,6 +790,16 @@
 **Deferred:** #95/#110 (human/exports), #96, #1/#25/#26 hardware.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.18.0/manifest.md`
+
+### Phase 51 — Release v0.19.1 Documentation Parity (SP-237)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-237 | Document library vs extension feature parity gap | S | — | Closes #153 |
+
+**Source:** Operator-approved **v0.19.1** (2026-08-28, patch profile, docs-only). Theme: documentation parity clarification.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.19.1/manifest.md`
 
 ---
 
