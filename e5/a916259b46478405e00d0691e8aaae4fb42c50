@@ -1,0 +1,29 @@
+spine-tasks/SP-237-library-extension-parity-docs/STATUS.md
+  s_a7ab168c79a118::t_4dd74a8484ca03 1-39
+spine-tasks/_authoring/release-v0.19.1/manifest.md
+  s_a7ab168c79a118::t_1c5b19182bd9b0 83-89
+  s_a7ab168c79a118::t_c7f70a653bc768 1-82,90-125
+spine-tasks/dependencies.json
+  s_a7ab168c79a118::t_31972c93fd617c 653-654
+spine-tasks/SP-237-library-extension-parity-docs/PROMPT.md
+  s_a7ab168c79a118::t_ba2aa7c3d8c3fb 1-82
+spine-tasks/CONTEXT.md
+  s_a7ab168c79a118::t_0f9734d102e537 5,9,794-802
+  s_a7ab168c79a118::t_8dd953d4feead0 803
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e5a916259b46478405e00d0691e8aaae4fb42c50",
+  "prompts": {},
+  "sessions": {
+    "s_a7ab168c79a118": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a044dc-cc82-7c17-870c-45cc8fe5617d",
+        "model": "glm-5.3"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
