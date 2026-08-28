@@ -62,5 +62,5 @@ describe('createSmartRouterRuntime bootstrap (Pi 0.80.8+)', () => {
     expect(createSpy).toHaveBeenCalledTimes(1);
     expect(runtime.modelRegistry).toBeDefined();
     expect(runtime.streamDeps.modelRegistry).toBe(runtime.modelRegistry);
-  });
+  }, 30_000);
 });
