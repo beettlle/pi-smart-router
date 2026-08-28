@@ -1,0 +1,22 @@
+tests/unit/write-queue-lag.test.ts
+  s_19d262ee506e9f::t_08c446438ae8d0 238
+  s_19d262ee506e9f::t_47df1e2579f748 147
+tests/unit/sqlite-store.test.ts
+  s_19d262ee506e9f::t_61bffac7917a8c 414-437,439
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "406ad16e259ac0b9e06477befdb02040b4bf81fb",
+  "prompts": {},
+  "sessions": {
+    "s_19d262ee506e9f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-f84be725-3625-43b6-8838-a465bc1b71fe",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
