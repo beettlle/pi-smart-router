@@ -1,0 +1,23 @@
+README.md
+  s_a7ab168c79a118::t_ed6580ccc23a70 266-309
+docs/routing-roadmap.md
+  s_a7ab168c79a118::t_0c4040717fbe6e 405-406
+spine-tasks/SP-237-library-extension-parity-docs/STATUS.md
+  s_a7ab168c79a118::t_20a9487d65f62f 3-4,13,15-17,21,23-24,28,30-31,37-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "239aaba9543257affc72124dcdef732d01eefa48",
+  "prompts": {},
+  "sessions": {
+    "s_a7ab168c79a118": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a044dc-cc82-7c17-870c-45cc8fe5617d",
+        "model": "glm-5.3"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
