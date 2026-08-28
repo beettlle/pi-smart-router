@@ -144,6 +144,7 @@ describe('write-queue event-loop lag evidence (SP-236 / #142)', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  // 5000 sync SQLite inserts + event-loop sampling; needs headroom under CI load.
   it('queued hot-path writes reduce event-loop blocking vs direct sync writes', async () => {
     // ── BEFORE: pre-SP-235 pattern — one synchronous INSERT (autocommit,
     // one WAL commit) per telemetry append, on the event loop. Conservative:
@@ -234,5 +235,5 @@ describe('write-queue event-loop lag evidence (SP-236 / #142)', () => {
     expect(after.wallMs).toBeLessThan(before.wallMs * 0.5);
     expect(after.p95RouteMs).toBeLessThanOrEqual(before.p95RouteMs);
     expect(after.lagP95Ms).toBeLessThanOrEqual(before.lagP95Ms);
-  });
+  }, 30_000);
 });

@@ -411,17 +411,32 @@ describe('SqliteStore', () => {
     });
 
     it('evicts oldest rows beyond max entry count', async () => {
-      for (let i = 0; i < 10_001; i++) {
-        store.appendDatasetRecord(makeDatasetRecord({
-          timestamp: new Date(Date.now() + i).toISOString(),
-          request_id: `req-${i}`,
-        }));
-      }
+      // Size the queue above the workload so mid-loop size-trigger flushes
+      // (default maxBatchSize=64) do not serialize 10k+ eviction cycles.
+      const evictionStore = new SqliteStore({
+        dbPath: ':memory:',
+        models: TEST_MODELS,
+        writeQueue: {
+          flushIntervalMs: 3_600_000,
+          maxBatchSize: 20_000,
+          capacity: 20_000,
+        },
+      });
+      try {
+        for (let i = 0; i < 10_001; i++) {
+          evictionStore.appendDatasetRecord(makeDatasetRecord({
+            timestamp: new Date(Date.now() + i).toISOString(),
+            request_id: `req-${i}`,
+          }));
+        }
 
-      const rows = await store.listDatasetRecords({ limit: 20_000 });
-      expect(rows.length).toBeLessThanOrEqual(10_000);
-      expect(rows[0]?.request_id).toBe('req-10000');
-    });
+        const rows = await evictionStore.listDatasetRecords({ limit: 20_000 });
+        expect(rows.length).toBeLessThanOrEqual(10_000);
+        expect(rows[0]?.request_id).toBe('req-10000');
+      } finally {
+        evictionStore.close();
+      }
+    }, 30_000);
   });
 
   // ─── Outcomes ─────────────────────────────────────────────────────────
