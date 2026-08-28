@@ -1,12 +1,11 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-08-27
+**Last Updated:** 2026-08-28
 **Status:** Active
 **Next Task ID:** SP-237
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.17.0 on npm (2026-08-23). Prior v0.16.2 SP-221/SP-222.
-**In progress:** Release v0.18.0 authoring — SP-231–SP-236 (#158, #159, #142). Manifest: `spine-tasks/_authoring/release-v0.18.0/manifest.md`. Human #95 dogfood. #110/#96 open.
+**Released:** v0.18.0 on npm (2026-08-28). Prior v0.17.0 SP-223–SP-230. Human #95 dogfood. #110/#96 open.
 
 ---
 
@@ -761,6 +760,35 @@
 **Deferred:** #95/#110, #96, #1/#25/#26 hardware.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.16.1/manifest.md`
+
+### Phase 50 — Release v0.18.0 Production Dogfood Resilience (SP-231–SP-236)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-231 | Broaden repairGeminiReplayContext for non-Google toolCalls | M | — | Partial #158 |
+| SP-232 | Expand tool-history guard + README for cross-provider Gemini | M | SP-231 | Closes #158 |
+| SP-233 | One-shot non-Google protocol-affinity failover on thought_signature 400 | M | SP-232 | Closes #159 |
+| SP-234 | Audit hot-path StorePort writes + bounded write-queue design | M | — | Partial #142 |
+| SP-235 | Implement bounded async write queue for pins/telemetry | M | SP-234 | Partial #142 |
+| SP-236 | Remove fire-and-forget SQLite writes + benchmark + StorePort docs | S | SP-235 | Closes #142 |
+
+**Source:** Operator-approved **v0.18.0** (2026-08-27). Theme: production dogfood resilience — Gemini thought_signature recovery + non-blocking SQLite persistence.
+
+**Wave order (executed):**
+
+| Wave | Tasks | Notes |
+|------|-------|-------|
+| 0 | SP-231, SP-234 | Parallel — Gemini repair vs SQLite audit |
+| 1 | SP-232, SP-235 | Parallel — guard/README vs write queue |
+| 2 | SP-233, SP-236 | Parallel — protocol-affinity failover vs cleanup/benchmark |
+
+**Status:** Published as **v0.18.0** (tag `v0.18.0`, commit `3c98cc0`). Batches `20260827T202820-f645` (W0), `20260827T215704-5cfe` (W1), `20260827T224549-9c08` (W2) integrated; #158/#159/#142 closed. Release run: https://github.com/beettlle/pi-smart-router/actions/runs/33202823646. Post-integrate log: `/tmp/pi-smart-router-release-check-v0.18.0.log`.
+
+**Note:** Accidental empty bump `v0.19.0` (commit `855fb08`) also tagged during publish; npm `latest` remains **0.18.0** — deprecate `0.19.0` on npm when credentials available.
+
+**Deferred:** #95/#110 (human/exports), #96, #1/#25/#26 hardware.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.18.0/manifest.md`
 
 ---
 
