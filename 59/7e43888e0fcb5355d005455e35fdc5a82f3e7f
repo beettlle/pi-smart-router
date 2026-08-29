@@ -1,0 +1,28 @@
+spine-tasks/CONTEXT.md
+  s_a7ab168c79a118::t_b6978c6b492529 3,5,805-813
+  s_a7ab168c79a118::t_4ef6cccc38ac40 814
+spine-tasks/SP-238-extension-provider-delegation/STATUS.md
+  s_a7ab168c79a118::t_8873aa509d0cd6 1-41
+spine-tasks/_authoring/release-v0.19.2/manifest.md
+  s_a7ab168c79a118::t_5ca816e15f6f3a 1-119
+spine-tasks/dependencies.json
+  s_a7ab168c79a118::t_e04e94a6a55eb2 654-655
+spine-tasks/SP-238-extension-provider-delegation/PROMPT.md
+  s_a7ab168c79a118::t_5d46f095f72d0f 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "597e43888e0fcb5355d005455e35fdc5a82f3e7f",
+  "prompts": {},
+  "sessions": {
+    "s_a7ab168c79a118": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a044dc-cc82-7c17-870c-45cc8fe5617d",
+        "model": "glm-5.3"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
