@@ -1,0 +1,20 @@
+spine-tasks/SP-238-extension-provider-delegation/.reviews/1-20260829T122410.md
+  h_ae151c586ac6c5 1-23
+spine-tasks/SP-238-extension-provider-delegation/.reviews/contract-fail-2026-08-29T12-34-18-452Z.log
+  h_ae151c586ac6c5 1-359
+spine-tasks/SP-238-extension-provider-delegation/.reviews/contract-fail-2026-08-29T12-41-07-655Z.log
+  h_ae151c586ac6c5 1-367
+spine-tasks/SP-238-extension-provider-delegation/STATUS.md
+  h_ae151c586ac6c5 13,19-20,23,29-30,33,35-36,38,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0dbac22eb1a2911b5757ab73833d9db0674a74a7",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
