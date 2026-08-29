@@ -99,7 +99,12 @@ describe('pi-model-scope', () => {
     );
   });
 
-  it('loads resolveModelScope without repo dev node_modules on cwd', async () => {
+  // SP-239 / #161: module-resolution wall clock is load-sensitive by design;
+  // scoped retry + generous timeout instead of the 15s positional timeout.
+  it(
+    'loads resolveModelScope without repo dev node_modules on cwd',
+    { retry: 2, timeout: 60_000 },
+    async () => {
     consumerFixture = createConsumerFixture();
     vi.stubEnv('HOME', consumerFixture.homeDir);
     process.chdir(consumerFixture.projectDir);
@@ -107,7 +112,8 @@ describe('pi-model-scope', () => {
     const { resolveModelScope } = await import(consumerFixture.moduleUrl);
     expect(typeof resolveModelScope).toBe('function');
     await expect(resolveModelScope([], {} as never)).resolves.toEqual([]);
-  }, 15_000);
+    },
+  );
 
   it('findPiCodingAgentDir resolves without agent npm when pi is globally installed', async () => {
     try {

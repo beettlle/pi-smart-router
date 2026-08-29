@@ -175,7 +175,8 @@ describe('pingLocalServices (T045, FR-012, FR-013)', () => {
     });
   });
 
-  describe('parallel execution', () => {
+  // SP-239 / #161: suite-scoped retry — wall-clock parallel-ratio assertion is load-sensitive by design.
+  describe('parallel execution', { retry: 2 }, () => {
     it('pings both services in parallel (combined < 2x individual)', async () => {
       const delayMs = 20;
       const httpFetch = makeFetchPort(

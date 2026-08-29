@@ -630,7 +630,8 @@ describe('Pipeline triage stage (T027, T028)', () => {
     });
   });
 
-  describe('SC-004 latency budget (<5ms triage path)', () => {
+  // SP-239 / #161: suite-scoped retry — wall-clock p95 assertion is load-sensitive by design.
+  describe('SC-004 latency budget (<5ms triage path)', { retry: 2 }, () => {
     // Wall-clock: assert p95 after warmup over full RouterPipeline.route().
     // SP-224 / #139: the non-CI budget is 15ms (was 5ms). The 5ms ceiling flaked
     // under parallel Vitest fork workers (default maxWorkers=4 sharing host CPU):
