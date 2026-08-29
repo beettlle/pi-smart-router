@@ -1,0 +1,14 @@
+spine-tasks/SP-238-extension-provider-delegation/STATUS.md
+  h_ae151c586ac6c5 4,29,31-32,38-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4bf5787ee196d6a5fad8b6c79ba6b1440ea7493a",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
