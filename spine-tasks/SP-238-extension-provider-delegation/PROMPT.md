@@ -73,6 +73,8 @@ Fix: default the delegation stream to the **composed provider** object from `dep
 - [ ] Run Contract `testCommand` (`npm run typecheck && npx vitest run tests/unit/delegate-stream-composed-provider.test.ts`)
 - [ ] Run `npm run release:check` locally — must exit 0
 
+> Execution constraint (2026-08-29, worker_done_missing post-mortem): run `release:check` **in the foreground and wait for it to finish inside this session**. Do NOT background it or rely on a monitor/completion wake — the worker session terminates when the turn ends, which orphans background runs and exits without `.DONE`. Only finish the session after `.DONE` has been written and the STATUS.md is final.
+
 > Contract note (2026-08-29): full-suite `npm test` includes wall-clock timing assertions (triage latency budget, local-zero parallel speedup, pi-model-scope module-resolution timeout) that flake under local load on plain `main`; contract scoped to this task's files per SP-235 convention. Full suite remains covered by CI.
 
 ## Completion Criteria
