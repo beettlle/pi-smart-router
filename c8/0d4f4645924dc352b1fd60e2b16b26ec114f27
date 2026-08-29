@@ -1,0 +1,19 @@
+spine-tasks/SP-240-dependency-refresh-pi-84/STATUS.md
+  s_0799f75dbb06fd::t_0c1a1921e1a033 3-5,13,22,24,28,30-32,36-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c80d4f4645924dc352b1fd60e2b16b26ec114f27",
+  "prompts": {},
+  "sessions": {
+    "s_0799f75dbb06fd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-c2ca8325-d8e5-468d-8e3f-516f6a52a513",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
