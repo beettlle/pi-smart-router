@@ -1,0 +1,16 @@
+spine-tasks/SP-238-extension-provider-delegation/STATUS.md
+  h_ae151c586ac6c5 3,21,23-25
+tests/unit/delegate-stream-composed-provider.test.ts
+  h_ae151c586ac6c5 1-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "81186d3c60a7d875d7c5f5d7275bdc28861a32d2",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
