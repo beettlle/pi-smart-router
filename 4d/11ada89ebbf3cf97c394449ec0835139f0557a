@@ -1,0 +1,21 @@
+package-lock.json
+  s_a7ab168c79a118::t_6c36974436892a 3,9
+package.json
+  s_a7ab168c79a118::t_b348970b6d9711 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4d11ada89ebbf3cf97c394449ec0835139f0557a",
+  "prompts": {},
+  "sessions": {
+    "s_a7ab168c79a118": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a044dc-cc82-7c17-870c-45cc8fe5617d",
+        "model": "glm-5.3"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
