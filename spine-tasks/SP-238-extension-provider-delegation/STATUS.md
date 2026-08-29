@@ -1,6 +1,6 @@
 # SP-238: Delegate via composed provider for extension-registered custom-API models — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** In Progress
 **Last Updated:** 2026-08-29
 **Review Level:** 1
@@ -10,11 +10,11 @@
 
 ## Step 1: Route default delegation through composed provider
 
-**Status:** Not Started
+**Status:** Complete (pending plan review)
 
-- [ ] Resolve default stream via `deps.modelRegistry.getProvider(...)` when `deps.delegateStream` unset
-- [ ] Fall back to compat `streamSimple` when no composed provider
-- [ ] Apply to `collectDelegatedStream` and `pipeDelegatedStream`
+- [x] Resolve default stream via `deps.modelRegistry.getProvider(...)` when `deps.delegateStream` unset
+- [x] Fall back to compat `streamSimple` when no composed provider
+- [x] Apply to `collectDelegatedStream` and `pipeDelegatedStream`
 
 ## Step 2: Tests for extension-provider delegation
 

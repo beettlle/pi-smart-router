@@ -57,7 +57,12 @@ export interface StreamDelegationDeps {
   /** Cheap scope fingerprint check before each routed turn. */
   ensureFleetFresh?: () => Promise<void>;
   readonly executionLedger: ExecutionLedger;
-  /** Injectable for tests; production uses pi-ai streamSimple. */
+  /**
+   * Injectable stream override for tests; when unset, delegation resolves the
+   * stream through `modelRegistry.getProvider(...)` (composed provider, which
+   * knows extension-registered custom APIs — SP-238, #160), falling back to
+   * pi-ai/compat `streamSimple` when no composed provider exists.
+   */
   delegateStream?: DelegateStreamFn;
   /** Injectable planning delegate sub-call; production uses frontier stream delegate. */
   spawnPlanningDelegate?: PlanningDelegateSpawnFn;

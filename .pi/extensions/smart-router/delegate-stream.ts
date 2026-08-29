@@ -6,7 +6,7 @@ import {
   type Context,
   type Model,
   type SimpleStreamOptions,
-  streamSimple as defaultDelegateStream,
+  streamSimple as compatDelegateStream,
 } from '@earendil-works/pi-ai/compat';
 
 import { parseAssistantMessageError } from '../../../src/infrastructure/delegation/provider-error.js';
@@ -21,8 +21,54 @@ import {
   type FailoverNoticeInfo,
   type FlushDelegatedEventsOptions,
 } from './delegation-runtime.js';
-import type { StreamDelegationDeps } from './types.js';
+import type { DelegateStreamFn, StreamDelegationDeps } from './types.js';
 import { throwIfAborted } from './utils.js';
+
+/**
+ * Minimal structural view of pi's composed provider (pi-coding-agent
+ * `ModelRegistry.getProvider()` → `composeModelProvider`). Typed structurally
+ * because `getProvider` only exists on newer pi-coding-agent versions (0.84+);
+ * the extension must keep loading against older ones.
+ */
+interface ComposedProviderLike {
+  streamSimple: DelegateStreamFn;
+}
+
+type RegistryWithProviders = StreamDelegationDeps['modelRegistry'] & {
+  getProvider?: (providerId: string) => ComposedProviderLike | undefined;
+};
+
+/**
+ * Resolve the stream entrypoint for a delegation target (SP-238, #160).
+ *
+ * Priority:
+ * 1. Explicit `deps.delegateStream` injection (tests / operator override).
+ * 2. The **composed provider** from `modelRegistry.getProvider(model.provider)` —
+ *    the same path pi's own agent loop delegates through. Its `streamSimple`
+ *    checks extension-registered providers (`extension.streamSimple` when
+ *    `model.api === extension.api`) before falling back to pi-ai's built-in
+ *    registry, so custom-API models (claude-bridge et al.) resolve correctly.
+ * 3. Bare `pi-ai/compat streamSimple` — dispatches only on `model.api` against
+ *    pi-ai's private built-in registry; used when no composed provider exists
+ *    (older pi-coding-agent, or providers never composed through ModelRuntime).
+ */
+function resolveDelegateStream(
+  targetModel: Model<Api>,
+  deps: StreamDelegationDeps,
+): DelegateStreamFn {
+  if (deps.delegateStream) {
+    return deps.delegateStream;
+  }
+  const registry = deps.modelRegistry as RegistryWithProviders;
+  const provider =
+    typeof registry.getProvider === 'function'
+      ? registry.getProvider(targetModel.provider)
+      : undefined;
+  if (provider && typeof provider.streamSimple === 'function') {
+    return (model, context, options) => provider.streamSimple(model, context, options);
+  }
+  return compatDelegateStream;
+}
 
 function isTerminalEvent(
   event: AssistantMessageEvent,
@@ -52,7 +98,7 @@ export async function collectDelegatedStream(
     options,
     headroomContext,
   );
-  const delegateStream = deps.delegateStream ?? defaultDelegateStream;
+  const delegateStream = resolveDelegateStream(targetModel, deps);
   const inner = delegateStream(targetModel, context, delegationOptions);
   const events: AssistantMessageEvent[] = [];
   let finalMessage: AssistantMessage | undefined;
@@ -119,7 +165,7 @@ export async function pipeDelegatedStream(
     options,
     headroomContext,
   );
-  const delegateStream = deps.delegateStream ?? defaultDelegateStream;
+  const delegateStream = resolveDelegateStream(targetModel, deps);
   const inner = delegateStream(targetModel, context, delegationOptions);
   const events: AssistantMessageEvent[] = [];
   let finalMessage: AssistantMessage | undefined;
