@@ -1,0 +1,14 @@
+spine-tasks/SP-238-extension-provider-delegation/.reviews/final-20260829T134711.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9595f41182622e9293969ec19bca4aa7c8de7c16",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
