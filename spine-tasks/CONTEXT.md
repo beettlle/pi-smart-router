@@ -5,8 +5,7 @@
 **Next Task ID:** SP-238
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.18.0 on npm (2026-08-28). Prior v0.17.0 SP-223–SP-230. Human #95 dogfood. #110/#96 open.
-**In progress:** Release v0.19.1 (patch, docs-only) — SP-237 (#153). Manifest: `spine-tasks/_authoring/release-v0.19.1/manifest.md`.
+**Released:** v0.19.1 on npm (2026-08-28, patch — SP-237/#153 docs-only). Prior v0.18.0 SP-231–SP-236 (npm `latest` was 0.18.0; stray empty 0.19.0 deprecated). Human #95 dogfood. #110/#96 open.
 
 ---
 
@@ -798,6 +797,8 @@
 | SP-237 | Document library vs extension feature parity gap | S | — | Closes #153 |
 
 **Source:** Operator-approved **v0.19.1** (2026-08-28, patch profile, docs-only). Theme: documentation parity clarification.
+
+**Status:** Published as **v0.19.1** (tag `v0.19.1`, commit `4d11ada`). Batch `20260828T230310-5b57` (W0) integrated at `239aaba`; #153 closed. Post-integrate log: `/tmp/pi-smart-router-post-integrate-wave-0.log`; final gate log: `/tmp/pi-smart-router-release-check-v0.19.1.log` (EXIT=0). Stray npm `0.19.0` (accidental empty bump) deprecated.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.19.1/manifest.md`
 
