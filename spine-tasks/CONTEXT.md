@@ -2,10 +2,10 @@
 
 **Last Updated:** 2026-08-29
 **Status:** Active
-**Next Task ID:** SP-239
+**Next Task ID:** SP-241
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.19.2 on npm (2026-08-29, patch — SP-238/#160 delegation hotfix). Prior v0.19.1 SP-237/#153 docs-only. Human #95 dogfood. #110/#96 open.
+**Released:** v0.19.2 on npm (2026-08-29, patch — SP-238/#160 delegation hotfix). Prior v0.19.1 SP-237/#153 docs-only. Human #95 dogfood. #110/#96 open. In flight: v0.19.3 (SP-239/#161 + SP-240 dep refresh). Dep majors deferred: #162 (better-sqlite3 v13), #163 (TS7/vitest4/@types/node26).
 
 ---
 
@@ -815,6 +815,19 @@
 **Operational notes (2026-08-29 batch):** worker hung at startup (no session transcript) → SIGTERM + engine `needs_retry`; worker timed out after completing all steps → salvage inspection; contract `npm test` failed on pre-existing timing flakes (reproduced on plain main) → contract scoped to task test file (SP-235 convention); worker backgrounded `release:check` and exited without `.DONE` → Step 3 foreground constraint added. Filed: pi-spine #272 (stall watchdog never fired), #273 (timeout classified completed work failed), #274 (salvage --integrate dead-end), #275 (stale-gate re-open refuses phase=completed), #276 (worker background-verification guardrail); router #161 (timing-test flakes, P2 — candidate for next minor).
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.19.2/manifest.md`
+
+### Phase 53 — Release v0.19.3 Worker Stability + Dependency Freshness (SP-239–SP-240)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-239 | De-flake wall-clock timing assertions (SC-004, local-zero parallel ratio, pi-model-scope) | S | — | Closes #161 |
+| SP-240 | Dependency refresh: pi-ai/pi-coding-agent ^0.84.4, zod/tsx lockfile, engines >=22.19.0 | S | SP-239 | Partial #154 |
+
+**Source:** Operator-approved **v0.19.3** (2026-08-29, patch profile). Theme: worker-facing stability hotfix — de-flake wall-clock test suites and refresh dependency alignment to current pi 0.84.x.
+
+**Status:** Packets authored; batch not yet started.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.19.3/manifest.md`. Dependency majors deferred to #162/#163 (filed 2026-08-29 on operator request).
 
 ---
 
