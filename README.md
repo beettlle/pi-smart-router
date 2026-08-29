@@ -1319,19 +1319,21 @@ Confirm https://pi.dev/packages/pi-smart-router shows the new version (may lag n
 
 ## Develop with pi-spine (agent models)
 
-This repo is developed with [pi-spine](https://github.com/beettlle/pi-spine) batches. Agent model pins live in [`.spine/spine-config.json`](.spine/spine-config.json) under `agents.*`. Use **canonical** `provider/model` ids from `pi --list-models` (not TUI labels like `glm-5.2 [zai]`). Run `spine doctor` before real-pi batches.
+This repo is developed with [pi-spine](https://github.com/beettlle/pi-spine) batches. Agent model pins live in [`.spine/spine-config.json`](.spine/spine-config.json) under `agents.*`. Use **canonical** `provider/model` ids from `pi --list-models` (not TUI labels like `glm-5.3 [zai]`). Run `spine doctor` before real-pi batches.
 
 Named profiles (`agents.profiles` + `agents.activeProfile`) and `agents.escalatePolicy` are configured in spine-config ([pi-spine#216](https://github.com/beettlle/pi-spine/issues/216) / SP-664). Live stack resolves from `activeProfile` over the base `agents` block. Hybrid cost/quality recipes are documented upstream in [pi-spine#210](https://github.com/beettlle/pi-spine/issues/210).
+
+**Sale window (through 2026-09-09 UTC+8):** plan review and supervisor use `zai/glm-5.3-flash` (Z.AI 50% promo). After the promo, revert plan to `google/gemini-flash-latest` and supervisor to `google/gemini-flash-lite-latest` if desired.
 
 ### Default profile (`activeProfile: "default"`)
 
 | Role | Model | Thinking |
 |------|--------|----------|
-| Worker | `zai/glm-5.2` | `high` |
-| Plan review | `google/gemini-flash-latest` | `low` |
-| Code review | `kimi-coding/kimi-k2-thinking` | `high` |
+| Worker | `kimi-coding/k3` | `high` |
+| Plan review | `zai/glm-5.3-flash` | `low` |
+| Code review | `kimi-coding/kimi-for-coding` | `high` |
 | Final review | `google/gemini-3.1-pro-preview` | `high` |
-| Supervisor | `google/gemini-flash-lite-latest` | `off` |
+| Supervisor | `zai/glm-5.3-flash` | `off` |
 
 ### When to escalate (hard packets / sticky failures)
 
@@ -1341,12 +1343,12 @@ Escalate when:
 - The worker stalls or oscillates on multi-file design
 - The packet needs deeper reasoning than the default stack delivered
 
-### Tier 1 — mid escalate
+### Tier 1 — budget escalate
 
-Switches the worker to `kimi-coding/kimi-for-coding` (reviewer pins inherit default).
+Switches the worker to `zai/glm-5.3` (same list price as 5.2; plan/supervisor stay on sale Flash).
 
 ```bash
-spine settings set agents.activeProfile mid
+spine settings set agents.activeProfile budget
 spine batch retry <SP-ID>
 # restore:
 spine settings set agents.activeProfile default
@@ -1357,7 +1359,7 @@ spine settings set agents.activeProfile default
 | Role | Model | Thinking |
 |------|--------|----------|
 | Worker | `kimi-coding/k3` | `high` |
-| Plan | `kimi-coding/kimi-k2-thinking` | `medium` |
+| Plan | `kimi-coding/kimi-for-coding` | `medium` |
 | Code | `google/gemini-3.1-pro-preview` | `high` |
 | Final | `google/gemini-3.1-pro-preview` | `high` |
 

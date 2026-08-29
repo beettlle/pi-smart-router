@@ -22,11 +22,11 @@
       "model": "google/gemini-3.1-pro-preview",
       "thinking": "high",
       "plan": {
-        "model": "google/gemini-flash-latest",
+        "model": "zai/glm-5.3-flash",
         "thinking": "low"
       },
       "code": {
-        "model": "kimi-coding/kimi-k2-thinking",
+        "model": "kimi-coding/kimi-for-coding",
         "thinking": "high"
       },
       "final": {
@@ -36,7 +36,7 @@
     },
     "supervisor": {
       "enabled": false,
-      "model": "google/gemini-flash-lite-latest",
+      "model": "zai/glm-5.3-flash",
       "pollIntervalMs": 30000,
       "autoNudge": false,
       "thinking": "off"
@@ -52,11 +52,11 @@
           "model": "google/gemini-3.1-pro-preview",
           "thinking": "high",
           "plan": {
-            "model": "google/gemini-flash-latest",
+            "model": "zai/glm-5.3-flash",
             "thinking": "low"
           },
           "code": {
-            "model": "kimi-coding/kimi-k2-thinking",
+            "model": "kimi-coding/kimi-for-coding",
             "thinking": "high"
           },
           "final": {
@@ -65,24 +65,24 @@
           }
         },
         "supervisor": {
-          "model": "google/gemini-flash-lite-latest",
+          "model": "zai/glm-5.3-flash",
           "thinking": "off"
         }
       },
       "budget": {
         "worker": {
-          "model": "zai/glm-5.2",
+          "model": "zai/glm-5.3",
           "thinking": "high"
         },
         "reviewer": {
           "model": "google/gemini-3.1-pro-preview",
           "thinking": "high",
           "plan": {
-            "model": "google/gemini-flash-latest",
+            "model": "zai/glm-5.3-flash",
             "thinking": "low"
           },
           "code": {
-            "model": "kimi-coding/kimi-k2-thinking",
+            "model": "kimi-coding/kimi-for-coding",
             "thinking": "high"
           },
           "final": {
@@ -91,18 +91,18 @@
           }
         },
         "supervisor": {
-          "model": "google/gemini-flash-lite-latest",
+          "model": "zai/glm-5.3-flash",
           "thinking": "off"
         }
       },
       "hard": {
         "worker": {
-          "model": "kimi-coding/kimi-k2-thinking",
+          "model": "kimi-coding/k3",
           "thinking": "high"
         },
         "reviewer": {
           "plan": {
-            "model": "kimi-coding/kimi-k2-thinking",
+            "model": "kimi-coding/kimi-for-coding",
             "thinking": "medium"
           },
           "code": {
