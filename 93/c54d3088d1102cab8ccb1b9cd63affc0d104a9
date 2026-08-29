@@ -1,0 +1,18 @@
+.pi/extensions/smart-router/delegate-stream.ts
+  h_ae151c586ac6c5 9,24,27-72,101,168
+.pi/extensions/smart-router/types.ts
+  h_ae151c586ac6c5 60-65
+spine-tasks/SP-238-extension-provider-delegation/STATUS.md
+  h_ae151c586ac6c5 3,13,15-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "93c54d3088d1102cab8ccb1b9cd63affc0d104a9",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
