@@ -1,0 +1,20 @@
+spine-tasks/CONTEXT.md
+  s_a7ab168c79a118::t_c35384554b9df2 8,813-815
+  s_a7ab168c79a118::t_85a6b03662b65a 816
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "524a1c48210fc5c43636bcc8979acd11829d4e9a",
+  "prompts": {},
+  "sessions": {
+    "s_a7ab168c79a118": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a044dc-cc82-7c17-870c-45cc8fe5617d",
+        "model": "glm-5.3"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
