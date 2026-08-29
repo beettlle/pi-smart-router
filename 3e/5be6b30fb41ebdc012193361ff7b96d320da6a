@@ -1,0 +1,18 @@
+package-lock.json
+  h_ae151c586ac6c5 12,22,36,587-589,594,599,601,611-613,618-622,627,635-636,640,1112-1113,1117-1119,1121,1129-1130,1136,1141,1143,1146-1170,1176-1184,1186-1187,1697-1699,1706,1953-1962,2182-2184,2277-2279,2402-2404,2409-2411,2505-2508,2510-2511,6839-6841,7910-7912,7967-7969,8388-8390
+package.json
+  h_ae151c586ac6c5 25,110,124
+spine-tasks/SP-240-dependency-refresh-pi-84/STATUS.md
+  h_ae151c586ac6c5 5,13,15-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3e5be6b30fb41ebdc012193361ff7b96d320da6a",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
