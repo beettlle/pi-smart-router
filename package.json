@@ -22,7 +22,7 @@
     "url": "https://github.com/beettlle/pi-smart-router/issues"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.19.0"
   },
   "bin": {
     "pi-smart-router": "./bin/pi-smart-router.mjs"
@@ -107,7 +107,7 @@
     }
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "^0.80.10",
+    "@earendil-works/pi-coding-agent": "^0.84.4",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.15.21",
     "@typescript-eslint/eslint-plugin": "^8.62.1",
@@ -121,7 +121,7 @@
     "vitest": "^3.2.3"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "^0.80.10",
+    "@earendil-works/pi-ai": "^0.84.4",
     "@huggingface/transformers": "^4.2.0",
     "better-sqlite3": "^12.11.1",
     "yaml": "^2.9.0",

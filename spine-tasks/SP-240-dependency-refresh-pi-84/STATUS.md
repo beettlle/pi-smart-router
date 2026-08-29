@@ -2,7 +2,7 @@
 
 **Current Step:** 1
 **Status:** In Progress
-**Last Updated:** 2026-08-29
+**Last Updated:** 2026-08-29 (Step 1 in progress)
 **Review Level:** 1
 **Size:** S
 
@@ -10,12 +10,12 @@
 
 ## Step 1: Apply version bumps
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] package.json: pi-ai + pi-coding-agent → ^0.84.4; engines.node → >=22.19.0
-- [ ] npm install; npm update zod tsx
-- [ ] npm ls verification (0.84.4 / 0.84.4 / 4.5.4 / 4.23.12)
-- [ ] Lockfile diff review — no unintended transitive majors
+- [x] package.json: pi-ai + pi-coding-agent → ^0.84.4; engines.node → >=22.19.0
+- [x] npm install; npm update zod tsx
+- [x] npm ls verification (0.84.4 / 0.84.4 / 4.5.4 / 4.23.12)
+- [x] Lockfile diff review — no unintended transitive majors
 
 ## Step 2: Fix fallout (expected: none)
 
