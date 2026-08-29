@@ -1,0 +1,19 @@
+package-lock.json
+  s_a7ab168c79a118::t_86eb9e246b657e 1144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "027104f8594b7cddeece783322cbd56840d55060",
+  "prompts": {},
+  "sessions": {
+    "s_a7ab168c79a118": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a044dc-cc82-7c17-870c-45cc8fe5617d",
+        "model": "glm-5.3"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
