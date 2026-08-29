@@ -1,8 +1,8 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-08-28
+**Last Updated:** 2026-08-29
 **Status:** Active
-**Next Task ID:** SP-238
+**Next Task ID:** SP-239
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** v0.19.1 on npm (2026-08-28, patch — SP-237/#153 docs-only). Prior v0.18.0 SP-231–SP-236 (npm `latest` was 0.18.0; stray empty 0.19.0 deprecated). Human #95 dogfood. #110/#96 open.
@@ -801,6 +801,16 @@
 **Status:** Published as **v0.19.1** (tag `v0.19.1`, commit `4d11ada`). Batch `20260828T230310-5b57` (W0) integrated at `239aaba`; #153 closed. Post-integrate log: `/tmp/pi-smart-router-post-integrate-wave-0.log`; final gate log: `/tmp/pi-smart-router-release-check-v0.19.1.log` (EXIT=0). Stray npm `0.19.0` (accidental empty bump) deprecated.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.19.1/manifest.md`
+
+### Phase 52 — Release v0.19.2 Delegation Stability Hotfix (SP-238)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-238 | Delegate via composed provider for extension-registered custom-API models | S | — | Closes #160 |
+
+**Source:** Operator-approved **v0.19.2** (2026-08-29, patch profile). Theme: delegation stability hotfix — restore delegation to extension-registered custom-API providers (claude-bridge et al.) that always fail with `No API provider registered` (#160).
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.19.2/manifest.md`
 
 ---
 
