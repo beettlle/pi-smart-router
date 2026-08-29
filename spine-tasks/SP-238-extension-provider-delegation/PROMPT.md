@@ -48,7 +48,7 @@ Fix: default the delegation stream to the **composed provider** object from `dep
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run typecheck && npm test` |
+| testCommand | `npm run typecheck && npx vitest run tests/unit/delegate-stream-composed-provider.test.ts` |
 | fileScopeMustChange | `.pi/extensions/smart-router/delegate-stream.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | Delegation to a model whose `api` matches an extension-registered provider reaches the extension's `streamSimple` (no `No API provider registered` throw); built-in API providers keep working through the composed-provider fallback; `deps.delegateStream` override still takes precedence |
@@ -70,8 +70,10 @@ Fix: default the delegation stream to the **composed provider** object from `dep
 
 ### Step 3: Testing and verification
 
-- [ ] Run Contract `testCommand` (`npm run typecheck && npm test`)
+- [ ] Run Contract `testCommand` (`npm run typecheck && npx vitest run tests/unit/delegate-stream-composed-provider.test.ts`)
 - [ ] Run `npm run release:check` locally — must exit 0
+
+> Contract note (2026-08-29): full-suite `npm test` includes wall-clock timing assertions (triage latency budget, local-zero parallel speedup, pi-model-scope module-resolution timeout) that flake under local load on plain `main`; contract scoped to this task's files per SP-235 convention. Full suite remains covered by CI.
 
 ## Completion Criteria
 
