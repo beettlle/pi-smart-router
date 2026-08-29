@@ -1,0 +1,41 @@
+spine-tasks/_authoring/release-v0.19.3/manifest.md
+  s_a7ab168c79a118::t_abfde640d0f8cd 80-81,88-95,104-105
+  s_a7ab168c79a118::t_33c6caaa479571 1-8,10-79,82-87,96-103,106-135
+  s_a7ab168c79a118::t_e65e705b18c3fa 9
+spine-tasks/SP-239-deflake-wall-clock-tests/PROMPT.md
+  s_a7ab168c79a118::t_3c1966a4d9c023 82-88
+  s_a7ab168c79a118::t_bfb117589468e0 1-81
+  s_a7ab168c79a118::t_eff99fa446bced 89-98
+spine-tasks/_authoring/issues/issue-NEW-toolchain-majors.md
+  s_a7ab168c79a118::t_a2630ab5a69406 1-40
+spine-tasks/SP-239-deflake-wall-clock-tests/STATUS.md
+  s_a7ab168c79a118::t_f6e1853149331c 1-41
+spine-tasks/CONTEXT.md
+  s_a7ab168c79a118::t_b02f1d40f61563 5,8,819-830
+  s_a7ab168c79a118::t_cb5bfa78b85542 831
+spine-tasks/SP-240-dependency-refresh-pi-84/PROMPT.md
+  s_a7ab168c79a118::t_955159752ac9e0 1-81,93-98
+  s_a7ab168c79a118::t_efe398f3a98b71 82-92
+spine-tasks/_authoring/issues/issue-NEW-better-sqlite3-v13.md
+  s_a7ab168c79a118::t_cc8c23b13d7d7a 1-33
+spine-tasks/SP-240-dependency-refresh-pi-84/STATUS.md
+  s_a7ab168c79a118::t_453d704ee8a22e 1-38
+spine-tasks/dependencies.json
+  s_a7ab168c79a118::t_098d4a238b5ea3 655-659
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ca9475312379f420a146837e198299131f3b593c",
+  "prompts": {},
+  "sessions": {
+    "s_a7ab168c79a118": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a044dc-cc82-7c17-870c-45cc8fe5617d",
+        "model": "glm-5.3"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
