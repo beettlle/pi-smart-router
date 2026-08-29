@@ -1,0 +1,359 @@
+Contract testCommand failure log
+Command: npm run typecheck && npm test
+Exit code: 1
+Attempt: 1 of 2
+Timestamp: 2026-08-29T12:34:18.455Z
+Buffer overflow: no
+---
+
+> pi-smart-router@0.19.1 typecheck
+> tsc --noEmit
+
+
+> pi-smart-router@0.19.1 test
+> vitest run
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1
+
+ ✓ tests/unit/local-zero-tier.test.ts (32 tests) 1062ms
+   ✓ pingLocalServices (T045, FR-012, FR-013) > timeout behavior > aborts and returns unavailable when ping exceeds timeout  513ms
+ ✓ tests/unit/sqlite-store.test.ts (39 tests) 9828ms
+   ✓ SqliteStore > telemetry > evicts oldest rows beyond max entry count  533ms
+   ✓ SqliteStore > dataset > evicts oldest rows beyond max entry count  7827ms
+ ✓ tests/unit/speculative-prewarm.test.ts (19 tests) 622ms
+ ❯ tests/unit/pi-model-scope.test.ts (6 tests | 1 failed) 24021ms
+   ✓ pi-model-scope > findPiCodingAgentDir resolves from dev-repo ancestor walk  879ms
+   ✓ pi-model-scope > findPiCodingAgentDir resolves from ~/.pi/agent/npm in a consumer layout  1227ms
+   × pi-model-scope > loads resolveModelScope without repo dev node_modules on cwd 19842ms
+     → Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ pi-model-scope > findPiCodingAgentDir resolves without agent npm when pi is globally installed  1118ms
+   ✓ pi-model-scope > throws a clear install hint when pi-coding-agent cannot be located  927ms
+   ✓ pi-model-scope resolution strategy > documents public-import-first and fallback resolution paths 3ms
+stdout | tests/unit/write-queue-lag.test.ts > write-queue event-loop lag evidence (SP-236 / #142) > queued hot-path writes reduce event-loop blocking vs direct sync writes
+[SP-236 benchmark] 5000 hot-path telemetry writes, 50 bursts of 100
+  before (direct sync INSERT per write): wall=3092.1ms p95 route=91.83ms lag p95=95.62ms
+  after  (queue enqueue per write):      wall=478.9ms p95 route=14.71ms lag p95=32.88ms
+  reduction: wall=6.5x p95 route=6.2x
+
+ ✓ tests/unit/write-queue-lag.test.ts (1 test) 6416ms
+   ✓ write-queue event-loop lag evidence (SP-236 / #142) > queued hot-path writes reduce event-loop blocking vs direct sync writes  6409ms
+ ✓ tests/contract/routing-schemas.test.ts (38 tests) 5758ms
+   ✓ @release > schema cross-validation > Zod RoutingDecisionSchema and JSON schema agree on a valid full payload  378ms
+   ✓ @release > schema cross-validation > both schemas reject a completely empty object  664ms
+   ✓ @release > live RouterPipeline.route() round-trip (SP-229, #136) > live route() decision validates against JSON Schema and strict Zod  532ms
+ ✓ tests/unit/extension-setup-bootstrap.test.ts (1 test) 17637ms
+   ✓ createSmartRouterRuntime bootstrap (Pi 0.80.8+) > builds a runtime via ModelRuntime.create and ModelRegistry (no AuthStorage)  17614ms
+ ✓ tests/unit/resilience.test.ts (26 tests) 536ms
+ ✓ tests/unit/circuit-breaker.test.ts (22 tests) 501ms
+ ✓ tests/integration/session-pinning.test.ts (31 tests) 7173ms
+   ✓ @release > Session pinning integration > SP-051: extension-path lifecycle hook wiring > compaction hook breaks pin on next extension routing request  1567ms
+   ✓ @release > Session pinning integration > SP-051: extension-path lifecycle hook wiring > model_select hook applies force_model_id on next extension routing request  1795ms
+   ✓ @release > Session pinning integration > SP-051: extension-path lifecycle hook wiring > status reflects reroute after compaction break via lifecycle hooks  1693ms
+   ✓ @release > Session pinning integration > SP-054: pin persistence across simulated session reload > extension-path pin survives store-backed SessionPinner reload  1416ms
+ ✓ tests/integration/planning-delegate.test.ts (9 tests) 468ms
+ ✓ tests/integration/pi-extension.test.ts (26 tests) 2631ms
+   ✓ @release > Pi extension integration (SP-043) > outcome labels (SP-062) > records model_override outcome after user model override  1520ms
+ ✓ tests/unit/router-pipeline.test.ts (81 tests) 1745ms
+ ✓ tests/unit/smart-router-cli.test.ts (16 tests) 2145ms
+ ✓ tests/unit/isotonic-calibrator.test.ts (18 tests) 2183ms
+   ✓ isotonic calibrator runtime lookup (SP-133) > keeps monotonic lookup under the online latency budget  1341ms
+ ✓ tests/unit/session-pinner.test.ts (74 tests) 914ms
+ ✓ tests/unit/community-bench-track-bc.test.ts (13 tests) 1432ms
+   ✓ community-bench Track C offline (SP-195) > runCommunityBench embeds Track B ran + Track C ran when both requested  924ms
+ ✓ tests/unit/verify-routing-calibration.test.ts (8 tests) 1217ms
+   ✓ verify routing calibration OATS (SP-147) > integration: train bundle with OATS, verify, and load centroids for cluster matcher  711ms
+ ✓ tests/unit/community-bench.test.ts (11 tests) 836ms
+ ✓ tests/unit/smart-router-extension.test.ts (92 tests) 1676ms
+ ✓ tests/unit/pi-model-mapper.test.ts (38 tests) 982ms
+   ✓ mapPiModelToProfile > benchmark-grounded capabilities (SP-136 / SP-174) > loads custom benchmark artifact from an override path  342ms
+ ✓ tests/unit/analyze-twinrouterbench-overrouting.test.ts (4 tests) 622ms
+ ✓ tests/unit/sqlite-store-fallback.test.ts (12 tests) 930ms
+ ✓ tests/unit/ingest-twinrouterbench-weak-labels.test.ts (6 tests) 895ms
+   ✓ ingest-twinrouterbench-weak-labels (SP-190) > ingests preferred ci-subset.json into schema-valid weak pack with ECE exclusion signals  612ms
+ ✓ tests/unit/k4-head-mode-ab.test.ts (6 tests) 470ms
+ ✓ tests/unit/triage-engine.test.ts (76 tests) 653ms
+ ✓ tests/unit/cluster-matcher.test.ts (18 tests) 670ms
+ ✓ tests/unit/smart-router-pricing.test.ts (40 tests) 1081ms
+ ✓ tests/integration/routing-latency.test.ts (7 tests) 768ms
+ ✓ tests/unit/models-loader.test.ts (8 tests) 546ms
+ ✓ tests/integration/full-pipeline.test.ts (22 tests) 783ms
+ ✓ tests/unit/routing-clusters-loader.test.ts (11 tests) 890ms
+ ✓ tests/unit/hydra-matcher.test.ts (51 tests) 964ms
+ ✓ tests/unit/create-router.test.ts (7 tests) 603ms
+ ✓ tests/unit/degraded-route-sandwich.test.ts (32 tests) 453ms
+ ✓ tests/unit/memory-store.test.ts (5 tests) 782ms
+   ✓ MemoryStore dataset > evicts oldest rows beyond max entry count  502ms
+ ✓ tests/unit/routing-telemetry.test.ts (37 tests) 1034ms
+   ✓ RoutingTelemetryEmitter > emits context-fit metadata when gate rejects models  400ms
+ ✓ tests/contract/explain-endpoint.test.ts (20 tests) 552ms
+ ✓ tests/unit/provider-error.test.ts (11 tests) 375ms
+ ✓ tests/unit/modernbert-heads.test.ts (25 tests) 443ms
+ ✓ tests/unit/leaderboard-adapters/terminal-bench.test.ts (9 tests) 488ms
+   ✓ terminal-bench adapter (SP-185) > normalizes entries: remap aliases, keep best score, preserve unmapped  304ms
+ ✓ tests/unit/leaderboard-adapters/swebench-verified.test.ts (11 tests) 428ms
+ ✓ tests/unit/router-explain.test.ts (27 tests) 614ms
+ ✓ tests/eval/assert-release-gates.test.ts (14 tests) 378ms
+ ✓ tests/unit/workload-heat.test.ts (32 tests) 534ms
+ ✓ tests/unit/ingest-benchmark-profiles.test.ts (25 tests) 1420ms
+   ✓ ingest-benchmark-profiles (SP-134) > aggregates fixtures into normalized capability profiles with provenance  300ms
+   ✓ ingest-benchmark-profiles live/recorded (SP-179 / SP-181) > HTML live falls back to recorded/fixtures without corrupting output when all live fails  316ms
+ ✓ tests/unit/leaderboard-adapters/livecodebench.test.ts (6 tests) 404ms
+stdout | tests/unit/ingest-twinrouterbench-corpus.test.ts > ingest-twinrouterbench-corpus (SP-186) > CLI writes adapter-valid JSON and parses --limit
+ingest-twinrouterbench-corpus: wrote 1 record(s) → /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/trb-ingest-teqeZe/out.json
+
+ ✓ tests/unit/ingest-twinrouterbench-corpus.test.ts (16 tests) 598ms
+ ✓ tests/integration/cost-baseline.test.ts (10 tests) 983ms
+   ✓ @release > Cost baseline (T062, SC-009) > SC-009: routed cost < always-frontier baseline > mixed workload routed cost is measurably less than frontier-only  434ms
+ ✓ tests/integration/explain-parity.test.ts (8 tests) 314ms
+ ✓ tests/unit/calibration-dry-run-include-excluded.test.ts (3 tests) 182ms
+ ✓ tests/unit/turn-envelope.test.ts (52 tests) 751ms
+ ✓ tests/unit/dataset-limits.test.ts (3 tests) 333ms
+ ✓ tests/unit/gateway-dispatch.test.ts (31 tests) 456ms
+ ✓ tests/unit/p-success-classifier.test.ts (24 tests) 411ms
+ ✓ tests/unit/local-zero-prefer-trivial.test.ts (15 tests) 335ms
+ ✓ tests/integration/pipeline-mvp.test.ts (12 tests) 493ms
+ ✓ tests/unit/litellm-fetch.test.ts (16 tests) 362ms
+stdout | tests/unit/ingest-llmrouterbench-subset.test.ts > ingest-llmrouterbench-subset (SP-192) > CLI writes adapter-valid JSON and parses flags
+ingest-llmrouterbench-subset: wrote 1 record(s) → /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/lrb-ingest-OU6sT7/out.json
+
+ ✓ tests/unit/ingest-llmrouterbench-subset.test.ts (14 tests) 293ms
+ ✓ tests/unit/benchmark-leaderboard-fetch.test.ts (5 tests) 206ms
+ ✓ tests/unit/safe-default.test.ts (20 tests) 413ms
+ ✓ tests/unit/force-model-id-remap.test.ts (14 tests) 463ms
+ ✓ tests/unit/write-queue.test.ts (15 tests) 224ms
+ ✓ tests/unit/fleet-factory.test.ts (5 tests) 275ms
+ ✓ tests/eval/harness-tracks.test.ts (9 tests) 249ms
+ ✓ tests/unit/dataset-recorder.test.ts (15 tests) 174ms
+ ✓ tests/unit/loop-escalation.test.ts (44 tests) 207ms
+ ✓ tests/eval/counterfactual-replay.test.ts (10 tests) 257ms
+ ✓ tests/unit/embedding-provider.test.ts (9 tests) 287ms
+ ✓ tests/unit/eval-harness.test.ts (4 tests) 468ms
+   ✓ K=4 offline eval smoke (SP-160) > derives valid K=4 head shapes from fixture prefix hashes  310ms
+ ✓ tests/unit/schemas.test.ts (18 tests) 363ms
+ ✓ tests/unit/ingest-fc-rewardbench-labels.test.ts (6 tests) 153ms
+ ✓ tests/unit/benchmark-encoder-latency.test.ts (6 tests) 216ms
+ ✓ tests/unit/calibration-aggregate.test.ts (7 tests) 141ms
+ ✓ tests/unit/llmrouterbench-regret-report.test.ts (3 tests) 275ms
+ ✓ tests/unit/pi-model-mapper-coverage.test.ts (6 tests) 205ms
+ ✓ tests/eval/twinrouterbench-adapter.test.ts (5 tests) 153ms
+ ✓ tests/unit/train-p-success-weights.test.ts (1 test) 187ms
+ ✓ tests/unit/train-routing-calibration.test.ts (19 tests) 20535ms
+   ✓ train routing calibration (SP-117) > excludes legacy-prefix embedding rows from projection training  19559ms
+ ✓ tests/unit/placement-plan.test.ts (25 tests) 188ms
+ ✓ tests/unit/tool-history-guard.test.ts (39 tests) 352ms
+ ✓ tests/unit/label-pack-schema.test.ts (4 tests) 91ms
+ ✓ tests/unit/ingest-swe-gym-labels.test.ts (5 tests) 120ms
+ ✓ tests/unit/multi-objective.test.ts (19 tests) 98ms
+ ✓ tests/unit/leaderboard-adapters/bfcl.test.ts (6 tests) 192ms
+ ✓ tests/unit/delegate-stream-composed-provider.test.ts (5 tests) 112ms
+ ✓ tests/unit/tier-features.test.ts (10 tests) 120ms
+ ✓ tests/unit/delegation-context.test.ts (14 tests) 154ms
+ ✓ tests/unit/operator-config.test.ts (2 tests) 356ms
+ ✓ tests/unit/throughput-meter.test.ts (20 tests) 381ms
+ ✓ tests/unit/pre-delegation-abort.test.ts (2 tests) 187ms
+ ✓ tests/unit/economical-pin-break-agentic.test.ts (14 tests) 83ms
+ ✓ tests/unit/price-broker.test.ts (23 tests) 184ms
+ ✓ tests/unit/refactor-guardrails.test.ts (6 tests) 232ms
+ ✓ tests/unit/session-stats.test.ts (5 tests) 116ms
+ ✓ tests/unit/context-fit.test.ts (9 tests) 180ms
+ ✓ tests/unit/expected-cost.test.ts (13 tests) 243ms
+ ✓ tests/unit/quota-window-feed.test.ts (25 tests) 153ms
+ ✓ tests/unit/saar-session-state.test.ts (8 tests) 189ms
+ ✓ tests/unit/outcome-recorder.test.ts (5 tests) 71ms
+ ✓ tests/unit/ast-tool-validation.test.ts (11 tests) 329ms
+ ✓ tests/unit/telemetry-export.test.ts (7 tests) 101ms
+ ✓ tests/unit/pi-router-middleware.test.ts (7 tests) 111ms
+ ✓ tests/unit/hydra-input.test.ts (16 tests) 95ms
+ ✓ tests/unit/virtual-cost-v2.test.ts (11 tests) 111ms
+ ✓ tests/unit/cache-breakeven.test.ts (13 tests) 116ms
+ ✓ tests/unit/hardware-probe.test.ts (27 tests) 168ms
+ ✓ tests/unit/defaults.test.ts (8 tests) 192ms
+ ✓ tests/unit/gemini-provider.test.ts (6 tests) 78ms
+ ✓ tests/unit/memory-store-telemetry.test.ts (2 tests) 62ms
+ ✓ tests/unit/pricing-monitor.test.ts (10 tests) 158ms
+ ✓ tests/unit/delegation-headroom.test.ts (5 tests) 97ms
+ ✓ tests/unit/execution-ledger.test.ts (3 tests) 64ms
+ ✓ tests/unit/release-refresh-benchmark-profiles.test.ts (4 tests) 37ms
+ ✓ tests/unit/package.test.ts (1 test) 17ms
+ ✓ tests/unit/auto-model-limits.test.ts (5 tests) 54ms
+
+ Test Files  1 failed | 115 passed (116)
+      Tests  1 failed | 1942 passed (1943)
+   Start at  05:29:06
+   Duration  309.44s (transform 52.50s, setup 0ms, collect 538.66s, tests 144.12s, environment 289ms, prepare 138.92s)
+
+
+stderr | tests/unit/resilience.test.ts > Rate limit race conditions > concurrent request races > only first request passes when bucket has single token
+P(success) inference exceeded latency budget { elapsed_ms: [33m9.607582999999067[39m, budget_ms: [33m5[39m }
+
+stderr | tests/integration/planning-delegate.test.ts > @release > Planning delegate integration (SP-145, #71) > bounded delegate timeouts (SP-213, #120) > slow worker is cancelled on per-call timeout and falls back without hanging
+[smart-router] planning delegate sub-call timed out, falling back to direct frontier route planning_delegate_timeout
+
+stderr | tests/integration/planning-delegate.test.ts > @release > Planning delegate integration (SP-145, #71) > bounded delegate timeouts (SP-213, #120) > global timeout caps the stage when tighter than the per-call timeout
+[smart-router] planning delegate sub-call timed out, falling back to direct frontier route planning_delegate_timeout
+
+stderr | tests/integration/planning-delegate.test.ts > @release > Planning delegate integration (SP-145, #71) > bounded delegate timeouts (SP-213, #120) > fast worker within budget keeps delegate path and records worker success
+[smart-router] planning delegate sub-call completed {"primary_model_id":"claude-haiku","delegate_model_id":"claude-opus","observation_chars":29}
+
+stderr | tests/unit/router-pipeline.test.ts > RouterPipeline > stage chain with placeholders > preserves request_id in the fallback decision
+P(success) inference exceeded latency budget { elapsed_ms: [33m8.737375000000611[39m, budget_ms: [33m5[39m }
+
+stderr | tests/unit/router-pipeline.test.ts > RouterPipeline > pipeline error telemetry (SP-053) > never propagates stage exceptions to the caller
+Router pipeline stage failed; degrading to safe default {
+  stage: [32m'hardware_probe'[39m,
+  request_id: [32m'00000000-0000-0000-0000-000000000001'[39m,
+  session_id: [32m'sess-1'[39m,
+  error: [32m'hardware probe unavailable'[39m
+}
+
+stderr | tests/unit/router-pipeline.test.ts > RouterPipeline > pipeline error telemetry (SP-053) > reports triage_cloud_fallback (not triage) when cloud fallback stage throws (SP-071)
+Router pipeline stage failed; degrading to safe default {
+  stage: [32m'triage_cloud_fallback'[39m,
+  request_id: [32m'00000000-0000-0000-0000-000000000001'[39m,
+  session_id: [32m'sess-1'[39m,
+  error: [32m'cloud fallback failed'[39m
+}
+
+stderr | tests/unit/isotonic-calibrator.test.ts > isotonic calibrator runtime lookup (SP-133) > reports within_budget from elapsed timing (mocked clock)
+Isotonic P(success) lookup exceeded latency budget { elapsed_ms: [33m6[39m, budget_ms: [33m5[39m, knot_count: [33m2[39m }
+
+Sourcemap for "/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/scripts/calibration-aggregate.js" points to missing source files
+stderr | tests/unit/smart-router-extension.test.ts > gemini tool history guard (SP-077, narrowed SP-129) > reroutes to a non-Google model when foreign-signed history excludes Gemini (SP-232)
+[smart-router] gemini tool history guard applied {"reason_code":"gemini_tool_history_excluded","session_id":"sp232-guard-reroute","excluded_providers":["google","gemini"]}
+
+stderr | tests/unit/smart-router-extension.test.ts > gemini empty-fleet fail-safe (SP-084) > routes unrepairable risk to cursor/auto without unknown delegation
+[smart-router] gemini tool history guard applied {"reason_code":"gemini_tool_history_excluded","session_id":"cursor-auto-sess","excluded_providers":["google","gemini"]}
+
+stderr | tests/unit/smart-router-extension.test.ts > delegation output headroom guard (SP-108) > escalates to larger-fit model without calling undersized provider
+[smart-router] output headroom exceeded, escalating to larger model gemini-pro
+
+stderr | tests/unit/smart-router-extension.test.ts > delegation output headroom guard (SP-108) > retries larger model after zero-output length stop from provider
+[smart-router] zero-output length stop, escalating to larger model gemini-pro
+
+stderr | tests/unit/sqlite-store-fallback.test.ts > createResilientStore > recreates the database when the file is corrupt
+SQLite store open failed; attempting corrupt-DB recovery SqliteError: file is not a database
+    at Database.pragma [90m(/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39mnode_modules/[4mbetter-sqlite3[24m/lib/methods/pragma.js:10:27[90m)[39m
+    at SqliteStore.initialize [90m(/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39msrc/infrastructure/persistence/sqlite-store.ts:765:13[90m)[39m
+    at new SqliteStore [90m(/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39msrc/infrastructure/persistence/sqlite-store.ts:272:10[90m)[39m
+    at createResilientStore [90m(/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39msrc/infrastructure/persistence/sqlite-store.ts:227:21[90m)[39m
+    at [90m/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39mtests/unit/sqlite-store-fallback.test.ts:44:33
+    at [90mfile:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+    at [90mfile:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:26
+    at [90mfile:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1863:10[90m)[39m {
+  code: [32m'SQLITE_NOTADB'[39m
+}
+
+stderr | tests/unit/sqlite-store-fallback.test.ts > createResilientStore > falls back to MemoryStore when recreation also fails
+SQLite store open failed; attempting corrupt-DB recovery SqliteError: unable to open database file
+    at new Database [90m(/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39mnode_modules/[4mbetter-sqlite3[24m/lib/database.js:69:26[90m)[39m
+    at new SqliteStore [90m(/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39msrc/infrastructure/persistence/sqlite-store.ts:270:15[90m)[39m
+    at createResilientStore [90m(/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39msrc/infrastructure/persistence/sqlite-store.ts:227:21[90m)[39m
+    at [90m/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39mtests/unit/sqlite-store-fallback.test.ts:60:33
+    at [90mfile:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+    at [90mfile:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:26
+    at [90mfile:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1863:10[90m)[39m
+    at runTest [90m(file:///Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1574:12[90m)[39m {
+  code: [32m'SQLITE_CANTOPEN'[39m
+}
+
+stderr | tests/integration/full-pipeline.test.ts > @release > Full pipeline E2E (T060) > session pinning: multi-turn stability through pipeline > first request creates pin; subsequent requests reuse it
+Isotonic P(success) lookup exceeded latency budget { elapsed_ms: [33m17.150416999999834[39m, budget_ms: [33m5[39m, knot_count: [33m0[39m }
+
+stderr | tests/unit/hydra-matcher.test.ts > HyDRA projection weights loader > falls back to placeholder when artifact is invalid
+HyDRA projection weights artifact invalid; using placeholder projection {
+  error: [32m'Invalid HyDRA projection weights artifact:\n'[39m +
+    [32m'version: Invalid input: expected 1\n'[39m +
+    [32m'embedding_dim: Invalid input: expected 384\n'[39m +
+    [32m'weights: Invalid input: expected array, received undefined\n'[39m +
+    [32m'bias: Invalid input: expected array, received undefined'[39m
+}
+
+stderr | tests/contract/explain-endpoint.test.ts > explain-endpoint contract > 200 — valid request returns RoutingDecision > returns status 200 for a minimal valid request
+Isotonic P(success) lookup exceeded latency budget { elapsed_ms: [33m11.438874999999825[39m, budget_ms: [33m5[39m, knot_count: [33m0[39m }
+
+stderr | tests/unit/modernbert-heads.test.ts > ModernBertK4HeadWeights loading > resolveModernBertK4HeadWeights returns null on invalid file
+ModernBERT K=4 head weights artifact invalid; using placeholder heads {
+  error: [32m'Invalid ModernBERT K=4 head weights artifact:\n'[39m +
+    [32m'cls_dim: Invalid input: expected 768\n'[39m +
+    [32m'weights: Invalid input: expected array, received undefined\n'[39m +
+    [32m'bias: Invalid input: expected array, received undefined'[39m
+}
+
+stderr | tests/unit/workload-heat.test.ts > workload heat record schema (SP-215) > rejects invalid keys/tiers/model ids loudly without storing
+Workload heat rejected invalid key (privacy-safe keys only)
+Workload heat rejected invalid model id
+
+stderr | tests/unit/workload-heat.test.ts > heat export / import / clear (SP-215) > import clamps successes to attempts and skips invalid cells
+Workload heat import skipped invalid cell key { keySpace: [32m'cluster'[39m }
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > checked-in artifact matches fixture ingest
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > skips models missing a capability dimension; rejects duplicate benchmark rows
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip incomplete-model (missing code_gen)
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > skips malformed tool_call_snippet rows on tool-use benchmarks with reason codes
+ingest-benchmark-profiles: skipped 1 tool-use row(s) after AST validation
+  skip terminal_bench/model-a: invalid_arguments_json (Tool-call arguments string is not valid JSON)
+  note: AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles live/recorded (SP-179 / SP-181) > replays checked-in recorded live snapshots offline with provenance
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles live/recorded (SP-179 / SP-181) > HTML live falls back to recorded/fixtures without corrupting output when all live fails
+ingest-benchmark-profiles: swebench_verified source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/tests/fixtures/benchmark-leaderboards/recorded/swebench_verified.json)
+ingest-benchmark-profiles: terminal_bench source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/tests/fixtures/benchmark-leaderboards/recorded/terminal_bench.json)
+ingest-benchmark-profiles: livecodebench source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/tests/fixtures/benchmark-leaderboards/recorded/livecodebench.json)
+ingest-benchmark-profiles: bfcl source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260829T074158-00ea/lane-1/tests/fixtures/benchmark-leaderboards/recorded/bfcl.json)
+ingest-benchmark-profiles: recorded 4 snapshot(s) under /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-html-fallback-IOUvyX/recorded
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+ingest-benchmark-profiles: wrote v1 (4 model(s), 41 alias(es)) to /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-html-fallback-IOUvyX/benchmark-profiles.json [mode=live+record]
+  catalog_freeze_date=2026-07-10, scrape_date=2026-07-10
+  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows
+  fleet aliases: preserved from existing artifact when present; else DEFAULT_FLEET_BENCHMARK_ALIASES (SP-174)
+  AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles live/recorded (SP-179 / SP-181) > live with --live-url records snapshots; empty fallback dirs fail without corrupting output
+ingest-benchmark-profiles: swebench_verified source=live (https://mirror.example/leaderboards/swebench_verified.json)
+ingest-benchmark-profiles: terminal_bench source=live (https://mirror.example/leaderboards/terminal_bench.json)
+ingest-benchmark-profiles: livecodebench source=live (https://mirror.example/leaderboards/livecodebench.json)
+ingest-benchmark-profiles: bfcl source=live (https://mirror.example/leaderboards/bfcl.json)
+ingest-benchmark-profiles: recorded 4 snapshot(s) under /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-live-vSK2Zh/recorded
+ingest-benchmark-profiles: wrote v1 (2 model(s), 41 alias(es)) to /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-live-vSK2Zh/benchmark-profiles.json [mode=live+record]
+  catalog_freeze_date=2026-07-10, scrape_date=2026-07-10
+  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows
+  fleet aliases: preserved from existing artifact when present; else DEFAULT_FLEET_BENCHMARK_ALIASES (SP-174)
+  AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+stderr | tests/unit/p-success-classifier.test.ts > predictPSuccessCheapTimed (SP-105) > flags predictions that exceed the latency budget
+P(success) inference exceeded latency budget { elapsed_ms: [33m6[39m, budget_ms: [33m5[39m }
+
+stderr | tests/unit/train-routing-calibration.test.ts > train routing calibration (SP-117) > falls back to defaults for invalid bundle version on disk
+Routing calibration bundle invalid; using baked-in defaults { error: [32m'Unsupported routing calibration bundle version: 99'[39m }
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/pi-model-scope.test.ts > pi-model-scope > loads resolveModelScope without repo dev node_modules on cwd
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ tests/unit/pi-model-scope.test.ts:102:3
+    100|   });
+    101| 
+    102|   it('loads resolveModelScope without repo dev node_modules on cwd', a…
+       |   ^
+    103|     consumerFixture = createConsumerFixture();
+    104|     vi.stubEnv('HOME', consumerFixture.homeDir);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
