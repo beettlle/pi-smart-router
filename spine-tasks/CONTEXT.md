@@ -5,7 +5,7 @@
 **Next Task ID:** SP-239
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.19.1 on npm (2026-08-28, patch — SP-237/#153 docs-only). Prior v0.18.0 SP-231–SP-236 (npm `latest` was 0.18.0; stray empty 0.19.0 deprecated). Human #95 dogfood. #110/#96 open.
+**Released:** v0.19.2 on npm (2026-08-29, patch — SP-238/#160 delegation hotfix). Prior v0.19.1 SP-237/#153 docs-only. Human #95 dogfood. #110/#96 open.
 
 ---
 
@@ -809,6 +809,10 @@
 | SP-238 | Delegate via composed provider for extension-registered custom-API models | S | — | Closes #160 |
 
 **Source:** Operator-approved **v0.19.2** (2026-08-29, patch profile). Theme: delegation stability hotfix — restore delegation to extension-registered custom-API providers (claude-bridge et al.) that always fail with `No API provider registered` (#160).
+
+**Status:** Published as **v0.19.2** (tag `v0.19.2`, commit `196b367`). Batch `20260829T074158-00ea` (W0) integrated at `fa065f1` via runbook §4.1 orch-first + manual merge (stale gate pin after PROMPT-fix commits on main; gate approved and journaled pre-merge); #160 closed. Post-integrate log: `/tmp/pi-smart-router-post-integrate-wave-0.log` (EXIT=0); CI on `fa065f1`: run 33262127548 success. Release run: https://github.com/beettlle/pi-smart-router/actions/runs/33272886791; npm `latest` = 0.19.2.
+
+**Operational notes (2026-08-29 batch):** worker hung at startup (no session transcript) → SIGTERM + engine `needs_retry`; worker timed out after completing all steps → salvage inspection; contract `npm test` failed on pre-existing timing flakes (reproduced on plain main) → contract scoped to task test file (SP-235 convention); worker backgrounded `release:check` and exited without `.DONE` → Step 3 foreground constraint added. Full-suite timing flakes on loaded local machines remain open (CI green; not release-blocking — `release:check` excludes `npm test`).
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.19.2/manifest.md`
 
