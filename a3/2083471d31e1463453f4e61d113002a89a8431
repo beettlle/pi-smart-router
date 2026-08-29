@@ -1,0 +1,19 @@
+spine-tasks/SP-238-extension-provider-delegation/PROMPT.md
+  s_a7ab168c79a118::t_136b566b083af1 76-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a32083471d31e1463453f4e61d113002a89a8431",
+  "prompts": {},
+  "sessions": {
+    "s_a7ab168c79a118": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a044dc-cc82-7c17-870c-45cc8fe5617d",
+        "model": "glm-5.3"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
