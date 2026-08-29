@@ -1,0 +1,18 @@
+package-lock.json
+  h_ae151c586ac6c5 1144
+spine-tasks/SP-239-deflake-wall-clock-tests/.reviews/1-20260829T222236.md
+  h_ae151c586ac6c5 1-13
+spine-tasks/SP-239-deflake-wall-clock-tests/.reviews/final-20260829T222333.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2de93bc43487247241c7e8e442976a1c3980a4ef",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
