@@ -1,6 +1,6 @@
 # SP-238: Delegate via composed provider for extension-registered custom-API models — Status
 
-**Current Step:** 2
+**Current Step:** 3
 **Status:** In Progress
 **Last Updated:** 2026-08-29
 **Review Level:** 1
@@ -18,11 +18,11 @@
 
 ## Step 2: Tests for extension-provider delegation
 
-**Status:** Not Started
+**Status:** Complete (pending plan review)
 
-- [ ] Fake extension provider (synthetic api id) — delegation reaches its `streamSimple`
-- [ ] No composed provider → compat fallback preserved
-- [ ] Explicit `deps.delegateStream` override still wins
+- [x] Fake extension provider (synthetic api id) — delegation reaches its `streamSimple`
+- [x] No composed provider → compat fallback preserved
+- [x] Explicit `deps.delegateStream` override still wins
 
 ## Step 3: Testing and verification
 
