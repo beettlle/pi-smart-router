@@ -1,0 +1,19 @@
+.pi/extensions/smart-router/route-and-delegate.ts
+  s_a044ca244f666f::t_e3540a93bd287b 527
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7e4107ec78aaa86bf6c8f4dcc93600e665d447a9",
+  "prompts": {},
+  "sessions": {
+    "s_a044ca244f666f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-e67f7fe9-586a-4586-b3c3-89c5ea31e745",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
