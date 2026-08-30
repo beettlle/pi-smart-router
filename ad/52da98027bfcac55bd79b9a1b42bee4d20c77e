@@ -1,0 +1,16 @@
+spine-tasks/SP-242-usage-actuals-calibrate/.reviews/1-20260830T220554.md
+  h_ae151c586ac6c5 1-23
+spine-tasks/SP-242-usage-actuals-calibrate/.reviews/final-20260830T220636.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ad52da98027bfcac55bd79b9a1b42bee4d20c77e",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
