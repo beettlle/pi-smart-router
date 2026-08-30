@@ -1,0 +1,23 @@
+.pi/extensions/smart-router/extension-setup.ts
+  s_b171f4290b533d::t_17514d7fd39840 141-153
+.pi/extensions/smart-router/route-and-delegate.ts
+  s_b171f4290b533d::t_e017fc18513e58 524,765
+src/infrastructure/persistence/sqlite-store.ts
+  s_b171f4290b533d::t_5d73c08d299fa3 17,50,182-190,690-692,696-698,701-750,862-868,959-963,1044-1048
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8a443b33120b5e062ae1c1c90d8e101105b72351",
+  "prompts": {},
+  "sessions": {
+    "s_b171f4290b533d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3c8bc12-6821-46b3-b4d9-96979d2c9218",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
