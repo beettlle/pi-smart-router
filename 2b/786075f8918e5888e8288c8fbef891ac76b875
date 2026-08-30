@@ -1,0 +1,16 @@
+spine-tasks/SP-241-usage-actuals-capture/.reviews/1-20260830T212805.md
+  h_ae151c586ac6c5 1-13
+spine-tasks/SP-241-usage-actuals-capture/.reviews/final-20260830T212911.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2b786075f8918e5888e8288c8fbef891ac76b875",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
