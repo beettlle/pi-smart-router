@@ -75,11 +75,11 @@ export type AdaptiveReasoningReasonCode =
 /** Turn-class signals available at route/delegation time. */
 export interface AdaptiveReasoningSignal {
   /** Turn envelope classification from the routing request. */
-  readonly turnType?: TurnType;
+  readonly turnType?: TurnType | undefined;
   /** Routing decision for this delegation (tier / stage / reason_code). */
-  readonly decision?: RoutingDecision;
+  readonly decision?: RoutingDecision | undefined;
   /** Fleet profile of the delegation target (verbosity_factor). */
-  readonly profile?: ModelProfile;
+  readonly profile?: ModelProfile | undefined;
 }
 
 export interface AdaptiveReasoningResult {

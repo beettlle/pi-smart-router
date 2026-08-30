@@ -521,6 +521,14 @@ export async function routeAndDelegate(
           ...(failoverNotice !== undefined ? { failoverNotice } : {}),
           contextWindow: targetModel.contextWindow,
         },
+        // SP-245 (#166): adaptive reasoning policy — effective thinking level
+        // from this turn's envelope + routing decision (recomputed per
+        // failover iteration so escalation targets re-classify).
+        {
+          turnType: request.turn_type,
+          decision,
+          ...(targetProfile !== undefined ? { profile: targetProfile } : {}),
+        },
       );
 
       if (!isPipedResult(result)) {

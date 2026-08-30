@@ -27,6 +27,7 @@ import type {
   PlanningDelegateObservability,
   RoutingDecision,
 } from '../../../src/domain/types/index.js';
+import { resolveAdaptiveReasoning } from '../../../src/domain/delegation/adaptive-reasoning.js';
 import { DEFAULT_PLANNING_DELEGATE_CONFIG } from '../../../src/domain/types/schemas.js';
 import {
   createPlanningDelegateObservability,
@@ -190,11 +191,21 @@ export async function defaultSpawnPlanningDelegate(
   deps: StreamDelegationDeps,
 ): Promise<PlanningDelegateSpawnResult> {
   try {
+    // SP-245 (#166): planning sub-calls keep higher reasoning — the adaptive
+    // policy resolves at least `medium` for planning turns (explicit operator
+    // /thinking floors still win inside the policy).
+    const reasoning = resolveAdaptiveReasoning(
+      frontierModel,
+      { turnType: 'planning' },
+      options?.reasoning,
+    );
     const result = await collectDelegatedStream(
       frontierModel,
       compressedContext,
       deps,
       options,
+      undefined,
+      reasoning,
     );
     if (result.failed || !result.finalMessage) {
       return {

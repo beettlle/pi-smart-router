@@ -11,6 +11,11 @@ import {
 
 import { parseAssistantMessageError } from '../../../src/infrastructure/delegation/provider-error.js';
 import {
+  resolveAdaptiveReasoning,
+  type AdaptiveReasoningResult,
+  type AdaptiveReasoningSignal,
+} from '../../../src/domain/delegation/adaptive-reasoning.js';
+import {
   buildDelegationContext,
   forwardDelegatedEvent,
   modelToExecutionModel,
@@ -89,6 +94,7 @@ export async function collectDelegatedStream(
   deps: StreamDelegationDeps,
   options: SimpleStreamOptions | undefined,
   headroomContext?: DelegationHeadroomContext,
+  reasoning?: AdaptiveReasoningResult,
 ): Promise<DelegatedStreamResult> {
   throwIfAborted(options);
 
@@ -97,6 +103,7 @@ export async function collectDelegatedStream(
     targetModel,
     options,
     headroomContext,
+    reasoning,
   );
   const delegateStream = resolveDelegateStream(targetModel, deps);
   const inner = delegateStream(targetModel, context, delegationOptions);
@@ -156,6 +163,7 @@ export async function pipeDelegatedStream(
   options: SimpleStreamOptions | undefined,
   headroomContext: DelegationHeadroomContext | undefined,
   pipe: PipeDelegatedStreamOptions,
+  reasoning?: AdaptiveReasoningResult,
 ): Promise<PipedDelegatedStreamResult> {
   throwIfAborted(options);
 
@@ -164,6 +172,7 @@ export async function pipeDelegatedStream(
     targetModel,
     options,
     headroomContext,
+    reasoning,
   );
   const delegateStream = resolveDelegateStream(targetModel, deps);
   const inner = delegateStream(targetModel, context, delegationOptions);
@@ -282,6 +291,11 @@ function recordDelegateOutcome(
 /**
  * Delegate with outcome recording. When `pipe` is provided, live-forwards to outer
  * (holding the terminal event). Otherwise collects into a buffer (planning / probes).
+ *
+ * SP-245 (#166): when `reasoningSignal` is provided, the adaptive reasoning
+ * policy resolves the effective thinking level from turn signals and merges it
+ * into the delegated stream options (never lowering an explicit operator
+ * /thinking; fail open on non-reasoning models).
  */
 export async function delegateWithOutcome(
   targetModel: Model<Api>,
@@ -291,12 +305,18 @@ export async function delegateWithOutcome(
   sessionId: string | undefined,
   headroomContext?: DelegationHeadroomContext,
   pipe?: PipeDelegatedStreamOptions,
+  reasoningSignal?: AdaptiveReasoningSignal,
 ): Promise<PipedDelegatedStreamResult | DelegatedStreamResult> {
+  const reasoning = reasoningSignal
+    ? resolveAdaptiveReasoning(targetModel, reasoningSignal, options?.reasoning)
+    : undefined;
+
   const delegationContext = buildDelegationContext(
     context,
     targetModel,
     deps,
     sessionId,
+    reasoning,
   );
 
   const result = pipe
@@ -307,6 +327,7 @@ export async function delegateWithOutcome(
         options,
         headroomContext,
         pipe,
+        reasoning,
       )
     : await collectDelegatedStream(
         targetModel,
@@ -314,6 +335,7 @@ export async function delegateWithOutcome(
         deps,
         options,
         headroomContext,
+        reasoning,
       );
 
   recordDelegateOutcome(targetModel, deps, sessionId, result);

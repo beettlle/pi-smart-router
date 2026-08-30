@@ -14,6 +14,10 @@ import {
 import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
 
 import {
+  applyConcisenessHint,
+  type AdaptiveReasoningResult,
+} from '../../../src/domain/delegation/adaptive-reasoning.js';
+import {
   isGoogleDelegationTarget,
   normalizeDelegationContext,
   repairGeminiReplayContext,
@@ -87,6 +91,7 @@ export async function resolveDelegationOptions(
   targetModel: Model<Api>,
   callerOptions?: SimpleStreamOptions,
   headroomContext?: DelegationHeadroomContext,
+  reasoning?: AdaptiveReasoningResult,
 ): Promise<SimpleStreamOptions> {
   const auth = await modelRegistry.getApiKeyAndHeaders(targetModel);
   if (!auth.ok) {
@@ -124,6 +129,14 @@ export async function resolveDelegationOptions(
     ...(auth.headers !== undefined ? { headers: auth.headers } : {}),
     ...(mergedEnv !== undefined ? { env: mergedEnv } : {}),
     ...(maxTokens !== undefined ? { maxTokens } : {}),
+    // SP-245 (#166): adaptive reasoning policy merge — applied after the
+    // caller pick so the policy-effective level wins, while every other
+    // DELEGATION_CALLER_OPTION_KEYS entry (incl. thinkingBudgets) passes
+    // through untouched. Explicit operator /thinking floors are already
+    // resolved inside the policy result.
+    ...(reasoning?.reasoning !== undefined
+      ? { reasoning: reasoning.reasoning }
+      : {}),
   };
 }
 
@@ -146,6 +159,7 @@ export function buildDelegationContext(
   targetModel: Model<Api>,
   deps: StreamDelegationDeps,
   sessionId: string | undefined,
+  reasoning?: AdaptiveReasoningResult,
 ): Context {
   const sessionExecution = sessionId
     ? deps.executionLedger.getLastExecution(sessionId)
@@ -155,11 +169,13 @@ export function buildDelegationContext(
     sessionExecution,
   });
 
-  if (isGoogleDelegationTarget(targetModel)) {
-    return repairGeminiReplayContext(normalized, targetModel, sessionExecution);
-  }
+  const repaired = isGoogleDelegationTarget(targetModel)
+    ? repairGeminiReplayContext(normalized, targetModel, sessionExecution)
+    : normalized;
 
-  return normalized;
+  // SP-245 (#166): light conciseness nudge only when the policy resolved a
+  // low/minimal effective level on a high-verbosity (GLM-class) profile.
+  return applyConcisenessHint(repaired, reasoning);
 }
 
 export function createErrorMessage(

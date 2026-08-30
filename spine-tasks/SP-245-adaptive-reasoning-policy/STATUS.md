@@ -1,6 +1,6 @@
 # SP-245: Adaptive reasoning policy and delegation option merge — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** In Progress
 **Last Updated:** 2026-08-30
 **Review Level:** 1
@@ -18,11 +18,11 @@
 
 ## Step 2: Wire into delegation options
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Consult policy from route-and-delegate / stream option build
-- [ ] Merge before `delegateStream`; preserve caller option keys contract
-- [ ] Optional conciseness suffix only for low/minimal + high `verbosity_factor`
+- [x] Consult policy from route-and-delegate / stream option build
+- [x] Merge before `delegateStream`; preserve caller option keys contract
+- [x] Optional conciseness suffix only for low/minimal + high `verbosity_factor`
 
 ## Step 3: Testing and verification
 
