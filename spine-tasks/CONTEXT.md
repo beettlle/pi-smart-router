@@ -1,11 +1,11 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-08-29
+**Last Updated:** 2026-08-30
 **Status:** Active
 **Next Task ID:** SP-241
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.19.2 on npm (2026-08-29, patch — SP-238/#160 delegation hotfix). Prior v0.19.1 SP-237/#153 docs-only. Human #95 dogfood. #110/#96 open. In flight: v0.19.3 (SP-239/#161 + SP-240 dep refresh). Dep majors deferred: #162 (better-sqlite3 v13), #163 (TS7/vitest4/@types/node26).
+**Released:** v0.19.3 on npm (2026-08-30, patch — SP-239/#161 de-flake + SP-240 pi-ai 0.84.4 dep refresh). Accidental empty `v0.19.4` also published and currently `latest` (await deprecate). Prior v0.19.2 SP-238/#160. Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
 
 ---
 
@@ -825,7 +825,9 @@
 
 **Source:** Operator-approved **v0.19.3** (2026-08-29, patch profile). Theme: worker-facing stability hotfix — de-flake wall-clock test suites and refresh dependency alignment to current pi 0.84.x.
 
-**Status:** Packets authored; batch not yet started.
+**Status:** Published as **v0.19.3** (tag `v0.19.3`, commit `6302059`). Wave 0 batch `20260829T221802-2213` (SP-239) integrated; wave 1 batch `20260829T223430-8d09` (SP-240) — z.ai plan-review 429 → allegretto profile switch + retry, then land. #161 closed. Post-integrate wave-0 log: `/tmp/pi-smart-router-post-integrate-wave-0.log`; wave-1: `/tmp/pi-smart-router-post-integrate-wave-1.log`; Phase 5: `/tmp/pi-smart-router-release-check-v0.19.3.log` (EXIT=0). CI on `2c46360`: run 33332706570 success. Release runs: v0.19.3 → https://github.com/beettlle/pi-smart-router/actions/runs/33332777000 ; accidental empty `v0.19.4` (commit `c96aaf3`) → https://github.com/beettlle/pi-smart-router/actions/runs/33332779987 .
+
+**Operational notes:** Allegretto profile added (`agents.activeProfile`) after z.ai 5h quota blocked plan review. Stale completed batch-state blocked wave-1 start (pi-spine preflight/clear ordering) — terminal pointer removed with archive backup. Accidental empty `npm version` to 0.19.4 four seconds after 0.19.3 — do not treat as a feature release.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.19.3/manifest.md`. Dependency majors deferred to #162/#163 (filed 2026-08-29 on operator request).
 

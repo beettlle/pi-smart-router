@@ -124,12 +124,12 @@ Wave 1 · 1 task
 
 ## Publish checklist (Phase 5–6)
 
-- [ ] All release-scoped tasks `.DONE` on `main`
-- [ ] Post-integrate `release:check` green after **each wave** (log paths recorded)
-- [ ] `spine preflight` green
-- [ ] `npm run release:check` green on final `HEAD` (exit 0 verified)
-- [ ] CI workflow green on `HEAD` (`gh run list` / `gh run watch`)
-- [ ] `git status` clean
-- [ ] Operator approved publish bump type: patch (matches Phase 2)
-- [ ] `npm version patch` + `git push && git push --tags`
-- [ ] `release.yml` succeeded; `npm view pi-smart-router version` matches target
+- [x] All release-scoped tasks `.DONE` on `main` (SP-239, SP-240)
+- [x] Post-integrate `release:check` green after **each wave** — `/tmp/pi-smart-router-post-integrate-wave-0.log`, `/tmp/pi-smart-router-post-integrate-wave-1.log`
+- [x] `spine preflight` green
+- [x] `npm run release:check` green on final `HEAD` — `/tmp/pi-smart-router-release-check-v0.19.3.log` (EXIT=0)
+- [x] CI workflow green on `HEAD` (`2c46360`) — https://github.com/beettlle/pi-smart-router/actions/runs/33332706570
+- [x] Operator approved publish bump type: patch (2026-08-30)
+- [x] `npm version patch` + `git push && git push --tags` — tag `v0.19.3` @ `6302059`
+- [x] `release.yml` succeeded for v0.19.3 — https://github.com/beettlle/pi-smart-router/actions/runs/33332777000 ; `npm view` shows `0.19.3` published
+- [ ] **Follow-up:** accidental empty `v0.19.4` (`c96aaf3`) also published and is currently `latest` — await operator decision to `npm deprecate pi-smart-router@0.19.4` (same class as prior stray 0.19.0)
