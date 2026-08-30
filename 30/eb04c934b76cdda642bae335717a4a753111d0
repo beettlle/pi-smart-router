@@ -1,0 +1,19 @@
+spine-tasks/SP-241-usage-actuals-capture/STATUS.md
+  s_cc1ab767e4641c::t_53f5cfa6a4887e 4,29,31-33,37-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "30eb04c934b76cdda642bae335717a4a753111d0",
+  "prompts": {},
+  "sessions": {
+    "s_cc1ab767e4641c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-9ab26b94-0aa1-455e-a6a8-9169dac64ae2",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
