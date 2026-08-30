@@ -10,6 +10,7 @@ import {
 } from '@earendil-works/pi-ai/compat';
 
 import { parseAssistantMessageError } from '../../../src/infrastructure/delegation/provider-error.js';
+import { extractUsageActuals } from '../../../src/infrastructure/telemetry/routing-telemetry.js';
 import {
   buildDelegationContext,
   forwardDelegatedEvent,
@@ -257,9 +258,27 @@ function recordDelegateOutcome(
   deps: StreamDelegationDeps,
   sessionId: string | undefined,
   result: DelegatedStreamResult,
+  requestId?: string,
 ): void {
   if (!result.finalMessage) {
     return;
+  }
+
+  // SP-241 / #164: capture post-turn usage actuals (success and
+  // failed-with-usage terminals). Fail open — extraction/hook errors and
+  // missing usage must never fail the route.
+  if (requestId !== undefined) {
+    try {
+      const actuals = extractUsageActuals(result.finalMessage.usage);
+      if (actuals) {
+        deps.onDelegationUsage?.(requestId, actuals);
+      }
+    } catch (error) {
+      console.warn(
+        '[smart-router] usage actuals capture failed (fail open)',
+        error instanceof Error ? error.message : String(error),
+      );
+    }
   }
 
   if (result.failed) {
@@ -291,6 +310,8 @@ export async function delegateWithOutcome(
   sessionId: string | undefined,
   headroomContext?: DelegationHeadroomContext,
   pipe?: PipeDelegatedStreamOptions,
+  /** Routing request id for post-turn usage actuals capture (SP-241, #164). */
+  requestId?: string,
 ): Promise<PipedDelegatedStreamResult | DelegatedStreamResult> {
   const delegationContext = buildDelegationContext(
     context,
@@ -316,7 +337,7 @@ export async function delegateWithOutcome(
         headroomContext,
       );
 
-  recordDelegateOutcome(targetModel, deps, sessionId, result);
+  recordDelegateOutcome(targetModel, deps, sessionId, result, requestId);
 
   return result;
 }

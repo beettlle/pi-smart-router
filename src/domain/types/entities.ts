@@ -524,6 +524,23 @@ export interface RoutingClusterCatalog {
   readonly clusters: readonly LoadedRoutingCluster[];
 }
 
+// ─── Usage actuals (SP-241, #164) ──────────────────────────────────────────
+
+/**
+ * Post-turn usage actuals reported by the pi host on the assistant message
+ * (`usage.input/output/cacheRead/cacheWrite`, `usage.cost.total`).
+ * `cost_usd` is null when the host reports no positive cost (subscription /
+ * OAuth models report `cost.total === 0`) — token actuals still count;
+ * stats must never invent USD for those rows.
+ */
+export interface RoutingUsageActuals {
+  readonly cost_usd: number | null;
+  readonly input_tokens: number;
+  readonly output_tokens: number;
+  readonly cache_read_tokens: number;
+  readonly cache_write_tokens: number;
+}
+
 // ─── RoutingTelemetry ────────────────────────────────────────────────────────
 
 export interface RoutingTelemetry {
@@ -586,4 +603,14 @@ export interface RoutingTelemetry {
   readonly prewarm_accepted?: boolean | null;
   /** Telemetry-visible reason the acceptance guard disabled prewarm (SP-217, #117). */
   readonly prewarm_disabled_reason?: string | null;
+  /** Host-reported actual cost USD (SP-241, #164); null when unreported or subscription-zero. */
+  readonly actual_cost_usd?: number | null;
+  /** Host-reported actual input tokens (SP-241, #164); null when unreported. */
+  readonly actual_input_tokens?: number | null;
+  /** Host-reported actual output tokens (SP-241, #164); null when unreported. */
+  readonly actual_output_tokens?: number | null;
+  /** Host-reported actual cache-read tokens (SP-241, #164); null when unreported. */
+  readonly actual_cache_read_tokens?: number | null;
+  /** Host-reported actual cache-write tokens (SP-241, #164); null when unreported. */
+  readonly actual_cache_write_tokens?: number | null;
 }

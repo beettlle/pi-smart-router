@@ -138,6 +138,19 @@ export async function createSmartRouterRuntime(cwd: string): Promise<{
         }
         runtime.syncRegisteredLimits?.(limits);
       },
+      onDelegationUsage(requestId, actuals) {
+        // SP-241 / #164: persist post-turn usage actuals onto the routing
+        // telemetry row. Fail open — a telemetry write must never fail the
+        // route, and stores without update support simply skip actuals.
+        try {
+          runtime.store.updateTelemetryUsageActuals?.(requestId, actuals);
+        } catch (error) {
+          console.warn(
+            '[smart-router] failed to persist usage actuals (fail open)',
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      },
     },
   };
 
