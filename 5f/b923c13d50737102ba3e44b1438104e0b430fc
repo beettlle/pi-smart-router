@@ -1,0 +1,37 @@
+.pi/extensions/smart-router/delegate-stream.ts
+  s_a044ca244f666f::t_a244be8bcf4fe3 14-18,98,107,167,176,313-317,329-330,332-335,341,352,360
+.pi/extensions/smart-router/delegation-runtime.ts
+  s_a044ca244f666f::t_01bcefff27c209 16-19,94,132-139,162,172-174,176-178
+.pi/extensions/smart-router/planning-delegate.ts
+  s_a044ca244f666f::t_167145f1944101 30,194-201,207-208
+.pi/extensions/smart-router/route-and-delegate.ts
+  s_a044ca244f666f::t_dde42095bc5b3b 524,526-535
+spine-tasks/SP-245-adaptive-reasoning-policy/.reviews/1-20260830T212851.md
+  s_a044ca244f666f::t_cfcbc62fc98b5a 1-24
+spine-tasks/SP-245-adaptive-reasoning-policy/.reviews/final-20260830T213003.md
+  s_a044ca244f666f::t_d7d013af6a0253 1-8
+spine-tasks/SP-245-adaptive-reasoning-policy/STATUS.md
+  s_a044ca244f666f::t_319bae8decb77e 3-4,13,15-17,21,23-25,29,31-33,37,41-44
+src/domain/delegation/adaptive-reasoning.ts
+  s_a044ca244f666f::t_159272ac5b7e7b 1-329
+tests/integration/pi-extension.test.ts
+  s_a044ca244f666f::t_ba1fd1b96fcdea 49,1264-1486
+tests/unit/adaptive-reasoning.test.ts
+  s_a044ca244f666f::t_6c5c7031f2cb6b 1-441
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5fb923c13d50737102ba3e44b1438104e0b430fc",
+  "prompts": {},
+  "sessions": {
+    "s_a044ca244f666f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-e67f7fe9-586a-4586-b3c3-89c5ea31e745",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
