@@ -1,0 +1,50 @@
+spine-tasks/SP-246-adaptive-reasoning-config-docs/PROMPT.md
+  s_2132b3b091c67c::t_6c4500657242e2 1-82
+spine-tasks/_authoring/release-v0.20.0/manifest.md
+  s_2132b3b091c67c::t_04672a738777c2 9
+  s_2132b3b091c67c::t_1ebbb2ad3a1c9d 90-92,99-100,102-104,106-108,110-114,118-119
+  s_2132b3b091c67c::t_2d499b786545b9 1-8,10-89,93-98,101,105,109,115-117,120-177
+spine-tasks/SP-245-adaptive-reasoning-policy/STATUS.md
+  s_2132b3b091c67c::t_6ab3cf80c1fa78 1-41
+spine-tasks/SP-245-adaptive-reasoning-policy/PROMPT.md
+  s_2132b3b091c67c::t_8bec16ec10158e 1-100
+spine-tasks/SP-241-usage-actuals-capture/STATUS.md
+  s_2132b3b091c67c::t_87f687ab4c229b 1-44
+spine-tasks/dependencies.json
+  s_2132b3b091c67c::t_5ae91f65da0d97 659-672
+spine-tasks/SP-241-usage-actuals-capture/PROMPT.md
+  s_2132b3b091c67c::t_b661c7057dceb2 1-98
+spine-tasks/SP-244-peak-pricing-docs-telemetry/PROMPT.md
+  s_2132b3b091c67c::t_c86c77db4ef127 1-82
+spine-tasks/SP-243-peak-pricing-adapters/PROMPT.md
+  s_2132b3b091c67c::t_9bb5112b4579ff 1-107
+spine-tasks/CONTEXT.md
+  s_2132b3b091c67c::t_7a393a1bef0582 5,8
+  s_2132b3b091c67c::t_4d1e846f4b8fd0 834-850
+spine-tasks/SP-246-adaptive-reasoning-config-docs/STATUS.md
+  s_2132b3b091c67c::t_d4387e10becb30 1-32
+spine-tasks/SP-242-usage-actuals-calibrate/PROMPT.md
+  s_2132b3b091c67c::t_517294ff9df03c 1-89
+spine-tasks/SP-242-usage-actuals-calibrate/STATUS.md
+  s_2132b3b091c67c::t_fc7d191e25883c 1-35
+spine-tasks/SP-244-peak-pricing-docs-telemetry/STATUS.md
+  s_2132b3b091c67c::t_6d24ea353616d3 1-32
+spine-tasks/SP-243-peak-pricing-adapters/STATUS.md
+  s_2132b3b091c67c::t_a404e7aafbe23c 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "fa96256dd0ae1828708ff3e7b5d67bd4ce31f7d4",
+  "prompts": {},
+  "sessions": {
+    "s_2132b3b091c67c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-2230c543-b6dd-436f-9bb9-a37ae01c175f",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
