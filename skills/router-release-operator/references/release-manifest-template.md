@@ -68,7 +68,7 @@ Do **not** use `| tail` alone for pass/fail — verify exit code.
 
 1. Approve this manifest (operator sign-off on scope + theme)
 2. `spine gate approve` per integrate wave
-3. Publish approval before `npm version <bump>`
+3. Publish approval before **exactly one** `npm version <bump>` (after `release:assert-content` PASS)
 
 ---
 
@@ -90,10 +90,18 @@ Do **not** use `| tail` alone for pass/fail — verify exit code.
 
 ## Deferred backlog
 
-| Item | Type | Rationale |
-|------|------|-----------|
-| SP-### / #NNN | enh | Outside theme; defer to next minor |
-| #1 / #25 / #26 | epic | Hardware — blocked on physical access |
+| Item | Type | Intake | Rationale |
+|------|------|--------|-----------|
+| SP-### / #NNN | enh | Ready / Funnel | Outside theme; defer to next minor |
+| #1 / #25 / #26 | epic | Parked | Hardware — blocked on physical access |
+
+## Next-train slate (3–7 items)
+
+| Issue | Candidate theme | Intake |
+|-------|-----------------|--------|
+| #NNN | {theme sentence} | Ready |
+
+Open-issue count must **not** raise this release’s enhancement or total-task caps.
 
 ---
 
@@ -110,8 +118,11 @@ Do **not** use `| tail` alone for pass/fail — verify exit code.
 - [ ] Post-integrate `release:check` green after **each wave** (log paths recorded)
 - [ ] `spine preflight` green
 - [ ] `npm run release:check` green on final `HEAD` (exit 0 verified)
+- [ ] `npm run release:assert-content` green (substantive delta vs last release tag)
+- [ ] Manifest target == expected next version from `package.json` + bump type
+- [ ] No existing git tag `v{TARGET}`
 - [ ] CI workflow green on `HEAD` (`gh run list` / `gh run watch`)
 - [ ] `git status` clean
 - [ ] Operator approved publish bump type: patch | minor | major (matches Phase 2)
-- [ ] `npm version <bump>` + `git push && git push --tags`
-- [ ] `release.yml` succeeded; `npm view pi-smart-router version` matches target
+- [ ] **Exactly one** `npm version <bump>` then `git push && git push --tags` — then **STOP** (no second bump)
+- [ ] `release.yml` succeeded; `npm view` `latest` matches target (else Publish recovery, do not re-bump)

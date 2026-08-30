@@ -29,6 +29,18 @@ gh issue list --repo beettlle/pi-smart-router --state open --label enhancement \
 | `enhancement` | Enhancement | Minor/major only; zero per patch |
 | Priority in title/body (P0–P3) | Any | Prefer P0/P1 dogfood over P3 eval when choosing among enhancements |
 
+## Intake readiness (Ready / Funnel / Parked)
+
+Classify every open issue before theme selection. Growing open counts do **not** expand release budgets (anti-feature-magnet in [release-profiles.md](release-profiles.md)).
+
+| Intake | Meaning | Release action |
+|--------|---------|----------------|
+| **Ready** | Fits a clear theme; S/M sized (or already split); unblocked | Candidate for this or next-train slate |
+| **Funnel** | Needs split, theme assignment, or sizing | Defer; list on next-train with candidate theme |
+| **Parked** | Blocked (hardware #1/#25/#26, external access, epic without operator major scope) | Defer; do not inflate “must ship” pressure |
+
+P2/P3 chore / toolchain: prefer backlog-orchestrator cycles or a dedicated hygiene theme — not bolted onto an unrelated routing minor.
+
 ## Roadmap and theme fit
 
 Read [`docs/routing-roadmap.md`](../../../docs/routing-roadmap.md) before selecting enhancements.
@@ -52,11 +64,11 @@ When multiple enhancements compete, prefer P0/P1 dogfood / routing quality over 
 
    | State | Action |
    |-------|--------|
-   | Mapped to pending SP-* | Candidate for manifest if fits profile + theme |
+   | Mapped to pending SP-* | Candidate for manifest if fits profile + theme (**Ready** if sized) |
    | Mapped to `.DONE` SP-* | Closed by shipped work — exclude |
-   | No SP-* yet | **Gap** — author with `create-spine-tasks` in Phase 3 |
-   | Epic / `[Epic]` in title | Defer unless major profile with operator approval |
-   | Hardware (#1/#25/#26) | Defer — physical access |
+   | No SP-* yet | **Gap** — author with `create-spine-tasks` in Phase 3 (**Funnel** until authored/sized) |
+   | Epic / `[Epic]` in title | Defer unless major profile with operator approval (**Funnel** / **Parked**) |
+   | Hardware (#1/#25/#26) | **Parked** — physical access |
 
 ## Documentation issue heuristics
 
@@ -107,7 +119,8 @@ Cross-reference pending SP-* with open issues. The release executes **manifest s
 
 ## Intake output table
 
-| Issue # | Labels | Mapped SP-* | Bucket | Theme fit | Profile fit | Notes |
-|---------|--------|-------------|--------|-----------|-------------|-------|
-| #97 | bug | SP-176 | bug | dogfood ✓ | minor ✓ | triage fix |
-| #101 | enhancement | — | enh | eval corpus | patch ✗ → use minor | TwinRouterBench |
+| Issue # | Labels | Mapped SP-* | Bucket | Intake | Theme fit | Profile fit | Notes |
+|---------|--------|-------------|--------|--------|-----------|-------------|-------|
+| #97 | bug | SP-176 | bug | Ready | dogfood ✓ | minor ✓ | triage fix |
+| #101 | enhancement | — | enh | Funnel | eval corpus | patch ✗ → use minor | TwinRouterBench |
+| #1 | enhancement | — | enh | Parked | hardware | any ✗ | needs physical access |

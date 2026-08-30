@@ -31,6 +31,16 @@ Every release **requires** a one-sentence **theme** in the manifest (e.g. "Dogfo
 - Prefer **sibling clusters** that finish the theme over thin single-issue versions.
 - Theme missing or selected work contradicts the theme → **FAIL** (do not proceed).
 
+## Anti-feature-magnet (all profiles)
+
+A growing GitHub issue backlog is a **queue**, not a reason to widen this train.
+
+- Open issue count **never** overrides enhancement caps (patch **0**; minor **1–3 related**) or total-task caps (patch ≤8; minor ≤15).
+- Respond with **more trains** (successive thin themed minors/patches), intake deferral, or backlog-orchestrator cycles — not a fatter manifest.
+- Prefer successive thin themed minors over one fat minor that mixes unrelated P1s.
+- P2/P3 chore and toolchain work: backlog cycles or a dedicated **hygiene** theme — do not bolt onto an unrelated routing minor.
+- Final report must include a **next-train slate** (3–7 deferred Ready/Funnel items with candidate themes).
+
 ## Profile budgets
 
 ### Patch (`patch`)
@@ -103,6 +113,7 @@ Apply in this order; stop when profile budget is full:
 | Total tasks | >8 → WARN | >15 → WARN | — |
 | M/L in patch | L/XL → split; M only for bug-fix decomposition | — | — |
 | Bump type vs content | Features in scope → must be **minor**, not patch OVERRIDE | — | — |
+| Anti-feature-magnet | Open-issue count used to raise caps → **FAIL** | Same | Same |
 
 **Do not** use OVERRIDE to ship enhancements as patch. Change bump type to minor or drop the enhancement.
 
@@ -125,3 +136,5 @@ If the operator changes bump type at publish gate, update the manifest and confi
 | Ship #106 + #107 as **patch** | **FAIL** — enhancements; recommend **minor** with theme e.g. "TwinRouterBench fit & CI track" |
 | Hotfix only open bugs as **patch**, theme "Stability hotfix" | **PASS** |
 | Feature-only minor, 0 open bugs, theme "Live leaderboard ingest" | **PASS (no open bugs)** |
+| 20 open P1s → raise minor enhancements to 8 | **FAIL** — anti-feature-magnet; ship multiple thin themed minors |
+| Empty bump (only package.json version) | **FAIL** at `release:assert-content` / release.yml — do not publish |

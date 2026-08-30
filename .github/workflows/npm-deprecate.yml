@@ -1,0 +1,89 @@
+name: npm deprecate
+
+# Recover from accidental empty bumps (e.g. 0.19.0, 0.19.4) when local npm auth
+# lacks publish rights. Uses the same NPMSECRET as release.yml.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to deprecate (e.g. 0.19.4)"
+        required: true
+        type: string
+      message:
+        description: "Deprecation message shown to installers"
+        required: true
+        type: string
+        default: "Accidental empty bump; install the previous good version instead"
+      restore_latest:
+        description: "Optional: version to point dist-tag latest at (e.g. 0.19.3). Leave empty to skip."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  deprecate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Validate version inputs
+        env:
+          VERSION: ${{ inputs.version }}
+          RESTORE_LATEST: ${{ inputs.restore_latest }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$ ]]; then
+            echo "ERROR: version must look like semver: got '$VERSION'"
+            exit 1
+          fi
+          if [[ -n "$RESTORE_LATEST" ]]; then
+            if [[ ! "$RESTORE_LATEST" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$ ]]; then
+              echo "ERROR: restore_latest must look like semver: got '$RESTORE_LATEST'"
+              exit 1
+            fi
+          fi
+          if ! npm view "pi-smart-router@${VERSION}" version >/dev/null 2>&1; then
+            echo "ERROR: pi-smart-router@${VERSION} is not on the registry"
+            exit 1
+          fi
+          if [[ -n "$RESTORE_LATEST" ]]; then
+            if ! npm view "pi-smart-router@${RESTORE_LATEST}" version >/dev/null 2>&1; then
+              echo "ERROR: pi-smart-router@${RESTORE_LATEST} is not on the registry"
+              exit 1
+            fi
+          fi
+
+      - name: Deprecate version
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPMSECRET }}
+          VERSION: ${{ inputs.version }}
+          MESSAGE: ${{ inputs.message }}
+        run: |
+          set -euo pipefail
+          npm deprecate "pi-smart-router@${VERSION}" "${MESSAGE}"
+          echo "Deprecated pi-smart-router@${VERSION}"
+
+      - name: Restore latest dist-tag
+        if: inputs.restore_latest != ''
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPMSECRET }}
+          RESTORE_LATEST: ${{ inputs.restore_latest }}
+        run: |
+          set -euo pipefail
+          npm dist-tag add "pi-smart-router@${RESTORE_LATEST}" latest
+          echo "latest -> ${RESTORE_LATEST}"
+          npm view pi-smart-router dist-tags --json

@@ -36,8 +36,8 @@ Invoke explicitly: `/skill:router-release-operator` or "release v0.10.0" / "patc
 3. All **release-scoped** tasks `.DONE` and integrated on `main`
 4. `spine preflight` green; **`npm run release:check` green (blocking)** on current `main`
 5. **CI workflow green on `HEAD`** before tag push
-6. Operator explicitly approved publish; version bumped and tag pushed (if approved)
-7. Final report with theme, composition table, deferred backlog, verification output
+6. Operator explicitly approved publish; **exactly one** version bump to the manifest target; tag pushed (if approved)
+7. Final report with theme, composition table, deferred backlog, **next-train slate**, verification output
 
 ## Hard rules
 
@@ -45,9 +45,13 @@ Invoke explicitly: `/skill:router-release-operator` or "release v0.10.0" / "patc
 - **Never** ship enhancements in a **patch** — reclassify as **minor** or drop (no OVERRIDE theater)
 - **Never** omit the release **theme** or select work that contradicts it
 - **Never** treat empty open-bug queue as audit failure — use `PASS (no open bugs)`
+- **Never** raise profile caps because the open-issue count grew (**anti-feature-magnet**) — ship more trains or defer via intake
 - **Never** run `npm version` or `git push --tags` without explicit operator approval
 - **Never** run `npm version` / tag push when `npm run release:check` exits non-zero on current `main`
 - **Never** run `npm version` / tag push when CI is not green on current `HEAD`
+- **Never** run `npm version` / tag push when `npm run release:assert-content` exits non-zero (empty/contentless delta vs last release tag)
+- **Never** run a **second** `npm version` in the same publish session — one bump per approved manifest target; **STOP** after successful tag push
+- **Never** “fix” a wrong `latest` dist-tag with another bump — use Publish recovery (deprecate workflow)
 - **Always** parse target version / bump type **before** task selection (Phase 2)
 - **Always** use [references/release-profiles.md](references/release-profiles.md) for budgets (not pi-spine profiles)
 - **Always** prioritize documentation before enhancements within the theme
@@ -228,9 +232,12 @@ Present checklist (only after exit 0):
 - [ ] All release-scoped tasks done
 - [ ] Theme + profile audit still accurate
 - [ ] `npm run release:check` exit 0
+- [ ] `npm run release:assert-content` exit 0 (vs last release tag)
 - [ ] CI green on `HEAD` (`gh run list --workflow ci.yml --commit "$(git rev-parse HEAD)"`)
 - [ ] Clean git tree
 - [ ] Bump type matches Phase 2 profile
+- [ ] Manifest target version equals expected next version from `package.json` + bump type
+- [ ] No git tag `v{TARGET}` already exists
 
 **Human gate:** do not bump or push until operator approves publish **and** Phase 5 passed.
 
@@ -238,26 +245,69 @@ Present checklist (only after exit 0):
 
 ## Phase 6 — Publish (after approval only)
 
-**Prerequisites:** Phase 5 `release:check` exit 0; CI green on `HEAD`; operator said approve publish + confirmed bump type.
+**Prerequisites:** Phase 5 `release:check` exit 0; `release:assert-content` exit 0; CI green on `HEAD`; operator said approve publish + confirmed bump type; manifest target matches expected next version.
+
+### 6.1 Pre-bump gates (blocking)
 
 ```bash
 COMMIT=$(git rev-parse HEAD)
+CURRENT=$(node -p "require('./package.json').version")
+# TARGET from spine-tasks/_authoring/release-v{TARGET}/manifest.md (no leading v)
+# BUMP = patch | minor | major from Phase 2 — must match manifest
+
 gh run list --workflow ci.yml --commit "$COMMIT" --json databaseId,conclusion,status --limit 5
 # Fail closed unless conclusion: success
 
-npm version patch   # or minor / major — must match Phase 2
-git push && git push --tags
-gh run list --workflow release.yml --limit 3
+npm run release:assert-content
+test $? -eq 0
+
+# Expected next version must equal manifest TARGET (use node semver or manual check).
+# Fail if git tag v${TARGET} already exists:
+git rev-parse -q --verify "refs/tags/v${TARGET}" && echo "FAIL: tag exists" && exit 1
 ```
 
-Post-publish:
+### 6.2 Single-shot bump (exactly once)
 
 ```bash
+npm version "$BUMP"   # patch | minor | major — must match Phase 2; produces one commit + one tag
+# Verify package.json version == TARGET before push:
+node -p "require('./package.json').version"   # must print TARGET
+
+git push && git push --tags
+# STOP here. Do NOT run npm version again in this session.
+```
+
+### 6.3 Watch publish + verify latest
+
+```bash
+gh run list --workflow release.yml --limit 3
+# Wait for success on tag v${TARGET}
+
 npm view pi-smart-router version
-# optional: pi install npm:pi-smart-router@<version>
+npm view pi-smart-router dist-tags --json
+# latest MUST equal TARGET. If not: STOP — do not bump again; use Publish recovery.
 ```
 
 Update `spine-tasks/CONTEXT.md` release note. Close GitHub issues where acceptance was met (`Closes:`).
+
+### Publish recovery (empty / wrong latest)
+
+When an accidental empty bump was published (e.g. `0.19.0`, `0.19.4`) or `latest` points at the wrong version:
+
+1. **Prefer CI** (local `npm whoami` often lacks publish rights): run workflow **`npm-deprecate`** (`.github/workflows/npm-deprecate.yml`) with:
+   - `version`: bad version (e.g. `0.19.4`)
+   - `message`: short deprecate reason
+   - `restore_latest`: good version (e.g. `0.19.3`) when `latest` must move back
+2. **Local only** if `npm whoami` prints the package owner (`beettlle`):
+
+```bash
+npm deprecate "pi-smart-router@${BAD}" "${MESSAGE}"
+npm dist-tag add "pi-smart-router@${GOOD}" latest   # when restoring latest
+```
+
+Do **not** fix a bad publish by running another `npm version` without a new themed release and new operator approval.
+
+**Operator follow-up (current debt):** after this skill lands, dispatch `npm-deprecate` for `0.19.4` with `restore_latest=0.19.3`.
 
 ---
 
@@ -266,9 +316,10 @@ Update `spine-tasks/CONTEXT.md` release note. Close GitHub issues where acceptan
 1. Manifest path, target version, profile, **theme**, composition table
 2. Tasks completed — SP-IDs, waves, issues closed
 3. Deferred backlog — count and top items
-4. Profile audit result (no feature-in-patch OVERRIDE)
-5. Verification — `release:check` log path / exit code; CI run URL
-6. Publish — version bumped (Y/N), tag, workflow URL, or awaiting approval
+4. **Next-train slate** — 3–7 deferred issues with candidate themes (Ready / Funnel / Parked); open-issue count must **not** raise profile caps
+5. Profile audit result (no feature-in-patch OVERRIDE)
+6. Verification — `release:check` + `release:assert-content` log paths / exit codes; CI run URL
+7. Publish — single bump (Y/N), tag, workflow URL, `npm view` latest == target, or awaiting approval / recovery
 
 ## Repo-specific notes
 
@@ -278,7 +329,9 @@ Update `spine-tasks/CONTEXT.md` release note. Close GitHub issues where acceptan
 | Issues repo | `beettlle/pi-smart-router` |
 | Profiles | `skills/router-release-operator/references/release-profiles.md` |
 | Pre-publish gate | `npm run release:check` |
+| Content gate | `npm run release:assert-content` |
 | Publish | Tag-triggered `.github/workflows/release.yml` |
+| Deprecate recovery | `.github/workflows/npm-deprecate.yml` |
 
 ## Short prompt (resume mid-release)
 
@@ -287,6 +340,8 @@ Resume router release v{TARGET}: check manifest at
 spine-tasks/_authoring/release-v{TARGET}/manifest.md (theme + profile audit) →
 spine status --diagnose → preflight → for each wave: batch start → diagnose →
 gate approve → integrate → npm install → batch complete →
-post-integrate release:check (exit 0) → final release:check → CI green on HEAD →
-STOP for publish approval. Post final report with theme and composition table.
+post-integrate release:check (exit 0) → final release:check → release:assert-content →
+CI green on HEAD → STOP for publish approval → single npm version (once) →
+push tags → verify npm latest == TARGET → STOP (no second bump).
+Post final report with theme, composition table, and next-train slate.
 ```
