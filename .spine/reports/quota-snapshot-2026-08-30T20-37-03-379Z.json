@@ -1,0 +1,85 @@
+{
+  "generatedAt": "2026-08-30T20:37:03.379Z",
+  "snapshotSource": "live",
+  "pools": {
+    "kimi-coding": {
+      "poolId": "kimi-coding",
+      "source": "estimate",
+      "expectedModels": [
+        "kimi-coding/k3",
+        "kimi-coding/kimi-for-coding"
+      ],
+      "observedModels": [
+        "kimi-coding/k3"
+      ],
+      "usage": {
+        "taskCount": 29,
+        "durationMs": 49715455
+      },
+      "drift": {
+        "unexpectedModels": [],
+        "missingModels": [
+          "kimi-coding/kimi-for-coding"
+        ]
+      }
+    },
+    "google": {
+      "poolId": "google",
+      "source": "absent",
+      "expectedModels": [
+        "google/gemini-3.1-pro-preview"
+      ],
+      "observedModels": [],
+      "usage": {
+        "taskCount": 0,
+        "durationMs": 0
+      },
+      "drift": {
+        "unexpectedModels": [],
+        "missingModels": [
+          "google/gemini-3.1-pro-preview"
+        ]
+      }
+    },
+    "zai": {
+      "poolId": "zai",
+      "source": "live",
+      "expectedModels": [
+        "zai/glm-5.3-flash"
+      ],
+      "observedModels": [
+        "zai/glm-5.2"
+      ],
+      "usage": {
+        "taskCount": 0,
+        "durationMs": 0
+      },
+      "drift": {
+        "unexpectedModels": [
+          "zai/glm-5.2"
+        ],
+        "missingModels": [
+          "zai/glm-5.3-flash"
+        ]
+      }
+    },
+    "cursor": {
+      "poolId": "cursor",
+      "source": "estimate",
+      "expectedModels": [],
+      "observedModels": [
+        "cursor/auto"
+      ],
+      "usage": {
+        "taskCount": 193,
+        "durationMs": 67397711
+      },
+      "drift": {
+        "unexpectedModels": [
+          "cursor/auto"
+        ],
+        "missingModels": []
+      }
+    }
+  }
+}
