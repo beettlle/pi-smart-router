@@ -1,0 +1,14 @@
+spine-tasks/SP-242-usage-actuals-calibrate/STATUS.md
+  h_ae151c586ac6c5 3-4,23,31-33,40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "92978e555b26a422deff4764acd688b8c002e5fb",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
