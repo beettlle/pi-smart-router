@@ -1,7 +1,7 @@
 # SP-245: Adaptive reasoning policy and delegation option merge — Status
 
 **Current Step:** 3
-**Status:** In Progress
+**Status:** Complete
 **Last Updated:** 2026-08-30
 **Review Level:** 1
 **Size:** M
@@ -26,16 +26,19 @@
 
 ## Step 3: Testing and verification
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Extension test asserts delegated options reflect turn class
 - [x] Contract `testCommand` green (ran with tests/unit/adaptive-reasoning.test.ts added — 73 tests pass)
-- [ ] Partial #166 — config/docs/telemetry polish → SP-246
+- [x] Partial #166 — config/docs/telemetry polish → SP-246
 
 ## Completion Criteria
 
-- [ ] Policy + merge wired with tests; Partial #166
+- [x] Policy + merge wired with tests; Partial #166
 
 ## Discoveries
 
-(none yet)
+- pi always passes the session thinkingLevel as `options.reasoning` (default `medium`, pi `DEFAULT_THINKING_LEVEL`); the policy treats that exact ambient level as adjustable and any other caller level as an explicit operator `/thinking` floor (never lowered). Documented in `src/domain/delegation/adaptive-reasoning.ts`.
+- Verification: `npm run typecheck` green; contract `testCommand` + `tests/unit/adaptive-reasoning.test.ts` green (73 tests); full `npm test` green (117 files / 1981 tests); scoped coverage on `src/domain/delegation/adaptive-reasoning.ts` = 95.34% lines.
+- Plan reviews (RL 1) skipped by engine at each step (nested reviewer spawn blocked in worker session; engine runs reviews after `.DONE`).
+- Deferred to SP-246: operator enable/disable + floor/ceiling config, telemetry fields (`reasoning_level_requested/applied`, reason_code), README comparison to `lambda_verbosity`.
