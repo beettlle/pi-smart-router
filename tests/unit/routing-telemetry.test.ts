@@ -8,6 +8,7 @@ import {
 import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../src/domain/types/index.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
+import type { CostCalibrationPrior } from '../../src/domain/routing/expected-cost.js';
 import {
   BREAKEVEN_BLOCKED,
   CONTEXT_FIT_PASS,
@@ -37,6 +38,7 @@ import {
   enrichRoutingDecisionWithTierSelection,
   extractUsageActuals,
   applyUsageActuals,
+  estimateRoutingCost,
   resolveTierSelectionReasonCode,
   resolvePinOnlyFallbackActive,
 } from '../../src/infrastructure/telemetry/routing-telemetry.js';
@@ -1040,5 +1042,47 @@ describe('usage actuals extraction (SP-241, #164)', () => {
     expect(updated.actual_cache_write_tokens).toBe(25);
     // Pure: original record untouched.
     expect(record.actual_cost_usd).toBeUndefined();
+  });
+});
+
+describe('estimateRoutingCost calibration (SP-242, #164)', () => {
+  const econModel = makeModel({
+    id: 'econ-cal',
+    tier: 'economical-cloud',
+    pricing: { fallback_cost_per_1m: 0.5 },
+  });
+  const request = makeRequest({ estimated_input_tokens: 1_000_000 });
+
+  const warmPrior: CostCalibrationPrior = {
+    byModel: new Map([
+      ['econ-cal', { key: 'econ-cal', kind: 'model', ratio: 1.5, samples: 4 }],
+    ]),
+    byTier: new Map([
+      ['economical-cloud', { key: 'economical-cloud', kind: 'tier', ratio: 0.75, samples: 6 }],
+    ]),
+  };
+
+  it('uses the catalog rate when no calibration is supplied (pipeline call unchanged)', () => {
+    // 1M tokens × 0.5/1M = 0.5 — byte-identical to the pre-SP-242 3-arg call.
+    expect(estimateRoutingCost(econModel, request, null)).toBe(0.5);
+    expect(estimateRoutingCost(econModel, request, null, null)).toBe(0.5);
+  });
+
+  it('soft-biases the estimate with the warm model ratio', () => {
+    expect(estimateRoutingCost(econModel, request, null, warmPrior)).toBeCloseTo(0.75, 9);
+  });
+
+  it('falls back to the tier bucket for unknown models', () => {
+    const otherEcon = makeModel({
+      id: 'econ-other',
+      tier: 'economical-cloud',
+      pricing: { fallback_cost_per_1m: 0.5 },
+    });
+    expect(estimateRoutingCost(otherEcon, request, null, warmPrior)).toBeCloseTo(0.375, 9);
+  });
+
+  it('fails open to the catalog rate when the prior is cold (empty buckets)', () => {
+    const cold: CostCalibrationPrior = { byModel: new Map(), byTier: new Map() };
+    expect(estimateRoutingCost(econModel, request, null, cold)).toBe(0.5);
   });
 });

@@ -1,6 +1,6 @@
 # SP-242: Calibrate cost estimates from rolling usage actuals — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** In progress
 **Last Updated:** 2026-08-30
 **Review Level:** 1
@@ -10,7 +10,7 @@
 
 ## Step 1: Rolling calibration prior
 
-**Status:** Complete (pending review)
+**Status:** Complete (review deferred to engine — in-worker spawn skipped per SP-195)
 
 - [x] Persist/update per-model or per-tier rolling ratio from recorded actuals vs estimates — `buildCostCalibrationPrior` derives per-model + per-tier mean actual/estimate ratios over the rolling telemetry window (SP-241 rows persist via sqlite `updateTelemetryUsageActuals`); warmup-gated (`minSamples`), per-pair outlier clamp, aggregate soft clamp [0.5, 2.0]
 - [x] Apply soft bias in `estimateRoutingCost` / expected-cost path; cold → catalog — `estimateRoutingCost` optional 4th param; `resolveTierVirtualCost` calibrates base per-1M before the v2 λ/premium/KV chain (single application point); `selectTierByExpectedCost.costCalibration` threads it; `computeExpectedCost` annotates `calibrationRatio`
@@ -20,11 +20,11 @@ Bonus surface: `aggregateSessionStats` snapshot gains `cost_calibration` buckets
 
 ## Step 2: Testing and verification
 
-**Status:** Pending
+**Status:** In progress
 
-- [ ] Unit tests: warm bias changes estimate; cold unchanged; fail open
-- [ ] Contract `testCommand` green
-- [ ] README economics/stats section updated
+- [x] Unit tests: warm bias changes estimate; cold unchanged; fail open — 16 new tests across `expected-cost.test.ts` (prior builder, ratio resolution, tier resolution bias, selection flip + `calibrationApplied` + rationale note, cold fail-open, no double-apply), `routing-telemetry.test.ts` (estimateRoutingCost 4-arg soft bias, tier fallback, cold), `session-stats.test.ts` (cost_calibration buckets, cold omission, privacy assert)
+- [x] Contract `testCommand` green — typecheck clean; contract files 105/105; full suite 117 files / 2023 tests passed
+- [x] README economics/stats section updated — new "Usage actuals" + "Rolling cost calibration (v0.20.0)" economics subsections; `/smart-router stats` row updated (JSON snapshot surface, honest about text output)
 
 ## Completion Criteria
 

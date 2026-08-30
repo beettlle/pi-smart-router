@@ -296,3 +296,71 @@ describe('usage actuals preference (SP-241, #164)', () => {
     assertSessionStatsPrivacySafe(snapshot);
   });
 });
+
+describe('cost calibration surface (SP-242, #164)', () => {
+  it('omits cost_calibration when no bucket is warm (cold → catalog, fail closed)', () => {
+    const cold = aggregateSessionStats([
+      makeEntry({ estimated_cost_usd: 0.001, actual_cost_usd: 0.002 }),
+      makeEntry({ estimated_cost_usd: 0.001, actual_cost_usd: 0.002 }),
+      // Subscription row: actual cost null — never invents USD.
+      makeEntry({ estimated_cost_usd: 0.001, actual_cost_usd: null }),
+    ]);
+
+    expect(cold.cost_calibration).toBeUndefined();
+
+    const noActuals = aggregateSessionStats([makeEntry(), makeEntry(), makeEntry()]);
+    expect(noActuals.cost_calibration).toBeUndefined();
+  });
+
+  it('surfaces warm per-model and per-tier buckets with ratio and samples', () => {
+    const rows = [
+      ...Array.from({ length: 3 }, () =>
+        makeEntry({
+          selected_model_id: 'econ-a',
+          tier_hint: 'economical-cloud',
+          estimated_cost_usd: 0.001,
+          actual_cost_usd: 0.002,
+        }),
+      ),
+      ...Array.from({ length: 3 }, () =>
+        makeEntry({
+          selected_model_id: 'frontier-a',
+          tier_hint: 'frontier-cloud',
+          estimated_cost_usd: 0.004,
+          actual_cost_usd: 0.002,
+        }),
+      ),
+    ];
+
+    const snapshot = aggregateSessionStats(rows);
+
+    expect(snapshot.cost_calibration).toBeDefined();
+    expect(snapshot.cost_calibration).toEqual([
+      { key: 'econ-a', kind: 'model', ratio: 2, samples: 3 },
+      { key: 'frontier-a', kind: 'model', ratio: 0.5, samples: 3 },
+      { key: 'economical-cloud', kind: 'tier', ratio: 2, samples: 3 },
+      { key: 'frontier-cloud', kind: 'tier', ratio: 0.5, samples: 3 },
+    ]);
+    assertSessionStatsPrivacySafe(snapshot);
+  });
+
+  it('prefers tierByModelId over tier_hint for tier buckets', () => {
+    const rows = Array.from({ length: 3 }, () =>
+      makeEntry({
+        selected_model_id: 'composer-latest',
+        tier_hint: null,
+        estimated_cost_usd: 0.002,
+        actual_cost_usd: 0.004,
+      }),
+    );
+
+    const snapshot = aggregateSessionStats(rows, {
+      tier_by_model_id: new Map([['composer-latest', 'frontier-cloud']]),
+    });
+
+    expect(snapshot.cost_calibration).toEqual([
+      { key: 'composer-latest', kind: 'model', ratio: 2, samples: 3 },
+      { key: 'frontier-cloud', kind: 'tier', ratio: 2, samples: 3 },
+    ]);
+  });
+});

@@ -486,6 +486,12 @@ export function computeExpectedCost(
      * resolved internally the ratio comes from the tier resolution itself.
      */
     readonly calibrationRatio?: number;
+    /**
+     * Rolling calibration prior applied when cost is resolved internally
+     * (SP-242, #164). Ignored when `costPer1M` is supplied explicitly — that
+     * cost is treated as already calibrated, so the bias never double-applies.
+     */
+    readonly costCalibration?: CostCalibrationPrior | null;
   },
 ): ExpectedCostBreakdown {
   const alpha = options?.alpha ?? 1;
@@ -515,6 +521,9 @@ export function computeExpectedCost(
         : {}),
       ...(options?.sessionPin !== undefined ? { sessionPin: options.sessionPin } : {}),
       ...(options?.pinnedModel !== undefined ? { pinnedModel: options.pinnedModel } : {}),
+      ...(options?.costCalibration != null
+        ? { costCalibration: options.costCalibration }
+        : {}),
     });
     costPer1M = resolved.costPer1M;
     direct = resolved.directCostUsd;
