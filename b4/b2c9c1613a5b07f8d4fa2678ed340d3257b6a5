@@ -1,0 +1,16 @@
+.spine/reports/quota-snapshot-2026-08-30T20-37-03-379Z.json
+  h_ae151c586ac6c5 1-85
+.spine/spine-config.json
+  h_ae151c586ac6c5 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b4b2c9c1613a5b07f8d4fa2678ed340d3257b6a5",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
