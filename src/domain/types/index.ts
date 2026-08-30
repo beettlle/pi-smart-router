@@ -28,6 +28,7 @@ export type {
   RoutingOutcomeRecord,
   RoutingRequest,
   RoutingTelemetry,
+  RoutingUsageActuals,
   SaarConfig,
   SaarObservability,
   SaarSessionState,

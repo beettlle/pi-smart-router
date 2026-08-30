@@ -198,3 +198,101 @@ describe('aggregateSessionStats (SP-207)', () => {
     expect(keys).toContain('role_cost');
   });
 });
+
+describe('usage actuals preference (SP-241, #164)', () => {
+  it('prefers host-reported actual cost over the estimate and marks basis actual', () => {
+    const entries = [
+      makeEntry({
+        estimated_cost_usd: 0.5,
+        actual_cost_usd: 0.01,
+        actual_input_tokens: 1000,
+        actual_output_tokens: 200,
+      }),
+    ];
+
+    const snapshot = aggregateSessionStats(entries);
+
+    expect(snapshot.total_cost_usd).toBeCloseTo(0.01);
+    expect(snapshot.cost_basis).toBe('actual');
+    expect(snapshot.actual_usage_count).toBe(1);
+    expect(snapshot.actual_total_tokens).toBe(1200);
+  });
+
+  it('marks cost basis estimated when no entry has actuals', () => {
+    const snapshot = aggregateSessionStats([makeEntry({ estimated_cost_usd: 0.002 })]);
+
+    expect(snapshot.total_cost_usd).toBeCloseTo(0.002);
+    expect(snapshot.cost_basis).toBe('estimated');
+    expect(snapshot.actual_usage_count).toBe(0);
+    expect(snapshot.actual_total_tokens).toBeNull();
+  });
+
+  it('marks cost basis mixed when only some entries have actual cost', () => {
+    const snapshot = aggregateSessionStats([
+      makeEntry({ estimated_cost_usd: 0.002 }),
+      makeEntry({
+        request_id: 'req-2',
+        estimated_cost_usd: 0.5,
+        actual_cost_usd: 0.01,
+        actual_input_tokens: 10,
+        actual_output_tokens: 5,
+      }),
+    ]);
+
+    expect(snapshot.cost_basis).toBe('mixed');
+    expect(snapshot.total_cost_usd).toBeCloseTo(0.012);
+    expect(snapshot.actual_usage_count).toBe(1);
+  });
+
+  it('counts subscription token actuals without inventing USD (cost falls back to estimate)', () => {
+    const snapshot = aggregateSessionStats([
+      makeEntry({
+        estimated_cost_usd: 0.003,
+        actual_cost_usd: null,
+        actual_input_tokens: 800,
+        actual_output_tokens: 100,
+        actual_cache_read_tokens: 50,
+        actual_cache_write_tokens: 25,
+      }),
+    ]);
+
+    expect(snapshot.total_cost_usd).toBeCloseTo(0.003);
+    expect(snapshot.cost_basis).toBe('estimated');
+    expect(snapshot.actual_usage_count).toBe(1);
+    expect(snapshot.actual_total_tokens).toBe(975);
+  });
+
+  it('frontier savings prefer actual tokens and actual cost when present', () => {
+    const withActuals = makeEntry({
+      estimated_input_tokens: 10,
+      estimated_cost_usd: 0.9,
+      actual_cost_usd: 0.1,
+      actual_input_tokens: 1_000_000,
+      actual_output_tokens: 0,
+    });
+
+    // tokens = 1e6 actual (not 10 estimated) → frontier = 1.0; cost = 0.1 actual → 0.9
+    expect(estimateFrontierSavingsUsd([withActuals], 1.0)).toBeCloseTo(0.9);
+  });
+
+  it('frontier savings fall back to estimates when actuals are missing', () => {
+    const estimated = makeEntry({
+      estimated_input_tokens: 1_000_000,
+      estimated_cost_usd: 0.25,
+    });
+
+    expect(estimateFrontierSavingsUsd([estimated], 1.0)).toBeCloseTo(0.75);
+  });
+
+  it('snapshot JSON stays privacy-safe with actuals fields present', () => {
+    const snapshot = aggregateSessionStats([
+      makeEntry({
+        actual_cost_usd: 0.01,
+        actual_input_tokens: 10,
+        actual_output_tokens: 5,
+      }),
+    ]);
+
+    assertSessionStatsPrivacySafe(snapshot);
+  });
+});

@@ -24,7 +24,7 @@
  *    flush pending writes first (read-your-writes) and stay synchronous.
  */
 
-import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingTelemetry, SessionPin } from './entities.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingTelemetry, RoutingUsageActuals, SessionPin } from './entities.js';
 
 export interface ListTelemetryOptions {
   readonly limit?: number;
@@ -80,6 +80,14 @@ export interface StorePort {
 
   /** List recent telemetry rows, newest first. */
   listTelemetry(options?: ListTelemetryOptions): Promise<readonly RoutingTelemetry[]>;
+
+  /**
+   * Attach post-turn usage actuals to the newest telemetry row for a request
+   * (SP-241, #164). Optional: stores without update support omit it and
+   * callers must fail open (`store.updateTelemetryUsageActuals?.(...)`) so a
+   * missing capability never fails the route.
+   */
+  updateTelemetryUsageActuals?(requestId: string, actuals: RoutingUsageActuals): void;
 
   /**
    * Append a privacy-safe routing dataset record (sync hot path).

@@ -38,6 +38,7 @@ import type {
   RoutingDecision,
   RoutingRequest,
   RoutingTelemetry,
+  RoutingUsageActuals,
   SaarConfig,
   SaarObservability,
   Tier,
@@ -869,6 +870,81 @@ function defaultPrewarmTelemetry(): Pick<
 
 /** Default speculative prewarm telemetry scalars for tests and legacy store reads (SP-217). */
 export const DEFAULT_PREWARM_TELEMETRY_FIELDS = defaultPrewarmTelemetry();
+
+/** Default usage-actuals scalars for tests and legacy store reads (SP-241, #164). */
+export const DEFAULT_USAGE_ACTUALS_TELEMETRY_FIELDS = {
+  actual_cost_usd: null,
+  actual_input_tokens: null,
+  actual_output_tokens: null,
+  actual_cache_read_tokens: null,
+  actual_cache_write_tokens: null,
+} as const satisfies Pick<
+  RoutingTelemetry,
+  | 'actual_cost_usd'
+  | 'actual_input_tokens'
+  | 'actual_output_tokens'
+  | 'actual_cache_read_tokens'
+  | 'actual_cache_write_tokens'
+>;
+
+function toNonNegativeFinite(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+/**
+ * Extract post-turn usage actuals from a pi assistant message `usage` object
+ * (SP-241, #164). Structural and fail open: returns null when usage is missing
+ * or carries no usable token counts (library embeds / non-pi hosts), so callers
+ * can no-op without failing the route.
+ *
+ * Subscription / OAuth models report `cost.total === 0`: token actuals are
+ * still recorded but `cost_usd` stays null so stats never invent USD.
+ */
+export function extractUsageActuals(usage: unknown): RoutingUsageActuals | null {
+  if (usage === null || typeof usage !== 'object') {
+    return null;
+  }
+  const record = usage as Record<string, unknown>;
+  const input = toNonNegativeFinite(record.input);
+  const output = toNonNegativeFinite(record.output);
+  if (input === null && output === null) {
+    return null;
+  }
+  const cacheRead = toNonNegativeFinite(record.cacheRead) ?? 0;
+  const cacheWrite = toNonNegativeFinite(record.cacheWrite) ?? 0;
+
+  const cost = record.cost;
+  const costTotal =
+    cost !== null && typeof cost === 'object'
+      ? toNonNegativeFinite((cost as Record<string, unknown>).total)
+      : null;
+
+  return {
+    cost_usd: costTotal !== null && costTotal > 0 ? costTotal : null,
+    input_tokens: input ?? 0,
+    output_tokens: output ?? 0,
+    cache_read_tokens: cacheRead,
+    cache_write_tokens: cacheWrite,
+  };
+}
+
+/**
+ * Attach usage actuals to a telemetry record, retaining `estimated_cost_usd`
+ * (SP-241, #164). Pure — returns a new record.
+ */
+export function applyUsageActuals(
+  entry: RoutingTelemetry,
+  actuals: RoutingUsageActuals,
+): RoutingTelemetry {
+  return {
+    ...entry,
+    actual_cost_usd: actuals.cost_usd,
+    actual_input_tokens: actuals.input_tokens,
+    actual_output_tokens: actuals.output_tokens,
+    actual_cache_read_tokens: actuals.cache_read_tokens,
+    actual_cache_write_tokens: actuals.cache_write_tokens,
+  };
+}
 
 /** Prewarm explain/telemetry fields from the decision feature sidecar (SP-217, #117). */
 export function prewarmTelemetryFromDecision(

@@ -521,6 +521,7 @@ export async function routeAndDelegate(
           ...(failoverNotice !== undefined ? { failoverNotice } : {}),
           contextWindow: targetModel.contextWindow,
         },
+        decision.request_id,
       );
 
       if (!isPipedResult(result)) {
@@ -761,6 +762,7 @@ export async function routeAndDelegate(
           ...(failoverNotice !== undefined ? { failoverNotice } : {}),
           contextWindow: fallbackModel.contextWindow,
         },
+        decision.request_id,
       );
       if (isPipedResult(fallbackResult)) {
         commitPipedTerminal(fallbackResult);

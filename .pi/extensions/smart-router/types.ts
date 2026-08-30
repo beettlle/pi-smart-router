@@ -15,6 +15,7 @@ import type {
   PlanningDelegateConfig,
   PriceCatalog,
   RoutingDecision,
+  RoutingUsageActuals,
 } from '../../../src/domain/types/index.js';
 import type { PlanningDelegateSpawnFn } from './planning-delegate.js';
 import type { StorePort } from '../../../src/domain/types/store-port.js';
@@ -82,6 +83,12 @@ export interface StreamDelegationDeps {
     readonly contextWindow?: number;
     readonly maxTokens?: number;
   }) => void;
+  /**
+   * Fired after a delegated stream ends with host-reported usage actuals
+   * (SP-241, #164). Also fires on failed-with-usage terminals. Implementations
+   * must not throw — actuals capture never fails the route.
+   */
+  onDelegationUsage?: (requestId: string, actuals: RoutingUsageActuals) => void;
 }
 
 export interface SmartRouterRuntime {

@@ -48,9 +48,27 @@ export interface SessionStatsSnapshot {
   readonly cloud_share: number | null;
   readonly role_cost: RoleCostBreakdown;
   /**
+   * Entries with host-reported token actuals (SP-241, #164). Token actuals are
+   * recorded even when the host reports no positive USD cost (subscription).
+   */
+  readonly actual_usage_count: number;
+  /**
+   * Basis of `total_cost_usd` / `mean_cost_usd` (SP-241, #164):
+   * 'actual' when every entry has a host-reported cost, 'estimated' when none
+   * do, 'mixed' otherwise. Operators should treat 'estimated'/'mixed' totals
+   * as estimate-labeled.
+   */
+  readonly cost_basis: 'actual' | 'estimated' | 'mixed';
+  /**
+   * Sum of host-reported actual tokens (input + output + cache read/write)
+   * over entries with token actuals; null when no entry has actuals.
+   */
+  readonly actual_total_tokens: number | null;
+  /**
    * Estimated USD saved vs always-frontier baseline.
    * Formula: sum over entries with token counts of
-   *   max(0, tokens/1e6 * frontier_cost_per_1m - estimated_cost_usd).
+   *   max(0, tokens/1e6 * frontier_cost_per_1m - cost)
+   * where tokens/cost prefer host-reported actuals when present (SP-241).
    * Omitted when frontier price inputs are missing (fail closed).
    */
   readonly frontier_savings_usd?: number;
@@ -94,6 +112,45 @@ export function classifyDeployment(
 
 function isPlanningDelegate(path: PlanningDelegatePath | null): boolean {
   return path === 'delegate';
+}
+
+/**
+ * Per-entry USD cost (SP-241, #164): prefer the host-reported actual when
+ * present; fall back to the routing-time estimate. Non-finite values count as 0.
+ */
+export function resolveEntryCostUsd(entry: RoutingTelemetry): number {
+  const actual = entry.actual_cost_usd;
+  if (typeof actual === 'number' && Number.isFinite(actual)) {
+    return actual;
+  }
+  return Number.isFinite(entry.estimated_cost_usd) ? entry.estimated_cost_usd : 0;
+}
+
+/** True when the entry carries a host-reported actual USD cost (SP-241). */
+export function hasActualCost(entry: RoutingTelemetry): boolean {
+  return typeof entry.actual_cost_usd === 'number' && Number.isFinite(entry.actual_cost_usd);
+}
+
+/**
+ * Host-reported actual total tokens (input + output + cache) for an entry
+ * (SP-241); null when the host reported no token actuals.
+ */
+export function resolveEntryActualTokens(entry: RoutingTelemetry): number | null {
+  const parts = [
+    entry.actual_input_tokens,
+    entry.actual_output_tokens,
+    entry.actual_cache_read_tokens,
+    entry.actual_cache_write_tokens,
+  ];
+  let total = 0;
+  let seen = false;
+  for (const part of parts) {
+    if (typeof part === 'number' && Number.isFinite(part) && part >= 0) {
+      total += part;
+      seen = true;
+    }
+  }
+  return seen ? total : null;
 }
 
 /**
@@ -167,12 +224,25 @@ export function aggregateSessionStats(
   let localCount = 0;
   let cloudCount = 0;
   let classifiedDeployment = 0;
+  let actualUsageCount = 0;
+  let actualCostCount = 0;
+  let actualTotalTokens = 0;
 
   for (const entry of entries) {
-    const cost = Number.isFinite(entry.estimated_cost_usd) ? entry.estimated_cost_usd : 0;
+    // SP-241: prefer host-reported actual cost; fall back to the estimate.
+    const cost = resolveEntryCostUsd(entry);
     const latency = Number.isFinite(entry.routing_latency_ms) ? entry.routing_latency_ms : 0;
     totalCost += cost;
     totalLatency += latency;
+
+    const actualTokens = resolveEntryActualTokens(entry);
+    if (actualTokens !== null) {
+      actualUsageCount += 1;
+      actualTotalTokens += actualTokens;
+    }
+    if (hasActualCost(entry)) {
+      actualCostCount += 1;
+    }
 
     if (isPlanningDelegate(entry.planning_delegate_path)) {
       delegateCount += 1;
@@ -193,6 +263,8 @@ export function aggregateSessionStats(
   }
 
   const n = entries.length;
+  const costBasis: SessionStatsSnapshot['cost_basis'] =
+    n === 0 ? 'estimated' : actualCostCount === n ? 'actual' : actualCostCount === 0 ? 'estimated' : 'mixed';
   const snapshot: SessionStatsSnapshot = {
     entry_count: n,
     total_cost_usd: totalCost,
@@ -208,6 +280,9 @@ export function aggregateSessionStats(
       planning_delegate: { ...roleAccum.planning_delegate },
       other: { ...roleAccum.other },
     },
+    actual_usage_count: actualUsageCount,
+    cost_basis: costBasis,
+    actual_total_tokens: actualUsageCount > 0 ? actualTotalTokens : null,
   };
 
   const frontierSavings = estimateFrontierSavingsUsd(entries, options.frontier_cost_per_1m);
@@ -238,11 +313,12 @@ export function estimateFrontierSavingsUsd(
   let counted = 0;
 
   for (const entry of entries) {
-    const tokens = entry.estimated_input_tokens;
+    // SP-241: prefer host-reported actual tokens/cost over routing-time estimates.
+    const tokens = resolveEntryActualTokens(entry) ?? entry.estimated_input_tokens;
     if (tokens === null || !Number.isFinite(tokens) || tokens < 0) {
       continue;
     }
-    const actual = Number.isFinite(entry.estimated_cost_usd) ? entry.estimated_cost_usd : 0;
+    const actual = resolveEntryCostUsd(entry);
     const frontierCost = (tokens / 1_000_000) * frontierCostPer1M;
     savings += Math.max(0, frontierCost - actual);
     counted += 1;

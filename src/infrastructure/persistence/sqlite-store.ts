@@ -14,7 +14,7 @@ import { dirname } from 'node:path';
 import Database from 'better-sqlite3';
 import type BetterSqlite3 from 'better-sqlite3';
 
-import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingTelemetry, SessionPin } from '../../domain/types/entities.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingTelemetry, RoutingUsageActuals, SessionPin } from '../../domain/types/entities.js';
 import type { ListDatasetOptions, ListOutcomeOptions, ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
 import { MemoryStore } from './memory-store.js';
 import {
@@ -47,7 +47,7 @@ import {
 
 // ─── Schema version & migrations ────────────────────────────────────────────
 
-const CURRENT_SCHEMA_VERSION = 5;
+const CURRENT_SCHEMA_VERSION = 6;
 
 const MIGRATION_V1 = `
   CREATE TABLE IF NOT EXISTS pins (
@@ -177,6 +177,15 @@ const MIGRATION_V5 = `
 
   DROP TABLE pins;
   ALTER TABLE pins_v5 RENAME TO pins;
+`;
+
+// SP-241 / #164: post-turn pi usage actuals alongside retained estimates.
+const MIGRATION_V6 = `
+  ALTER TABLE telemetry ADD COLUMN actual_cost_usd REAL;
+  ALTER TABLE telemetry ADD COLUMN actual_input_tokens INTEGER;
+  ALTER TABLE telemetry ADD COLUMN actual_output_tokens INTEGER;
+  ALTER TABLE telemetry ADD COLUMN actual_cache_read_tokens INTEGER;
+  ALTER TABLE telemetry ADD COLUMN actual_cache_write_tokens INTEGER;
 `;
 
 // ─── Token bucket result ────────────────────────────────────────────────────
@@ -678,14 +687,67 @@ export class SqliteStore implements StorePort {
         `INSERT INTO telemetry (
           timestamp, session_id, request_id, turn_type,
           stage, reason_code, selected_model_id,
-          estimated_cost_usd, routing_latency_ms, pin_reason
+          estimated_cost_usd, routing_latency_ms, pin_reason,
+          actual_cost_usd, actual_input_tokens, actual_output_tokens,
+          actual_cache_read_tokens, actual_cache_write_tokens
         ) VALUES (
           @timestamp, @session_id, @request_id, @turn_type,
           @stage, @reason_code, @selected_model_id,
-          @estimated_cost_usd, @routing_latency_ms, @pin_reason
+          @estimated_cost_usd, @routing_latency_ms, @pin_reason,
+          @actual_cost_usd, @actual_input_tokens, @actual_output_tokens,
+          @actual_cache_read_tokens, @actual_cache_write_tokens
         )`,
       )
-      .run(entry);
+      .run({
+        timestamp: entry.timestamp,
+        session_id: entry.session_id,
+        request_id: entry.request_id,
+        turn_type: entry.turn_type,
+        stage: entry.stage,
+        reason_code: entry.reason_code,
+        selected_model_id: entry.selected_model_id,
+        estimated_cost_usd: entry.estimated_cost_usd,
+        routing_latency_ms: entry.routing_latency_ms,
+        pin_reason: entry.pin_reason,
+        actual_cost_usd: entry.actual_cost_usd ?? null,
+        actual_input_tokens: entry.actual_input_tokens ?? null,
+        actual_output_tokens: entry.actual_output_tokens ?? null,
+        actual_cache_read_tokens: entry.actual_cache_read_tokens ?? null,
+        actual_cache_write_tokens: entry.actual_cache_write_tokens ?? null,
+      });
+  }
+
+  /**
+   * SP-241 / #164: post-turn usage actuals for the newest row of a request.
+   * Applied synchronously (off the write queue) after a flush so the queued
+   * append for this request is visible first (read-your-writes). A missing
+   * request_id is a no-op — actuals capture must never fail the route.
+   */
+  updateTelemetryUsageActuals(requestId: string, actuals: RoutingUsageActuals): void {
+    this.writeQueue.flush();
+    this.db
+      .prepare(
+        `UPDATE telemetry SET
+           actual_cost_usd = @actual_cost_usd,
+           actual_input_tokens = @actual_input_tokens,
+           actual_output_tokens = @actual_output_tokens,
+           actual_cache_read_tokens = @actual_cache_read_tokens,
+           actual_cache_write_tokens = @actual_cache_write_tokens
+         WHERE id = (
+           SELECT id FROM telemetry
+           WHERE request_id = @request_id
+           ORDER BY id DESC
+           LIMIT 1
+         )`,
+      )
+      .run({
+        request_id: requestId,
+        actual_cost_usd: actuals.cost_usd,
+        actual_input_tokens: actuals.input_tokens,
+        actual_output_tokens: actuals.output_tokens,
+        actual_cache_read_tokens: actuals.cache_read_tokens,
+        actual_cache_write_tokens: actuals.cache_write_tokens,
+      });
   }
 
   private insertDatasetRow(entry: RoutingDatasetRecord): void {
@@ -797,6 +859,13 @@ export class SqliteStore implements StorePort {
 
     if (version < 5) {
       this.db.exec(MIGRATION_V5);
+      version = 5;
+      this.db.pragma('user_version = 5');
+    }
+
+    if (version < 6) {
+      this.db.exec(MIGRATION_V6);
+      version = 6;
       this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`);
     }
   }
@@ -887,6 +956,11 @@ interface TelemetryRow {
   estimated_cost_usd: number;
   routing_latency_ms: number;
   pin_reason: string | null;
+  actual_cost_usd: number | null;
+  actual_input_tokens: number | null;
+  actual_output_tokens: number | null;
+  actual_cache_read_tokens: number | null;
+  actual_cache_write_tokens: number | null;
 }
 
 interface DatasetRow {
@@ -967,6 +1041,11 @@ function telemetryRowToEntity(row: TelemetryRow): RoutingTelemetry {
     ...DEFAULT_SAAR_TELEMETRY_FIELDS,
     ...DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS,
     ...DEFAULT_PIN_ONLY_FALLBACK_TELEMETRY_FIELDS,
+    actual_cost_usd: row.actual_cost_usd,
+    actual_input_tokens: row.actual_input_tokens,
+    actual_output_tokens: row.actual_output_tokens,
+    actual_cache_read_tokens: row.actual_cache_read_tokens,
+    actual_cache_write_tokens: row.actual_cache_write_tokens,
   };
 }
 

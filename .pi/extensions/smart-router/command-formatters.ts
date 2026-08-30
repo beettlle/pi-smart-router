@@ -312,9 +312,16 @@ export function formatStatsMessage(
     return 'No routing stats yet (empty telemetry window).';
   }
 
+  const costBasisLabel =
+    snapshot.cost_basis === 'actual'
+      ? 'actual'
+      : snapshot.cost_basis === 'mixed'
+        ? `mixed (${snapshot.actual_usage_count}/${snapshot.entry_count} actual)`
+        : 'estimated';
+
   const lines = [
     `Entries: ${snapshot.entry_count}`,
-    `Cost: total ${formatUsd(snapshot.total_cost_usd)} | mean ${formatMean(snapshot.mean_cost_usd, '')}`,
+    `Cost (${costBasisLabel}): total ${formatUsd(snapshot.total_cost_usd)} | mean ${formatMean(snapshot.mean_cost_usd, '')}`,
     `Latency: total ${snapshot.total_latency_ms.toFixed(0)}ms | mean ${formatMean(snapshot.mean_latency_ms, 'ms')}`,
     `Planning delegate share: ${formatShare(snapshot.planning_delegate_share)} (direct ${formatShare(snapshot.direct_share)})`,
     `Local vs cloud (when known): local ${formatShare(snapshot.local_share)} | cloud ${formatShare(snapshot.cloud_share)}`,
@@ -324,10 +331,19 @@ export function formatStatsMessage(
     `  other: ${snapshot.role_cost.other.count} | ${formatUsd(snapshot.role_cost.other.total_cost_usd)}`,
   ];
 
+  if (snapshot.actual_usage_count > 0) {
+    lines.push(
+      `Actual usage: ${snapshot.actual_usage_count}/${snapshot.entry_count} entries with host-reported tokens` +
+        (snapshot.actual_total_tokens !== null
+          ? ` | ${snapshot.actual_total_tokens} actual tokens`
+          : ''),
+    );
+  }
+
   if (snapshot.frontier_savings_usd !== undefined) {
     lines.push(
-      `Vs always-frontier savings (est.): ${formatUsd(snapshot.frontier_savings_usd)}`,
-      '  formula: sum max(0, tokens/1e6 * frontier_cost_per_1m - estimated_cost_usd); omitted when prices missing',
+      `Vs always-frontier savings: ${formatUsd(snapshot.frontier_savings_usd)} (${snapshot.cost_basis === 'estimated' ? 'est.' : 'actuals preferred, est. when missing'})`,
+      '  formula: sum max(0, tokens/1e6 * frontier_cost_per_1m - cost); tokens/cost prefer actuals; omitted when prices missing',
     );
   } else {
     lines.push('Vs always-frontier savings: (omitted — frontier prices unavailable)');
