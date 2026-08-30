@@ -1,0 +1,40 @@
+.github/workflows/npm-deprecate.yml
+  s_fd50432f2f6c00::t_2b91a3b2e748d4 1-89
+skills/router-release-operator/references/issue-intake-checklist.md
+  s_fd50432f2f6c00::t_6266a775255e3d 122-126
+  s_fd50432f2f6c00::t_92bd0a9626b09e 32-43
+  s_fd50432f2f6c00::t_d87c054f867b3a 67,69-71
+skills/router-release-operator/SKILL.md
+  s_fd50432f2f6c00::t_e4b7663e6a463c 39-40,48,52-54
+  s_fd50432f2f6c00::t_d4524c0c9ed032 235,239-240,248-250,254-257,261-275,277,280,283-285,287-288,293-311,319-322,332,334,343-346
+scripts/assert-release-has-content.sh
+  s_fd50432f2f6c00::t_4bc6bae6dfe920 10,22,24,29-30,35,37-44,47-49,52-53,55-60,66-74,76-77,79-82,91,95,100,102-106,128-134,188-190
+  s_fd50432f2f6c00::t_dc36ad87dbd856 1-9,11-21,23,25-28,31-34,36,45-46,50-51,54,61-65,75,78,83-90,92-94,96-99,101,107-127,135-187,191-192
+skills/router-release-operator/references/release-manifest-template.md
+  s_fd50432f2f6c00::t_63dabe79759ef7 93-104,121-123,127-128
+  s_fd50432f2f6c00::t_10e91ce6e5c379 71
+.github/workflows/release.yml
+  s_fd50432f2f6c00::t_5a631727205fd8 42-50
+skills/router-release-operator/references/release-profiles.md
+  s_fd50432f2f6c00::t_2762e34556de9c 34-43
+  s_fd50432f2f6c00::t_308d8feefd3eb9 139-140
+  s_fd50432f2f6c00::t_8de33d492eebaf 116
+package.json
+  s_fd50432f2f6c00::t_aaae295474b31b 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "fadd3c5d263c00741e359f972f225c1f76ef641a",
+  "prompts": {},
+  "sessions": {
+    "s_fd50432f2f6c00": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "34b8edb5-b167-430c-b411-9e4bae7b4307",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
