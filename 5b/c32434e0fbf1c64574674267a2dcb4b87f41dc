@@ -1,0 +1,19 @@
+spine-tasks/SP-245-adaptive-reasoning-policy/.reviews/final-20260830T213003.md
+  s_cc1ab767e4641c::t_6fc9f249a3a57e 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5bc32434e0fbf1c64574674267a2dcb4b87f41dc",
+  "prompts": {},
+  "sessions": {
+    "s_cc1ab767e4641c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-9ab26b94-0aa1-455e-a6a8-9169dac64ae2",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
