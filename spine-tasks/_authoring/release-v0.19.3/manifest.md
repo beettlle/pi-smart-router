@@ -132,4 +132,4 @@ Wave 1 · 1 task
 - [x] Operator approved publish bump type: patch (2026-08-30)
 - [x] `npm version patch` + `git push && git push --tags` — tag `v0.19.3` @ `6302059`
 - [x] `release.yml` succeeded for v0.19.3 — https://github.com/beettlle/pi-smart-router/actions/runs/33332777000 ; `npm view` shows `0.19.3` published
-- [ ] **Follow-up:** accidental empty `v0.19.4` (`c96aaf3`) also published and is currently `latest` — await operator decision to `npm deprecate pi-smart-router@0.19.4` (same class as prior stray 0.19.0)
+- [ ] **Follow-up:** accidental empty `v0.19.4` (`c96aaf3`) also published and is currently `latest` — operator approved deprecate; local `npm deprecate` failed (401 / no npm login). Re-run with publish credentials: `npm deprecate pi-smart-router@0.19.4 "Accidental empty bump after 0.19.3 (no content change); install pi-smart-router@0.19.3 instead"`
