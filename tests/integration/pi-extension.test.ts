@@ -46,6 +46,7 @@ import {
   type EmbeddingProvider,
   type RequirementVector,
 } from '../../src/domain/matching/hydra-matcher.js';
+import { CONCISENESS_SUFFIX } from '../../src/domain/delegation/adaptive-reasoning.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import type { ModelProfile, RoutingDecision, RoutingRequest, RoutingUsageActuals } from '../../src/domain/types/index.js';
 import type { SystemInfo } from '../../src/infrastructure/hardware/hardware-probe.js';
@@ -1258,6 +1259,229 @@ describe('Pi extension integration (SP-043)', () => {
       expect(events.some((event) => event.type === 'done' && event.message.stopReason === 'stop')).toBe(
         true,
       );
+    });
+  });
+
+  describe('adaptive reasoning policy (SP-245, #166)', () => {
+    const reasoningFleet: ModelProfile[] = [
+      {
+        id: 'glm-air',
+        tier: 'economical-cloud',
+        provider: 'zai',
+        capabilities: { reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 },
+        pricing: { fallback_cost_per_1m: 0.5 },
+        // GLM-class chatty profile — conciseness hint eligible.
+        performance: { verbosity_factor: 2.0 },
+      },
+      {
+        id: 'claude-opus',
+        tier: 'frontier-cloud',
+        provider: 'anthropic',
+        capabilities: { reasoning: 0.9, code_gen: 0.9, tool_use: 0.9 },
+        pricing: { fallback_cost_per_1m: 15.0 },
+      },
+    ];
+
+    const reasoningRegistryModels: Model<Api>[] = [
+      makeRegistryModel({
+        provider: 'zai',
+        id: 'glm-air',
+        api: 'openai-completions',
+        reasoning: true,
+      }),
+      makeRegistryModel({
+        provider: 'anthropic',
+        id: 'claude-opus',
+        api: 'anthropic-messages',
+        reasoning: true,
+      }),
+    ];
+
+    function setupAdaptiveRouter(
+      decisionOverrides: Partial<RoutingDecision> = {},
+      registryModels: Model<Api>[] = reasoningRegistryModels,
+    ) {
+      const router = createRouterFromFleet(reasoningFleet);
+      vi.spyOn(router.dispatch, 'dispatch').mockResolvedValue({
+        request_id: 'req-adaptive-reasoning',
+        selected_model_id: 'glm-air',
+        tier: 'economical-cloud',
+        stage: 'triage',
+        reason_code: 'triage_match',
+        routing_latency_ms: 1,
+        pin_reason: null,
+        ...decisionOverrides,
+      });
+      mockDelegateStreamSimple.mockImplementation((model) => makeSuccessStream(model));
+      const streamSimple = createStreamSimple(withDelegateStream({
+        router,
+        modelRegistry: createMockRegistry(registryModels),
+        fleet: reasoningFleet,
+        executionLedger: new ExecutionLedger(),
+      }));
+      return { router, streamSimple };
+    }
+
+    function lastDelegationOptions() {
+      const call = mockDelegateStreamSimple.mock.calls.at(-1);
+      return call?.[2] as Record<string, unknown> | undefined;
+    }
+
+    beforeEach(() => {
+      mockDelegateStreamSimple.mockReset();
+    });
+
+    it('main_loop turn lowers delegated reasoning to low', async () => {
+      const { streamSimple } = setupAdaptiveRouter();
+
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext([userMessage('Fix the failing test')]), {
+          sessionId: 'ext-adaptive-main-loop',
+        }),
+      );
+
+      expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+      expect(lastDelegationOptions()?.reasoning).toBe('low');
+    });
+
+    it('tool_result turn lowers delegated reasoning to minimal', async () => {
+      const { streamSimple } = setupAdaptiveRouter();
+
+      const messages = [
+        userMessage('Run the read tool'),
+        {
+          role: 'assistant' as const,
+          content: [
+            {
+              type: 'toolCall' as const,
+              id: 'call-1',
+              name: 'read',
+              arguments: { path: 'a.ts' },
+            },
+          ],
+          api: 'openai-completions' as Api,
+          provider: 'zai' as Model<Api>['provider'],
+          model: 'glm-air',
+          usage: {
+            input: 10,
+            output: 5,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 15,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+          },
+          stopReason: 'toolUse' as const,
+          timestamp: 2,
+        },
+        {
+          role: 'toolResult' as const,
+          toolCallId: 'call-1',
+          toolName: 'read',
+          content: [{ type: 'text' as const, text: 'file contents' }],
+          isError: false,
+          timestamp: 3,
+        },
+      ] satisfies Message[];
+
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext(messages), {
+          sessionId: 'ext-adaptive-tool-result',
+        }),
+      );
+
+      expect(lastDelegationOptions()?.reasoning).toBe('minimal');
+    });
+
+    it('planning turn raises delegated reasoning to medium', async () => {
+      const { streamSimple } = setupAdaptiveRouter();
+
+      await collectEvents(
+        streamSimple(
+          makeAutoModel(),
+          makeContext([userMessage('Draft a plan for the auth refactor')]),
+          { sessionId: 'ext-adaptive-planning' },
+        ),
+      );
+
+      expect(lastDelegationOptions()?.reasoning).toBe('medium');
+      // No conciseness nudge at medium even on a chatty (GLM-class) profile.
+      const delegatedContext = mockDelegateStreamSimple.mock.calls.at(-1)?.[1];
+      expect(delegatedContext?.systemPrompt ?? '').not.toContain(CONCISENESS_SUFFIX);
+    });
+
+    it('frontier escalation raises delegated reasoning to high', async () => {
+      const { streamSimple } = setupAdaptiveRouter({
+        selected_model_id: 'claude-opus',
+        tier: 'frontier-cloud',
+      });
+
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext([userMessage('Fix the failing test')]), {
+          sessionId: 'ext-adaptive-frontier',
+        }),
+      );
+
+      expect(lastDelegationOptions()?.reasoning).toBe('high');
+    });
+
+    it('never lowers an explicit operator /thinking that is already higher', async () => {
+      const { streamSimple } = setupAdaptiveRouter();
+
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext([userMessage('Fix the failing test')]), {
+          sessionId: 'ext-adaptive-operator-high',
+          reasoning: 'high',
+        }),
+      );
+
+      expect(lastDelegationOptions()?.reasoning).toBe('high');
+    });
+
+    it('pin continuation inherits the ambient session level on routine turns', async () => {
+      const { streamSimple } = setupAdaptiveRouter({
+        stage: 'session_pin',
+        reason_code: 'session_pinned',
+      });
+
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext([userMessage('Fix the failing test')]), {
+          sessionId: 'ext-adaptive-pinned',
+          reasoning: 'medium',
+        }),
+      );
+
+      expect(lastDelegationOptions()?.reasoning).toBe('medium');
+    });
+
+    it('appends the conciseness suffix for low levels on chatty profiles', async () => {
+      const { streamSimple } = setupAdaptiveRouter();
+
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext([userMessage('Fix the failing test')]), {
+          sessionId: 'ext-adaptive-conciseness',
+        }),
+      );
+
+      expect(lastDelegationOptions()?.reasoning).toBe('low');
+      const delegatedContext = mockDelegateStreamSimple.mock.calls.at(-1)?.[1];
+      expect(delegatedContext?.systemPrompt).toContain(CONCISENESS_SUFFIX);
+    });
+
+    it('fails open on non-reasoning models (no reasoning key set)', async () => {
+      const nonReasoningModels = reasoningRegistryModels.map((model) => ({
+        ...model,
+        reasoning: false,
+      }));
+      const { streamSimple } = setupAdaptiveRouter({}, nonReasoningModels);
+
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext([userMessage('Fix the failing test')]), {
+          sessionId: 'ext-adaptive-fail-open',
+        }),
+      );
+
+      expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+      expect(lastDelegationOptions()?.reasoning).toBeUndefined();
     });
   });
 });
