@@ -12,6 +12,10 @@ import type {
   RoutingTelemetry,
   Tier,
 } from '../../domain/types/index.js';
+import {
+  buildCostCalibrationPrior,
+  type CostCalibrationSample,
+} from '../../domain/routing/expected-cost.js';
 
 export type RoleCostBucket = 'primary' | 'planning_delegate' | 'other';
 
@@ -72,6 +76,13 @@ export interface SessionStatsSnapshot {
    * Omitted when frontier price inputs are missing (fail closed).
    */
   readonly frontier_savings_usd?: number;
+  /**
+   * Warm rolling actual/estimate cost-calibration buckets (SP-242, #164):
+   * per-model and per-tier mean ratios with sample counts, built from
+   * SP-241 usage actuals. Omitted when no bucket is warm (cold → catalog;
+   * fail closed, same convention as frontier_savings_usd).
+   */
+  readonly cost_calibration?: readonly CostCalibrationSample[];
 }
 
 export interface AggregateSessionStatsOptions {
@@ -286,11 +297,22 @@ export function aggregateSessionStats(
   };
 
   const frontierSavings = estimateFrontierSavingsUsd(entries, options.frontier_cost_per_1m);
-  if (frontierSavings !== undefined) {
-    return { ...snapshot, frontier_savings_usd: frontierSavings };
+  const withSavings: SessionStatsSnapshot =
+    frontierSavings !== undefined ? { ...snapshot, frontier_savings_usd: frontierSavings } : snapshot;
+
+  // SP-242 (#164): surface warm rolling actual/estimate calibration buckets;
+  // omitted entirely when cold so automation can treat absence as catalog-only.
+  const calibrationPrior = buildCostCalibrationPrior(entries, {
+    ...(tierByModelId !== undefined ? { tierByModelId } : {}),
+  });
+  if (calibrationPrior !== null) {
+    return {
+      ...withSavings,
+      cost_calibration: costCalibrationSamplesFromPrior(calibrationPrior),
+    };
   }
 
-  return snapshot;
+  return withSavings;
 }
 
 /**
@@ -343,6 +365,27 @@ export function aggregateSessionStatsFromFleet(
     ...(tierMap ? { tier_by_model_id: tierMap } : {}),
     ...(frontierCost !== undefined ? { frontier_cost_per_1m: frontierCost } : {}),
   });
+}
+
+/**
+ * Flatten a warm calibration prior into a deterministic, privacy-safe list:
+ * model buckets first, then tier buckets, each sorted by key (SP-242).
+ */
+export function costCalibrationSamplesFromPrior(
+  prior: CostCalibrationPriorLike,
+): readonly CostCalibrationSample[] {
+  const models = [...prior.byModel.values()].sort((a, b) =>
+    a.key < b.key ? -1 : a.key > b.key ? 1 : 0,
+  );
+  const tiers = [...prior.byTier.values()].sort((a, b) =>
+    a.key < b.key ? -1 : a.key > b.key ? 1 : 0,
+  );
+  return [...models, ...tiers];
+}
+
+interface CostCalibrationPriorLike {
+  readonly byModel: ReadonlyMap<string, CostCalibrationSample>;
+  readonly byTier: ReadonlyMap<string, CostCalibrationSample>;
 }
 
 /** Keys that must never appear on a stats snapshot (privacy). */

@@ -49,6 +49,10 @@ import type { QuotaWindowPosition } from '../../domain/types/entities.js';
 import type { VirtualCostV2Config } from '../../domain/types/schemas.js';
 import { resolveFrugalityCostPer1M } from '../pricing/price-broker.js';
 import {
+  resolveCostCalibrationRatio,
+  type CostCalibrationPrior,
+} from '../../domain/routing/expected-cost.js';
+import {
   TELEMETRY_MAX_ENTRIES,
   TELEMETRY_WINDOW_MS,
   evictExpiredTelemetryEntries,
@@ -123,15 +127,25 @@ const OVERFLOW_REASON_CODES = new Set<string>([
 /**
  * Estimate per-request routing cost in USD from resolved model pricing (SP-085).
  * Uses estimated_input_tokens when present, otherwise prompt_text length as a token proxy.
+ *
+ * SP-242 (#164): an optional rolling calibration prior (built from SP-241
+ * usage actuals) soft-biases the catalog rate by the warm actual/estimate
+ * ratio (model bucket first, tier bucket fallback). Cold / missing prior or
+ * bucket resolves ratio 1 — catalog estimate unchanged (fail open).
  */
 export function estimateRoutingCost(
   model: ModelProfile,
   request: RoutingRequest,
   catalog: PriceCatalog | null,
+  calibration?: CostCalibrationPrior | null,
 ): number {
   const tokens = request.estimated_input_tokens ?? request.prompt_text.length;
   const costPer1M = resolveFrugalityCostPer1M(model, catalog);
-  return (tokens / 1_000_000) * costPer1M;
+  const calibrationRatio = resolveCostCalibrationRatio(calibration, {
+    modelId: model.id,
+    tier: model.tier,
+  });
+  return (tokens / 1_000_000) * costPer1M * calibrationRatio;
 }
 
 export {
