@@ -1,0 +1,24 @@
+README.md
+  h_ae151c586ac6c5 221,590-616
+spine-tasks/SP-242-usage-actuals-calibrate/STATUS.md
+  h_ae151c586ac6c5 3,13,23,25-27
+src/domain/routing/expected-cost.ts
+  h_ae151c586ac6c5 489-494,524-526
+tests/unit/expected-cost.test.ts
+  h_ae151c586ac6c5 4,9,13,15-20,430-794
+tests/unit/routing-telemetry.test.ts
+  h_ae151c586ac6c5 11,41,1047-1088
+tests/unit/session-stats.test.ts
+  h_ae151c586ac6c5 299-366
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f5c66ead01fca2fb4398ba3fa046c9ab045cff14",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
