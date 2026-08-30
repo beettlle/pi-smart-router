@@ -32,4 +32,4 @@
 
 ## Discoveries
 
-(none yet)
+- 2026-08-30: Preflight redirected fileScopeMustChange from routing-telemetry.ts (pre-landed by SP-241) to expected-cost.ts — see PROMPT Amendments.

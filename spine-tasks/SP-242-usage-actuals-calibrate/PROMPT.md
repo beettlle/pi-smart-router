@@ -43,8 +43,8 @@ Closes #164 — use rolling actuals from SP-241 to **calibrate** future pre-rout
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `src/infrastructure/telemetry/routing-telemetry.ts` |
-| May change | `src/domain/routing/expected-cost.ts`, `src/infrastructure/pricing/price-broker.ts`, `src/infrastructure/telemetry/session-stats.ts`, `README.md`, `tests/unit/**` |
+| Must change | `src/domain/routing/expected-cost.ts` |
+| May change | `src/infrastructure/telemetry/routing-telemetry.ts`, `src/infrastructure/pricing/price-broker.ts`, `src/infrastructure/telemetry/session-stats.ts`, `README.md`, `tests/unit/**` |
 | Must NOT change | `.pi/extensions/smart-router/delegation-runtime.ts` (capture already in SP-241), `src/domain/pipeline/router-pipeline.ts`, `package.json` (version) |
 
 ## Contract
@@ -52,7 +52,7 @@ Closes #164 — use rolling actuals from SP-241 to **calibrate** future pre-rout
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/routing-telemetry.test.ts tests/unit/session-stats.test.ts tests/unit/price-broker.test.ts` |
-| fileScopeMustChange | `src/infrastructure/telemetry/routing-telemetry.ts` |
+| fileScopeMustChange | `src/domain/routing/expected-cost.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | Rolling actual/estimate calibration soft-biases estimates when warm; cold path uses catalog; README documents behavior; #164 closable |
 
@@ -87,3 +87,8 @@ Closes #164 — use rolling actuals from SP-241 to **calibrate** future pre-rout
 ## Git Commit Convention
 
 - `feat(SP-242): calibrate cost estimates from usage actuals (#164)`
+
+## Amendments
+
+- **2026-08-30 (preflight / pre-landed file scope):** SP-241 already landed changes on `src/infrastructure/telemetry/routing-telemetry.ts`. Redirected `fileScopeMustChange` / File Scope Must change to `src/domain/routing/expected-cost.ts` (calibration soft-bias delivery artifact). `routing-telemetry.ts` remains in May change.
+
