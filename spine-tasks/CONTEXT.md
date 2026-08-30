@@ -2,10 +2,10 @@
 
 **Last Updated:** 2026-08-30
 **Status:** Active
-**Next Task ID:** SP-241
+**Next Task ID:** SP-247
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.19.3 on npm (2026-08-30, patch — SP-239/#161 de-flake + SP-240 pi-ai 0.84.4 dep refresh). Accidental empty `v0.19.4` also published and currently `latest` (await deprecate). Prior v0.19.2 SP-238/#160. Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
+**Released:** v0.19.3 on npm (2026-08-30, patch — SP-239/#161 de-flake + SP-240 pi-ai 0.84.4 dep refresh). Accidental empty `v0.19.4` also published and currently `latest` (await deprecate). **In progress:** v0.20.0 minor — routing cost & verbosity economics (SP-241–SP-246 / #164/#165/#166). Prior v0.19.2 SP-238/#160. Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
 
 ---
 
@@ -830,6 +830,23 @@
 **Operational notes:** Allegretto profile added (`agents.activeProfile`) after z.ai 5h quota blocked plan review. Stale completed batch-state blocked wave-1 start (pi-spine preflight/clear ordering) — terminal pointer removed with archive backup. Accidental empty `npm version` to 0.19.4 four seconds after 0.19.3 — do not treat as a feature release.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.19.3/manifest.md`. Dependency majors deferred to #162/#163 (filed 2026-08-29 on operator request).
+
+### Phase 54 — Release v0.20.0 Routing Cost & Verbosity Economics (SP-241–SP-246)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-241 | Capture pi usage actuals into telemetry and stats | M | — | Partial #164 |
+| SP-242 | Calibrate cost estimates from rolling usage actuals + README | S | SP-241 | Closes #164 |
+| SP-243 | Peak/off-peak pricing adapters (Z.ai + DeepSeek) | M | SP-242 | Partial #165 |
+| SP-244 | Peak pricing explain telemetry + README | S | SP-243 | Closes #165 |
+| SP-245 | Adaptive reasoning policy + delegation option merge | M | — | Partial #166 |
+| SP-246 | Adaptive reasoning operator config + telemetry + README | S | SP-245 | Closes #166 |
+
+**Source:** Operator-approved **v0.20.0** (2026-08-30, minor profile). Theme: routing cost and verbosity economics — usage calibration (#164), peak/off-peak adapters (#165), adaptive reasoning (#166). Dep bumps: check-only (none this train); majors remain #162/#163.
+
+**Status:** Packets authored; awaiting Phase 4 batch execution.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.20.0/manifest.md`
 
 ---
 
