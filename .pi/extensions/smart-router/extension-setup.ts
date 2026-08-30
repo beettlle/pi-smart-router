@@ -120,6 +120,9 @@ export async function createSmartRouterRuntime(cwd: string): Promise<{
       executionLedger,
       lifecycleHookState,
       planningDelegateConfig: operatorConfig.planning_delegate,
+      ...(operatorConfig.adaptive_reasoning !== undefined
+        ? { adaptiveReasoningConfig: operatorConfig.adaptive_reasoning }
+        : {}),
       datasetRecorder,
       outcomeRecorder,
       sessionPinner,
@@ -147,6 +150,19 @@ export async function createSmartRouterRuntime(cwd: string): Promise<{
         } catch (error) {
           console.warn(
             '[smart-router] failed to persist usage actuals (fail open)',
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      },
+      onDelegationReasoning(requestId, fields) {
+        // SP-246 / #166: persist the adaptive reasoning decision (requested /
+        // applied level + reason code) onto the routing telemetry row. Fail
+        // open — telemetry must never fail the route.
+        try {
+          runtime.store.updateTelemetryReasoning?.(requestId, fields);
+        } catch (error) {
+          console.warn(
+            '[smart-router] failed to persist reasoning telemetry (fail open)',
             error instanceof Error ? error.message : String(error),
           );
         }

@@ -24,7 +24,7 @@
  *    flush pending writes first (read-your-writes) and stay synchronous.
  */
 
-import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingTelemetry, RoutingUsageActuals, SessionPin } from './entities.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingReasoningTelemetry, RoutingTelemetry, RoutingUsageActuals, SessionPin } from './entities.js';
 
 export interface ListTelemetryOptions {
   readonly limit?: number;
@@ -88,6 +88,15 @@ export interface StorePort {
    * missing capability never fails the route.
    */
   updateTelemetryUsageActuals?(requestId: string, actuals: RoutingUsageActuals): void;
+
+  /**
+   * Attach post-delegation adaptive reasoning fields to the newest telemetry
+   * row for a request (SP-246, #166). Optional: stores without update support
+   * omit it and callers must fail open
+   * (`store.updateTelemetryReasoning?.(...)`) so a missing capability never
+   * fails the route.
+   */
+  updateTelemetryReasoning?(requestId: string, fields: RoutingReasoningTelemetry): void;
 
   /**
    * Append a privacy-safe routing dataset record (sync hot path).

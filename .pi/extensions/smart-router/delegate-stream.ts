@@ -330,8 +330,41 @@ export async function delegateWithOutcome(
   reasoningSignal?: AdaptiveReasoningSignal,
 ): Promise<PipedDelegatedStreamResult | DelegatedStreamResult> {
   const reasoning = reasoningSignal
-    ? resolveAdaptiveReasoning(targetModel, reasoningSignal, options?.reasoning)
+    ? resolveAdaptiveReasoning(
+        targetModel,
+        reasoningSignal,
+        options?.reasoning,
+        // SP-246 (#166): operator enable/disable + floor/ceiling knobs.
+        deps.adaptiveReasoningConfig
+          ? {
+              enabled: deps.adaptiveReasoningConfig.enabled,
+              ...(deps.adaptiveReasoningConfig.min_level !== undefined
+                ? { floor: deps.adaptiveReasoningConfig.min_level }
+                : {}),
+              ...(deps.adaptiveReasoningConfig.max_level !== undefined
+                ? { ceiling: deps.adaptiveReasoningConfig.max_level }
+                : {}),
+            }
+          : undefined,
+      )
     : undefined;
+
+  // SP-246 (#166): reasoning telemetry (requested / applied / reason code).
+  // Fail open — telemetry must never fail the route.
+  if (reasoningSignal && reasoning && requestId !== undefined) {
+    try {
+      deps.onDelegationReasoning?.(requestId, {
+        reasoning_level_requested: options?.reasoning ?? null,
+        reasoning_level_applied: reasoning.reasoning ?? null,
+        reasoning_reason_code: reasoning.reasonCode,
+      });
+    } catch (error) {
+      console.warn(
+        '[smart-router] reasoning telemetry callback failed (fail open)',
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
 
   const delegationContext = buildDelegationContext(
     context,

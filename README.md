@@ -441,6 +441,9 @@ Cluster IDs are stable reason-code prefixes (`cluster_low_stakes_general`, `clus
 | `SMART_ROUTER_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY` | `true` | Exclude tool execution history from delegate payload |
 | `SMART_ROUTER_PLANNING_DELEGATE_GLOBAL_TIMEOUT_MS` | `120000` | Global cap (ms) on the whole planning-delegate stage per planning turn — bounds fan-out wall-clock so a stalled worker cannot hang TTFT ([#120](https://github.com/beettlle/pi-smart-router/issues/120)) |
 | `SMART_ROUTER_PLANNING_DELEGATE_SUB_CALL_TIMEOUT_MS` | `30000` | Per-call cap (ms) on each delegate sub-call worker; on expiry the worker is cancelled/abandoned and routing falls back to direct frontier with `planning_delegate_timeout` ([#120](https://github.com/beettlle/pi-smart-router/issues/120)) |
+| `SMART_ROUTER_ADAPTIVE_REASONING_ENABLED` | `true` | Master switch for the adaptive thinking-level policy ([#166](https://github.com/beettlle/pi-smart-router/issues/166)); `false` passes the session thinking level through unchanged |
+| `SMART_ROUTER_ADAPTIVE_REASONING_MIN_LEVEL` | (unset) | Floor on policy-derived thinking levels (`minimal\|low\|medium\|high\|xhigh\|max`) — see [Adaptive reasoning](#adaptive-reasoning-thinking-level-166) |
+| `SMART_ROUTER_ADAPTIVE_REASONING_MAX_LEVEL` | (unset) | Ceiling on policy-derived thinking levels (incl. turn-class upgrades) — see [Adaptive reasoning](#adaptive-reasoning-thinking-level-166) |
 | `SMART_ROUTER_PREFIX_CACHE_WEIGHT` | `0.20` | SAAR weight on warm prefix value in cache breakeven math (0–1; [#73](https://github.com/beettlle/pi-smart-router/issues/73)) |
 | `SMART_ROUTER_IDLE_TIMEOUT_SECONDS` | `300` | SAAR idle seconds before pin reopens for full re-route |
 | `SMART_ROUTER_SWITCH_THRESHOLD` | `0.5` | SAAR switch score gate (0–1) for tier upgrades during hard-lock |
@@ -514,6 +517,41 @@ When a **planning** turn would route primary inference to frontier while a warm 
 6. Use `pi router explain` (or `POST /v1/route/explain`) on the same session — `features.planning_delegate` mirrors live routing (`path: delegate` vs `direct`, `fallback_reason` when applicable).
 
 See [routing-roadmap.md](docs/routing-roadmap.md) §2 P0 and GitHub [#71](https://github.com/beettlle/pi-smart-router/issues/71) for acceptance criteria.
+
+### Adaptive reasoning (thinking level) (#166)
+
+Adaptive reasoning tunes the **thinking intensity of the model already selected** — it never changes which model runs. Per turn class:
+
+| Turn class | Policy level |
+|-----------|--------------|
+| `tool_result` | `minimal` |
+| `main_loop` | `low` |
+| planning / `planning_delegate` | `medium` |
+| frontier escalation / `loop_escalation` | `high` |
+
+pi passes the session thinking level on every call; the router treats pi's ambient default (`medium`) as adjustable by policy, and any **other** explicit level as an operator `/thinking` floor that is **never lowered** (a turn-class upgrade may still raise it). Chatty profiles (high `verbosity_factor`) additionally get a one-line conciseness nudge at `minimal`/`low`.
+
+**Three knobs that sound alike, do different things:**
+
+| Knob | Acts on | What it changes |
+|------|---------|-----------------|
+| **Adaptive reasoning** (`adaptive_reasoning.*`) | The delegated call's `reasoning` option | Thinking *intensity* of the already-selected model — cost of thinking, not model choice |
+| `frugality.lambda_verbosity` | Multi-objective **selection** scoring | Which model gets picked — penalizes verbose models while ranking candidates; never touches the delegated call's reasoning option |
+| `/thinking` (pi session command) | The caller-provided reasoning level | Explicit operator override — an explicit level is never lowered by policy or bounds |
+
+**Operator knobs** (config `adaptive_reasoning` / env):
+
+| Key | Env var | Default | Effect |
+|-----|---------|---------|--------|
+| `enabled` | `SMART_ROUTER_ADAPTIVE_REASONING_ENABLED` | `true` | When `false`, the policy is skipped — delegated calls pass the session thinking level through unchanged (`reasoning_reason_code: adaptive_reasoning_disabled`) |
+| `min_level` | `SMART_ROUTER_ADAPTIVE_REASONING_MIN_LEVEL` | (none) | Floor: policy-derived levels are raised to at least this level. Discrete level (`minimal\|low\|medium\|high\|xhigh\|max`) — deliberately **not** a free-form verbosity percent |
+| `max_level` | `SMART_ROUTER_ADAPTIVE_REASONING_MAX_LEVEL` | (none) | Ceiling: policy-derived levels (incl. turn-class upgrades) are capped at this level. When `min_level` exceeds `max_level` (e.g. via env), the ceiling wins (cost-safe) |
+
+Floor/ceiling bind only what the policy itself derives. An explicit operator `/thinking` choice is never **lowered** by either bound (a floor can still *raise* one via the policy-upgrade path). Both bounds re-clamp down to the model's supported levels.
+
+**Fail-open behavior:** models that do not support reasoning options (`reasoning: false`, or a `thinkingLevelMap` mapping every relevant level to `null`) pass caller options through unchanged — telemetry records `reasoning_reason_code: reasoning_unsupported` and the route never fails. Providers that ignore reasoning options degrade to a no-op.
+
+**Telemetry:** each routed delegation records `reasoning_level_requested` (the session/caller level), `reasoning_level_applied` (the effective delegated level), and `reasoning_reason_code` (e.g. `turn_envelope_main_loop`, `operator_thinking_floor`, `operator_floor_applied`, `operator_ceiling_applied`, `reasoning_unsupported`) on the routing telemetry row — enriched post-delegation like usage actuals ([SP-241](https://github.com/beettlle/pi-smart-router/issues/164)). Inspect via `/smart-router history`.
 
 ### Degraded neural failover sandwich (#119)
 

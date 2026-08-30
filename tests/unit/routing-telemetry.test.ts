@@ -37,6 +37,7 @@ import {
   enrichRoutingDecisionWithTierSelection,
   extractUsageActuals,
   applyUsageActuals,
+  applyReasoningTelemetry,
   resolveTierSelectionReasonCode,
   resolvePinOnlyFallbackActive,
 } from '../../src/infrastructure/telemetry/routing-telemetry.js';
@@ -120,6 +121,9 @@ describe('RoutingTelemetryEmitter', () => {
       context_overflow_pin_break: false,
       selected_model_max_input_tokens: null,
       context_fit_reason_code: null,
+      reasoning_level_requested: null,
+      reasoning_level_applied: null,
+      reasoning_reason_code: null,
       cluster_id: null,
       cluster_similarity: null,
       cluster_margin: null,
@@ -1040,5 +1044,36 @@ describe('usage actuals extraction (SP-241, #164)', () => {
     expect(updated.actual_cache_write_tokens).toBe(25);
     // Pure: original record untouched.
     expect(record.actual_cost_usd).toBeUndefined();
+  });
+
+  it('emits reasoning telemetry defaults null pre-delegation (SP-246, #166)', () => {
+    const emitter = new RoutingTelemetryEmitter({
+      clock: () => '2026-08-30T12:00:00.000Z',
+    });
+    const record = emitter.emit(makeRequest(), makeDecision());
+    expect(record.reasoning_level_requested).toBeNull();
+    expect(record.reasoning_level_applied).toBeNull();
+    expect(record.reasoning_reason_code).toBeNull();
+  });
+
+  it('applyReasoningTelemetry attaches requested/applied/reason fields (SP-246, #166)', () => {
+    const emitter = new RoutingTelemetryEmitter({
+      clock: () => '2026-08-30T12:00:00.000Z',
+    });
+    const record = emitter.emit(makeRequest(), makeDecision());
+
+    const updated = applyReasoningTelemetry(record, {
+      reasoning_level_requested: 'medium',
+      reasoning_level_applied: 'low',
+      reasoning_reason_code: 'turn_envelope_main_loop',
+    });
+
+    expect(updated.reasoning_level_requested).toBe('medium');
+    expect(updated.reasoning_level_applied).toBe('low');
+    expect(updated.reasoning_reason_code).toBe('turn_envelope_main_loop');
+    // Pure: original record untouched.
+    expect(record.reasoning_level_applied).toBeNull();
+    // Routing decision reason_code stays distinct from the reasoning code.
+    expect(updated.reason_code).toBe(record.reason_code);
   });
 });

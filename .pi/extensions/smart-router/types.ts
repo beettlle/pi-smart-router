@@ -11,10 +11,12 @@ import type { HydraMatcher } from '../../../src/domain/matching/hydra-matcher.js
 import { ExecutionLedger } from '../../../src/domain/delegation/execution-ledger.js';
 import { SessionPinner } from '../../../src/domain/pinning/session-pinner.js';
 import type {
+  AdaptiveReasoningConfig,
   ModelProfile,
   PlanningDelegateConfig,
   PriceCatalog,
   RoutingDecision,
+  RoutingReasoningTelemetry,
   RoutingUsageActuals,
 } from '../../../src/domain/types/index.js';
 import type { PlanningDelegateSpawnFn } from './planning-delegate.js';
@@ -69,6 +71,8 @@ export interface StreamDelegationDeps {
   spawnPlanningDelegate?: PlanningDelegateSpawnFn;
   /** Planning delegate knobs incl. global + per-call timeout bounds (SP-213, #120). */
   readonly planningDelegateConfig?: PlanningDelegateConfig;
+  /** Adaptive reasoning knobs: enable/disable + floor/ceiling (SP-246, #166). */
+  readonly adaptiveReasoningConfig?: AdaptiveReasoningConfig;
   readonly lifecycleHookState?: LifecycleHookState;
   readonly datasetRecorder?: DatasetRecorder;
   readonly outcomeRecorder?: OutcomeRecorder;
@@ -89,6 +93,12 @@ export interface StreamDelegationDeps {
    * must not throw — actuals capture never fails the route.
    */
   onDelegationUsage?: (requestId: string, actuals: RoutingUsageActuals) => void;
+  /**
+   * Fired after the adaptive reasoning policy resolves the effective thinking
+   * level for a delegated stream (SP-246, #166). Implementations must not
+   * throw — reasoning telemetry must never fail the route.
+   */
+  onDelegationReasoning?: (requestId: string, fields: RoutingReasoningTelemetry) => void;
 }
 
 export interface SmartRouterRuntime {

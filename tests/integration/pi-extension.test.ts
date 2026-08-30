@@ -1300,6 +1300,7 @@ describe('Pi extension integration (SP-043)', () => {
     function setupAdaptiveRouter(
       decisionOverrides: Partial<RoutingDecision> = {},
       registryModels: Model<Api>[] = reasoningRegistryModels,
+      depsOverrides: Record<string, unknown> = {},
     ) {
       const router = createRouterFromFleet(reasoningFleet);
       vi.spyOn(router.dispatch, 'dispatch').mockResolvedValue({
@@ -1318,6 +1319,7 @@ describe('Pi extension integration (SP-043)', () => {
         modelRegistry: createMockRegistry(registryModels),
         fleet: reasoningFleet,
         executionLedger: new ExecutionLedger(),
+        ...depsOverrides,
       }));
       return { router, streamSimple };
     }
@@ -1482,6 +1484,108 @@ describe('Pi extension integration (SP-043)', () => {
 
       expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
       expect(lastDelegationOptions()?.reasoning).toBeUndefined();
+    });
+
+    it('disabled config passes the caller reasoning through unchanged (SP-246)', async () => {
+      const { streamSimple } = setupAdaptiveRouter({}, reasoningRegistryModels, {
+        adaptiveReasoningConfig: { enabled: false, min_level: 'high' },
+      });
+
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext([userMessage('Fix the failing test')]), {
+          sessionId: 'ext-adaptive-disabled',
+          reasoning: 'medium',
+        }),
+      );
+
+      expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+      expect(lastDelegationOptions()?.reasoning).toBe('medium');
+    });
+
+    it('floor config raises the delegated reasoning level (SP-246)', async () => {
+      const { streamSimple } = setupAdaptiveRouter({}, reasoningRegistryModels, {
+        adaptiveReasoningConfig: { enabled: true, min_level: 'medium' },
+      });
+
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext([userMessage('Fix the failing test')]), {
+          sessionId: 'ext-adaptive-floor',
+        }),
+      );
+
+      expect(lastDelegationOptions()?.reasoning).toBe('medium');
+    });
+
+    it('emits reasoning telemetry with requested/applied/reason_code (SP-246)', async () => {
+      const onDelegationReasoning = vi.fn();
+      const { streamSimple } = setupAdaptiveRouter({}, reasoningRegistryModels, {
+        onDelegationReasoning,
+      });
+
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext([userMessage('Fix the failing test')]), {
+          sessionId: 'ext-adaptive-telemetry',
+        }),
+      );
+
+      expect(onDelegationReasoning).toHaveBeenCalledWith(
+        'req-adaptive-reasoning',
+        {
+          reasoning_level_requested: null,
+          reasoning_level_applied: 'low',
+          reasoning_reason_code: 'turn_envelope_main_loop',
+        },
+      );
+    });
+
+    it('reasoning telemetry reports the caller level as requested (SP-246)', async () => {
+      const onDelegationReasoning = vi.fn();
+      const { streamSimple } = setupAdaptiveRouter({}, reasoningRegistryModels, {
+        onDelegationReasoning,
+      });
+
+      await collectEvents(
+        streamSimple(makeAutoModel(), makeContext([userMessage('Fix the failing test')]), {
+          sessionId: 'ext-adaptive-telemetry-requested',
+          reasoning: 'high',
+        }),
+      );
+
+      expect(onDelegationReasoning).toHaveBeenCalledWith(
+        'req-adaptive-reasoning',
+        {
+          reasoning_level_requested: 'high',
+          reasoning_level_applied: 'high',
+          reasoning_reason_code: 'operator_thinking_floor',
+        },
+      );
+    });
+
+    it('a throwing reasoning telemetry callback never fails the route (SP-246)', async () => {
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { streamSimple } = setupAdaptiveRouter({}, reasoningRegistryModels, {
+        onDelegationReasoning: () => {
+          throw new Error('telemetry sink down');
+        },
+      });
+
+      try {
+        const events = await collectEvents(
+          streamSimple(makeAutoModel(), makeContext([userMessage('Fix the failing test')]), {
+            sessionId: 'ext-adaptive-telemetry-throw',
+          }),
+        );
+
+        expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+        expect(lastDelegationOptions()?.reasoning).toBe('low');
+        expect(events.at(-1)?.type).toBe('done');
+        expect(consoleWarn).toHaveBeenCalledWith(
+          '[smart-router] reasoning telemetry callback failed (fail open)',
+          'telemetry sink down',
+        );
+      } finally {
+        consoleWarn.mockRestore();
+      }
     });
   });
 });

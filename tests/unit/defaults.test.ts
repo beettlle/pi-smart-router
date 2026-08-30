@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  AdaptiveReasoningConfigSchema,
+  DEFAULT_ADAPTIVE_REASONING_CONFIG,
   DEFAULT_PLANNING_DELEGATE_CONFIG,
   DEFAULT_SAAR_CONFIG,
+  resolveAdaptiveReasoningConfigFromEnv,
   resolvePlanningDelegateConfigFromEnv,
   resolveSaarConfigFromEnv,
 } from '../../src/domain/types/schemas.js';
@@ -18,6 +21,9 @@ const ENV_KEYS = [
   'SMART_ROUTER_PLANNING_DELEGATE_EXCLUDE_EXECUTION_HISTORY',
   'SMART_ROUTER_PLANNING_DELEGATE_GLOBAL_TIMEOUT_MS',
   'SMART_ROUTER_PLANNING_DELEGATE_SUB_CALL_TIMEOUT_MS',
+  'SMART_ROUTER_ADAPTIVE_REASONING_ENABLED',
+  'SMART_ROUTER_ADAPTIVE_REASONING_MIN_LEVEL',
+  'SMART_ROUTER_ADAPTIVE_REASONING_MAX_LEVEL',
 ] as const;
 
 afterEach(() => {
@@ -71,6 +77,70 @@ describe('resolvePlanningDelegateConfigFromEnv', () => {
     process.env.SMART_ROUTER_PLANNING_DELEGATE_SUB_CALL_TIMEOUT_MS = 'soonish';
 
     expect(resolvePlanningDelegateConfigFromEnv()).toEqual(DEFAULT_PLANNING_DELEGATE_CONFIG);
+  });
+});
+
+describe('DEFAULT_ADAPTIVE_REASONING_CONFIG', () => {
+  it('defaults to enabled with no floor/ceiling bounds (SP-246, #166)', () => {
+    expect(DEFAULT_ADAPTIVE_REASONING_CONFIG).toEqual({ enabled: true });
+  });
+});
+
+describe('resolveAdaptiveReasoningConfigFromEnv', () => {
+  it('returns defaults when env is unset', () => {
+    expect(resolveAdaptiveReasoningConfigFromEnv()).toEqual(
+      DEFAULT_ADAPTIVE_REASONING_CONFIG,
+    );
+  });
+
+  it('overrides enable and floor/ceiling levels from env', () => {
+    process.env.SMART_ROUTER_ADAPTIVE_REASONING_ENABLED = 'false';
+    process.env.SMART_ROUTER_ADAPTIVE_REASONING_MIN_LEVEL = 'medium';
+    process.env.SMART_ROUTER_ADAPTIVE_REASONING_MAX_LEVEL = 'HIGH';
+
+    expect(resolveAdaptiveReasoningConfigFromEnv()).toEqual({
+      enabled: false,
+      min_level: 'medium',
+      max_level: 'high',
+    });
+  });
+
+  it('ignores invalid env values', () => {
+    process.env.SMART_ROUTER_ADAPTIVE_REASONING_ENABLED = 'sometimes';
+    process.env.SMART_ROUTER_ADAPTIVE_REASONING_MIN_LEVEL = 'medium-ish';
+    process.env.SMART_ROUTER_ADAPTIVE_REASONING_MAX_LEVEL = '0.75';
+
+    expect(resolveAdaptiveReasoningConfigFromEnv()).toEqual(
+      DEFAULT_ADAPTIVE_REASONING_CONFIG,
+    );
+  });
+});
+
+describe('AdaptiveReasoningConfigSchema', () => {
+  it('accepts valid floor ≤ ceiling configs', () => {
+    const parsed = AdaptiveReasoningConfigSchema.parse({
+      enabled: true,
+      min_level: 'low',
+      max_level: 'high',
+    });
+    expect(parsed).toEqual({ enabled: true, min_level: 'low', max_level: 'high' });
+  });
+
+  it('rejects floor above ceiling', () => {
+    const result = AdaptiveReasoningConfigSchema.safeParse({
+      min_level: 'high',
+      max_level: 'low',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects unknown levels (no free-form verbosity percent)', () => {
+    expect(
+      AdaptiveReasoningConfigSchema.safeParse({ min_level: '0.75' }).success,
+    ).toBe(false);
+    expect(
+      AdaptiveReasoningConfigSchema.safeParse({ max_level: 'extra-high' }).success,
+    ).toBe(false);
   });
 });
 

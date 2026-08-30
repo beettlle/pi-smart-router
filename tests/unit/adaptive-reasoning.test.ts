@@ -439,3 +439,198 @@ describe('applyConcisenessHint', () => {
     expect(applyConcisenessHint(baseContext, undefined)).toBe(baseContext);
   });
 });
+
+// ─── Operator knobs: enable/disable + floor/ceiling (SP-246, #166) ─────────
+
+describe('adaptive reasoning operator knobs', () => {
+  it('disabled passes caller reasoning through unchanged with adaptive_reasoning_disabled', () => {
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({ turnType: 'main_loop' }),
+      SESSION_AMBIENT_THINKING_LEVEL,
+      { enabled: false },
+    );
+    expect(result).toEqual({
+      reasoning: SESSION_AMBIENT_THINKING_LEVEL,
+      reasonCode: 'adaptive_reasoning_disabled',
+      concisenessHint: false,
+    });
+  });
+
+  it('disabled keeps caller options untouched when no caller reasoning exists', () => {
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({ turnType: 'tool_result' }),
+      undefined,
+      { enabled: false },
+    );
+    expect(result.reasoning).toBeUndefined();
+    expect(result.reasonCode).toBe('adaptive_reasoning_disabled');
+    expect(result.concisenessHint).toBe(false);
+  });
+
+  it('disabled skips the policy even on a chatty profile (no conciseness hint)', () => {
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({
+        turnType: 'main_loop',
+        profile: makeProfile({ performance: { verbosity_factor: 2.0 } }),
+      }),
+      SESSION_AMBIENT_THINKING_LEVEL,
+      { enabled: false },
+    );
+    expect(result.concisenessHint).toBe(false);
+  });
+
+  it('floor raises a policy-derived level with operator_floor_applied', () => {
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({ turnType: 'main_loop' }),
+      SESSION_AMBIENT_THINKING_LEVEL,
+      { floor: 'medium' },
+    );
+    expect(result.reasoning).toBe('medium');
+    expect(result.reasonCode).toBe('operator_floor_applied');
+  });
+
+  it('floor raises tool_result minimal turns', () => {
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({ turnType: 'tool_result' }),
+      undefined,
+      { floor: 'low' },
+    );
+    expect(result.reasoning).toBe('low');
+    expect(result.reasonCode).toBe('operator_floor_applied');
+  });
+
+  it('floor equal to the policy level keeps the turn-class reason code', () => {
+    // Planning turns already policy-resolve to medium — a medium floor is a no-op.
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({ turnType: 'planning' }),
+      SESSION_AMBIENT_THINKING_LEVEL,
+      { floor: 'medium' },
+    );
+    expect(result.reasoning).toBe('medium');
+    expect(result.reasonCode).toBe('planning_turn');
+  });
+
+  it('floor re-clamps down to model-supported levels', () => {
+    const model = makeModel({ thinkingLevelMap: { high: null, xhigh: null, max: null } });
+    const result = resolveAdaptiveReasoning(
+      model,
+      signal({ turnType: 'main_loop' }),
+      undefined,
+      { floor: 'max' },
+    );
+    expect(result.reasoning).toBe('medium');
+    expect(result.reasonCode).toBe('operator_floor_applied');
+  });
+
+  it('ceiling caps turn-class levels with operator_ceiling_applied', () => {
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({ turnType: 'main_loop', decision: makeDecision({ tier: 'frontier-cloud' }) }),
+      undefined,
+      { ceiling: 'medium' },
+    );
+    expect(result.reasoning).toBe('medium');
+    expect(result.reasonCode).toBe('operator_ceiling_applied');
+  });
+
+  it('ceiling neutralizes a pin turn-class upgrade back to session inherit', () => {
+    const decision = makeDecision({ stage: 'session_pin', reason_code: 'session_pinned' });
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({ turnType: 'main_loop', decision }),
+      SESSION_AMBIENT_THINKING_LEVEL,
+      { ceiling: 'low' },
+    );
+    // Bounded policy (low) no longer upgrades past the ambient session level —
+    // the pin continuation inherits the session level unchanged.
+    expect(result.reasoning).toBe(SESSION_AMBIENT_THINKING_LEVEL);
+    expect(result.reasonCode).toBe('pin_inherit_session');
+  });
+
+  it('ceiling caps the ambient session default on policy-derived turns', () => {
+    // Ambient medium is adjustable by policy (invariant 1) — a low ceiling
+    // caps the planning-turn medium down to low.
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({ turnType: 'planning' }),
+      SESSION_AMBIENT_THINKING_LEVEL,
+      { ceiling: 'low' },
+    );
+    expect(result.reasoning).toBe('low');
+    expect(result.reasonCode).toBe('operator_ceiling_applied');
+  });
+
+  it('ceiling never lowers an explicit operator /thinking above it', () => {
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({ turnType: 'main_loop' }),
+      'high',
+      { ceiling: 'low' },
+    );
+    expect(result.reasoning).toBe('high');
+    expect(result.reasonCode).toBe('operator_thinking_floor');
+  });
+
+  it('floor can raise an explicit operator /thinking via the policy upgrade path', () => {
+    // Static floor makes every turn class demand ≥ high; the explicit
+    // /thinking minimal is upgraded (never lowered) to the floor level.
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({ turnType: 'main_loop' }),
+      'minimal',
+      { floor: 'high' },
+    );
+    expect(result.reasoning).toBe('high');
+    expect(result.reasonCode).toBe('operator_floor_applied');
+  });
+
+  it('ceiling wins when floor exceeds ceiling (cost-safe)', () => {
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({ turnType: 'main_loop', decision: makeDecision({ tier: 'frontier-cloud' }) }),
+      undefined,
+      { floor: 'max', ceiling: 'low' },
+    );
+    expect(result.reasoning).toBe('low');
+    expect(result.reasonCode).toBe('operator_ceiling_applied');
+  });
+
+  it('bounds below an explicit caller level keep the caller level', () => {
+    // Ceiling low caps the policy, but the caller already asked for more.
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({ turnType: 'planning' }),
+      'xhigh',
+      { ceiling: 'low' },
+    );
+    expect(result.reasoning).toBe('xhigh');
+    expect(result.reasonCode).toBe('operator_thinking_floor');
+  });
+
+  it('disabled wins over unsupported models (no reasoning merge at all)', () => {
+    const result = resolveAdaptiveReasoning(
+      makeModel({ reasoning: false }),
+      signal({ turnType: 'main_loop' }),
+      'low',
+      { enabled: false },
+    );
+    expect(result.reasonCode).toBe('adaptive_reasoning_disabled');
+    expect(result.reasoning).toBe('low');
+  });
+
+  it('undefined options behave as enabled with no bounds (back-compat)', () => {
+    const result = resolveAdaptiveReasoning(
+      makeModel(),
+      signal({ turnType: 'main_loop' }),
+      SESSION_AMBIENT_THINKING_LEVEL,
+    );
+    expect(result.reasoning).toBe('low');
+    expect(result.reasonCode).toBe('turn_envelope_main_loop');
+  });
+});

@@ -676,6 +676,105 @@ export const DEFAULT_SPECULATIVE_PREWARM_CONFIG: Readonly<SpeculativePrewarmConf
   min_attempts_before_guard: 4,
 } as const;
 
+// ─── Adaptive reasoning (SP-246, #166) ──────────────────────────────────────
+
+/**
+ * Discrete thinking levels — mirrors pi-ai `ThinkingLevel` (kept as a literal
+ * zod enum so domain schemas stay free of pi-ai imports).
+ */
+export const AdaptiveReasoningLevelSchema = z.enum([
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+]);
+
+export type AdaptiveReasoningLevel = z.infer<typeof AdaptiveReasoningLevelSchema>;
+
+/** Rank order used to validate floor ≤ ceiling (minimal < low < … < max). */
+const ADAPTIVE_REASONING_LEVEL_ORDER: Readonly<Record<AdaptiveReasoningLevel, number>> = {
+  minimal: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  xhigh: 4,
+  max: 5,
+};
+
+/**
+ * Adaptive reasoning operator knobs (SP-246, #166).
+ *
+ * Floor/ceiling are discrete thinking levels that bound what the *policy*
+ * derives per turn class — deliberately NOT a free-form verbosity percent.
+ * An explicit operator `/thinking` choice is never lowered: floor/ceiling
+ * bind only policy-derived levels (see src/domain/delegation/adaptive-reasoning.ts).
+ */
+export const AdaptiveReasoningConfigSchema = z
+  .object({
+    /** When false, the policy is skipped: caller reasoning passes through unchanged. */
+    enabled: z.boolean().default(true),
+    /** Floor: policy-derived levels are raised to at least this level. */
+    min_level: AdaptiveReasoningLevelSchema.optional(),
+    /** Ceiling: policy-derived levels are capped at this level. */
+    max_level: AdaptiveReasoningLevelSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.min_level !== undefined &&
+      value.max_level !== undefined &&
+      ADAPTIVE_REASONING_LEVEL_ORDER[value.min_level] >
+        ADAPTIVE_REASONING_LEVEL_ORDER[value.max_level]
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'adaptive_reasoning.min_level must not exceed max_level',
+        path: ['min_level'],
+      });
+    }
+  });
+
+export type AdaptiveReasoningConfig = z.infer<typeof AdaptiveReasoningConfigSchema>;
+
+/** Adaptive reasoning defaults per #166 (SP-246): on, no floor/ceiling bounds. */
+export const DEFAULT_ADAPTIVE_REASONING_CONFIG: Readonly<AdaptiveReasoningConfig> = {
+  enabled: true,
+} as const;
+
+/** Env: SMART_ROUTER_ADAPTIVE_REASONING_ENABLED — master switch (default true). */
+const ENV_ADAPTIVE_REASONING_ENABLED = 'SMART_ROUTER_ADAPTIVE_REASONING_ENABLED';
+/** Env: SMART_ROUTER_ADAPTIVE_REASONING_MIN_LEVEL — policy floor level (unset = none). */
+const ENV_ADAPTIVE_REASONING_MIN_LEVEL = 'SMART_ROUTER_ADAPTIVE_REASONING_MIN_LEVEL';
+/** Env: SMART_ROUTER_ADAPTIVE_REASONING_MAX_LEVEL — policy ceiling level (unset = none). */
+const ENV_ADAPTIVE_REASONING_MAX_LEVEL = 'SMART_ROUTER_ADAPTIVE_REASONING_MAX_LEVEL';
+
+const ADAPTIVE_REASONING_LEVEL_NAMES = new Set<string>(AdaptiveReasoningLevelSchema.options);
+
+function readLevelEnv(name: string): AdaptiveReasoningLevel | undefined {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') {
+    return undefined;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return ADAPTIVE_REASONING_LEVEL_NAMES.has(normalized)
+    ? (normalized as AdaptiveReasoningLevel)
+    : undefined;
+}
+
+/** Merge adaptive reasoning env overrides onto defaults (invalid env values are ignored). */
+export function resolveAdaptiveReasoningConfigFromEnv(
+  base: AdaptiveReasoningConfig = DEFAULT_ADAPTIVE_REASONING_CONFIG,
+): AdaptiveReasoningConfig {
+  const minLevel = readLevelEnv(ENV_ADAPTIVE_REASONING_MIN_LEVEL) ?? base.min_level;
+  const maxLevel = readLevelEnv(ENV_ADAPTIVE_REASONING_MAX_LEVEL) ?? base.max_level;
+  return {
+    enabled: readBooleanEnv(ENV_ADAPTIVE_REASONING_ENABLED) ?? base.enabled,
+    ...(minLevel !== undefined ? { min_level: minLevel } : {}),
+    ...(maxLevel !== undefined ? { max_level: maxLevel } : {}),
+  };
+}
+
 /** SAAR defaults per routing-roadmap.md §2 P0 (SP-121). */
 export const DEFAULT_SAAR_CONFIG: Readonly<SaarConfig> = {
   planning_turn_buffer: 2,
@@ -857,6 +956,8 @@ export const OperatorConfigSchema = z.object({
   workload_heat: WorkloadHeatConfigSchema.optional(),
   /** Speculative prewarm with acceptance guard (SP-217, #117). Default off. */
   speculative_prewarm: SpeculativePrewarmConfigSchema.optional(),
+  /** Adaptive reasoning (thinking-level) policy knobs (SP-246, #166). Default on. */
+  adaptive_reasoning: AdaptiveReasoningConfigSchema.optional(),
   /**
    * Emergency pin-on-first-turn fallback (#83, SP-161).
    * When true, subsequent turns use the session pin only — multi-stage routing

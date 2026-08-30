@@ -14,7 +14,7 @@ import { dirname } from 'node:path';
 import Database from 'better-sqlite3';
 import type BetterSqlite3 from 'better-sqlite3';
 
-import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingTelemetry, RoutingUsageActuals, SessionPin } from '../../domain/types/entities.js';
+import type { ModelProfile, PriceCatalog, RoutingDatasetRecord, RoutingOutcomeRecord, RoutingReasoningTelemetry, RoutingTelemetry, RoutingUsageActuals, SessionPin } from '../../domain/types/entities.js';
 import type { ListDatasetOptions, ListOutcomeOptions, ListTelemetryOptions, StorePort } from '../../domain/types/store-port.js';
 import { MemoryStore } from './memory-store.js';
 import {
@@ -47,7 +47,7 @@ import {
 
 // ─── Schema version & migrations ────────────────────────────────────────────
 
-const CURRENT_SCHEMA_VERSION = 6;
+const CURRENT_SCHEMA_VERSION = 7;
 
 const MIGRATION_V1 = `
   CREATE TABLE IF NOT EXISTS pins (
@@ -186,6 +186,13 @@ const MIGRATION_V6 = `
   ALTER TABLE telemetry ADD COLUMN actual_output_tokens INTEGER;
   ALTER TABLE telemetry ADD COLUMN actual_cache_read_tokens INTEGER;
   ALTER TABLE telemetry ADD COLUMN actual_cache_write_tokens INTEGER;
+`;
+
+// SP-246 / #166: post-delegation adaptive reasoning fields.
+const MIGRATION_V7 = `
+  ALTER TABLE telemetry ADD COLUMN reasoning_level_requested TEXT;
+  ALTER TABLE telemetry ADD COLUMN reasoning_level_applied TEXT;
+  ALTER TABLE telemetry ADD COLUMN reasoning_reason_code TEXT;
 `;
 
 // ─── Token bucket result ────────────────────────────────────────────────────
@@ -689,13 +696,15 @@ export class SqliteStore implements StorePort {
           stage, reason_code, selected_model_id,
           estimated_cost_usd, routing_latency_ms, pin_reason,
           actual_cost_usd, actual_input_tokens, actual_output_tokens,
-          actual_cache_read_tokens, actual_cache_write_tokens
+          actual_cache_read_tokens, actual_cache_write_tokens,
+          reasoning_level_requested, reasoning_level_applied, reasoning_reason_code
         ) VALUES (
           @timestamp, @session_id, @request_id, @turn_type,
           @stage, @reason_code, @selected_model_id,
           @estimated_cost_usd, @routing_latency_ms, @pin_reason,
           @actual_cost_usd, @actual_input_tokens, @actual_output_tokens,
-          @actual_cache_read_tokens, @actual_cache_write_tokens
+          @actual_cache_read_tokens, @actual_cache_write_tokens,
+          @reasoning_level_requested, @reasoning_level_applied, @reasoning_reason_code
         )`,
       )
       .run({
@@ -714,6 +723,9 @@ export class SqliteStore implements StorePort {
         actual_output_tokens: entry.actual_output_tokens ?? null,
         actual_cache_read_tokens: entry.actual_cache_read_tokens ?? null,
         actual_cache_write_tokens: entry.actual_cache_write_tokens ?? null,
+        reasoning_level_requested: entry.reasoning_level_requested ?? null,
+        reasoning_level_applied: entry.reasoning_level_applied ?? null,
+        reasoning_reason_code: entry.reasoning_reason_code ?? null,
       });
   }
 
@@ -747,6 +759,36 @@ export class SqliteStore implements StorePort {
         actual_output_tokens: actuals.output_tokens,
         actual_cache_read_tokens: actuals.cache_read_tokens,
         actual_cache_write_tokens: actuals.cache_write_tokens,
+      });
+  }
+
+  /**
+   * SP-246 / #166: post-delegation adaptive reasoning fields for the newest
+   * row of a request. Applied synchronously (off the write queue) after a
+   * flush so the queued append for this request is visible first
+   * (read-your-writes). A missing request_id is a no-op — reasoning telemetry
+   * must never fail the route.
+   */
+  updateTelemetryReasoning(requestId: string, fields: RoutingReasoningTelemetry): void {
+    this.writeQueue.flush();
+    this.db
+      .prepare(
+        `UPDATE telemetry SET
+           reasoning_level_requested = @reasoning_level_requested,
+           reasoning_level_applied = @reasoning_level_applied,
+           reasoning_reason_code = @reasoning_reason_code
+         WHERE id = (
+           SELECT id FROM telemetry
+           WHERE request_id = @request_id
+           ORDER BY id DESC
+           LIMIT 1
+         )`,
+      )
+      .run({
+        request_id: requestId,
+        reasoning_level_requested: fields.reasoning_level_requested,
+        reasoning_level_applied: fields.reasoning_level_applied,
+        reasoning_reason_code: fields.reasoning_reason_code,
       });
   }
 
@@ -866,6 +908,12 @@ export class SqliteStore implements StorePort {
     if (version < 6) {
       this.db.exec(MIGRATION_V6);
       version = 6;
+      this.db.pragma(`user_version = ${version}`);
+    }
+
+    if (version < 7) {
+      this.db.exec(MIGRATION_V7);
+      version = 7;
       this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`);
     }
   }
@@ -961,6 +1009,9 @@ interface TelemetryRow {
   actual_output_tokens: number | null;
   actual_cache_read_tokens: number | null;
   actual_cache_write_tokens: number | null;
+  reasoning_level_requested: string | null;
+  reasoning_level_applied: string | null;
+  reasoning_reason_code: string | null;
 }
 
 interface DatasetRow {
@@ -1046,6 +1097,9 @@ function telemetryRowToEntity(row: TelemetryRow): RoutingTelemetry {
     actual_output_tokens: row.actual_output_tokens,
     actual_cache_read_tokens: row.actual_cache_read_tokens,
     actual_cache_write_tokens: row.actual_cache_write_tokens,
+    reasoning_level_requested: row.reasoning_level_requested,
+    reasoning_level_applied: row.reasoning_level_applied,
+    reasoning_reason_code: row.reasoning_reason_code,
   };
 }
 
