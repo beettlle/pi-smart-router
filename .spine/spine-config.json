@@ -22,11 +22,11 @@
       "model": "google/gemini-3.1-pro-preview",
       "thinking": "high",
       "plan": {
-        "model": "zai/glm-5.3-flash",
+        "model": "google/gemini-flash-latest",
         "thinking": "low"
       },
       "code": {
-        "model": "kimi-coding/kimi-for-coding",
+        "model": "google/gemini-3.1-pro-preview",
         "thinking": "high"
       },
       "final": {
@@ -36,12 +36,12 @@
     },
     "supervisor": {
       "enabled": false,
-      "model": "zai/glm-5.3-flash",
+      "model": "google/gemini-flash-lite-latest",
       "pollIntervalMs": 30000,
       "autoNudge": false,
       "thinking": "off"
     },
-    "activeProfile": "default",
+    "activeProfile": "allegretto",
     "profiles": {
       "default": {
         "worker": {
@@ -66,6 +66,32 @@
         },
         "supervisor": {
           "model": "zai/glm-5.3-flash",
+          "thinking": "off"
+        }
+      },
+      "allegretto": {
+        "worker": {
+          "model": "kimi-coding/k3",
+          "thinking": "high"
+        },
+        "reviewer": {
+          "model": "google/gemini-3.1-pro-preview",
+          "thinking": "high",
+          "plan": {
+            "model": "google/gemini-flash-latest",
+            "thinking": "low"
+          },
+          "code": {
+            "model": "google/gemini-3.1-pro-preview",
+            "thinking": "high"
+          },
+          "final": {
+            "model": "google/gemini-3.1-pro-preview",
+            "thinking": "high"
+          }
+        },
+        "supervisor": {
+          "model": "google/gemini-flash-lite-latest",
           "thinking": "off"
         }
       },
