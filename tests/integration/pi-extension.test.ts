@@ -47,7 +47,7 @@ import {
   type RequirementVector,
 } from '../../src/domain/matching/hydra-matcher.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
-import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../src/domain/types/index.js';
+import type { ModelProfile, RoutingDecision, RoutingRequest, RoutingUsageActuals } from '../../src/domain/types/index.js';
 import type { SystemInfo } from '../../src/infrastructure/hardware/hardware-probe.js';
 import { GatewayDispatch } from '../../src/infrastructure/gateway/gateway-dispatch.js';
 import {
@@ -554,6 +554,149 @@ describe('Pi extension integration (SP-043)', () => {
       expect(rows[0]?.session_id).toBe('telemetry-session');
       expect(rows[0]?.selected_model_id).toBeDefined();
       expect(fleet.map((profile) => profile.id)).toContain(rows[0]?.selected_model_id);
+    });
+  });
+
+  describe('usage actuals capture (SP-241, #164)', () => {
+    beforeEach(() => {
+      mockDelegateStreamSimple.mockReset();
+    });
+
+    it('records pi usage actuals onto the telemetry row after delegation', async () => {
+      const fleet = mapFleetFromRegistry(REGISTRY_MODELS);
+      const store = new SqliteStore({ dbPath: ':memory:', models: [] });
+      try {
+        const router = createRouterFromFleet(fleet, {
+          telemetryEmitter: new RoutingTelemetryEmitter({
+            onRecord: (record) => store.appendTelemetry(record),
+          }),
+        });
+        const modelRegistry = createMockRegistry(piRegistryModels);
+        const target = piRegistryModels.find((model) => model.id === 'gpt-5-mini')!;
+        mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
+
+        const streamSimple = createStreamSimple(withDelegateStream({
+          router,
+          modelRegistry,
+          fleet,
+          executionLedger: new ExecutionLedger(),
+          onDelegationUsage(requestId: string, actuals: RoutingUsageActuals) {
+            store.updateTelemetryUsageActuals?.(requestId, actuals);
+          },
+        }));
+
+        const events = await collectEvents(
+          streamSimple(
+            makeAutoModel(),
+            makeContext([userMessage('Capture usage actuals')]),
+            { sessionId: 'usage-actuals-session' },
+          ),
+        );
+
+        expect(events.some((event) => event.type === 'done')).toBe(true);
+
+        const rows = await store.listTelemetry({ limit: 5 });
+        expect(rows).toHaveLength(1);
+        const row = rows[0]!;
+        // makeAssistantPartial usage: input 10, output 5, cost.total 0.03
+        expect(row.actual_cost_usd).toBe(0.03);
+        expect(row.actual_input_tokens).toBe(10);
+        expect(row.actual_output_tokens).toBe(5);
+        expect(row.actual_cache_read_tokens).toBe(0);
+        expect(row.actual_cache_write_tokens).toBe(0);
+        // Estimate retained alongside actuals.
+        expect(row.estimated_cost_usd).toBeGreaterThanOrEqual(0);
+      } finally {
+        store.close();
+      }
+    });
+
+    it('fails open when the delegated message has no usage (library embed)', async () => {
+      const fleet = mapFleetFromRegistry(REGISTRY_MODELS);
+      const store = new SqliteStore({ dbPath: ':memory:', models: [] });
+      try {
+        const router = createRouterFromFleet(fleet, {
+          telemetryEmitter: new RoutingTelemetryEmitter({
+            onRecord: (record) => store.appendTelemetry(record),
+          }),
+        });
+        const modelRegistry = createMockRegistry(piRegistryModels);
+        const target = piRegistryModels.find((model) => model.id === 'gpt-5-mini')!;
+        mockDelegateStreamSimple.mockImplementation(() => {
+          const stream = createAssistantMessageEventStream();
+          const partial = {
+            ...makeAssistantPartial(target),
+            usage: undefined,
+          } as unknown as AssistantMessage;
+          void (async () => {
+            stream.push({ type: 'start', partial });
+            stream.push({ type: 'done', reason: 'stop', message: partial });
+            stream.end(partial);
+          })();
+          return stream;
+        });
+
+        const usageSpy = vi.fn();
+        const streamSimple = createStreamSimple(withDelegateStream({
+          router,
+          modelRegistry,
+          fleet,
+          executionLedger: new ExecutionLedger(),
+          onDelegationUsage: usageSpy,
+        }));
+
+        const events = await collectEvents(
+          streamSimple(
+            makeAutoModel(),
+            makeContext([userMessage('No usage reported here')]),
+            { sessionId: 'usage-missing-session' },
+          ),
+        );
+
+        // Route completed without throwing; no actuals recorded.
+        expect(events.some((event) => event.type === 'done')).toBe(true);
+        expect(usageSpy).not.toHaveBeenCalled();
+
+        const rows = await store.listTelemetry({ limit: 5 });
+        expect(rows).toHaveLength(1);
+        expect(rows[0]?.actual_cost_usd).toBeNull();
+        expect(rows[0]?.actual_input_tokens).toBeNull();
+      } finally {
+        store.close();
+      }
+    });
+
+    it('fails open when the usage hook throws', async () => {
+      const fleet = mapFleetFromRegistry(REGISTRY_MODELS);
+      const router = createRouterFromFleet(fleet);
+      const modelRegistry = createMockRegistry(piRegistryModels);
+      const target = piRegistryModels.find((model) => model.id === 'gpt-5-mini')!;
+      mockDelegateStreamSimple.mockImplementation(() => makeSuccessStream(target));
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        const streamSimple = createStreamSimple(withDelegateStream({
+          router,
+          modelRegistry,
+          fleet,
+          executionLedger: new ExecutionLedger(),
+          onDelegationUsage() {
+            throw new Error('store exploded');
+          },
+        }));
+
+        const events = await collectEvents(
+          streamSimple(
+            makeAutoModel(),
+            makeContext([userMessage('Hook throws but route survives')]),
+            { sessionId: 'usage-hook-throws' },
+          ),
+        );
+
+        expect(events.some((event) => event.type === 'done')).toBe(true);
+      } finally {
+        warnSpy.mockRestore();
+      }
     });
   });
 

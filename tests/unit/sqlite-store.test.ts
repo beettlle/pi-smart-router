@@ -644,3 +644,114 @@ describe('SqliteStore', () => {
     });
   });
 });
+
+describe('usage actuals updates (SP-241, #164)', () => {
+  function makeTelemetryEntry(requestId: string): RoutingTelemetry {
+    return {
+      timestamp: new Date().toISOString(),
+      session_id: 'sess-actuals',
+      request_id: requestId,
+      turn_type: 'main_loop',
+      stage: 'hydra_match',
+      reason_code: 'hydra_embedding_match',
+      selected_model_id: 'gpt-4o-mini',
+      estimated_cost_usd: 0.004,
+      routing_latency_ms: 3,
+      pin_reason: null,
+      ...baseTelemetryFields(),
+    };
+  }
+
+  it('attaches usage actuals to the newest telemetry row for the request', async () => {
+    const store = new SqliteStore({ dbPath: ':memory:', models: [] });
+    try {
+      store.appendTelemetry(makeTelemetryEntry('req-actuals'));
+      store.updateTelemetryUsageActuals('req-actuals', {
+        cost_usd: 0.0025,
+        input_tokens: 900,
+        output_tokens: 150,
+        cache_read_tokens: 50,
+        cache_write_tokens: 25,
+      });
+
+      const rows = await store.listTelemetry({ limit: 5 });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.estimated_cost_usd).toBe(0.004);
+      expect(rows[0]?.actual_cost_usd).toBe(0.0025);
+      expect(rows[0]?.actual_input_tokens).toBe(900);
+      expect(rows[0]?.actual_output_tokens).toBe(150);
+      expect(rows[0]?.actual_cache_read_tokens).toBe(50);
+      expect(rows[0]?.actual_cache_write_tokens).toBe(25);
+    } finally {
+      store.close();
+    }
+  });
+
+  it('records subscription token actuals with null cost (never invents USD)', async () => {
+    const store = new SqliteStore({ dbPath: ':memory:', models: [] });
+    try {
+      store.appendTelemetry(makeTelemetryEntry('req-sub'));
+      store.updateTelemetryUsageActuals('req-sub', {
+        cost_usd: null,
+        input_tokens: 500,
+        output_tokens: 200,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+      });
+
+      const rows = await store.listTelemetry({ limit: 5 });
+      expect(rows[0]?.actual_cost_usd).toBeNull();
+      expect(rows[0]?.actual_input_tokens).toBe(500);
+      expect(rows[0]?.actual_output_tokens).toBe(200);
+    } finally {
+      store.close();
+    }
+  });
+
+  it('is a no-op when the request_id has no telemetry row (fail open)', async () => {
+    const store = new SqliteStore({ dbPath: ':memory:', models: [] });
+    try {
+      expect(() =>
+        store.updateTelemetryUsageActuals('req-missing', {
+          cost_usd: 0.01,
+          input_tokens: 10,
+          output_tokens: 5,
+          cache_read_tokens: 0,
+          cache_write_tokens: 0,
+        }),
+      ).not.toThrow();
+
+      const rows = await store.listTelemetry({ limit: 5 });
+      expect(rows).toHaveLength(0);
+    } finally {
+      store.close();
+    }
+  });
+
+  it('updates only the newest row when a request_id repeats (failover attempts)', async () => {
+    const store = new SqliteStore({ dbPath: ':memory:', models: [] });
+    try {
+      const first = makeTelemetryEntry('req-retry');
+      const second = {
+        ...makeTelemetryEntry('req-retry'),
+        timestamp: new Date(Date.now() + 1000).toISOString(),
+      };
+      store.appendTelemetry(first);
+      store.appendTelemetry(second);
+      store.updateTelemetryUsageActuals('req-retry', {
+        cost_usd: 0.007,
+        input_tokens: 100,
+        output_tokens: 40,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+      });
+
+      const rows = await store.listTelemetry({ limit: 5 });
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.actual_cost_usd).toBe(0.007);
+      expect(rows[1]?.actual_cost_usd).toBeNull();
+    } finally {
+      store.close();
+    }
+  });
+});

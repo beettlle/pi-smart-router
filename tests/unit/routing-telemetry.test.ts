@@ -35,6 +35,8 @@ import {
   enrichRoutingDecisionWithPinEconomics,
   enrichRoutingDecisionWithPlanningDelegate,
   enrichRoutingDecisionWithTierSelection,
+  extractUsageActuals,
+  applyUsageActuals,
   resolveTierSelectionReasonCode,
   resolvePinOnlyFallbackActive,
 } from '../../src/infrastructure/telemetry/routing-telemetry.js';
@@ -952,5 +954,91 @@ describe('quality retention pin-only trigger (SP-162)', () => {
 
     expect(result.pin_only_fallback).toBe(true);
     expect(result.quality_check.quality_regressed).toBe(true);
+  });
+});
+
+describe('usage actuals extraction (SP-241, #164)', () => {
+  it('extracts full pi usage actuals including cost.total', () => {
+    const actuals = extractUsageActuals({
+      input: 1200,
+      output: 300,
+      cacheRead: 400,
+      cacheWrite: 100,
+      totalTokens: 2000,
+      cost: { input: 0.001, output: 0.002, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+    });
+
+    expect(actuals).toEqual({
+      cost_usd: 0.003,
+      input_tokens: 1200,
+      output_tokens: 300,
+      cache_read_tokens: 400,
+      cache_write_tokens: 100,
+    });
+  });
+
+  it('records token actuals but null cost for subscription-zero cost.total', () => {
+    const actuals = extractUsageActuals({
+      input: 500,
+      output: 200,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 700,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    });
+
+    expect(actuals).not.toBeNull();
+    expect(actuals?.cost_usd).toBeNull();
+    expect(actuals?.input_tokens).toBe(500);
+    expect(actuals?.output_tokens).toBe(200);
+  });
+
+  it('returns null when usage is missing or carries no token counts (fail open)', () => {
+    expect(extractUsageActuals(undefined)).toBeNull();
+    expect(extractUsageActuals(null)).toBeNull();
+    expect(extractUsageActuals('usage')).toBeNull();
+    expect(extractUsageActuals({})).toBeNull();
+    expect(
+      extractUsageActuals({ input: Number.NaN, output: Number.POSITIVE_INFINITY }),
+    ).toBeNull();
+  });
+
+  it('tolerates missing cache fields and missing cost object', () => {
+    const actuals = extractUsageActuals({ input: 10, output: 5 });
+
+    expect(actuals).toEqual({
+      cost_usd: null,
+      input_tokens: 10,
+      output_tokens: 5,
+      cache_read_tokens: 0,
+      cache_write_tokens: 0,
+    });
+  });
+
+  it('applyUsageActuals attaches actuals while retaining estimated_cost_usd', () => {
+    const emitter = new RoutingTelemetryEmitter({
+      clock: () => '2026-08-30T12:00:00.000Z',
+    });
+    const record = emitter.emit(
+      makeRequest(),
+      makeDecision({ estimated_cost_usd: 0.001 }),
+    );
+
+    const updated = applyUsageActuals(record, {
+      cost_usd: 0.0025,
+      input_tokens: 900,
+      output_tokens: 150,
+      cache_read_tokens: 50,
+      cache_write_tokens: 25,
+    });
+
+    expect(updated.estimated_cost_usd).toBe(0.001);
+    expect(updated.actual_cost_usd).toBe(0.0025);
+    expect(updated.actual_input_tokens).toBe(900);
+    expect(updated.actual_output_tokens).toBe(150);
+    expect(updated.actual_cache_read_tokens).toBe(50);
+    expect(updated.actual_cache_write_tokens).toBe(25);
+    // Pure: original record untouched.
+    expect(record.actual_cost_usd).toBeUndefined();
   });
 });

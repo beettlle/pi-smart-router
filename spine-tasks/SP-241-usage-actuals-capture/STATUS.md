@@ -1,7 +1,7 @@
 # SP-241: Capture pi usage actuals into telemetry and stats — Status
 
 **Current Step:** 3
-**Status:** In Progress
+**Status:** Complete
 **Last Updated:** 2026-08-30
 **Review Level:** 1
 **Size:** M
@@ -26,18 +26,18 @@
 
 ## Step 3: Testing and verification
 
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Contract `testCommand` green
-- [ ] Missing-usage path does not throw / fail route
-- [ ] Full `npm test` once if contract suite is narrow
+- [x] Contract `testCommand` green
+- [x] Missing-usage path does not throw / fail route
+- [x] Full `npm test` once if contract suite is narrow
 
 ## Completion Criteria
 
-- [ ] Actual usage recorded when available; estimated fields retained
-- [ ] `/smart-router stats` prefers actuals or labels estimates
-- [ ] Fail-open covered by tests
-- [ ] Partial #164 — calibration left to SP-242
+- [x] Actual usage recorded when available; estimated fields retained
+- [x] `/smart-router stats` prefers actuals or labels estimates
+- [x] Fail-open covered by tests
+- [x] Partial #164 — calibration left to SP-242
 
 ## Discoveries
 
