@@ -1,7 +1,7 @@
 # SP-245: Adaptive reasoning policy and delegation option merge — Status
 
 **Current Step:** 1
-**Status:** Pending
+**Status:** In Progress
 **Last Updated:** 2026-08-30
 **Review Level:** 1
 **Size:** M
@@ -10,11 +10,11 @@
 
 ## Step 1: Policy module + unit tests
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Add adaptive-reasoning policy module (domain or extension) with matrix tests
-- [ ] Explicit higher `/thinking` / caller reasoning never lowered
-- [ ] Model max ceiling respected; fail open when unsupported
+- [x] Add adaptive-reasoning policy module (domain or extension) with matrix tests
+- [x] Explicit higher `/thinking` / caller reasoning never lowered
+- [x] Model max ceiling respected; fail open when unsupported
 
 ## Step 2: Wire into delegation options
 
