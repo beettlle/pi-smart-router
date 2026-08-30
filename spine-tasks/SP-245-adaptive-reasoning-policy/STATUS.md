@@ -1,6 +1,6 @@
 # SP-245: Adaptive reasoning policy and delegation option merge — Status
 
-**Current Step:** 2
+**Current Step:** 3
 **Status:** In Progress
 **Last Updated:** 2026-08-30
 **Review Level:** 1
@@ -26,10 +26,10 @@
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** In Progress
 
-- [ ] Extension test asserts delegated options reflect turn class
-- [ ] Contract `testCommand` green
+- [x] Extension test asserts delegated options reflect turn class
+- [x] Contract `testCommand` green (ran with tests/unit/adaptive-reasoning.test.ts added — 73 tests pass)
 - [ ] Partial #166 — config/docs/telemetry polish → SP-246
 
 ## Completion Criteria
