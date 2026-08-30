@@ -1,6 +1,6 @@
 # SP-241: Capture pi usage actuals into telemetry and stats — Status
 
-**Current Step:** 2
+**Current Step:** 3
 **Status:** In Progress
 **Last Updated:** 2026-08-30
 **Review Level:** 1
@@ -18,15 +18,15 @@
 
 ## Step 2: Stats prefer actuals
 
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Update session-stats / savings math to prefer actuals when present
-- [ ] Clearly label estimate-only rows when actuals missing
-- [ ] Subscription `cost.total === 0`: still store token actuals; do not invent USD
+- [x] Update session-stats / savings math to prefer actuals when present
+- [x] Clearly label estimate-only rows when actuals missing
+- [x] Subscription `cost.total === 0`: still store token actuals; do not invent USD
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** In Progress
 
 - [ ] Contract `testCommand` green
 - [ ] Missing-usage path does not throw / fail route

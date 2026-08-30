@@ -136,7 +136,7 @@ describe('SqliteStore', () => {
       store2.close();
     });
 
-    it('migrates to schema v5 with outcomes table, dataset privacy columns, and context_overflow pin_reason', () => {
+    it('migrates to schema v6 with outcomes table, dataset privacy columns, context_overflow pin_reason, and usage actuals columns (SP-241)', () => {
       const dir = mkdtempSync(join(tmpdir(), 'sqlite-store-'));
       const dbPath = join(dir, 'router.db');
       let store: SqliteStore | undefined;
@@ -147,7 +147,16 @@ describe('SqliteStore', () => {
         db = new Database(dbPath);
 
         const version = db.pragma('user_version', { simple: true });
-        expect(version).toBe(5);
+        expect(version).toBe(6);
+
+        const telemetryColumns = db.prepare('PRAGMA table_info(telemetry)').all() as Array<{ name: string }>;
+        const telemetryColumnNames = telemetryColumns.map((column) => column.name);
+        expect(telemetryColumnNames).toContain('actual_cost_usd');
+        expect(telemetryColumnNames).toContain('actual_input_tokens');
+        expect(telemetryColumnNames).toContain('actual_output_tokens');
+        expect(telemetryColumnNames).toContain('actual_cache_read_tokens');
+        expect(telemetryColumnNames).toContain('actual_cache_write_tokens');
+        expect(telemetryColumnNames).toContain('estimated_cost_usd');
 
         const datasetColumns = db.prepare('PRAGMA table_info(dataset)').all() as Array<{ name: string }>;
         const datasetColumnNames = datasetColumns.map((column) => column.name);
