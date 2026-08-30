@@ -1,0 +1,21 @@
+spine-tasks/SP-242-usage-actuals-calibrate/PROMPT.md
+  s_a044ca244f666f::t_4b07f375106086 46-47,55,90-94
+spine-tasks/SP-242-usage-actuals-calibrate/STATUS.md
+  s_a044ca244f666f::t_15e57b13a68ceb 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d5e5caf53c7d04b2b150a4ca28c3b69d6a3eecac",
+  "prompts": {},
+  "sessions": {
+    "s_a044ca244f666f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-e67f7fe9-586a-4586-b3c3-89c5ea31e745",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
