@@ -1,0 +1,20 @@
+spine-tasks/SP-242-usage-actuals-calibrate/STATUS.md
+  h_ae151c586ac6c5 4,13-17,19,38-39
+src/domain/routing/expected-cost.ts
+  h_ae151c586ac6c5 30,58-231,254-255,274-275,286-287,341-342,347-352,360-361,375-384,386,402,483-488,497,502-503,522,546-548,632-635,637,656-658,720-722,737,760,774,785
+src/infrastructure/telemetry/routing-telemetry.ts
+  h_ae151c586ac6c5 51-54,130-134,140,144-148
+src/infrastructure/telemetry/session-stats.ts
+  h_ae151c586ac6c5 15-18,79-85,300-312,315,370-390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ab5a5254081ce2e411f45f3eb7cb4dc7ef27f67a",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
