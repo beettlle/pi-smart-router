@@ -1,0 +1,20 @@
+.pi/extensions/smart-router/command-formatters.ts
+  h_ae151c586ac6c5 315-321,324,334-342,345-346
+spine-tasks/SP-241-usage-actuals-capture/STATUS.md
+  h_ae151c586ac6c5 3,21,23-25,29
+src/infrastructure/telemetry/session-stats.ts
+  h_ae151c586ac6c5 50-66,70-71,117-155,227-229,232-233,238-246,266-267,283-285,316-317,321
+tests/unit/sqlite-store.test.ts
+  h_ae151c586ac6c5 139,150-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "02a15c2548a65adf981f9497a43f7941f9934899",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
