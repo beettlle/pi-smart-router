@@ -1,0 +1,16 @@
+spine-tasks/SP-245-adaptive-reasoning-policy/STATUS.md
+  h_ae151c586ac6c5 3,29,31-32
+tests/integration/pi-extension.test.ts
+  h_ae151c586ac6c5 49,1121-1343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ce4142f44ef2cdc96e7942ae04fb433a90911717",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
