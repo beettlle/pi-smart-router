@@ -1,0 +1,24 @@
+.pi/extensions/smart-router/delegate-stream.ts
+  h_ae151c586ac6c5 13-17,97,106,166,175,294-298,308,310-313,319,330,338
+.pi/extensions/smart-router/delegation-runtime.ts
+  h_ae151c586ac6c5 16-19,94,132-139,162,172-174,176-178
+.pi/extensions/smart-router/planning-delegate.ts
+  h_ae151c586ac6c5 30,194-201,207-208
+.pi/extensions/smart-router/route-and-delegate.ts
+  h_ae151c586ac6c5 524-531
+spine-tasks/SP-245-adaptive-reasoning-policy/STATUS.md
+  h_ae151c586ac6c5 3,21,23-25
+src/domain/delegation/adaptive-reasoning.ts
+  h_ae151c586ac6c5 78,80,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b163355d878c0c3a23a07be286ca8105bb382500",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
