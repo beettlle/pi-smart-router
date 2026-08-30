@@ -521,18 +521,15 @@ export async function routeAndDelegate(
           ...(failoverNotice !== undefined ? { failoverNotice } : {}),
           contextWindow: targetModel.contextWindow,
         },
-<<<<<<< HEAD
         decision.request_id,
-=======
         // SP-245 (#166): adaptive reasoning policy — effective thinking level
         // from this turn's envelope + routing decision (recomputed per
-        // failover iteration so escalation targets re-classify).
+        // failover iteration so escalation targets re-evaluate).
         {
           turnType: request.turn_type,
           decision,
           ...(targetProfile !== undefined ? { profile: targetProfile } : {}),
         },
->>>>>>> task/spine-lane-2-20260830T204816-5968
       );
 
       if (!isPipedResult(result)) {
