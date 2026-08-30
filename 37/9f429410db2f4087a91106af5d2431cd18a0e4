@@ -1,0 +1,19 @@
+spine-tasks/SP-240-dependency-refresh-pi-84/.reviews/1-20260830T005753.md
+  s_7ad59341b03d9d::t_8fea40c4610b24 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "379f429410db2f4087a91106af5d2431cd18a0e4",
+  "prompts": {},
+  "sessions": {
+    "s_7ad59341b03d9d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-9f13b0f6-2b6d-470d-8374-6c56f79485b8",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
