@@ -1,7 +1,7 @@
 # SP-246: Adaptive reasoning operator config, telemetry, and README — Status
 
 **Current Step:** 2
-**Status:** In progress
+**Status:** Complete
 **Last Updated:** 2026-08-30
 **Review Level:** 1
 **Size:** S
@@ -17,7 +17,7 @@
 
 ## Step 2: Testing and verification
 
-**Status:** In progress
+**Status:** Complete
 
 - [x] README operator section updated
 - [x] Contract `testCommand` green
@@ -25,7 +25,7 @@
 
 ## Completion Criteria
 
-- [ ] Config, telemetry, README complete; #166 closable
+- [x] Config, telemetry, README complete; #166 closable
 
 ## Discoveries
 
@@ -33,4 +33,5 @@
 - Floor/ceiling semantics: bounds clamp the policy-derived level before the caller merge; explicit operator `/thinking` is never lowered by either bound (a floor may raise one via the policy-upgrade path); when floor > ceiling (env edge), the ceiling wins (cost-safe). Schema rejects floor > ceiling in JSON config; env resolver ignores invalid levels.
 - Telemetry enrichment follows the SP-241 usage-actuals pattern: `onDelegationReasoning` callback → `store.updateTelemetryReasoning?.(requestId, fields)` fail-open; SQLite migration V7 adds the three columns.
 - Full `npm test` after Step 1: 117 files / 2034 tests green (+53 from SP-246 suites).
-- Time-bomb tests fixed in Step 2: `memory-store.test.ts` / `sqlite-store.test.ts` dataset tests used hardcoded `2026-08-01` timestamps; once wall-clock crossed the 30-day retention window (`dataset-limits.ts` evicts expired rows on append / sqlite purges on write), the just-appended fixture rows were evicted and 4 tests failed. Timestamps are now relative to `Date.now()`. Pre-existing flake, unrelated to SP-246 logic.
+- Time-bomb tests fixed in Step 2:`memory-store.test.ts` / `sqlite-store.test.ts` dataset tests used hardcoded `2026-08-01` timestamps; once wall-clock crossed the 30-day retention window (`dataset-limits.ts` evicts expired rows on append / sqlite purges on write), the just-appended fixture rows were evicted and 4 tests failed. Timestamps are now relative to `Date.now()`. Pre-existing flake, unrelated to SP-246 logic.
+- Final verification (2026-09-01): `npm run typecheck` clean; contract `npx vitest run tests/integration/pi-extension.test.ts` 42/42 green; full `npm test` 117 files / 2035 tests green. Plan review at Step 2 checkpoint: skipped by engine (SP-195 — batch engine runs reviews after .DONE). File-scope contract verified: `README.md` changed; `router-pipeline.ts`, `src/infrastructure/pricing/**`, `package.json` untouched.
