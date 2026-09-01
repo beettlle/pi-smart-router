@@ -7,7 +7,7 @@ import { DEFAULT_CONTEXT_FIT_DATASET_FIELDS, DEFAULT_TIER_SELECTION_DATASET_FIEL
 function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): RoutingDatasetRecord {
   return {
     request_id: 'req-1',
-    timestamp: '2026-08-01T00:00:00.000Z',
+    timestamp: new Date().toISOString(),
     turn_type: 'main_loop',
     stage: 'hydra_match',
     reason_code: 'hydra_embedding_match',
@@ -43,11 +43,11 @@ describe('MemoryStore dataset', () => {
 
     store.appendDatasetRecord(makeDatasetRecord({
       request_id: 'req-1',
-      timestamp: '2026-08-01T00:00:00.000Z',
+      timestamp: new Date(Date.now() - 60_000).toISOString(),
     }));
     store.appendDatasetRecord(makeDatasetRecord({
       request_id: 'req-2',
-      timestamp: '2026-08-01T00:01:00.000Z',
+      timestamp: new Date().toISOString(),
     }));
 
     const rows = await store.listDatasetRecords({ limit: 10 });

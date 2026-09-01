@@ -1,6 +1,6 @@
 # SP-246: Adaptive reasoning operator config, telemetry, and README — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** In progress
 **Last Updated:** 2026-08-30
 **Review Level:** 1
@@ -10,18 +10,18 @@
 
 ## Step 1: Config + telemetry fields
 
-**Status:** In progress
+**Status:** Complete
 
 - [x] Wire enable/disable + optional floor/ceiling
 - [x] Emit `reasoning_level_requested`, `reasoning_level_applied`, `reason_code`
 
 ## Step 2: Testing and verification
 
-**Status:** Pending
+**Status:** In progress
 
-- [ ] README operator section updated
-- [ ] Contract `testCommand` green
-- [ ] #166 closable with SP-245
+- [x] README operator section updated
+- [x] Contract `testCommand` green
+- [x] #166 closable with SP-245
 
 ## Completion Criteria
 
@@ -33,3 +33,4 @@
 - Floor/ceiling semantics: bounds clamp the policy-derived level before the caller merge; explicit operator `/thinking` is never lowered by either bound (a floor may raise one via the policy-upgrade path); when floor > ceiling (env edge), the ceiling wins (cost-safe). Schema rejects floor > ceiling in JSON config; env resolver ignores invalid levels.
 - Telemetry enrichment follows the SP-241 usage-actuals pattern: `onDelegationReasoning` callback → `store.updateTelemetryReasoning?.(requestId, fields)` fail-open; SQLite migration V7 adds the three columns.
 - Full `npm test` after Step 1: 117 files / 2034 tests green (+53 from SP-246 suites).
+- Time-bomb tests fixed in Step 2: `memory-store.test.ts` / `sqlite-store.test.ts` dataset tests used hardcoded `2026-08-01` timestamps; once wall-clock crossed the 30-day retention window (`dataset-limits.ts` evicts expired rows on append / sqlite purges on write), the just-appended fixture rows were evicted and 4 tests failed. Timestamps are now relative to `Date.now()`. Pre-existing flake, unrelated to SP-246 logic.
