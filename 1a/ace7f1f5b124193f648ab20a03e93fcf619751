@@ -1,0 +1,23 @@
+spine-tasks/SP-244-peak-pricing-docs-telemetry/PROMPT.md
+  s_4bd9e71254ab76::t_11529cf6243f01 83-86
+  s_4bd9e71254ab76::t_b3a7db24455500 52
+  s_4bd9e71254ab76::t_717c572e200fcc 43-44
+.spine/spine-config.json
+  s_4bd9e71254ab76::t_c167c1385c9589 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1aace7f1f5b124193f648ab20a03e93fcf619751",
+  "prompts": {},
+  "sessions": {
+    "s_4bd9e71254ab76": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-219cb35d-8e98-4775-9646-7fbb5265ce3d",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
