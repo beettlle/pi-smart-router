@@ -613,4 +613,20 @@ export interface RoutingTelemetry {
   readonly actual_cache_read_tokens?: number | null;
   /** Host-reported actual cache-write tokens (SP-241, #164); null when unreported. */
   readonly actual_cache_write_tokens?: number | null;
+  /** Caller-requested thinking level for the delegated call (SP-246, #166); null pre-delegation. */
+  readonly reasoning_level_requested?: string | null;
+  /** Effective thinking level applied by the adaptive policy (SP-246, #166); null pre-delegation. */
+  readonly reasoning_level_applied?: string | null;
+  /** Why the applied reasoning level was chosen (SP-246, #166); null pre-delegation. */
+  readonly reasoning_reason_code?: string | null;
+}
+
+/** Post-delegation adaptive reasoning telemetry fields (SP-246, #166). */
+export interface RoutingReasoningTelemetry {
+  /** Host/caller `options.reasoning` at delegation time (pi session thinking level). */
+  readonly reasoning_level_requested: string | null;
+  /** Effective thinking level merged into the delegated stream options. */
+  readonly reasoning_level_applied: string | null;
+  /** Adaptive reasoning reason code (e.g. `turn_envelope_main_loop`). */
+  readonly reasoning_reason_code: string | null;
 }

@@ -193,11 +193,23 @@ export async function defaultSpawnPlanningDelegate(
   try {
     // SP-245 (#166): planning sub-calls keep higher reasoning — the adaptive
     // policy resolves at least `medium` for planning turns (explicit operator
-    // /thinking floors still win inside the policy).
+    // /thinking floors still win inside the policy). SP-246: honor the
+    // operator enable/disable + floor/ceiling knobs.
     const reasoning = resolveAdaptiveReasoning(
       frontierModel,
       { turnType: 'planning' },
       options?.reasoning,
+      deps.adaptiveReasoningConfig
+        ? {
+            enabled: deps.adaptiveReasoningConfig.enabled,
+            ...(deps.adaptiveReasoningConfig.min_level !== undefined
+              ? { floor: deps.adaptiveReasoningConfig.min_level }
+              : {}),
+            ...(deps.adaptiveReasoningConfig.max_level !== undefined
+              ? { ceiling: deps.adaptiveReasoningConfig.max_level }
+              : {}),
+          }
+        : undefined,
     );
     const result = await collectDelegatedStream(
       frontierModel,

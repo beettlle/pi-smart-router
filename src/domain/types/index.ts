@@ -29,6 +29,7 @@ export type {
   RoutingRequest,
   RoutingTelemetry,
   RoutingUsageActuals,
+  RoutingReasoningTelemetry,
   SaarConfig,
   SaarObservability,
   SaarSessionState,
@@ -49,3 +50,8 @@ export type {
 } from './entities.js';
 
 export type { StorePort } from './store-port.js';
+
+export type {
+  AdaptiveReasoningConfig,
+  AdaptiveReasoningLevel,
+} from './schemas.js';

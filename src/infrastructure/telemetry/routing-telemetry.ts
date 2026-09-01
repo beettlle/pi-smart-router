@@ -36,6 +36,7 @@ import type {
   RejectedTierEntry,
   RoutePath,
   RoutingDecision,
+  RoutingReasoningTelemetry,
   RoutingRequest,
   RoutingTelemetry,
   RoutingUsageActuals,
@@ -960,6 +961,22 @@ export function applyUsageActuals(
   };
 }
 
+/**
+ * Attach post-delegation adaptive reasoning fields to a telemetry record
+ * (SP-246, #166). Pure — returns a new record.
+ */
+export function applyReasoningTelemetry(
+  entry: RoutingTelemetry,
+  fields: RoutingReasoningTelemetry,
+): RoutingTelemetry {
+  return {
+    ...entry,
+    reasoning_level_requested: fields.reasoning_level_requested,
+    reasoning_level_applied: fields.reasoning_level_applied,
+    reasoning_reason_code: fields.reasoning_reason_code,
+  };
+}
+
 /** Prewarm explain/telemetry fields from the decision feature sidecar (SP-217, #117). */
 export function prewarmTelemetryFromDecision(
   decision: RoutingDecision,
@@ -1586,6 +1603,11 @@ export class RoutingTelemetryEmitter {
       ...prewarmFields,
       route_path: extras?.routePath ?? null,
       route_path_confidence: extras?.routePathConfidence ?? null,
+      // SP-246 (#166): adaptive reasoning resolves at delegation time (after
+      // emit); defaults null, enriched via updateTelemetryReasoning.
+      reasoning_level_requested: null,
+      reasoning_level_applied: null,
+      reasoning_reason_code: null,
     };
 
     this.entries.push(record);

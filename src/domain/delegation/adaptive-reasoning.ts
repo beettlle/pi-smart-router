@@ -26,9 +26,12 @@
  *      `null` in `thinkingLevelMap` are unsupported; policy level clamps down).
  *   5. Fail open: models without reasoning support pass caller options through
  *      unchanged; providers that ignore reasoning options degrade to a no-op.
+ *   6. Operator knobs (SP-246): `enabled: false` skips the policy entirely;
+ *      floor/ceiling bound only policy-derived levels and never lower an
+ *      explicit operator `/thinking` choice.
  *
- * Operator enable/disable + floor/ceiling config, telemetry fields, and README
- * comparison to `lambda_verbosity` (selection-only) are SP-246.
+ * Telemetry (`reasoning_level_requested` / `reasoning_level_applied` /
+ * `reasoning_reason_code`) is emitted by the extension delegation path (SP-246).
  */
 
 import type {
@@ -59,8 +62,8 @@ export const HIGH_VERBOSITY_FACTOR_THRESHOLD = 1.5;
 export const CONCISENESS_SUFFIX =
   'Be concise: answer directly and keep narration before tool calls to a minimum.';
 
-/** Reason codes for the adaptive reasoning decision (telemetry in SP-246). */
-export type AdaptiveReasoningReasonCode =
+/** Reason codes for the adaptive reasoning decision (telemetry in SP-246). */export type AdaptiveReasoningReasonCode =
+  | 'adaptive_reasoning_disabled'
   | 'reasoning_unsupported'
   | 'no_policy_signal'
   | 'turn_envelope_tool_result'
@@ -69,6 +72,8 @@ export type AdaptiveReasoningReasonCode =
   | 'frontier_escalation'
   | 'operator_thinking_floor'
   | 'operator_thinking_upgrade'
+  | 'operator_floor_applied'
+  | 'operator_ceiling_applied'
   | 'pin_inherit_session'
   | 'pin_turn_class_upgrade';
 
@@ -91,6 +96,22 @@ export interface AdaptiveReasoningResult {
   readonly reasonCode: AdaptiveReasoningReasonCode;
   /** True when a light conciseness suffix should be appended to the prompt. */
   readonly concisenessHint: boolean;
+}
+
+/**
+ * Operator knobs (SP-246, #166): enable/disable + optional floor/ceiling on
+ * policy-derived levels. Floor/ceiling are discrete thinking levels — never a
+ * free-form verbosity percent. They bind only what the policy itself derives;
+ * an explicit operator `/thinking` choice is never lowered (and never raised
+ * by the floor — live session choice beats static config).
+ */
+export interface AdaptiveReasoningOptions {
+  /** When false, skip the policy: caller reasoning passes through unchanged. */
+  readonly enabled?: boolean;
+  /** Floor: policy-derived levels are raised to at least this level. */
+  readonly floor?: ThinkingLevel;
+  /** Ceiling: policy-derived levels are capped at this level. */
+  readonly ceiling?: ThinkingLevel;
 }
 
 // ─── Level ordering ──────────────────────────────────────────────────────────
@@ -230,12 +251,31 @@ function isPinContinuation(decision: RoutingDecision | undefined): boolean {
  *
  * `callerReasoning` is the host-provided `options.reasoning` (pi session
  * thinking level). See module doc for the merge invariants.
+ *
+ * `options` (SP-246, #166) carries the operator enable/disable + floor/ceiling
+ * knobs. Semantics:
+ *   - `enabled: false` → pass caller reasoning through unchanged
+ *     (`adaptive_reasoning_disabled`).
+ *   - `floor` raises policy-derived levels to at least the floor.
+ *   - `ceiling` caps policy-derived levels (including turn-class upgrades) at
+ *     the ceiling. When floor > ceiling the ceiling wins (cost-safe).
+ *   - Neither knob ever *lowers* an explicit operator `/thinking` choice.
  */
 export function resolveAdaptiveReasoning(
   targetModel: Model<Api>,
   signal: AdaptiveReasoningSignal,
   callerReasoning?: ThinkingLevel,
+  options?: AdaptiveReasoningOptions,
 ): AdaptiveReasoningResult {
+  // Operator master switch (SP-246): policy off — pass caller through.
+  if (options && options.enabled === false) {
+    return {
+      reasoning: callerReasoning,
+      reasonCode: 'adaptive_reasoning_disabled',
+      concisenessHint: false,
+    };
+  }
+
   // Fail open: model does not support reasoning options — pass caller through.
   if (!targetModel.reasoning) {
     return {
@@ -266,13 +306,38 @@ export function resolveAdaptiveReasoning(
     };
   }
 
+  // SP-246 (#166): operator floor/ceiling bind the policy-derived level.
+  // Applied before the caller merge so turn-class comparisons use the
+  // bounded level; re-clamped down to model support afterwards.
+  let bounded = clamped;
+  if (options?.floor && rankReasoningLevel(bounded) < rankReasoningLevel(options.floor)) {
+    bounded = options.floor;
+  }
+  if (
+    options?.ceiling &&
+    rankReasoningLevel(bounded) > rankReasoningLevel(options.ceiling)
+  ) {
+    bounded = options.ceiling;
+  }
+  const effectivePolicyLevel =
+    bounded === clamped ? clamped : clampToSupportedLevel(bounded, targetModel);
+  if (!effectivePolicyLevel) {
+    return {
+      reasoning: callerReasoning,
+      reasonCode: 'reasoning_unsupported',
+      concisenessHint: false,
+    };
+  }
+
   let reasoning: ThinkingLevel;
   let reasonCode: AdaptiveReasoningReasonCode;
 
   if (callerReasoning && callerReasoning !== SESSION_AMBIENT_THINKING_LEVEL) {
     // Explicit operator /thinking — never lowered; turn class may upgrade it.
-    if (rankReasoningLevel(clamped) > rankReasoningLevel(callerReasoning)) {
-      reasoning = clamped;
+    if (
+      rankReasoningLevel(effectivePolicyLevel) > rankReasoningLevel(callerReasoning)
+    ) {
+      reasoning = effectivePolicyLevel;
       reasonCode = 'operator_thinking_upgrade';
     } else {
       reasoning = callerReasoning;
@@ -281,8 +346,10 @@ export function resolveAdaptiveReasoning(
   } else if (callerReasoning && isPinContinuation(signal.decision)) {
     // Pin continuation inherits the (ambient) session level unless the turn
     // class upgrades above it.
-    if (rankReasoningLevel(clamped) > rankReasoningLevel(callerReasoning)) {
-      reasoning = clamped;
+    if (
+      rankReasoningLevel(effectivePolicyLevel) > rankReasoningLevel(callerReasoning)
+    ) {
+      reasoning = effectivePolicyLevel;
       reasonCode = 'pin_turn_class_upgrade';
     } else {
       reasoning = callerReasoning;
@@ -290,8 +357,19 @@ export function resolveAdaptiveReasoning(
     }
   } else {
     // Ambient session default or no caller level — pure policy.
-    reasoning = clamped;
+    reasoning = effectivePolicyLevel;
     reasonCode = policyReasonCode(turnClass, signal.turnType);
+  }
+
+  // SP-246 (#166): when a floor/ceiling knob materially changed the applied
+  // level (merged outcome IS the bounded policy level, distinct from the raw
+  // turn-class level), surface that in the reason code so operators can audit
+  // whether their bounds are doing anything.
+  if (effectivePolicyLevel !== clamped && reasoning === effectivePolicyLevel) {
+    reasonCode =
+      rankReasoningLevel(effectivePolicyLevel) > rankReasoningLevel(clamped)
+        ? 'operator_floor_applied'
+        : 'operator_ceiling_applied';
   }
 
   const verbosityFactor = signal.profile?.performance?.verbosity_factor ?? 1;

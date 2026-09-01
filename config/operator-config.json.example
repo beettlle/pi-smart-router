@@ -74,5 +74,15 @@
       "max_tool_use_requirement": "Ceiling (0–1) on cheap predicted tool_use for local_zero dispatch. Effective limit is min(local model tool_use capability, this value). Default 0.25 keeps format/lint local while skipping agentic git/bash/edit/explore/delete/repo cues (SP-177, #98)."
     }
   },
+  "adaptive_reasoning": {
+    "enabled": true,
+    "min_level": "low",
+    "max_level": "high",
+    "_documentation": {
+      "enabled": "When false, adaptive reasoning is skipped — delegated calls pass the caller (session) thinking level through unchanged. Default true (SP-246, #166).",
+      "min_level": "Optional floor on policy-derived thinking levels (minimal | low | medium | high | xhigh | max). Routine tool_result/main_loop turns policy-resolve to minimal/low; a floor raises that. Never lowers an explicit operator /thinking choice. Omit for no floor.",
+      "max_level": "Optional ceiling on policy-derived thinking levels, including turn-class upgrades. When min_level would exceed max_level (e.g. via env), the ceiling wins. Omit for no ceiling."
+    }
+  },
   "pin_only_fallback": false
 }

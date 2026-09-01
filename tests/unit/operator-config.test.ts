@@ -33,4 +33,14 @@ describe('operator-config.json.example', () => {
     expect(parsed.planning_delegate.global_timeout_ms).toBe(120_000);
     expect(parsed.planning_delegate.sub_call_timeout_ms).toBe(30_000);
   });
+
+  it('carries a valid adaptive_reasoning section with floor ≤ ceiling (SP-246, #166)', () => {
+    const raw: unknown = JSON.parse(readFileSync(examplePath, 'utf8'));
+    const parsed = OperatorConfigSchema.parse(raw);
+    expect(parsed.adaptive_reasoning).toEqual({
+      enabled: true,
+      min_level: 'low',
+      max_level: 'high',
+    });
+  });
 });

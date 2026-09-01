@@ -32,6 +32,22 @@ function baseTelemetryFields(): Pick<
   };
 }
 
+function makeTelemetryEntryFactory(requestId: string): RoutingTelemetry {
+  return {
+    timestamp: new Date().toISOString(),
+    session_id: 'sess-actuals',
+    request_id: requestId,
+    turn_type: 'main_loop',
+    stage: 'hydra_match',
+    reason_code: 'hydra_embedding_match',
+    selected_model_id: 'gpt-4o-mini',
+    estimated_cost_usd: 0.004,
+    routing_latency_ms: 3,
+    pin_reason: null,
+    ...baseTelemetryFields(),
+  };
+}
+
 const TEST_MODELS: readonly ModelProfile[] = [
   {
     id: 'claude-sonnet',
@@ -77,7 +93,7 @@ function makePriceCatalog(overrides: Partial<PriceCatalog> = {}): PriceCatalog {
 function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): RoutingDatasetRecord {
   return {
     request_id: 'req-1',
-    timestamp: '2026-08-01T00:00:00.000Z',
+    timestamp: new Date().toISOString(),
     turn_type: 'main_loop',
     stage: 'hydra_match',
     reason_code: 'hydra_embedding_match',
@@ -147,7 +163,7 @@ describe('SqliteStore', () => {
         db = new Database(dbPath);
 
         const version = db.pragma('user_version', { simple: true });
-        expect(version).toBe(6);
+        expect(version).toBe(7);
 
         const telemetryColumns = db.prepare('PRAGMA table_info(telemetry)').all() as Array<{ name: string }>;
         const telemetryColumnNames = telemetryColumns.map((column) => column.name);
@@ -156,6 +172,9 @@ describe('SqliteStore', () => {
         expect(telemetryColumnNames).toContain('actual_output_tokens');
         expect(telemetryColumnNames).toContain('actual_cache_read_tokens');
         expect(telemetryColumnNames).toContain('actual_cache_write_tokens');
+        expect(telemetryColumnNames).toContain('reasoning_level_requested');
+        expect(telemetryColumnNames).toContain('reasoning_level_applied');
+        expect(telemetryColumnNames).toContain('reasoning_reason_code');
         expect(telemetryColumnNames).toContain('estimated_cost_usd');
 
         const datasetColumns = db.prepare('PRAGMA table_info(dataset)').all() as Array<{ name: string }>;
@@ -398,11 +417,11 @@ describe('SqliteStore', () => {
     it('lists dataset records newest first', async () => {
       store.appendDatasetRecord(makeDatasetRecord({
         request_id: 'req-1',
-        timestamp: '2026-08-01T00:00:00.000Z',
+        timestamp: new Date(Date.now() - 60_000).toISOString(),
       }));
       store.appendDatasetRecord(makeDatasetRecord({
         request_id: 'req-2',
-        timestamp: '2026-08-01T00:01:00.000Z',
+        timestamp: new Date().toISOString(),
       }));
 
       const rows = await store.listDatasetRecords({ limit: 10 });
@@ -646,21 +665,7 @@ describe('SqliteStore', () => {
 });
 
 describe('usage actuals updates (SP-241, #164)', () => {
-  function makeTelemetryEntry(requestId: string): RoutingTelemetry {
-    return {
-      timestamp: new Date().toISOString(),
-      session_id: 'sess-actuals',
-      request_id: requestId,
-      turn_type: 'main_loop',
-      stage: 'hydra_match',
-      reason_code: 'hydra_embedding_match',
-      selected_model_id: 'gpt-4o-mini',
-      estimated_cost_usd: 0.004,
-      routing_latency_ms: 3,
-      pin_reason: null,
-      ...baseTelemetryFields(),
-    };
-  }
+  const makeTelemetryEntry = makeTelemetryEntryFactory;
 
   it('attaches usage actuals to the newest telemetry row for the request', async () => {
     const store = new SqliteStore({ dbPath: ':memory:', models: [] });
@@ -752,6 +757,103 @@ describe('usage actuals updates (SP-241, #164)', () => {
       expect(rows[1]?.actual_cost_usd).toBeNull();
     } finally {
       store.close();
+    }
+  });
+});
+
+describe('updateTelemetryReasoning (SP-246, #166)', () => {
+  const makeTelemetryEntry = makeTelemetryEntryFactory;
+
+  it('attaches reasoning fields to the newest telemetry row for the request', async () => {
+    const store = new SqliteStore({ dbPath: ':memory:', models: [] });
+    try {
+      store.appendTelemetry(makeTelemetryEntry('req-reasoning'));
+      store.updateTelemetryReasoning('req-reasoning', {
+        reasoning_level_requested: 'medium',
+        reasoning_level_applied: 'minimal',
+        reasoning_reason_code: 'turn_envelope_tool_result',
+      });
+
+      const rows = await store.listTelemetry({ limit: 5 });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.reasoning_level_requested).toBe('medium');
+      expect(rows[0]?.reasoning_level_applied).toBe('minimal');
+      expect(rows[0]?.reasoning_reason_code).toBe('turn_envelope_tool_result');
+    } finally {
+      store.close();
+    }
+  });
+
+  it('coexists with usage actuals on the same row', async () => {
+    const store = new SqliteStore({ dbPath: ':memory:', models: [] });
+    try {
+      store.appendTelemetry(makeTelemetryEntry('req-both'));
+      store.updateTelemetryReasoning('req-both', {
+        reasoning_level_requested: 'medium',
+        reasoning_level_applied: 'low',
+        reasoning_reason_code: 'turn_envelope_main_loop',
+      });
+      store.updateTelemetryUsageActuals('req-both', {
+        cost_usd: 0.002,
+        input_tokens: 300,
+        output_tokens: 80,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+      });
+
+      const rows = await store.listTelemetry({ limit: 5 });
+      expect(rows[0]?.reasoning_reason_code).toBe('turn_envelope_main_loop');
+      expect(rows[0]?.actual_input_tokens).toBe(300);
+    } finally {
+      store.close();
+    }
+  });
+
+  it('is a no-op when the request_id has no telemetry row (fail open)', async () => {
+    const store = new SqliteStore({ dbPath: ':memory:', models: [] });
+    try {
+      expect(() =>
+        store.updateTelemetryReasoning('req-missing', {
+          reasoning_level_requested: null,
+          reasoning_level_applied: null,
+          reasoning_reason_code: 'reasoning_unsupported',
+        }),
+      ).not.toThrow();
+
+      const rows = await store.listTelemetry({ limit: 5 });
+      expect(rows).toHaveLength(0);
+    } finally {
+      store.close();
+    }
+  });
+
+  it('migrates an existing v6 database to v7 without data loss', async () => {
+    // Open a store (v7), write a row, close, then reopen — the row survives
+    // and carries the reasoning columns (null until a delegation updates them).
+    const dir = mkdtempSync(join(tmpdir(), 'sqlite-store-reasoning-'));
+    const dbPath = join(dir, 'router.db');
+    const first = new SqliteStore({ dbPath, models: [] });
+    try {
+      first.appendTelemetry(makeTelemetryEntry('req-migration'));
+    } finally {
+      first.close();
+    }
+    const second = new SqliteStore({ dbPath, models: [] });
+    try {
+      const rows = await second.listTelemetry({ limit: 5 });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.request_id).toBe('req-migration');
+      expect(rows[0]?.reasoning_level_requested).toBeNull();
+      second.updateTelemetryReasoning('req-migration', {
+        reasoning_level_requested: 'high',
+        reasoning_level_applied: 'high',
+        reasoning_reason_code: 'operator_thinking_floor',
+      });
+      const updated = await second.listTelemetry({ limit: 5 });
+      expect(updated[0]?.reasoning_level_applied).toBe('high');
+    } finally {
+      second.close();
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });
