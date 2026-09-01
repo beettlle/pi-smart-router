@@ -40,8 +40,8 @@ Closes #165 — polish after SP-243:
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `README.md` |
-| May change | `src/config/pi-model-mapper.ts`, explain/logging call sites under `src/**` or `.pi/extensions/smart-router/**`, `tests/unit/**` |
+| Must change | `src/config/pi-model-mapper.ts` |
+| May change | `README.md`, explain/logging call sites under `src/**` or `.pi/extensions/smart-router/**`, `tests/unit/**` |
 | Must NOT change | `src/domain/pipeline/router-pipeline.ts`, `package.json` (version), core adapter schedule math (SP-243 owns) |
 
 ## Contract
@@ -49,7 +49,7 @@ Closes #165 — polish after SP-243:
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/price-broker.test.ts tests/unit/smart-router-pricing.test.ts` |
-| fileScopeMustChange | `README.md` |
+| fileScopeMustChange | `src/config/pi-model-mapper.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | README documents peak adapters + vendor links; explain/log path can show window; #165 closable |
 
@@ -80,3 +80,7 @@ Closes #165 — polish after SP-243:
 ## Git Commit Convention
 
 - `docs(SP-244): peak pricing explain telemetry and README (#165)`
+
+## Amendments
+
+- **2026-09-01 (preflight / pre-landed file scope):** SP-242/SP-246 already updated `README.md` economics on main. Redirected `fileScopeMustChange` / File Scope Must change to `src/config/pi-model-mapper.ts` (mapper coverage deliverable). README remains in May change for peak-adapter docs polish.
