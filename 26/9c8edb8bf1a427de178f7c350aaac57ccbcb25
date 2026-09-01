@@ -1,0 +1,14 @@
+spine-tasks/SP-246-adaptive-reasoning-config-docs/STATUS.md
+  h_ae151c586ac6c5 4,20,28,36-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "269c8edb8bf1a427de178f7c350aaac57ccbcb25",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
