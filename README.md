@@ -218,7 +218,7 @@ Cursor models bill against your **Cursor Pro subscription quota**, not per-token
 | `/smart-router` | Same as `status` (default when no subcommand is given) |
 | `/smart-router status` | Show fleet mode, fleet size, pricing freshness/staleness, and the last routing decision (stage, tier, selected model, latency) |
 | `/smart-router history` | Show recent routing telemetry from SQLite (default limit; optional numeric limit, e.g. `/smart-router history 20`). Displays the concrete delegated model id (never bare virtual `auto`) |
-| `/smart-router stats` | Privacy-safe session/window aggregates from routing telemetry: count, mean cost/latency, planning_delegate vs direct share, local vs cloud when distinguishable, and role cost breakdown (primary pin path / planning_delegate / other). Optional vs-always-frontier savings when frontier fleet prices exist (omitted otherwise). Optional numeric limit, e.g. `/smart-router stats 50` |
+| `/smart-router stats` | Privacy-safe session/window aggregates from routing telemetry: count, mean cost/latency with `cost_basis` labeling (actual vs estimated, SP-241), planning_delegate vs direct share, local vs cloud when distinguishable, and role cost breakdown. Optional vs-always-frontier savings when frontier fleet prices exist (omitted otherwise). The JSON snapshot (`buildStatsSnapshot`, automation surface) additionally carries warm rolling `cost_calibration` actual/estimate buckets (SP-242). Optional numeric limit, e.g. `/smart-router stats 50` |
 | `/smart-router mode scoped` | Route only among pi's **enabled model patterns** (default) |
 | `/smart-router mode all` | Route among **all authenticated models** in the registry |
 | `/smart-router pricing refresh` | Manually fetch LiteLLM pricing from `LITELLM_PRICING_URL`, persist to SQLite, and rebuild the fleet with updated rates |
@@ -586,6 +586,33 @@ When `quotaWindowPosition` is omitted, λ stays at 1 and quota premiums are zero
 4. Compare `remaining_window_fraction: 1` vs `0.02` on the same request — late-window runs should show higher frontier `effective_cost_usd` in `features.tier_selection.tier_costs[].virtual_cost_v2`.
 
 See [routing-roadmap.md](docs/routing-roadmap.md) §2 P2 and GitHub [#78](https://github.com/beettlle/pi-smart-router/issues/78).
+
+### Usage actuals (post-turn capture)
+
+When pi reports an assistant message `usage` object after a delegated turn, the smart-router persists it onto that turn's routing telemetry row ([#164](https://github.com/beettlle/pi-smart-router/issues/164)): `actual_cost_usd`, `actual_input_tokens`, `actual_output_tokens`, and cache read/write token counts — while retaining `estimated_cost_usd`. Capture fails open: library embeds and non-pi hosts that report no usage simply leave the actual fields null, and a telemetry write error never fails the route. Subscription/OAuth models report `cost.total === 0`: token actuals are still recorded, but no USD is invented — `/smart-router stats` labels its totals `cost_basis: 'actual' | 'estimated' | 'mixed'` accordingly.
+
+### Rolling cost calibration (v0.20.0 usage actuals)
+
+**Rolling cost calibration** soft-biases future cost estimates with the ratio your models *actually* bill versus what the router estimated ([#164](https://github.com/beettlle/pi-smart-router/issues/164)). It is built from the privacy-safe post-turn [usage actuals](#usage-actuals-post-turn-capture) — no new state to configure, and prompt/message bodies are never touched.
+
+**How it works**
+
+1. Every routed turn records an `estimated_cost_usd` (input tokens × catalog rate) and, when pi reports it, an `actual_cost_usd` on the same telemetry row.
+2. `buildCostCalibrationPrior` derives per-**model** and per-**tier** mean `actual / estimate` ratios over the rolling telemetry window. Per-pair outliers are clamped (±10×) before averaging; the aggregate is clamped to a soft band of **[0.5, 2.0]** so calibration can never hard-ban or hard-favor a model on cost alone.
+3. When warm (≥ 3 usable pairs per bucket), the ratio multiplies the tier's base per-1M cost **before** the virtual-cost v2 λ/premium/KV chain — so quota decay and cache credits compound on the calibrated base. Model buckets win over tier buckets.
+4. `estimateRoutingCost` accepts the same prior as an optional argument, soft-biasing per-request cost estimates identically.
+
+**Cold start fails open.** No prior, an empty prior, or a bucket below the warmup threshold resolves ratio 1 — the catalog estimate is used unchanged. Subscription rows (host reports `cost.total === 0`) never contribute: stats and calibration never invent USD.
+
+**Where it applies**
+
+- **Expected-cost tier selection** — pass `costCalibration` into `selectTierByExpectedCost` / `computeExpectedCost` (library API, same pattern as `heatBias`). A warm ratio that doubles an economical tier's effective cost can flip the next selection to frontier; the price-delta and pin-economics hard gates still apply after the soft bias.
+- **Pre-route estimates** — `estimateRoutingCost(model, request, catalog, calibration?)`; the router pipeline's uncalibrated call is unchanged.
+- **`/smart-router stats`** — the aggregate's JSON snapshot (`aggregateSessionStats` / `buildStatsSnapshot`, the automation/MCP surface) carries a `cost_calibration` array (model buckets first, then tier buckets, each `{key, kind, ratio, samples}`); omitted entirely when cold so automation can treat absence as catalog-only. The human-readable stats text keeps rendering cost basis and role breakdown only.
+
+**Observing the bias** — run with `SMART_ROUTER_LOG_ROUTING=1` and read the expected-cost gate line: calibrated winners carry a `[cost-calib ×N.NN from rolling actuals (SP-242)]` note on the rationale, and each tier's `calibrationRatio` appears in the expected-cost breakdown (`features.tier_selection.tier_costs[]`).
+
+**Knobs** (`DEFAULT_COST_CALIBRATION_CONFIG`): `minSamples` 3 (warmup), `minRatio`/`maxRatio` 0.5/2.0 (soft band), `sampleMinRatio`/`sampleMaxRatio` 0.1/10 (per-pair outlier clamp). Not a vendor peak-clock schedule — see [#165](https://github.com/beettlle/pi-smart-router/issues/165) for time-of-day pricing.
 
 ### P(success) training export (baseline classifier)
 

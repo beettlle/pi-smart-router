@@ -27,6 +27,7 @@ import {
   type CacheEconomicsConfig,
 } from '../pinning/cache-economics.js';
 import { selectLowestCostModel } from '../pinning/sub-route-policy.js';
+import type { RoutingTelemetry } from '../types/index.js';
 
 /** Frontier-tier success probability when evaluating escalation terminal cost. */
 export const FRONTIER_P_SUCCESS = 1;
@@ -54,6 +55,180 @@ export interface ExpectedCostHeatBias {
   readonly strength: number;
 }
 
+// ─── Rolling cost calibration (SP-242, #164) ──────────────────────────────
+
+/** One warm actual/estimate ratio bucket (SP-242, #164). */
+export interface CostCalibrationSample {
+  /** Model id (`kind === 'model'`) or tier name (`kind === 'tier'`). */
+  readonly key: string;
+  readonly kind: 'model' | 'tier';
+  /** Mean actual/estimate ratio over the warm window, clamped soft. */
+  readonly ratio: number;
+  /** Number of usable actual/estimate pairs behind the ratio. */
+  readonly samples: number;
+}
+
+/**
+ * Privacy-safe rolling cost-calibration prior built from routing telemetry
+ * (SP-242, #164). Carries only model ids, tier names, ratios, and counts —
+ * never prompt/message bodies. Null / empty maps = cold (fail open to
+ * catalog estimates).
+ */
+export interface CostCalibrationPrior {
+  readonly byModel: ReadonlyMap<string, CostCalibrationSample>;
+  readonly byTier: ReadonlyMap<string, CostCalibrationSample>;
+}
+
+/** Calibration knobs; defaults keep the bias soft and warmup-gated. */
+export interface CostCalibrationConfig {
+  /** Buckets with fewer usable pairs stay cold (degrade to catalog). */
+  readonly minSamples: number;
+  /** Aggregate ratio clamp — the bias can never exceed this band. */
+  readonly minRatio: number;
+  readonly maxRatio: number;
+  /** Per-pair outlier clamp before averaging (one wild turn ≠ pivot). */
+  readonly sampleMinRatio: number;
+  readonly sampleMaxRatio: number;
+}
+
+export const DEFAULT_COST_CALIBRATION_CONFIG: CostCalibrationConfig = {
+  minSamples: 3,
+  minRatio: 0.5,
+  maxRatio: 2.0,
+  sampleMinRatio: 0.1,
+  sampleMaxRatio: 10,
+};
+
+export interface BuildCostCalibrationPriorOptions {
+  readonly config?: CostCalibrationConfig;
+  /** Optional model_id → tier map (e.g. from fleet) for per-tier buckets. */
+  readonly tierByModelId?: ReadonlyMap<string, Tier>;
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+}
+
+interface RatioAccumulator {
+  sum: number;
+  count: number;
+}
+
+/**
+ * Build a rolling actual/estimate cost-calibration prior from telemetry
+ * entries carrying SP-241 usage actuals (SP-242, #164).
+ *
+ * Only entries with a host-reported positive `actual_cost_usd` and a positive
+ * `estimated_cost_usd` contribute — subscription rows (actual cost null/zero)
+ * never invent USD and simply fail open. Per-pair ratios are outlier-clamped
+ * before averaging; aggregate ratios are clamped to [minRatio, maxRatio] so
+ * the bias stays soft. Returns null when no bucket reaches `minSamples`
+ * (cold → callers degrade to catalog estimates).
+ */
+export function buildCostCalibrationPrior(
+  entries: readonly RoutingTelemetry[],
+  options?: BuildCostCalibrationPriorOptions,
+): CostCalibrationPrior | null {
+  const config = options?.config ?? DEFAULT_COST_CALIBRATION_CONFIG;
+  const tierByModelId = options?.tierByModelId;
+  const modelAcc = new Map<string, RatioAccumulator>();
+  const tierAcc = new Map<string, RatioAccumulator>();
+
+  for (const entry of entries) {
+    const actual = entry.actual_cost_usd;
+    const estimate = entry.estimated_cost_usd;
+    if (
+      typeof actual !== 'number' ||
+      !Number.isFinite(actual) ||
+      actual <= 0 ||
+      !Number.isFinite(estimate) ||
+      estimate <= 0
+    ) {
+      continue;
+    }
+
+    const ratio = clampNumber(
+      actual / estimate,
+      config.sampleMinRatio,
+      config.sampleMaxRatio,
+    );
+
+    const modelAccum = modelAcc.get(entry.selected_model_id);
+    if (modelAccum) {
+      modelAccum.sum += ratio;
+      modelAccum.count += 1;
+    } else {
+      modelAcc.set(entry.selected_model_id, { sum: ratio, count: 1 });
+    }
+
+    const tier = tierByModelId?.get(entry.selected_model_id) ?? entry.tier_hint;
+    if (tier !== null && tier !== undefined) {
+      const tierAccum = tierAcc.get(tier);
+      if (tierAccum) {
+        tierAccum.sum += ratio;
+        tierAccum.count += 1;
+      } else {
+        tierAcc.set(tier, { sum: ratio, count: 1 });
+      }
+    }
+  }
+
+  const finalize = (
+    acc: ReadonlyMap<string, RatioAccumulator>,
+    kind: CostCalibrationSample['kind'],
+  ): ReadonlyMap<string, CostCalibrationSample> => {
+    const out = new Map<string, CostCalibrationSample>();
+    for (const [key, { sum, count }] of acc) {
+      if (count < config.minSamples) {
+        continue;
+      }
+      const ratio = clampNumber(sum / count, config.minRatio, config.maxRatio);
+      out.set(key, { key, kind, ratio, samples: count });
+    }
+    return out;
+  };
+
+  const byModel = finalize(modelAcc, 'model');
+  const byTier = finalize(tierAcc, 'tier');
+
+  if (byModel.size === 0 && byTier.size === 0) {
+    return null;
+  }
+
+  return { byModel, byTier };
+}
+
+/** Target for ratio lookup: model id first, tier as fallback. */
+export interface CostCalibrationTarget {
+  readonly modelId?: string;
+  readonly tier?: Tier;
+}
+
+/**
+ * Resolve the calibration ratio for a routing target (SP-242, #164).
+ * Model-level buckets win over tier-level; anything cold / missing / null
+ * returns exactly 1 — catalog estimate unchanged (fail open).
+ */
+export function resolveCostCalibrationRatio(
+  prior: CostCalibrationPrior | null | undefined,
+  target: CostCalibrationTarget,
+): number {
+  if (!prior) {
+    return 1;
+  }
+  const byModel = target.modelId !== undefined ? prior.byModel.get(target.modelId) : undefined;
+  if (byModel !== undefined && Number.isFinite(byModel.ratio) && byModel.ratio > 0) {
+    return byModel.ratio;
+  }
+  const byTier = target.tier !== undefined ? prior.byTier.get(target.tier) : undefined;
+  if (byTier !== undefined && Number.isFinite(byTier.ratio) && byTier.ratio > 0) {
+    return byTier.ratio;
+  }
+  return 1;
+}
+
 /** V2 virtual-cost breakdown attached to expected-cost explain (SP-149). */
 export interface ExpectedCostVirtualCostV2 {
   readonly baseCostUsd: number;
@@ -76,6 +251,8 @@ export interface ExpectedCostBreakdown {
   readonly virtualCostV2: ExpectedCostVirtualCostV2 | null;
   /** True when the SP-215 soft heat bias discounted this tier's cost. */
   readonly heatBiasApplied?: boolean;
+  /** Applied rolling actual/estimate ratio (SP-242); present only when ≠ 1. */
+  readonly calibrationRatio?: number;
 }
 
 export interface SelectTierByExpectedCostInput {
@@ -94,6 +271,8 @@ export interface SelectTierByExpectedCostInput {
   readonly virtualCostV2Config?: VirtualCostV2Config;
   /** Soft heat affinity for first-turn / cold-start bias (SP-215, #115). */
   readonly heatBias?: ExpectedCostHeatBias;
+  /** Rolling actual/estimate calibration prior (SP-242, #164); cold → catalog. */
+  readonly costCalibration?: CostCalibrationPrior | null;
 }
 
 export interface SelectTierByExpectedCostResult {
@@ -104,6 +283,8 @@ export interface SelectTierByExpectedCostResult {
   readonly blockedByPinEconomics: boolean;
   /** True when the SP-215 soft heat bias changed the winning tier. */
   readonly heatBiasApplied?: boolean;
+  /** True when SP-242 rolling calibration biased the winning tier's cost. */
+  readonly calibrationApplied?: boolean;
 }
 
 function clamp01(value: number): number {
@@ -157,10 +338,18 @@ export interface ResolveTierVirtualCostInput {
   readonly virtualCostV2Config?: VirtualCostV2Config;
   readonly sessionPin?: SessionPin;
   readonly pinnedModel?: ModelProfile;
+  /** Rolling actual/estimate calibration prior (SP-242, #164); cold → catalog. */
+  readonly costCalibration?: CostCalibrationPrior | null;
 }
 
 /**
  * Resolve SP-148 virtual cost v2 for a tier representative model (SP-149).
+ *
+ * SP-242 (#164): when a warm calibration prior is supplied, the tier's base
+ * per-1M cost is soft-biased by the rolling actual/estimate ratio (model
+ * bucket first, tier bucket fallback) BEFORE the v2 λ/premium/KV chain, so
+ * quota decay and cache credits compound on the calibrated base. Cold or
+ * missing buckets resolve ratio 1 — catalog estimate unchanged (fail open).
  */
 export function resolveTierVirtualCost(
   input: ResolveTierVirtualCostInput,
@@ -168,6 +357,8 @@ export function resolveTierVirtualCost(
   readonly costPer1M: number;
   readonly directCostUsd: number;
   readonly virtualCostV2: ExpectedCostVirtualCostV2;
+  /** Applied calibration ratio (SP-242); 1 = catalog estimate untouched. */
+  readonly calibrationRatio: number;
 } {
   const baseCostPer1M = resolveTierCostPer1M(
     input.tier,
@@ -181,8 +372,18 @@ export function resolveTierVirtualCost(
   const warmPrefixTokens =
     pinActive && input.estTokens > 0 ? input.estTokens : 0;
 
+  const representative = resolveCheapestModelForTier(input.fleet, input.tier);
+  const calibrationRatio =
+    baseCostPer1M > 0
+      ? resolveCostCalibrationRatio(input.costCalibration, {
+          ...(representative !== undefined ? { modelId: representative.id } : {}),
+          tier: input.tier,
+        })
+      : 1;
+  const calibratedBaseCostPer1M = baseCostPer1M * calibrationRatio;
+
   const breakdown = computeVirtualCostV2({
-    base_cost_per_1m: baseCostPer1M,
+    base_cost_per_1m: calibratedBaseCostPer1M,
     est_tokens: input.estTokens,
     pin_active: pinActive,
     warm_prefix_tokens: warmPrefixTokens,
@@ -198,6 +399,7 @@ export function resolveTierVirtualCost(
     costPer1M: breakdown.effective_cost_per_1m,
     directCostUsd: breakdown.effective_cost_usd,
     virtualCostV2: mapVirtualCostV2Breakdown(breakdown),
+    calibrationRatio,
   };
 }
 
@@ -278,6 +480,18 @@ export function computeExpectedCost(
     readonly sessionPin?: SessionPin;
     readonly pinnedModel?: ModelProfile;
     readonly heatBias?: ExpectedCostHeatBias;
+    /**
+     * Annotation only (SP-242): applied calibration ratio when `costPer1M` /
+     * `directCostUsd` were supplied pre-calibrated by the caller. When cost is
+     * resolved internally the ratio comes from the tier resolution itself.
+     */
+    readonly calibrationRatio?: number;
+    /**
+     * Rolling calibration prior applied when cost is resolved internally
+     * (SP-242, #164). Ignored when `costPer1M` is supplied explicitly — that
+     * cost is treated as already calibrated, so the bias never double-applies.
+     */
+    readonly costCalibration?: CostCalibrationPrior | null;
   },
 ): ExpectedCostBreakdown {
   const alpha = options?.alpha ?? 1;
@@ -286,10 +500,13 @@ export function computeExpectedCost(
   let costPer1M: number;
   let direct: number;
   let virtualCostV2 = options?.virtualCostV2 ?? null;
+  let calibrationRatio = 1;
 
   if (options?.costPer1M !== undefined) {
     costPer1M = options.costPer1M;
     direct = options.directCostUsd ?? (estTokens / 1_000_000) * costPer1M;
+    virtualCostV2 = options.virtualCostV2 ?? null;
+    calibrationRatio = options.calibrationRatio ?? 1;
   } else {
     const resolved = resolveTierVirtualCost({
       tier,
@@ -304,10 +521,14 @@ export function computeExpectedCost(
         : {}),
       ...(options?.sessionPin !== undefined ? { sessionPin: options.sessionPin } : {}),
       ...(options?.pinnedModel !== undefined ? { pinnedModel: options.pinnedModel } : {}),
+      ...(options?.costCalibration != null
+        ? { costCalibration: options.costCalibration }
+        : {}),
     });
     costPer1M = resolved.costPer1M;
     direct = resolved.directCostUsd;
     virtualCostV2 = resolved.virtualCostV2;
+    calibrationRatio = resolved.calibrationRatio;
   }
 
   const boundedPSuccess = resolvePSuccessForTier(tier, pSuccess);
@@ -331,6 +552,9 @@ export function computeExpectedCost(
     adjustedExpectedCostUsd: heat.cost,
     virtualCostV2,
     ...(heat.applied ? { heatBiasApplied: true } : {}),
+    ...(calibrationRatio !== 1 && Number.isFinite(calibrationRatio)
+      ? { calibrationRatio }
+      : {}),
   };
 }
 
@@ -414,8 +638,12 @@ function buildTierRationale(
   const heatNote = breakdown.heatBiasApplied
     ? ' [heat affinity soft bias (SP-215)]'
     : '';
+  const calibNote =
+    breakdown.calibrationRatio !== undefined && breakdown.calibrationRatio !== 1
+      ? ` [cost-calib ×${breakdown.calibrationRatio.toFixed(2)} from rolling actuals (SP-242)]`
+      : '';
   const withV2 = v2Explain ? `${base} (${v2Explain})` : base;
-  return `${withV2}${heatNote}`;
+  return `${withV2}${heatNote}${calibNote}`;
 }
 
 /**
@@ -434,6 +662,9 @@ export function selectTierByExpectedCost(
       : {}),
     ...(input.sessionPin !== undefined ? { sessionPin: input.sessionPin } : {}),
     ...(input.pinnedModel !== undefined ? { pinnedModel: input.pinnedModel } : {}),
+    ...(input.costCalibration != null
+      ? { costCalibration: input.costCalibration }
+      : {}),
   };
 
   const frontierResolved = resolveTierVirtualCost({
@@ -495,6 +726,9 @@ export function selectTierByExpectedCost(
         directCostUsd: resolved.directCostUsd,
         virtualCostV2: resolved.virtualCostV2,
         fleet: input.fleet,
+        ...(resolved.calibrationRatio !== 1
+          ? { calibrationRatio: resolved.calibrationRatio }
+          : {}),
         ...(input.heatBias !== undefined ? { heatBias: input.heatBias } : {}),
         ...virtualCostOptions,
       },
@@ -509,6 +743,7 @@ export function selectTierByExpectedCost(
       rationale: 'No viable tiers after context-fit and local readiness filters',
       blockedByPinEconomics: false,
       heatBiasApplied: false,
+      calibrationApplied: false,
     };
   }
 
@@ -531,6 +766,7 @@ export function selectTierByExpectedCost(
         'Economical tier expected cost is lowest but frontier–economical price delta is below threshold',
       blockedByPinEconomics: false,
       heatBiasApplied: best.heatBiasApplied === true,
+      calibrationApplied: best.calibrationRatio !== undefined,
     };
   }
 
@@ -544,6 +780,7 @@ export function selectTierByExpectedCost(
         'Expected-cost tier switch blocked because cache reprime exceeds projected savings (FR-008)',
       blockedByPinEconomics: true,
       heatBiasApplied: best.heatBiasApplied === true,
+      calibrationApplied: best.calibrationRatio !== undefined,
     };
   }
 
@@ -554,5 +791,6 @@ export function selectTierByExpectedCost(
     rationale: buildTierRationale(best.tier, best),
     blockedByPinEconomics: false,
     heatBiasApplied: best.heatBiasApplied === true,
+    calibrationApplied: best.calibrationRatio !== undefined,
   };
 }
