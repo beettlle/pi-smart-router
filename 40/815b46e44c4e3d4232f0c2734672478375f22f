@@ -1,0 +1,19 @@
+tests/unit/operator-config.test.ts
+  s_8aa3327656bdc9::t_b81fb4ce7fe0b7 36-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "40815b46e44c4e3d4232f0c2734672478375f22f",
+  "prompts": {},
+  "sessions": {
+    "s_8aa3327656bdc9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-926aacca-0acc-4068-be10-b1b87c237d36",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
