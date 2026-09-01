@@ -1,8 +1,8 @@
 # SP-243: Peak/off-peak pricing adapters for Z.ai and DeepSeek — Status
 
-**Current Step:** 1
-**Status:** Pending
-**Last Updated:** 2026-08-30
+**Current Step:** 2
+**Status:** In Progress
+**Last Updated:** 2026-09-01
 **Review Level:** 1
 **Size:** M
 
@@ -10,15 +10,15 @@
 
 ## Step 1: Adapters + injectable clock
 
-**Status:** Pending
+**Status:** Complete
 
-- [ ] Implement Z.ai + DeepSeek schedule adapters with injectable `now`
-- [ ] Default Z.ai plan-profile `credits`; legacy multipliers only via documented override
-- [ ] Map provider/model ids; unknown → `pricing_window: none`
+- [x] Implement Z.ai + DeepSeek schedule adapters with injectable `now`
+- [x] Default Z.ai plan-profile `credits`; legacy multipliers only via documented override
+- [x] Map provider/model ids; unknown → `pricing_window: none`
 
 ## Step 2: Wire into estimate / frugality
 
-**Status:** Pending
+**Status:** In Progress
 
 - [ ] Consult adapters from price-broker / `estimateRoutingCost` path
 - [ ] Soft-bias only; no hard ban
