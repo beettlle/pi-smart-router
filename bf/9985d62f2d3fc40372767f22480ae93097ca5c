@@ -1,0 +1,65 @@
+.pi/extensions/smart-router/delegate-stream.ts
+  s_4bd9e71254ab76::t_5b093d259e38ba 333-349,352-368
+.pi/extensions/smart-router/extension-setup.ts
+  s_4bd9e71254ab76::t_f68947aa51266d 123-125,157-169
+.pi/extensions/smart-router/planning-delegate.ts
+  s_4bd9e71254ab76::t_fe4a39100ef27c 196-197,202-212
+.pi/extensions/smart-router/types.ts
+  s_4bd9e71254ab76::t_74d86beb3e6486 14,19,74-75,96-101
+README.md
+  s_4bd9e71254ab76::t_c55254e60095f0 444-446,521-555
+config/operator-config.json.example
+  s_4bd9e71254ab76::t_c4e3080e1c40f1 77-86
+spine-tasks/SP-246-adaptive-reasoning-config-docs/STATUS.md
+  s_4bd9e71254ab76::t_ec91c686c79ba5 3-4,13,15-16,20,22-24,28,32-37
+src/config/defaults.ts
+  s_4bd9e71254ab76::t_4769dc06225d1d 7,14,22,28,33,39,81-82
+src/domain/delegation/adaptive-reasoning.ts
+  s_4bd9e71254ab76::t_ac92ca22e98bc2 29-31,33-34,65-66,75-76,101-116,254-262,268,270-278,309-331,337-340,349-352,360,364-374
+src/domain/types/entities.ts
+  s_4bd9e71254ab76::t_cb4a53263ab670 616-631
+src/domain/types/index.ts
+  s_4bd9e71254ab76::t_5b88bbc9b50920 32,53-57
+src/domain/types/schemas.ts
+  s_4bd9e71254ab76::t_9fc0a6d40b2a74 679-777,959-960
+src/domain/types/store-port.ts
+  s_4bd9e71254ab76::t_ba85efc4995422 27,92-100
+src/infrastructure/persistence/sqlite-store.ts
+  s_4bd9e71254ab76::t_b614281cfe5f5b 17,50,191-197,699-700,706-707,726-728,765-794,911-916,1012-1014,1100-1102
+src/infrastructure/telemetry/routing-telemetry.ts
+  s_4bd9e71254ab76::t_8d4c9a1ad49958 39,964-979,1606-1610
+tests/integration/pi-extension.test.ts
+  s_4bd9e71254ab76::t_34a5794061577d 1303,1322,1488-1589
+tests/unit/adaptive-reasoning.test.ts
+  s_4bd9e71254ab76::t_0ab1c66b33fafb 442-636
+tests/unit/defaults.test.ts
+  s_4bd9e71254ab76::t_564e6ff3c87633 4-5,8,24-26,83-146
+tests/unit/memory-store.test.ts
+  s_4bd9e71254ab76::t_a3d9a8eeb48f0f 10,46,50
+tests/unit/operator-config.test.ts
+  s_4bd9e71254ab76::t_4b08935c85b841 36-45
+tests/unit/routing-telemetry.test.ts
+  s_4bd9e71254ab76::t_087d04a20a7c2a 42,126-128,1050-1080
+tests/unit/sqlite-store.test.ts
+  s_4bd9e71254ab76::t_41d7c8c75469a8 35-50,96,166,175-177,420,424,668,763-859
+spine-tasks/SP-246-adaptive-reasoning-config-docs/.reviews/1-20260901T234414.md
+  s_4bd9e71254ab76::t_2d4ddc5cbfbcd6 1-8
+spine-tasks/SP-246-adaptive-reasoning-config-docs/.reviews/final-20260901T234430.md
+  s_4bd9e71254ab76::t_1cb74f81faab84 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bf9985d62f2d3fc40372767f22480ae93097ca5c",
+  "prompts": {},
+  "sessions": {
+    "s_4bd9e71254ab76": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-219cb35d-8e98-4775-9646-7fbb5265ce3d",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
