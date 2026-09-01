@@ -1,0 +1,16 @@
+spine-tasks/SP-246-adaptive-reasoning-config-docs/.reviews/1-20260901T234414.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-246-adaptive-reasoning-config-docs/.reviews/final-20260901T234430.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "128a85998f63a8a02f0db1586430da4ab01c7855",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
