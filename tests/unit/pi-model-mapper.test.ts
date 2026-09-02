@@ -16,6 +16,10 @@ import {
   parseBenchmarkProfilesArtifact,
   serializeBenchmarkProfilesArtifact,
 } from '../../scripts/ingest-benchmark-profiles.js';
+import {
+  matchesDeepSeekAdapter,
+  matchesZaiAdapter,
+} from '../../src/domain/pricing/peak-pricing.js';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -290,6 +294,57 @@ describe('mapPiModelToProfile', () => {
       expect(profile.capabilities.reasoning).not.toBe(0.6);
       expect(profile.capability_source).toBe('benchmark');
       expect(profile.pricing.quota_cost_per_1m).toBe(DEFAULT_CURSOR_QUOTA_COST_PER_1M);
+    });
+  });
+
+  describe('peak-pricing vendor families (SP-244 / #165)', () => {
+    it('maps glm-4.6 to economical tier (recognized Z.ai family, not UNKNOWN_DEFAULTS)', () => {
+      const profile = mapPiModelToProfile(makeInput({ provider: 'zai', id: 'glm-4.6' }));
+
+      expect(profile.tier).toBe('economical-cloud');
+      expect(profile.capability_source).toBe('pattern_default');
+      // ECONOMICAL_DEFAULTS (0.7/0.75/0.7), not UNKNOWN_DEFAULTS (0.6/0.65/0.6)
+      expect(profile.capabilities.reasoning).toBe(0.7);
+      expect(profile.capabilities.code_gen).toBe(0.75);
+      expect(profile.capabilities.tool_use).toBe(0.7);
+      expect(profile.pricing.registry_key).toBe('zai/glm-4.6');
+    });
+
+    it('maps glm-5.3-flash-style numbered ids via the glm rule', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'zai', id: 'glm-5.3-flash' }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+      expect(profile.capabilities.code_gen).toBe(0.75);
+    });
+
+    it('maps deepseek ids to economical tier (recognized DeepSeek family)', () => {
+      const chat = mapPiModelToProfile(
+        makeInput({ provider: 'deepseek', id: 'deepseek-chat' }),
+      );
+      const reasoner = mapPiModelToProfile(
+        makeInput({ provider: 'deepseek', id: 'deepseek-reasoner' }),
+      );
+
+      for (const profile of [chat, reasoner]) {
+        expect(profile.tier).toBe('economical-cloud');
+        expect(profile.capabilities.reasoning).toBe(0.7);
+        expect(profile.capability_source).toBe('pattern_default');
+      }
+      expect(chat.pricing.registry_key).toBe('deepseek/deepseek-chat');
+    });
+
+    it('mapped profiles satisfy the SP-243 peak-pricing adapter matching', () => {
+      const glm = mapPiModelToProfile(makeInput({ provider: 'zai', id: 'glm-4.6' }));
+      const deepseek = mapPiModelToProfile(
+        makeInput({ provider: 'deepseek', id: 'deepseek-chat' }),
+      );
+
+      expect(matchesZaiAdapter(glm)).toBe(true);
+      expect(matchesDeepSeekAdapter(deepseek)).toBe(true);
+      expect(matchesZaiAdapter(deepseek)).toBe(false);
+      expect(matchesDeepSeekAdapter(glm)).toBe(false);
     });
   });
 

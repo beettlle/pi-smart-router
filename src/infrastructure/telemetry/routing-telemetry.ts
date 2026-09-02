@@ -1249,6 +1249,33 @@ export interface RoutingDecisionLogDelegate {
   readonly api: string;
 }
 
+/** Peak-pricing observability for explain/log payloads (SP-244, #165). */
+export interface PeakPricingObservability {
+  readonly window: PricingWindow;
+  readonly cost_multiplier: number;
+  readonly adapter_id: 'zai' | 'deepseek' | null;
+}
+
+/**
+ * Resolve peak/off-peak pricing observability for a log/explain payload
+ * (SP-244, #165). Prefers the fleet profile so provider-aware adapter matching
+ * (e.g. `provider: 'zai'`) applies; falls back to the bare selected id so
+ * `glm-*` / `deepseek-*` ids still classify when no fleet is available.
+ * Never null — non-target providers yield `window: 'none'`, multiplier 1.
+ */
+export function buildPeakPricingObservability(
+  modelId: string,
+  fleet?: readonly ModelProfile[],
+): PeakPricingObservability {
+  const profile = fleet?.find((entry) => entry.id === modelId);
+  const adjustment = resolvePeakPricingAdjustment(profile ?? { id: modelId });
+  return {
+    window: adjustment.window,
+    cost_multiplier: adjustment.cost_multiplier,
+    adapter_id: adjustment.adapter_id,
+  };
+}
+
 /** JSON payload for SMART_ROUTER_LOG_ROUTING=1 stderr lines (SP-110). */
 export function buildRoutingDecisionLogPayload(
   request: RoutingRequest,
@@ -1296,6 +1323,8 @@ export function buildRoutingDecisionLogPayload(
       ? { saarConfig: pinEconomics.saarConfig }
       : {}),
   });
+  // SP-244 / #165: surface peak vs off-peak rationale on the log payload.
+  const peakPricing = buildPeakPricingObservability(enriched.selected_model_id, fleet);
 
   return {
     request_id: enriched.request_id,
@@ -1368,6 +1397,8 @@ export function buildRoutingDecisionLogPayload(
           shadow_event: flipFlop.shadow_event,
         }
       : null,
+    pricing_window: peakPricing.window,
+    peak_pricing_summary: peakPricing,
     pin_only_fallback_active: resolvePinOnlyFallbackActive(enriched),
     delegate,
   };

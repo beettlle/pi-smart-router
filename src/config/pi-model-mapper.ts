@@ -332,6 +332,11 @@ const MODEL_PATTERN_RULES: readonly ModelPatternRule[] = [
   { pattern: /gemini[-_.]?3.*pro/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /gemini.*pro/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /gemini.*flash|gemini-flash/i, defaults: ECONOMICAL_DEFAULTS },
+  // Peak-pricing vendor families (SP-244 / #165) — recognize Z.ai GLM and
+  // DeepSeek ids explicitly instead of UNKNOWN_DEFAULTS so the peak/off-peak
+  // adapters (SP-243) pair with sensible economical-tier capability defaults.
+  { pattern: /^glm[-_.]?\d/i, defaults: ECONOMICAL_DEFAULTS },
+  { pattern: /deepseek/i, defaults: ECONOMICAL_DEFAULTS },
   { pattern: /^composer[-_]/i, defaults: COMPOSER_DEFAULTS },
   { pattern: /^cursor\//i, defaults: CURSOR_AUTO_DEFAULTS },
 ];

@@ -1991,6 +1991,34 @@ describe('logRoutingDecision', () => {
       expect.stringContaining('gpt-4o-mini'),
     );
   });
+
+  it('surfaces peak vs off-peak rationale for peak-adapter models (SP-244, #165)', () => {
+    process.env.SMART_ROUTER_LOG_ROUTING = '1';
+
+    logRoutingDecision(makeDecision({ selected_model_id: 'glm-4.6' }), {
+      provider: 'zai',
+      modelId: 'glm-4.6',
+      api: 'openai-responses',
+    });
+
+    const payload = warnSpy.mock.calls[0]?.[1] as string;
+    expect(payload).toContain('"adapter_id":"zai"');
+    expect(payload).toMatch(/"pricing_window":"(peak|off_peak)"/);
+  });
+
+  it('reports pricing_window none for non-target providers (SP-244, #165)', () => {
+    process.env.SMART_ROUTER_LOG_ROUTING = '1';
+
+    logRoutingDecision(makeDecision({ selected_model_id: 'gpt-4o-mini' }), {
+      provider: 'openai',
+      modelId: 'gpt-4o-mini',
+      api: 'openai-responses',
+    });
+
+    const payload = warnSpy.mock.calls[0]?.[1] as string;
+    expect(payload).toContain('"pricing_window":"none"');
+    expect(payload).toContain('"adapter_id":null');
+  });
 });
 
 describe('resolveDelegationOptions', () => {

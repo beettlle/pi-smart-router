@@ -9,6 +9,7 @@ import type {
 
 import { safeCloudDefault } from '../../../src/domain/pipeline/safe-default.js';
 import { computeOutputHeadroom } from '../../../src/domain/delegation/output-headroom.js';
+import { resolvePeakPricingAdjustment } from '../../../src/domain/pricing/peak-pricing.js';
 import {
   CONTEXT_OVERFLOW_NO_FIT,
   resolveContextOverflowFallback,
@@ -84,6 +85,14 @@ function logRoutingDecision(
     return;
   }
 
+  // SP-244 / #165: surface peak vs off-peak pricing rationale for the selected
+  // model (Z.ai GLM Coding Plan / DeepSeek API windows; multiplier 1 + window
+  // 'none' for non-target providers — fail open).
+  const peakPricing = resolvePeakPricingAdjustment({
+    id: delegate?.modelId ?? decision.selected_model_id,
+    ...(delegate?.provider !== undefined ? { provider: delegate.provider } : {}),
+  });
+
   console.warn(
     '[smart-router] routing decision',
     JSON.stringify({
@@ -93,6 +102,12 @@ function logRoutingDecision(
       stage: decision.stage,
       reason_code: decision.reason_code,
       routing_latency_ms: decision.routing_latency_ms,
+      pricing_window: peakPricing.window,
+      peak_pricing: {
+        window: peakPricing.window,
+        cost_multiplier: peakPricing.cost_multiplier,
+        adapter_id: peakPricing.adapter_id,
+      },
       features: decision.features ?? null,
       delegate,
     }),
