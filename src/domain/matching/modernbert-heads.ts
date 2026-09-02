@@ -17,6 +17,8 @@ import { resolve } from 'node:path';
 
 import { z } from 'zod';
 
+import { K4_HEADS_PLACEHOLDER_REASON_CODE } from './missing-weights-reason-codes.js';
+
 // ─── Model constants ─────────────────────────────────────────────────────────
 
 /** ModernBERT-base ONNX artifact for @huggingface/transformers (768-dim [CLS]). */
@@ -272,6 +274,12 @@ async function loadTransformersModule(): Promise<TransformersModule> {
 export interface ModernBertHeadsPredictor {
   predictCapabilities(text: string): Promise<K4CapabilityVector>;
   usesLearnedHeads(): boolean;
+  /**
+   * Reason code surfaced in decision metadata when learned K=4 head weights
+   * are missing/invalid and placeholder heads are in use (SP-251, #148).
+   * Returns null when learned heads are active.
+   */
+  missingHeadsReasonCode(): string | null;
   dispose(): Promise<void>;
 }
 
@@ -301,6 +309,10 @@ export async function createModernBertHeadsPredictor(
   return {
     usesLearnedHeads(): boolean {
       return headWeights !== null;
+    },
+
+    missingHeadsReasonCode(): string | null {
+      return headWeights === null ? K4_HEADS_PLACEHOLDER_REASON_CODE : null;
     },
 
     async predictCapabilities(text: string): Promise<K4CapabilityVector> {

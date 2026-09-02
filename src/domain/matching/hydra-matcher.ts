@@ -28,6 +28,7 @@ import {
   type K4CapabilityVector,
   type ModernBertHeadsPredictor,
 } from './modernbert-heads.js';
+import { HYDRA_WEIGHTS_MISSING_REASON_CODE } from './missing-weights-reason-codes.js';
 import type { Encoder, HydraConfig, HydraHeads } from '../types/schemas.js';
 import { DEFAULT_ENCODER, DEFAULT_HYDRA_HEADS } from '../types/schemas.js';
 import {
@@ -53,6 +54,12 @@ export interface RequirementVector {
 
 export interface EmbeddingProvider {
   extractRequirements(text: string): Promise<RequirementVector>;
+  /**
+   * Reason codes describing degraded requirement extraction (SP-251, #148) —
+   * e.g. `k4_heads_placeholder` when learned K=4 head weights are missing.
+   * Absent/empty when learned weights are active.
+   */
+  requirementReasonCodes?(): readonly string[];
   dispose(): Promise<void>;
 }
 
@@ -62,6 +69,15 @@ export interface MatchResult {
   readonly selected: CandidateScore | null;
   readonly candidates: readonly CandidateScore[];
   readonly requirements: RequirementVector;
+  /**
+   * Decision metadata reason codes for degraded requirement extraction
+   * (SP-251, #148): `hydra_weights_missing` when the learned projection
+   * artifact is missing/invalid, `k4_heads_placeholder` when ModernBERT K=4
+   * head weights are missing/invalid. Empty when learned weights are active.
+   * Optional on the type for legacy literal constructions; HydraMatcher.match
+   * always populates it.
+   */
+  readonly requirement_reason_codes?: readonly string[];
   readonly elapsedMs: number;
   readonly budgetExceeded: boolean;
 }
@@ -353,6 +369,11 @@ export function wrapModernBertHeadsEmbeddingProvider(
       return k4CapabilityVectorToRequirements(k4);
     },
 
+    requirementReasonCodes(): readonly string[] {
+      const code = predictor.missingHeadsReasonCode();
+      return code === null ? [] : [code];
+    },
+
     async dispose(): Promise<void> {
       await predictor.dispose();
     },
@@ -367,6 +388,7 @@ export class HydraMatcher {
   private readonly frugality: FrugalityWeights;
   private readonly hydraHeads: HydraHeads;
   private readonly projectionWeights: HydraProjectionWeights | null;
+  private readonly requirementReasonCodes: readonly string[];
 
   constructor(provider: EmbeddingProvider, config: HydraMatcherConfig) {
     const budget = config.budgetMs ?? DEFAULT_BUDGET_MS;
@@ -385,6 +407,24 @@ export class HydraMatcher {
             config.projectionWeightsPath ? { filePath: config.projectionWeightsPath } : undefined,
           )
         : null;
+    this.requirementReasonCodes = this.computeRequirementReasonCodes(provider);
+  }
+
+  /**
+   * Decision-metadata reason codes for the requirement extraction path
+   * (SP-251, #148). Placeholder fallback stays fail-open; the codes make the
+   * degraded weight state explicit instead of stderr-only.
+   */
+  private computeRequirementReasonCodes(
+    provider: EmbeddingProvider,
+  ): readonly string[] {
+    if (this.usesModernBertK4()) {
+      return provider.requirementReasonCodes?.() ?? [];
+    }
+    if (this.hydraHeads === 'learned_projection' && this.projectionWeights === null) {
+      return [HYDRA_WEIGHTS_MISSING_REASON_CODE];
+    }
+    return [];
   }
 
   /** Active requirement head mode from operator hydra config. */
@@ -400,6 +440,15 @@ export class HydraMatcher {
   /** Whether learned SP-115 projection weights were loaded at init. */
   usesLearnedProjection(): boolean {
     return this.hydraHeads === 'learned_projection' && this.projectionWeights !== null;
+  }
+
+  /**
+   * Reason codes emitted into decision metadata when requirement extraction
+   * fell back to placeholders because learned weight artifacts were
+   * missing/invalid (SP-251, #148). Empty when learned weights are active.
+   */
+  missingWeightsReasonCodes(): readonly string[] {
+    return this.requirementReasonCodes;
   }
 
   async match(
@@ -466,6 +515,7 @@ export class HydraMatcher {
       selected,
       candidates: rankedCandidates,
       requirements,
+      requirement_reason_codes: this.requirementReasonCodes,
       elapsedMs,
       budgetExceeded: elapsedMs > this.budgetMs,
     };
