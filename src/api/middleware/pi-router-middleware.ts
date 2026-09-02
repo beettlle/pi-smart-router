@@ -97,6 +97,20 @@ export class LifecycleHookState {
   }
 
   /**
+   * Evict all lifecycle state for a session (SP-247, #145).
+   * Unlike `consume`, this deletes the session bucket outright so long-lived
+   * pi processes can drop per-session routing state at session teardown.
+   */
+  evict(sessionId: string): void {
+    this.sessions.delete(sessionId);
+  }
+
+  /** Whether lifecycle state is currently retained for a session. */
+  has(sessionId: string): boolean {
+    return this.sessions.has(sessionId);
+  }
+
+  /**
    * Consume lifecycle flags for the next routing request.
    * Compaction is one-shot; force_model_id is one-shot per consume.
    */
