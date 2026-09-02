@@ -21,6 +21,7 @@ import {
   type K4CapabilityVector,
   type ModernBertK4HeadWeights,
 } from '../../src/domain/matching/modernbert-heads.js';
+import { K4_HEADS_PLACEHOLDER_REASON_CODE } from '../../src/domain/matching/missing-weights-reason-codes.js';
 import { k4CapabilityVectorToRequirements } from '../../src/domain/matching/hydra-matcher.js';
 import { HydraConfigSchema, HydraHeadsSchema } from '../../src/domain/types/schemas.js';
 
@@ -376,6 +377,7 @@ describe('createModernBertHeadsPredictor', () => {
     expect(k4CapabilityVectorToArray(vector)).toHaveLength(4);
     assertVectorInUnitInterval(vector);
     expect(predictor.usesLearnedHeads()).toBe(false);
+    expect(predictor.missingHeadsReasonCode()).toBe(K4_HEADS_PLACEHOLDER_REASON_CODE);
 
     await predictor.dispose();
   });
@@ -391,5 +393,73 @@ describe('createModernBertHeadsPredictor', () => {
     await expect(predictor.predictCapabilities('bad shape')).rejects.toThrow(
       /\[CLS\] shape mismatch from ONNX/,
     );
+  });
+
+  // ─── Missing-weights reason code (SP-251, #148) ────────────────────────────
+
+  it('reports k4_heads_placeholder when the head weights artifact is missing', async () => {
+    mockExtractor.mockResolvedValue({ data: makeClsEmbedding(0.3) });
+
+    const { createModernBertHeadsPredictor } = await import(
+      '../../src/domain/matching/modernbert-heads.js'
+    );
+    const predictor = await createModernBertHeadsPredictor('.cache/models', {
+      headWeightsPath: '/tmp/does-not-exist-k4-heads.json',
+    });
+
+    // Placeholder heads remain the fail-open default.
+    expect(predictor.usesLearnedHeads()).toBe(false);
+    expect(predictor.missingHeadsReasonCode()).toBe(K4_HEADS_PLACEHOLDER_REASON_CODE);
+
+    const vector = await predictor.predictCapabilities('why is this test flaky');
+    assertVectorInUnitInterval(vector);
+
+    await predictor.dispose();
+  });
+
+  it('reports k4_heads_placeholder when the head weights artifact is invalid', async () => {
+    mockExtractor.mockResolvedValue({ data: makeClsEmbedding(0.3) });
+    const dir = mkdtempSync(join(tmpdir(), 'modernbert-k4-reason-'));
+    const filePath = join(dir, 'bad-heads.json');
+    writeFileSync(filePath, '{"version":1}', 'utf8');
+
+    try {
+      const { createModernBertHeadsPredictor } = await import(
+        '../../src/domain/matching/modernbert-heads.js'
+      );
+      const predictor = await createModernBertHeadsPredictor('.cache/models', {
+        headWeightsPath: filePath,
+      });
+
+      expect(predictor.usesLearnedHeads()).toBe(false);
+      expect(predictor.missingHeadsReasonCode()).toBe(K4_HEADS_PLACEHOLDER_REASON_CODE);
+
+      await predictor.dispose();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('reports no reason code when learned K=4 head weights load', async () => {
+    mockExtractor.mockResolvedValue({ data: makeClsEmbedding(0.3) });
+    const dir = mkdtempSync(join(tmpdir(), 'modernbert-k4-reason-'));
+    const filePath = join(dir, 'k4-heads.json');
+    writeFileSync(filePath, JSON.stringify(makeK4HeadWeights()), 'utf8');
+
+    try {
+      const { createModernBertHeadsPredictor } = await import(
+        '../../src/domain/matching/modernbert-heads.js'
+      );
+      const predictor = await createModernBertHeadsPredictor('.cache/models', {
+        headWeightsPath: filePath,
+      });
+
+      expect(predictor.usesLearnedHeads()).toBe(true);
+      expect(predictor.missingHeadsReasonCode()).toBeNull();
+
+      await predictor.dispose();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

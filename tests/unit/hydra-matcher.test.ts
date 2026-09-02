@@ -18,6 +18,10 @@ import {
   type RequirementVector,
   type HydraMatcherConfig,
 } from '../../src/domain/matching/hydra-matcher.js';
+import {
+  HYDRA_WEIGHTS_MISSING_REASON_CODE,
+  K4_HEADS_PLACEHOLDER_REASON_CODE,
+} from '../../src/domain/matching/missing-weights-reason-codes.js';
 import type { ModernBertHeadsPredictor } from '../../src/domain/matching/modernbert-heads.js';
 import { EMBEDDING_DIM } from '../../src/domain/matching/embedding-provider.js';
 import { buildHydraInput } from '../../src/domain/matching/hydra-input.js';
@@ -826,6 +830,7 @@ describe('wrapModernBertHeadsEmbeddingProvider', () => {
   it('extracts 3-dim requirements from K=4 predictor output', async () => {
     const predictor: ModernBertHeadsPredictor = {
       usesLearnedHeads: () => true,
+      missingHeadsReasonCode: () => null,
       predictCapabilities: vi.fn(async () => ({
         reasoning: 0.7,
         code_gen: 0.8,
@@ -878,6 +883,7 @@ describe('HydraMatcher modernbert_k4 path', () => {
 
 const mockModernBertPredictor = {
   usesLearnedHeads: vi.fn(() => false),
+  missingHeadsReasonCode: vi.fn(() => K4_HEADS_PLACEHOLDER_REASON_CODE),
   predictCapabilities: vi.fn(async () => ({
     reasoning: 0.6,
     code_gen: 0.7,
@@ -971,7 +977,126 @@ describe('createHydraMatcherFromHydraConfig hydra_heads', () => {
       code_gen: 0.65,
       tool_use: 0.45,
     });
+    expect(result.requirement_reason_codes).toEqual([K4_HEADS_PLACEHOLDER_REASON_CODE]);
 
     await matcher.dispose();
+  });
+});
+
+// ─── Missing-weights reason codes (SP-251, #148) ─────────────────────────────
+
+describe('missing-weights reason codes (SP-251)', () => {
+  it('exposes stable shared constants', () => {
+    expect(HYDRA_WEIGHTS_MISSING_REASON_CODE).toBe('hydra_weights_missing');
+    expect(K4_HEADS_PLACEHOLDER_REASON_CODE).toBe('k4_heads_placeholder');
+  });
+
+  it('emits hydra_weights_missing in match metadata when projection artifact is missing', async () => {
+    const provider = makeMockProvider({ reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 });
+    const matcher = new HydraMatcher(provider, {
+      ...DEFAULT_CONFIG,
+      hydraHeads: 'learned_projection',
+      projectionWeightsPath: '/tmp/missing-hydra-projection-weights.json',
+    });
+
+    const result = await matcher.match(makeRequest(), [makeModel()]);
+
+    // Placeholder fallback stays fail-open: match still selects.
+    expect(matcher.usesLearnedProjection()).toBe(false);
+    expect(result.selected).not.toBeNull();
+    expect(result.requirement_reason_codes).toEqual([HYDRA_WEIGHTS_MISSING_REASON_CODE]);
+    expect(matcher.missingWeightsReasonCodes()).toEqual([HYDRA_WEIGHTS_MISSING_REASON_CODE]);
+  });
+
+  it('emits hydra_weights_missing when projection artifact is invalid', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hydra-reason-'));
+    const filePath = join(dir, 'weights.json');
+    writeFileSync(filePath, '{"version":2}', 'utf8');
+
+    try {
+      const provider = makeMockProvider({ reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 });
+      const matcher = new HydraMatcher(provider, {
+        ...DEFAULT_CONFIG,
+        hydraHeads: 'learned_projection',
+        projectionWeightsPath: filePath,
+      });
+
+      const result = await matcher.match(makeRequest(), [makeModel()]);
+
+      expect(result.requirement_reason_codes).toEqual([HYDRA_WEIGHTS_MISSING_REASON_CODE]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('emits no reason code when learned projection weights load', async () => {
+    const filePath = makeTempWeightsFile(makeProjectionWeights());
+    const provider = makeMockProvider({ reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 });
+
+    try {
+      const matcher = new HydraMatcher(provider, {
+        ...DEFAULT_CONFIG,
+        hydraHeads: 'learned_projection',
+        projectionWeightsPath: filePath,
+      });
+
+      const result = await matcher.match(makeRequest(), [makeModel()]);
+
+      expect(matcher.usesLearnedProjection()).toBe(true);
+      expect(result.requirement_reason_codes).toEqual([]);
+      expect(matcher.missingWeightsReasonCodes()).toEqual([]);
+    } finally {
+      rmSync(filePath, { recursive: true, force: true });
+    }
+  });
+
+  it('surfaces k4_heads_placeholder from wrapped ModernBERT provider on placeholder path', async () => {
+    const predictor: ModernBertHeadsPredictor = {
+      usesLearnedHeads: () => false,
+      missingHeadsReasonCode: () => K4_HEADS_PLACEHOLDER_REASON_CODE,
+      predictCapabilities: vi.fn(async () => ({
+        reasoning: 0.6,
+        code_gen: 0.7,
+        tool_use: 0.4,
+        debugging: 0.9,
+      })),
+      dispose: vi.fn(async () => {}),
+    };
+    const provider = wrapModernBertHeadsEmbeddingProvider(predictor);
+
+    expect(provider.requirementReasonCodes?.()).toEqual([K4_HEADS_PLACEHOLDER_REASON_CODE]);
+
+    const matcher = new HydraMatcher(provider, {
+      ...DEFAULT_CONFIG,
+      hydraHeads: 'modernbert_k4',
+    });
+    const result = await matcher.match(makeRequest(), [makeModel()]);
+
+    expect(result.requirement_reason_codes).toEqual([K4_HEADS_PLACEHOLDER_REASON_CODE]);
+    expect(matcher.missingWeightsReasonCodes()).toEqual([K4_HEADS_PLACEHOLDER_REASON_CODE]);
+  });
+
+  it('emits no reason code on the K4 path when learned heads are active', async () => {
+    const predictor: ModernBertHeadsPredictor = {
+      usesLearnedHeads: () => true,
+      missingHeadsReasonCode: () => null,
+      predictCapabilities: vi.fn(async () => ({
+        reasoning: 0.6,
+        code_gen: 0.7,
+        tool_use: 0.4,
+        debugging: 0.9,
+      })),
+      dispose: vi.fn(async () => {}),
+    };
+    const provider = wrapModernBertHeadsEmbeddingProvider(predictor);
+    const matcher = new HydraMatcher(provider, {
+      ...DEFAULT_CONFIG,
+      hydraHeads: 'modernbert_k4',
+    });
+
+    const result = await matcher.match(makeRequest(), [makeModel()]);
+
+    expect(provider.requirementReasonCodes?.()).toEqual([]);
+    expect(result.requirement_reason_codes).toEqual([]);
   });
 });
