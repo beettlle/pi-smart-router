@@ -110,5 +110,7 @@ export type {
   LifecycleFlags,
 } from './api/middleware/pi-router-middleware.js';
 export { createPiRouterMiddleware, LifecycleHookState } from './api/middleware/pi-router-middleware.js';
+export { evictInMemorySessionState } from './api/session-eviction.js';
+export type { SessionEvictionTargets } from './api/session-eviction.js';
 export type { GatewayDispatchOptions } from './infrastructure/gateway/gateway-dispatch.js';
 export type { PipelineOptions } from './domain/pipeline/router-pipeline.js';

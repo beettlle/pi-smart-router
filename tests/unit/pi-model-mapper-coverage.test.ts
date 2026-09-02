@@ -29,7 +29,6 @@ export const PRIMARY_DOGFOOD_FLEET_IDS: readonly string[] = [
   'gemini-2.5-flash-preview',
   'gemini-2.5-flash-lite',
   'gemini-2.0-flash',
-  'gemini-flash-latest',
   'cursor/auto',
   'composer-latest',
   'composer-1',
@@ -48,6 +47,11 @@ export const INTENTIONAL_PATTERN_DEFAULT_IDS: readonly string[] = [
   'gemini-2.5-flash-tts',
   'local-llama',
   'mystery-model-v9',
+  // Rolling / preview Gemini ids track post-2.5 generations with no grounded
+  // row (SP-254) — aliasing to gemini-2.5-flash would misstate capability.
+  'gemini-flash-latest',
+  'gemini-flash-lite-latest',
+  'gemini-3.1-pro-preview',
   // Multi-fleet gaps with no grounded row (SP-208 / #124) — aliasing would
   // misrepresent capability across a provider family.
   'github-copilot/o3',

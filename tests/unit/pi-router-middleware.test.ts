@@ -146,4 +146,36 @@ describe('createPiRouterMiddleware', () => {
       expect(middleware.lifecycleHookState).toBeInstanceOf(LifecycleHookState);
     });
   });
+
+  describe('LifecycleHookState.evict', () => {
+    it('deletes the session bucket so no flags survive', () => {
+      const state = new LifecycleHookState();
+      state.markCompaction('sess-1');
+      state.setForceModel('sess-1', 'claude-3');
+      expect(state.has('sess-1')).toBe(true);
+
+      state.evict('sess-1');
+
+      expect(state.has('sess-1')).toBe(false);
+      expect(state.consume('sess-1')).toEqual({});
+    });
+
+    it('evicts only the target session', () => {
+      const state = new LifecycleHookState();
+      state.markCompaction('sess-1');
+      state.markCompaction('sess-2');
+
+      state.evict('sess-1');
+
+      expect(state.has('sess-1')).toBe(false);
+      expect(state.has('sess-2')).toBe(true);
+      expect(state.consume('sess-2')).toEqual({ compaction_flag: true });
+    });
+
+    it('is a no-op for unknown session ids', () => {
+      const state = new LifecycleHookState();
+      expect(() => state.evict('never-seen')).not.toThrow();
+      expect(state.has('never-seen')).toBe(false);
+    });
+  });
 });

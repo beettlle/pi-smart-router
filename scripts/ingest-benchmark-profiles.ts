@@ -175,8 +175,10 @@ export const DEFAULT_FLEET_BENCHMARK_ALIASES: Readonly<Record<string, string>> =
   'gemini-2.0-flash': 'gemini-2.5-flash',
   'gemini-2.0-flash-001': 'gemini-2.5-flash',
   'gemini-1.5-flash': 'gemini-2.5-flash',
-  'gemini-flash-latest': 'gemini-2.5-flash',
   'gemini-flash-8b': 'gemini-2.5-flash',
+  // NOTE (SP-254): rolling `gemini-flash-latest` / `gemini-flash-lite-latest` are
+  // intentionally NOT seeded — they track post-2.5 generations with no grounded
+  // row; aliasing to gemini-2.5-flash would misstate capability (pattern_default).
   // Provider-prefixed Google registry IDs → Gemini fixture rows
   'google/gemini-2.5-flash': 'gemini-2.5-flash',
   // GitHub Copilot — per underlying provider family, NO silent cross-family collapse (SP-208 / #124)
