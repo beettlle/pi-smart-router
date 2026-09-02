@@ -1,0 +1,20 @@
+spine-tasks/SP-247-session-state-eviction-apis/STATUS.md
+  h_ae151c586ac6c5 4,28,30-32,36-37,46-47
+tests/unit/execution-ledger.test.ts
+  h_ae151c586ac6c5 51-74
+tests/unit/pi-router-middleware.test.ts
+  h_ae151c586ac6c5 149-180
+tests/unit/session-eviction.test.ts
+  h_ae151c586ac6c5 1-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1ebb2beca966096ceeac23d9066549d54c1a28a7",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
