@@ -1,0 +1,16 @@
+spine-tasks/SP-244-peak-pricing-docs-telemetry/.reviews/1-20260902T002250.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-244-peak-pricing-docs-telemetry/.reviews/final-20260902T002308.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "55bc2598b17215b1c3a06dc3fb634aea387ccef5",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
