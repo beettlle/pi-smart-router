@@ -1,0 +1,20 @@
+spine-tasks/CONTEXT.md
+  s_4bd9e71254ab76::t_80a7e04cd565ed 3,8
+  s_4bd9e71254ab76::t_2aa667e81b3c8c 847-849
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "96883fc0367f755bcc1b306d423fcffe1ff0909c",
+  "prompts": {},
+  "sessions": {
+    "s_4bd9e71254ab76": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-219cb35d-8e98-4775-9646-7fbb5265ce3d",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
