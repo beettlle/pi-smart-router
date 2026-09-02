@@ -1,7 +1,7 @@
 # SP-247: Session-state eviction APIs + unit tests — Status
 
 **Current Step:** 2
-**Status:** In Progress
+**Status:** Complete
 **Last Updated:** 2026-09-02
 **Review Level:** 1
 **Size:** S
@@ -25,16 +25,16 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
-- [ ] Unit tests: after `evict`/`clear`/helper, session keys absent
-- [ ] Contract `testCommand` green
-- [ ] `npm run typecheck` clean
+- [x] Unit tests: after `evict`/`clear`/helper, session keys absent
+- [x] Contract `testCommand` green
+- [x] `npm run typecheck` clean
 
 ## Completion Criteria
 
-- [ ] Eviction APIs + helper landed with unit coverage
-- [ ] Partial #145 (wire remains SP-248)
+- [x] Eviction APIs + helper landed with unit coverage
+- [x] Partial #145 (wire remains SP-248)
 
 ## Discoveries
 
@@ -43,3 +43,5 @@
 - No `session_end`/TTL eviction path exists in `src/` or `.pi/extensions/smart-router/` — confirmed.
 - Impact analysis (gitnexus): `LifecycleHookState` upstream = LOW risk, 2 direct dependents (`createPiRouterMiddleware`, `src/index.ts`).
 - Helper placed at `src/api/session-eviction.ts` (api layer may depend on domain ledger + middleware state).
+- Verification: `npm run typecheck` clean; contract vitest files 19/19 green; full suite 119 files / 2104 tests green.
+- gitnexus detect_changes: low risk, no affected execution processes.
