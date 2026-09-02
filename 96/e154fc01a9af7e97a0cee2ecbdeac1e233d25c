@@ -1,0 +1,22 @@
+spine-tasks/SP-243-peak-pricing-adapters/STATUS.md
+  h_ae151c586ac6c5 3,21,23-25,29
+src/infrastructure/pricing/price-broker.ts
+  h_ae151c586ac6c5 14-17,178-182,187,189-193
+src/infrastructure/telemetry/routing-telemetry.ts
+  h_ae151c586ac6c5 52-56,141-145,152,155,900-911,1528,1540,1553,1586,1634-1635,1653-1664
+tests/unit/peak-pricing.test.ts
+  h_ae151c586ac6c5 7-17,206-348
+tests/unit/price-broker.test.ts
+  h_ae151c586ac6c5 177-275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "96e154fc01a9af7e97a0cee2ecbdeac1e233d25c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
