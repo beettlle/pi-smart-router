@@ -1,0 +1,18 @@
+docs/capability-profile-coverage.md
+  h_ae151c586ac6c5 45,94-95
+scripts/ingest-benchmark-profiles.ts
+  h_ae151c586ac6c5 179-181
+tests/unit/pi-model-mapper-coverage.test.ts
+  h_ae151c586ac6c5 50-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "846b70a8f296eef8e5c49ffae4b0934e83a70905",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
