@@ -174,6 +174,105 @@ describe('resolveFrugalityCostPer1M', () => {
   });
 });
 
+// ─── resolveFrugalityCostPer1M peak/off-peak soft-bias (SP-243, #165) ───────
+
+describe('resolveFrugalityCostPer1M peak pricing (SP-243)', () => {
+  /** Tuesday 02:00 UTC — DeepSeek peak. */
+  const DEEPSEEK_PEAK = new Date('2026-09-01T02:00:00.000Z');
+  /** Tuesday 05:00 UTC — DeepSeek off-peak. */
+  const DEEPSEEK_OFF_PEAK = new Date('2026-09-01T05:00:00.000Z');
+  /** Monday 07:00 UTC = 15:00 SGT — Z.ai peak. */
+  const ZAI_PEAK = new Date('2026-08-31T07:00:00.000Z');
+  /** Saturday 07:00 UTC = 15:00 SGT — Z.ai weekend off-peak. */
+  const ZAI_OFF_PEAK = new Date('2026-09-05T07:00:00.000Z');
+
+  it('halves the DeepSeek effective rate off-peak (0.5× peak)', () => {
+    const model = makeModel({
+      id: 'deepseek-chat',
+      provider: 'deepseek',
+      tier: 'economical-cloud',
+      pricing: { fallback_cost_per_1m: 0.56 },
+    });
+
+    const peak = resolveFrugalityCostPer1M(model, null, { now: DEEPSEEK_PEAK });
+    const offPeak = resolveFrugalityCostPer1M(model, null, { now: DEEPSEEK_OFF_PEAK });
+
+    expect(peak).toBe(0.56);
+    expect(offPeak).toBeCloseTo(0.5 * peak, 9);
+  });
+
+  it('halves the Z.ai effective rate off-peak on the default credits profile', () => {
+    const model = makeModel({
+      id: 'glm-4.6',
+      provider: 'zai',
+      tier: 'economical-cloud',
+      pricing: { fallback_cost_per_1m: 1.2 },
+    });
+
+    const peak = resolveFrugalityCostPer1M(model, null, { now: ZAI_PEAK });
+    const offPeak = resolveFrugalityCostPer1M(model, null, { now: ZAI_OFF_PEAK });
+
+    expect(peak).toBe(1.2);
+    expect(offPeak).toBeCloseTo(0.5 * peak, 9);
+  });
+
+  it('applies the window multiplier on top of registry prices', () => {
+    const model = makeModel({
+      id: 'deepseek-reasoner',
+      provider: 'deepseek',
+      tier: 'frontier-cloud',
+      pricing: { registry_key: 'deepseek/deepseek-reasoner', fallback_cost_per_1m: 4.0 },
+    });
+    const catalog = makeCatalog({
+      registry_snapshot: { 'deepseek/deepseek-reasoner': 2.0 },
+    });
+
+    expect(resolveFrugalityCostPer1M(model, catalog, { now: DEEPSEEK_PEAK })).toBe(2.0);
+    expect(resolveFrugalityCostPer1M(model, catalog, { now: DEEPSEEK_OFF_PEAK })).toBe(1.0);
+  });
+
+  it('keeps quota_cost_per_1m precedence and soft-biases it by the window', () => {
+    const model = makeModel({
+      id: 'glm-5.3',
+      provider: 'zai',
+      tier: 'frontier-cloud',
+      pricing: { fallback_cost_per_1m: 0.0, quota_cost_per_1m: 3.0 },
+    });
+
+    expect(resolveFrugalityCostPer1M(model, null, { now: ZAI_PEAK })).toBe(3.0);
+    expect(resolveFrugalityCostPer1M(model, null, { now: ZAI_OFF_PEAK })).toBe(1.5);
+  });
+
+  it('leaves non-target models unchanged at any hour (fail open)', () => {
+    const model = makeModel({
+      id: 'gpt-5.1',
+      provider: 'openai',
+      tier: 'frontier-cloud',
+      pricing: { fallback_cost_per_1m: 3.0 },
+    });
+
+    expect(resolveFrugalityCostPer1M(model, null, { now: DEEPSEEK_PEAK })).toBe(3.0);
+    expect(resolveFrugalityCostPer1M(model, null, { now: DEEPSEEK_OFF_PEAK })).toBe(3.0);
+    expect(resolveFrugalityCostPer1M(model, null, { now: ZAI_PEAK })).toBe(3.0);
+  });
+
+  it('fails open to the flat rate when adapters are disabled', () => {
+    const model = makeModel({
+      id: 'deepseek-chat',
+      provider: 'deepseek',
+      tier: 'economical-cloud',
+      pricing: { fallback_cost_per_1m: 0.56 },
+    });
+
+    const result = resolveFrugalityCostPer1M(model, null, {
+      now: DEEPSEEK_OFF_PEAK,
+      config: { enabled: false },
+    });
+
+    expect(result).toBe(0.56);
+  });
+});
+
 // ─── resolveFleetPrices ──────────────────────────────────────────────────────
 
 describe('resolveFleetPrices', () => {
