@@ -3,15 +3,18 @@
  *
  * Maps routing telemetry rows to anonymized community export shapes and
  * HyDRA calibration batches. Never exports prompt text, messages, request_id,
- * or raw session_id — session identifiers are one-way hashed only.
+ * or raw session_id — session identifiers are HMAC-hashed with the
+ * install-local dataset pepper (SP-249) so hashes are stable per install but
+ * not correlatable across installs. The pepper itself is never exported.
  */
 
-import { createHash } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 
 import type {
   RoutingFeatureSidecar,
   RoutingTelemetry,
 } from '../domain/types/index.js';
+import { loadOrCreateDatasetPepper } from '../infrastructure/telemetry/dataset-recorder.js';
 
 export const COMMUNITY_TELEMETRY_ENABLED_ENV = 'SMART_ROUTER_COMMUNITY_TELEMETRY';
 
@@ -37,9 +40,31 @@ export function isCommunityTelemetryExportEnabled(): boolean {
   return process.env[COMMUNITY_TELEMETRY_ENABLED_ENV] === '1';
 }
 
-/** One-way hash for session correlation without exporting raw session_id. */
-export function hashSessionIdForTelemetryExport(sessionId: string): string {
-  return createHash('sha256').update(sessionId).digest('hex');
+let cachedInstallPepper: Buffer | null = null;
+
+/**
+ * Install-local telemetry pepper, memoized so JSONL builders do not re-read
+ * the pepper file per record. Never include this value in export payloads.
+ */
+function telemetryExportPepper(): Buffer {
+  if (!cachedInstallPepper) {
+    cachedInstallPepper = loadOrCreateDatasetPepper();
+  }
+  return cachedInstallPepper;
+}
+
+/**
+ * One-way HMAC-SHA256 hash for session correlation without exporting raw
+ * session_id. Keyed with the install-local dataset pepper (`.dataset-key`,
+ * mode 0600) so hashes are stable per install/cwd but not correlatable
+ * across installs. Pass an explicit pepper in tests; the pepper must never
+ * appear in export payloads.
+ */
+export function hashSessionIdForTelemetryExport(
+  sessionId: string,
+  pepper: Buffer = telemetryExportPepper(),
+): string {
+  return createHmac('sha256', pepper).update(sessionId).digest('hex');
 }
 
 export interface CommunityTelemetryRecord {
@@ -82,10 +107,11 @@ export function selectHydraMatchTelemetry(
 /** Map a telemetry row to a privacy-safe community export object. */
 export function toCommunityTelemetryRecord(
   record: RoutingTelemetry,
+  pepper?: Buffer,
 ): CommunityTelemetryRecord {
   return {
     timestamp: record.timestamp,
-    session_id_hash: hashSessionIdForTelemetryExport(record.session_id),
+    session_id_hash: hashSessionIdForTelemetryExport(record.session_id, pepper),
     turn_type: record.turn_type,
     stage: record.stage,
     reason_code: record.reason_code,
@@ -118,13 +144,14 @@ function topViableCandidate(features: RoutingFeatureSidecar | undefined): {
 export function toHydraCalibrationRecord(
   record: RoutingTelemetry,
   features?: RoutingFeatureSidecar,
+  pepper?: Buffer,
 ): HydraCalibrationRecord {
   const requirements = features?.requirements ?? null;
   const top = topViableCandidate(features);
 
   return {
     timestamp: record.timestamp,
-    session_id_hash: hashSessionIdForTelemetryExport(record.session_id),
+    session_id_hash: hashSessionIdForTelemetryExport(record.session_id, pepper),
     turn_type: record.turn_type,
     reason_code: record.reason_code,
     selected_model_id: record.selected_model_id,
@@ -139,20 +166,22 @@ export function toHydraCalibrationRecord(
 
 export function formatCommunityTelemetryJsonl(
   records: readonly RoutingTelemetry[],
+  pepper?: Buffer,
 ): string {
   return records
-    .map((record) => JSON.stringify(toCommunityTelemetryRecord(record)))
+    .map((record) => JSON.stringify(toCommunityTelemetryRecord(record, pepper)))
     .join('\n');
 }
 
 export function formatHydraCalibrationJsonl(
   records: readonly RoutingTelemetry[],
   featuresByRequestId?: ReadonlyMap<string, RoutingFeatureSidecar>,
+  pepper?: Buffer,
 ): string {
   return selectHydraMatchTelemetry(records)
     .map((record) => {
       const features = featuresByRequestId?.get(record.request_id);
-      return JSON.stringify(toHydraCalibrationRecord(record, features));
+      return JSON.stringify(toHydraCalibrationRecord(record, features, pepper));
     })
     .join('\n');
 }

@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { describe, expect, it } from 'vitest';
 
 import type { RoutingFeatureSidecar, RoutingTelemetry } from '../../src/domain/types/index.js';
@@ -37,6 +39,9 @@ function makeTelemetry(overrides?: Partial<RoutingTelemetry>): RoutingTelemetry 
   };
 }
 
+const TEST_PEPPER = Buffer.from('a'.repeat(64), 'hex');
+const OTHER_PEPPER = Buffer.from('b'.repeat(64), 'hex');
+
 describe('community telemetry export (SP-082)', () => {
   it('is opt-in via SMART_ROUTER_COMMUNITY_TELEMETRY=1', () => {
     const previous = process.env[COMMUNITY_TELEMETRY_ENABLED_ENV];
@@ -56,21 +61,42 @@ describe('community telemetry export (SP-082)', () => {
   });
 
   it('hashes session_id and omits request_id from community export', () => {
-    const exported = toCommunityTelemetryRecord(makeTelemetry());
+    const exported = toCommunityTelemetryRecord(makeTelemetry(), TEST_PEPPER);
 
     expect(exported).not.toHaveProperty('session_id');
     expect(exported).not.toHaveProperty('request_id');
-    expect(exported.session_id_hash).toBe(hashSessionIdForTelemetryExport('sess-secret'));
+    expect(exported.session_id_hash).toBe(
+      hashSessionIdForTelemetryExport('sess-secret', TEST_PEPPER),
+    );
     expect(exported.session_id_hash).toMatch(/^[a-f0-9]{64}$/);
     expect(exported.stage).toBe('hydra_match');
     expect(exported.selected_model_id).toBe('gpt-4o-mini');
   });
 
+  it('produces a stable HMAC hash per pepper (SP-249)', () => {
+    const first = hashSessionIdForTelemetryExport('sess-secret', TEST_PEPPER);
+    const second = hashSessionIdForTelemetryExport('sess-secret', TEST_PEPPER);
+
+    expect(first).toBe(second);
+    expect(first).toMatch(/^[a-f0-9]{64}$/);
+
+    // Same session id under a different install pepper must not correlate.
+    const other = hashSessionIdForTelemetryExport('sess-secret', OTHER_PEPPER);
+    expect(other).not.toBe(first);
+
+    // Must not fall back to the unsalted SHA-256 production path.
+    const unsalted = createHash('sha256').update('sess-secret').digest('hex');
+    expect(first).not.toBe(unsalted);
+  });
+
   it('formats community JSONL without prompt or session identifiers', () => {
-    const jsonl = formatCommunityTelemetryJsonl([
-      makeTelemetry({ request_id: 'req-a' }),
-      makeTelemetry({ request_id: 'req-b', stage: 'fallback' }),
-    ]);
+    const jsonl = formatCommunityTelemetryJsonl(
+      [
+        makeTelemetry({ request_id: 'req-a' }),
+        makeTelemetry({ request_id: 'req-b', stage: 'fallback' }),
+      ],
+      TEST_PEPPER,
+    );
 
     const lines = jsonl.split('\n');
     expect(lines).toHaveLength(2);
@@ -83,6 +109,7 @@ describe('community telemetry export (SP-082)', () => {
     expect(second.stage).toBe('fallback');
     expect(jsonl).not.toContain('sess-secret');
     expect(jsonl).not.toContain('req-a');
+    expect(jsonl).not.toContain(TEST_PEPPER.toString('hex'));
   });
 
   it('selects hydra_match rows for calibration export', () => {
@@ -128,10 +155,13 @@ describe('community telemetry export (SP-082)', () => {
       local_eligible_reason: null,
     };
 
-    const exported = toHydraCalibrationRecord(makeTelemetry(), features);
+    const exported = toHydraCalibrationRecord(makeTelemetry(), features, TEST_PEPPER);
 
     expect(exported).not.toHaveProperty('session_id');
     expect(exported).not.toHaveProperty('request_id');
+    expect(exported.session_id_hash).toBe(
+      hashSessionIdForTelemetryExport('sess-secret', TEST_PEPPER),
+    );
     expect(exported.requirement_reasoning).toBe(0.8);
     expect(exported.requirement_code_gen).toBe(0.6);
     expect(exported.requirement_tool_use).toBe(0.2);
@@ -165,6 +195,7 @@ describe('community telemetry export (SP-082)', () => {
         makeTelemetry({ request_id: 'req-skip', stage: 'session_pin' }),
       ],
       features,
+      TEST_PEPPER,
     );
 
     const lines = jsonl.split('\n');
@@ -174,6 +205,7 @@ describe('community telemetry export (SP-082)', () => {
     expect(parsed.requirement_reasoning).toBe(0.5);
     expect(parsed).not.toHaveProperty('request_id');
     expect(jsonl).not.toContain('sess-secret');
+    expect(jsonl).not.toContain(TEST_PEPPER.toString('hex'));
   });
 
   it('scrubs forbidden keys from loose export objects', () => {
