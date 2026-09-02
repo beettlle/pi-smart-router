@@ -462,6 +462,7 @@ When `SMART_ROUTER_LOG_ROUTING=1`, prefer the canonical payload from `buildRouti
 | `tier_hint` | Yes (top-level + `cluster_summary`) | Null when no tier hint |
 | `local_eligible_reason` | Yes (top-level + `features`) | Null when local_zero did not evaluate eligibility |
 | `cluster_id` | Yes (top-level + `cluster_summary`) | Null when no cluster match |
+| `pricing_window` | Yes (top-level + `peak_pricing_summary`) | Peak vs off-peak rationale for the selected model (SP-244 / #165); the extension stderr logger carries `pricing_window` + `peak_pricing` |
 
 **Gap:** the pi extension’s live stderr path (`logRoutingDecision` in `.pi/extensions/smart-router`) still emits a slim JSON object (`selected_model_id`, `stage`, `reason_code`, `features`, `delegate`) and does **not** yet call `buildRoutingDecisionLogPayload`. SQLite `/smart-router history` and the payload builder carry the full checklist; wire the extension logger in a follow-up if dogfood needs identical stderr shape.
 
@@ -651,6 +652,21 @@ When pi reports an assistant message `usage` object after a delegated turn, the 
 **Observing the bias** — run with `SMART_ROUTER_LOG_ROUTING=1` and read the expected-cost gate line: calibrated winners carry a `[cost-calib ×N.NN from rolling actuals (SP-242)]` note on the rationale, and each tier's `calibrationRatio` appears in the expected-cost breakdown (`features.tier_selection.tier_costs[]`).
 
 **Knobs** (`DEFAULT_COST_CALIBRATION_CONFIG`): `minSamples` 3 (warmup), `minRatio`/`maxRatio` 0.5/2.0 (soft band), `sampleMinRatio`/`sampleMaxRatio` 0.1/10 (per-pair outlier clamp). Not a vendor peak-clock schedule — see [#165](https://github.com/beettlle/pi-smart-router/issues/165) for time-of-day pricing.
+
+### Peak/off-peak pricing adapters (v0.20.0, #165)
+
+Two vendors publish documented **time-of-day rate cards**. The peak-pricing adapters (`src/domain/pricing/peak-pricing.js`, SP-243) soft-bias the resolved cost-per-1M by the current pricing window — they never hard-ban a model, and non-target providers (OpenAI / Anthropic / Gemini / local / unknown) always resolve `window: 'none'` with multiplier 1 (fail open).
+
+| Vendor | Adapter | Peak window | Off-peak rate | Docs |
+|--------|---------|-------------|---------------|------|
+| Z.ai GLM Coding Plan | `zai` (matches `zai`/`glm`/`zhipu` providers and `glm-*` ids) | Mon–Fri 14:00–18:00 Asia/Singapore (UTC+8) | 0.5× the standard credit rate | [Z.ai GLM Coding Plan docs](https://docs.z.ai/devpack/overview) |
+| DeepSeek pay-as-you-go API | `deepseek` (matches `deepseek` provider / ids) | Mon–Fri 01:00–04:00 and 06:00–10:00 UTC | ½ the peak rate on cache-hit input, cache-miss input, and output | [DeepSeek Models & Pricing](https://api-docs.deepseek.com/quick_start/pricing) |
+
+**Z.ai plan profiles.** The default plan profile is `credits` — off-peak usage at 0.5× the standard credit rate, peak at 1×. **Legacy plans** (e.g. GLM-5.3 legacy at 3× peak / 1× off-peak, Flash at 1.2× / 0.4×) share the same window but use different multipliers; they are available **only** via an explicit operator override (`PeakPricingConfig.zai`: `plan_profile: 'legacy'` plus documented `peak_multiplier` / `off_peak_multiplier`). The adapter never scrapes the live account plan — legacy multipliers are documented override inputs, not detected state.
+
+**Configuration.** Adapters are on by default; `PeakPricingConfig.enabled: false` returns to flat rates. `PeakPricingConfig.deepseek.off_peak_multiplier` overrides the documented 0.5 off-peak discount if DeepSeek changes its schedule.
+
+**Observing the window.** Every routed turn records `pricing_window: 'peak' | 'off_peak' | 'none'` on its telemetry row (SP-243). With `SMART_ROUTER_LOG_ROUTING=1`, the routing-decision payload surfaces the rationale as top-level `pricing_window` plus `peak_pricing_summary` (`window`, `cost_multiplier`, `adapter_id`) on the canonical `buildRoutingDecisionLogPayload`, and `pricing_window` + `peak_pricing` on the extension stderr logger (SP-244).
 
 ### P(success) training export (baseline classifier)
 

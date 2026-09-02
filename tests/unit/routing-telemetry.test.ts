@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 
 import {
   CONTEXT_FIT_EXCEEDED,
@@ -336,6 +336,83 @@ describe('buildRoutingDecisionLogPayload', () => {
       context_overflow_pin_break: false,
     });
     expect(features.context_fit?.context_fit_rejected_json).toContain('small-window');
+  });
+});
+
+describe('peak-pricing observability in log payload (SP-244, #165)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('includes pricing_window + peak_pricing_summary with the Z.ai peak window', () => {
+    // Monday 2026-09-07 15:00 SGT = 07:00 UTC — inside the Z.ai peak window.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-07T07:00:00.000Z'));
+
+    const fleet = [
+      makeModel({ id: 'glm-4.6', tier: 'economical-cloud', provider: 'zai' }),
+    ];
+    const payload = buildRoutingDecisionLogPayload(
+      makeRequest(),
+      makeDecision({ selected_model_id: 'glm-4.6' }),
+      undefined,
+      fleet,
+    );
+
+    expect(payload.pricing_window).toBe('peak');
+    expect(payload.peak_pricing_summary).toEqual({
+      window: 'peak',
+      cost_multiplier: 1,
+      adapter_id: 'zai',
+    });
+  });
+
+  it('classifies deepseek ids off-peak and non-target providers as none', () => {
+    // Saturday 2026-09-05 — outside both vendor peak windows.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-05T12:00:00.000Z'));
+
+    const deepseek = buildRoutingDecisionLogPayload(
+      makeRequest(),
+      makeDecision({ selected_model_id: 'deepseek-chat' }),
+      undefined,
+      [makeModel({ id: 'deepseek-chat', tier: 'economical-cloud', provider: 'deepseek' })],
+    );
+    expect(deepseek.peak_pricing_summary).toEqual({
+      window: 'off_peak',
+      cost_multiplier: 0.5,
+      adapter_id: 'deepseek',
+    });
+
+    const openai = buildRoutingDecisionLogPayload(
+      makeRequest(),
+      makeDecision({ selected_model_id: 'gpt-5.1' }),
+      undefined,
+      [makeModel({ id: 'gpt-5.1', tier: 'frontier-cloud', provider: 'openai' })],
+    );
+    expect(openai.pricing_window).toBe('none');
+    expect(openai.peak_pricing_summary).toEqual({
+      window: 'none',
+      cost_multiplier: 1,
+      adapter_id: null,
+    });
+  });
+
+  it('falls back to bare-id adapter matching when no fleet is available', () => {
+    // Saturday — off-peak for both vendors; matched by id pattern alone.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-05T12:00:00.000Z'));
+
+    const payload = buildRoutingDecisionLogPayload(
+      makeRequest(),
+      makeDecision({ selected_model_id: 'glm-4.6' }),
+    );
+
+    expect(payload.pricing_window).toBe('off_peak');
+    expect(payload.peak_pricing_summary).toMatchObject({
+      window: 'off_peak',
+      adapter_id: 'zai',
+    });
   });
 });
 
