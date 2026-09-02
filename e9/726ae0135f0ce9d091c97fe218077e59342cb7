@@ -1,0 +1,35 @@
+.pi/extensions/smart-router/route-and-delegate.ts
+  s_4bd9e71254ab76::t_51ada29e5b37a9 12,88-95,105-110
+.pi/extensions/smart-router/stream-delegation.ts
+  s_4bd9e71254ab76::t_327d3242a34992 11,28-35,45-50
+README.md
+  s_4bd9e71254ab76::t_0131141864e700 465,656-670
+spine-tasks/SP-244-peak-pricing-docs-telemetry/STATUS.md
+  s_4bd9e71254ab76::t_05cc8d9ba52aa1 3-5,13,15-16,20,22-24,28,32-44
+src/config/pi-model-mapper.ts
+  s_4bd9e71254ab76::t_fbcff70c8df4f9 335-339
+src/infrastructure/telemetry/routing-telemetry.ts
+  s_4bd9e71254ab76::t_364f192001ae5b 1252-1278,1326-1327,1400-1401
+tests/unit/pi-model-mapper.test.ts
+  s_4bd9e71254ab76::t_360a96e783a3ea 19-22,300-350
+tests/unit/routing-telemetry.test.ts
+  s_4bd9e71254ab76::t_924e7634148674 1,342-418
+tests/unit/smart-router-extension.test.ts
+  s_4bd9e71254ab76::t_543e63f485b2ab 1994-2021
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e9726ae0135f0ce9d091c97fe218077e59342cb7",
+  "prompts": {},
+  "sessions": {
+    "s_4bd9e71254ab76": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-219cb35d-8e98-4775-9646-7fbb5265ce3d",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
