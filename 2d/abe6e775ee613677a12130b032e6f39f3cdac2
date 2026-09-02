@@ -1,0 +1,27 @@
+spine-tasks/SP-243-peak-pricing-adapters/.reviews/1-20260902T000352.md
+  s_4bd9e71254ab76::t_ae6175b13ad506 1-9
+spine-tasks/SP-243-peak-pricing-adapters/STATUS.md
+  s_4bd9e71254ab76::t_2cec1609e65cd5 3-5,13,15-17,21,23-25,29,31-33,37,41-44
+src/infrastructure/pricing/price-broker.ts
+  s_4bd9e71254ab76::t_06fca46b63b24d 14-17,178-182,187,189-193
+src/infrastructure/telemetry/routing-telemetry.ts
+  s_4bd9e71254ab76::t_18c3f09e775fe0 52-56,141-145,152,155,900-911,1528,1540,1553,1586,1634-1635,1653-1664
+tests/unit/price-broker.test.ts
+  s_4bd9e71254ab76::t_4b5796955c6928 177-275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2dabe6e775ee613677a12130b032e6f39f3cdac2",
+  "prompts": {},
+  "sessions": {
+    "s_4bd9e71254ab76": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-219cb35d-8e98-4775-9646-7fbb5265ce3d",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
