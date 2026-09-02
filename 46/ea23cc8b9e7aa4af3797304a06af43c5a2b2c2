@@ -1,0 +1,16 @@
+spine-tasks/SP-243-peak-pricing-adapters/.reviews/1-20260902T000352.md
+  h_ae151c586ac6c5 1-9
+spine-tasks/SP-243-peak-pricing-adapters/.reviews/final-20260902T000417.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "46ea23cc8b9e7aa4af3797304a06af43c5a2b2c2",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
