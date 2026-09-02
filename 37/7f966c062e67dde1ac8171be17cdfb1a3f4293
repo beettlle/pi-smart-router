@@ -1,0 +1,16 @@
+spine-tasks/SP-247-session-state-eviction-apis/.reviews/0-20260902T233246.md
+  h_ae151c586ac6c5 1-13
+spine-tasks/SP-247-session-state-eviction-apis/.reviews/final-20260902T233326.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "377f966c062e67dde1ac8171be17cdfb1a3f4293",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
