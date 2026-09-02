@@ -36,14 +36,13 @@ Intentional `pattern_default` IDs are **outside** both fixtures; they are docume
 | `gemini-2.5-flash-preview` | `benchmark` | alias → `gemini-2.5-flash` | Preview suffix variant |
 | `gemini-2.5-flash-lite` | `benchmark` | alias → `gemini-2.5-flash` | Lite variant |
 | `gemini-2.0-flash` | `benchmark` | alias → `gemini-2.5-flash` | Prior flash generation ID |
-| `gemini-flash-latest` | `benchmark` | alias → `gemini-2.5-flash` | Rolling “latest” ID |
 | `cursor/auto` | `benchmark` | alias → `gpt-5.3-codex` | Opaque Cursor auto (fixture row) |
 | `composer-latest` | `benchmark` | alias → `gpt-5.3-codex` | Composer coding model (fixture row) |
 | `composer-1` | `benchmark` | alias → `gpt-5.3-codex` | Versioned Composer ID |
 | `cursor/composer-latest` | `benchmark` | alias → `gpt-5.3-codex` | Provider-prefixed Composer ID |
 | `default` | `benchmark` | alias → `gpt-5.3-codex` | Opaque fleet placeholder (`SP-098`) |
 
-**Current `benchmark_coverage`:** `20/20 = 1.0`.
+**Current `benchmark_coverage`:** `19/19 = 1.0`.
 
 Aliases live under `aliases` in `config/benchmark-profiles.json` (seeded by `DEFAULT_FLEET_BENCHMARK_ALIASES` in `scripts/ingest-benchmark-profiles.ts`). Re-ingest preserves operator-extended aliases.
 
@@ -92,6 +91,8 @@ These IDs stay on `pattern_default` on purpose. Do **not** invent leaderboard sc
 | `claude-haiku-*`, `claude-3-5-haiku`, `claude-3-7-haiku` | No Haiku row in the checked-in ingest catalog | Family regex → economical defaults; add a grounded row via ingest when a leaderboard snapshot exists |
 | `gpt-5-mini`, `gpt-5.1-mini` | No mini/economical OpenAI row in catalog | Pattern → economical; prefer alias only onto a true mini/flash-class row after ingest |
 | `gemini-2.5-pro`, `gemini-*-pro`, `github-copilot/gemini-2.5-pro` | Catalog currently ships Flash, not Pro | Avoid aliasing Pro → Flash (would understate capability); extend ingest when Pro scores are available |
+| `gemini-flash-latest`, `gemini-flash-lite-latest` | Rolling “latest” ids now track a post-2.5 flash generation; no grounded row exists post-ingest (SP-254) | Keep `pattern_default`; re-alias only when ingest grounds the current generation — never pin rolling ids to stale `gemini-2.5-flash` scores |
+| `gemini-3.1-pro-preview` | Preview id for an ungrounded Gemini 3.x pro generation (SP-254) | Keep `pattern_default` (frontier pattern); add alias only onto an existing grounded Gemini pro row after ingest |
 | `gemini-2.5-flash-tts`, `gemini-*-native-audio` | Non-coding media variants have no coding leaderboard | Keep pattern default; a TTS/audio model is not a routing target for code/tool turns |
 | `github-copilot/o3`, `github-copilot/o4-mini` | Reasoning models with no checked-in ingest row | Pattern default; do **not** alias onto `gpt-5.3-codex` (different capability profile). Add a row via ingest when scores exist |
 | `github-copilot/gpt-4o` | Catalog is gpt-5.x; no gpt-4o row | Pattern default; alias only to an existing OpenAI canonical row after ingest |
