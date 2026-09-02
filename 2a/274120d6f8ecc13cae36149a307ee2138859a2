@@ -1,0 +1,28 @@
+.pi/extensions/smart-router/route-and-delegate.ts
+  h_ae151c586ac6c5 12,88-95,105-110
+.pi/extensions/smart-router/stream-delegation.ts
+  h_ae151c586ac6c5 11,28-35,45-50
+spine-tasks/SP-244-peak-pricing-docs-telemetry/STATUS.md
+  h_ae151c586ac6c5 4-5,13,32-34
+src/config/pi-model-mapper.ts
+  h_ae151c586ac6c5 335-339
+src/infrastructure/telemetry/routing-telemetry.ts
+  h_ae151c586ac6c5 1252-1278,1326-1327,1400-1401
+tests/unit/pi-model-mapper.test.ts
+  h_ae151c586ac6c5 19-22,300-350
+tests/unit/routing-telemetry.test.ts
+  h_ae151c586ac6c5 1,342-418
+tests/unit/smart-router-extension.test.ts
+  h_ae151c586ac6c5 1994-2021
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2a274120d6f8ecc13cae36149a307ee2138859a2",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
