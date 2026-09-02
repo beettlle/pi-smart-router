@@ -1,0 +1,16 @@
+spine-tasks/SP-249-hmac-telemetry-session-hash/.reviews/0-20260902T233316.md
+  h_ae151c586ac6c5 1-13
+spine-tasks/SP-249-hmac-telemetry-session-hash/.reviews/final-20260902T233345.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8f4174a87c00b61a12658c55e3f33c7d56510c55",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
