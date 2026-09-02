@@ -1,0 +1,22 @@
+config/benchmark-profiles.json
+  h_ae151c586ac6c5 10-11
+tests/fixtures/benchmark-leaderboards/recorded/bfcl.json
+  h_ae151c586ac6c5 4
+tests/fixtures/benchmark-leaderboards/recorded/livecodebench.json
+  h_ae151c586ac6c5 4
+tests/fixtures/benchmark-leaderboards/recorded/swebench_verified.json
+  h_ae151c586ac6c5 4
+tests/fixtures/benchmark-leaderboards/recorded/terminal_bench.json
+  h_ae151c586ac6c5 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a15e9aa92301e02a9a4db913048c40b6867b07d9",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
