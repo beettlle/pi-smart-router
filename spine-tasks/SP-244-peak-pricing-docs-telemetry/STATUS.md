@@ -1,6 +1,6 @@
 # SP-244: Peak pricing explain telemetry and README — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** In Progress
 **Last Updated:** 2026-09-02
 **Review Level:** 1
@@ -10,14 +10,14 @@
 
 ## Step 1: Explain + mapper gaps
 
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Ensure `SMART_ROUTER_LOG_ROUTING=1` surfaces `pricing_window` / rationale
-- [ ] Add any missing mapper pattern tests
+- [x] Ensure `SMART_ROUTER_LOG_ROUTING=1` surfaces `pricing_window` / rationale
+- [x] Add any missing mapper pattern tests
 
 ## Step 2: Testing and verification
 
-**Status:** Pending
+**Status:** In Progress
 
 - [ ] README economics section updated with Z.ai + DeepSeek links
 - [ ] Contract `testCommand` green
