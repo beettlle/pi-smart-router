@@ -1,6 +1,6 @@
 # SP-243: Peak/off-peak pricing adapters for Z.ai and DeepSeek — Status
 
-**Current Step:** 2
+**Current Step:** 3
 **Status:** In Progress
 **Last Updated:** 2026-09-01
 **Review Level:** 1
@@ -18,15 +18,15 @@
 
 ## Step 2: Wire into estimate / frugality
 
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Consult adapters from price-broker / `estimateRoutingCost` path
-- [ ] Soft-bias only; no hard ban
-- [ ] Record `pricing_window` on telemetry when applied
+- [x] Consult adapters from price-broker / `estimateRoutingCost` path
+- [x] Soft-bias only; no hard ban
+- [x] Record `pricing_window` on telemetry when applied
 
 ## Step 3: Testing and verification
 
-**Status:** Pending
+**Status:** In Progress
 
 - [ ] Frozen-clock tests for peak vs off-peak for both vendors
 - [ ] Non-Z.ai/DeepSeek unchanged

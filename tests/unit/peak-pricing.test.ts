@@ -4,6 +4,17 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import type {
+  ModelProfile,
+  RoutingDecision,
+  RoutingRequest,
+} from '../../src/domain/types/index.js';
+import type { CostCalibrationPrior } from '../../src/domain/routing/expected-cost.js';
+import {
+  DEFAULT_PEAK_PRICING_TELEMETRY_FIELDS,
+  RoutingTelemetryEmitter,
+  estimateRoutingCost,
+} from '../../src/infrastructure/telemetry/routing-telemetry.js';
 import {
   DEEPSEEK_OFF_PEAK_MULTIPLIER,
   ZAI_CREDITS_OFF_PEAK_MULTIPLIER,
@@ -190,5 +201,148 @@ describe('resolvePeakPricingAdjustment (SP-243)', () => {
       config: { deepseek: { off_peak_multiplier: 0.4 } },
     });
     expect(result.cost_multiplier).toBe(0.4);
+  });
+});
+
+// ─── estimateRoutingCost wiring (SP-243) ─────────────────────────────────────
+
+describe('estimateRoutingCost peak soft-bias (SP-243)', () => {
+  const glmModel: ModelProfile = {
+    id: 'glm-4.6',
+    provider: 'zai',
+    tier: 'economical-cloud',
+    capabilities: { reasoning: 0.7, code_gen: 0.7, tool_use: 0.7 },
+    pricing: { fallback_cost_per_1m: 1.2 },
+  };
+  const deepseekProfile: ModelProfile = {
+    id: 'deepseek-chat',
+    provider: 'deepseek',
+    tier: 'economical-cloud',
+    capabilities: { reasoning: 0.7, code_gen: 0.7, tool_use: 0.7 },
+    pricing: { fallback_cost_per_1m: 0.56 },
+  };
+  const gptProfile: ModelProfile = {
+    id: 'gpt-5.1',
+    provider: 'openai',
+    tier: 'frontier-cloud',
+    capabilities: { reasoning: 0.9, code_gen: 0.9, tool_use: 0.9 },
+    pricing: { fallback_cost_per_1m: 3.0 },
+  };
+  const request: RoutingRequest = {
+    request_id: 'req-peak',
+    session_id: 'sess-peak',
+    prompt_text: 'hello',
+    turn_type: 'main_loop',
+    estimated_input_tokens: 1_000_000,
+  };
+
+  it('changes the Z.ai estimate inside vs outside the SGT peak window', () => {
+    const peak = estimateRoutingCost(glmModel, request, null, null, { now: ZAI_PEAK_MONDAY });
+    const offPeak = estimateRoutingCost(glmModel, request, null, null, {
+      now: ZAI_OFF_PEAK_MONDAY,
+    });
+
+    expect(peak).toBeCloseTo(1.2, 9);
+    expect(offPeak).toBeCloseTo(0.5 * peak, 9);
+  });
+
+  it('changes the DeepSeek estimate inside vs outside the UTC peak windows', () => {
+    const peak = estimateRoutingCost(deepseekProfile, request, null, null, {
+      now: DS_PEAK_LATE,
+    });
+    const offPeak = estimateRoutingCost(deepseekProfile, request, null, null, {
+      now: DS_OFF_PEAK_GAP,
+    });
+
+    expect(peak).toBeCloseTo(0.56, 9);
+    expect(offPeak).toBeCloseTo(0.5 * peak, 9);
+  });
+
+  it('leaves non-target providers unchanged and composes with the SP-242 calibration prior', () => {
+    const peak = estimateRoutingCost(gptProfile, request, null, null, { now: DS_PEAK_EARLY });
+    expect(peak).toBeCloseTo(3.0, 9);
+
+    const prior: CostCalibrationPrior = {
+      byModel: new Map([
+        ['deepseek-chat', { key: 'deepseek-chat', kind: 'model', ratio: 2, samples: 5 }],
+      ]),
+      byTier: new Map(),
+    };
+    // Soft bias composes: 0.56 × 0.5 (off-peak) × 2 (warm calibration ratio).
+    const calibrated = estimateRoutingCost(deepseekProfile, request, null, prior, {
+      now: DS_OFF_PEAK_GAP,
+    });
+    expect(calibrated).toBeCloseTo(0.56 * 0.5 * 2, 9);
+  });
+});
+
+// ─── Telemetry pricing_window field (SP-243) ─────────────────────────────────
+
+describe('pricing_window telemetry (SP-243)', () => {
+  const fleet: ModelProfile[] = [
+    {
+      id: 'glm-4.6',
+      provider: 'zai',
+      tier: 'economical-cloud',
+      capabilities: { reasoning: 0.7, code_gen: 0.7, tool_use: 0.7 },
+      pricing: { fallback_cost_per_1m: 1.2 },
+    },
+    {
+      id: 'gpt-5.1',
+      provider: 'openai',
+      tier: 'frontier-cloud',
+      capabilities: { reasoning: 0.9, code_gen: 0.9, tool_use: 0.9 },
+      pricing: { fallback_cost_per_1m: 3.0 },
+    },
+  ];
+
+  const request: RoutingRequest = {
+    request_id: 'req-tw',
+    session_id: 'sess-tw',
+    prompt_text: 'hello',
+    turn_type: 'main_loop',
+  };
+
+  function decisionFor(modelId: string): RoutingDecision {
+    return {
+      request_id: 'req-tw',
+      selected_model_id: modelId,
+      tier: 'economical-cloud',
+      stage: 'fallback',
+      reason_code: 'safe_cloud_default',
+      routing_latency_ms: 1,
+      pin_reason: null,
+    };
+  }
+
+  it('records peak / off_peak for a Z.ai selection using the emitter clock', () => {
+    const peakEmitter = new RoutingTelemetryEmitter({
+      clock: () => ZAI_PEAK_MONDAY.toISOString(),
+      fleet,
+    });
+    expect(peakEmitter.emit(request, decisionFor('glm-4.6')).pricing_window).toBe('peak');
+
+    const offPeakEmitter = new RoutingTelemetryEmitter({
+      clock: () => ZAI_OFF_PEAK_MONDAY.toISOString(),
+      fleet,
+    });
+    expect(offPeakEmitter.emit(request, decisionFor('glm-4.6')).pricing_window).toBe('off_peak');
+  });
+
+  it('records none for non-target and unknown models', () => {
+    const emitter = new RoutingTelemetryEmitter({
+      clock: () => ZAI_PEAK_MONDAY.toISOString(),
+      fleet,
+    });
+    expect(emitter.emit(request, decisionFor('gpt-5.1')).pricing_window).toBe('none');
+    expect(emitter.emit(request, decisionFor('not-in-fleet')).pricing_window).toBe('none');
+  });
+
+  it('records none when no fleet is configured (fail open)', () => {
+    const emitter = new RoutingTelemetryEmitter({
+      clock: () => ZAI_PEAK_MONDAY.toISOString(),
+    });
+    expect(emitter.emit(request, decisionFor('glm-4.6')).pricing_window).toBe('none');
+    expect(DEFAULT_PEAK_PRICING_TELEMETRY_FIELDS.pricing_window).toBe('none');
   });
 });

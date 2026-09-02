@@ -50,6 +50,11 @@ import type { QuotaWindowPosition } from '../../domain/types/entities.js';
 import type { VirtualCostV2Config } from '../../domain/types/schemas.js';
 import { resolveFrugalityCostPer1M } from '../pricing/price-broker.js';
 import {
+  resolvePeakPricingAdjustment,
+  type PeakPricingOptions,
+  type PricingWindow,
+} from '../../domain/pricing/peak-pricing.js';
+import {
   resolveCostCalibrationRatio,
   type CostCalibrationPrior,
 } from '../../domain/routing/expected-cost.js';
@@ -133,15 +138,21 @@ const OVERFLOW_REASON_CODES = new Set<string>([
  * usage actuals) soft-biases the catalog rate by the warm actual/estimate
  * ratio (model bucket first, tier bucket fallback). Cold / missing prior or
  * bucket resolves ratio 1 — catalog estimate unchanged (fail open).
+ *
+ * SP-243 (#165): the peak/off-peak schedule adapters (Z.ai, DeepSeek)
+ * soft-bias the resolved rate by the current pricing window — pass
+ * `peak.now` in tests to freeze the clock. Non-target providers and any
+ * adapter failure resolve multiplier 1 (fail open); no hard ban.
  */
 export function estimateRoutingCost(
   model: ModelProfile,
   request: RoutingRequest,
   catalog: PriceCatalog | null,
   calibration?: CostCalibrationPrior | null,
+  peak?: PeakPricingOptions,
 ): number {
   const tokens = request.estimated_input_tokens ?? request.prompt_text.length;
-  const costPer1M = resolveFrugalityCostPer1M(model, catalog);
+  const costPer1M = resolveFrugalityCostPer1M(model, catalog, peak);
   const calibrationRatio = resolveCostCalibrationRatio(calibration, {
     modelId: model.id,
     tier: model.tier,
@@ -886,6 +897,18 @@ function defaultPrewarmTelemetry(): Pick<
 /** Default speculative prewarm telemetry scalars for tests and legacy store reads (SP-217). */
 export const DEFAULT_PREWARM_TELEMETRY_FIELDS = defaultPrewarmTelemetry();
 
+/** Peak/off-peak pricing window applied to the estimate (SP-243, #165). */
+export type PeakPricingTelemetryFields = {
+  readonly pricing_window: PricingWindow;
+};
+
+function defaultPeakPricingTelemetry(): PeakPricingTelemetryFields {
+  return { pricing_window: 'none' };
+}
+
+/** Default peak-pricing telemetry scalars for tests and legacy store reads (SP-243). */
+export const DEFAULT_PEAK_PRICING_TELEMETRY_FIELDS = defaultPeakPricingTelemetry();
+
 /** Default usage-actuals scalars for tests and legacy store reads (SP-241, #164). */
 export const DEFAULT_USAGE_ACTUALS_TELEMETRY_FIELDS = {
   actual_cost_usd: null,
@@ -1502,7 +1525,7 @@ export class RoutingTelemetryEmitter {
     request: RoutingRequest,
     decision: RoutingDecision,
     extras?: RoutePathTelemetryExtras,
-  ): RoutingTelemetry {
+  ): RoutingTelemetry & PeakPricingTelemetryFields {
     return this.appendRecord(request, decision, extras);
   }
 
@@ -1514,7 +1537,7 @@ export class RoutingTelemetryEmitter {
     failedStage: string,
     fallback: RoutingDecision,
     extras?: RoutePathTelemetryExtras,
-  ): RoutingTelemetry {
+  ): RoutingTelemetry & PeakPricingTelemetryFields {
     const errorDecision: RoutingDecision = {
       ...fallback,
       stage: failedStage as RoutingDecision['stage'],
@@ -1527,7 +1550,7 @@ export class RoutingTelemetryEmitter {
     request: RoutingRequest,
     decision: RoutingDecision,
     extras?: RoutePathTelemetryExtras,
-  ): RoutingTelemetry {
+  ): RoutingTelemetry & PeakPricingTelemetryFields {
     makeTelemetryRoom(this.entries, this.maxEntries);
 
     const contextFit = buildContextFitObservability({
@@ -1560,7 +1583,7 @@ export class RoutingTelemetryEmitter {
     const pinOnlyFallbackFields = pinOnlyFallbackTelemetryFromDecision(decision);
     const prewarmFields = prewarmTelemetryFromDecision(decision);
 
-    const record: RoutingTelemetry & FlipFlopTelemetryFields = {
+    const record: RoutingTelemetry & FlipFlopTelemetryFields & PeakPricingTelemetryFields = {
       timestamp: this.clock(),
       session_id: request.session_id,
       request_id: decision.request_id,
@@ -1608,6 +1631,8 @@ export class RoutingTelemetryEmitter {
       reasoning_level_requested: null,
       reasoning_level_applied: null,
       reasoning_reason_code: null,
+      // SP-243 (#165): peak/off-peak window for the selected model.
+      pricing_window: this.resolvePricingWindow(decision.selected_model_id),
     };
 
     this.entries.push(record);
@@ -1624,5 +1649,17 @@ export class RoutingTelemetryEmitter {
   snapshot(): readonly RoutingTelemetry[] {
     evictExpiredTelemetryEntries(this.entries, this.windowMs);
     return [...this.entries];
+  }
+
+  /**
+   * Pricing window for the selected model (SP-243, #165). Fail open: unknown
+   * models or non-target providers record 'none'.
+   */
+  private resolvePricingWindow(modelId: string): PricingWindow {
+    const model = this.fleet?.find((entry) => entry.id === modelId);
+    if (!model) {
+      return 'none';
+    }
+    return resolvePeakPricingAdjustment(model, { now: new Date(this.clock()) }).window;
   }
 }

@@ -11,6 +11,10 @@
  */
 
 import type { ModelProfile, ModelLimits, PriceCatalog, PriceSource } from '../../domain/types/index.js';
+import {
+  resolvePeakPricingAdjustment,
+  type PeakPricingOptions,
+} from '../../domain/pricing/peak-pricing.js';
 import { getDefaultLimitsForTier } from '../../config/pi-model-mapper.js';
 
 export interface ResolvedPrice {
@@ -171,13 +175,20 @@ export function applyCatalogPricesToFleet(
 /**
  * Resolve per-request cost rate for frugality scoring and telemetry (SP-096).
  * Subscription-quota virtual cost takes precedence over API/catalog rates.
+ *
+ * SP-243 (#165): the resolved rate is soft-biased by the peak/off-peak
+ * schedule adapters (Z.ai credits default 0.5× off-peak; DeepSeek 0.5×
+ * off-peak) via `peak.now` (defaults to the current time). Non-target
+ * providers resolve multiplier 1 — no invented clocks, fail open.
  */
 export function resolveFrugalityCostPer1M(
   model: ModelProfile,
   catalog: PriceCatalog | null,
+  peak?: PeakPricingOptions,
 ): number {
-  if (model.pricing.quota_cost_per_1m !== undefined) {
-    return model.pricing.quota_cost_per_1m;
-  }
-  return resolvePrice(model, catalog).cost_per_1m_tokens;
+  const base =
+    model.pricing.quota_cost_per_1m !== undefined
+      ? model.pricing.quota_cost_per_1m
+      : resolvePrice(model, catalog).cost_per_1m_tokens;
+  return base * resolvePeakPricingAdjustment(model, peak).cost_multiplier;
 }
