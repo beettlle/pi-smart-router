@@ -1,0 +1,92 @@
+spine-tasks/_authoring/release-v0.21.0/manifest.md
+  s_aef3e49230bb17::t_4faf7e7814af39 78-81
+  s_aef3e49230bb17::t_e802a9caf7bb19 176
+  s_aef3e49230bb17::t_bc72c697ccf878 9,18,21,25,27,29
+  s_eb75f5f8855508::t_62e58d7c063f14 20,30,37-43,45,47,49-51,53,58,60-67,69,103-109,143,171-175
+  s_aef3e49230bb17::t_9482f010d09372 110
+  s_aef3e49230bb17::t_f2680fa8bddf57 117-134
+  s_aef3e49230bb17::t_5b6dca07ff36af 44,46,48,52,54,56,68
+  s_a7ab168c79a118::t_d9c6c1c69f3831 1-8,10-17,19,22-24,26,28,31-36,55,57,59,70-77,82-102,111-116,135-142,144-170,177-193
+spine-tasks/SP-249-hmac-telemetry-session-hash/STATUS.md
+  s_40a3c5ef15dfd9::t_d85efb6a427aac 1-39
+spine-tasks/SP-251-missing-weights-reason-codes/STATUS.md
+  s_40a3c5ef15dfd9::t_315773756acd12 1-38
+spine-tasks/SP-252-fail-closed-missing-weights/PROMPT.md
+  s_40a3c5ef15dfd9::t_503703a6d91493 1-103
+spine-tasks/SP-247-session-state-eviction-apis/PROMPT.md
+  s_40a3c5ef15dfd9::t_04267c94b9afee 1-101
+spine-tasks/SP-248-session-end-wire-ttl/PROMPT.md
+  s_40a3c5ef15dfd9::t_42a9e727589a9e 1-100
+spine-tasks/SP-251-missing-weights-reason-codes/PROMPT.md
+  s_40a3c5ef15dfd9::t_4d357ca75871c7 1-99
+spine-tasks/SP-253-runtime-integrity-docs/PROMPT.md
+  s_40a3c5ef15dfd9::t_ae3049d4341cb4 1-95
+spine-tasks/SP-248-session-end-wire-ttl/STATUS.md
+  s_40a3c5ef15dfd9::t_3da274046adea0 1-40
+spine-tasks/dependencies.json
+  s_40a3c5ef15dfd9::t_428e5248f9366c 673-689
+  s_aef3e49230bb17::t_f3d1efec518eb2 690-691
+spine-tasks/CONTEXT.md
+  s_aef3e49230bb17::t_38d74751a31d92 853,864,866,868
+  s_aef3e49230bb17::t_761d5eec7a420d 5,8
+  s_40a3c5ef15dfd9::t_dbeca7e9cc9a61 854-863,865,867,869-871
+spine-tasks/SP-250-cli-contrib-hash-contracts/STATUS.md
+  s_40a3c5ef15dfd9::t_4affec6410b932 1-38
+spine-tasks/SP-249-hmac-telemetry-session-hash/PROMPT.md
+  s_40a3c5ef15dfd9::t_30bd7c261df96a 1-99
+spine-tasks/SP-252-fail-closed-missing-weights/STATUS.md
+  s_40a3c5ef15dfd9::t_f100d96d1fcedd 1-40
+spine-tasks/SP-250-cli-contrib-hash-contracts/PROMPT.md
+  s_40a3c5ef15dfd9::t_8458eb2b108eaa 1-96
+spine-tasks/SP-247-session-state-eviction-apis/STATUS.md
+  s_40a3c5ef15dfd9::t_910690d6bd9e37 1-41
+spine-tasks/SP-253-runtime-integrity-docs/STATUS.md
+  s_40a3c5ef15dfd9::t_c136ef308eefd2 1-39
+spine-tasks/SP-254-live-benchmark-profile-refresh/STATUS.md
+  s_aef3e49230bb17::t_6a013815120375 1-57
+spine-tasks/SP-254-live-benchmark-profile-refresh/PROMPT.md
+  s_aef3e49230bb17::t_6c609abd0af432 1-60,62-112
+  s_aef3e49230bb17::t_95a0c4db4a87cd 61
+.spine/spine-config.json
+  s_40a3c5ef15dfd9::t_b55fbe49f1fbcc 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c6936d0f3e25463b53063f250afdedbed9037e64",
+  "prompts": {},
+  "sessions": {
+    "s_40a3c5ef15dfd9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-c259d09b-6cf1-4335-8e68-416a36509c40",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    },
+    "s_a7ab168c79a118": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a044dc-cc82-7c17-870c-45cc8fe5617d",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    },
+    "s_aef3e49230bb17": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7f3a594f-90d9-42e3-a27c-af1b1bbbbd55",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    },
+    "s_eb75f5f8855508": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-bec4bdf3-3f62-4f23-8318-f74bbbb1e0d5",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
