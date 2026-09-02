@@ -2,10 +2,10 @@
 
 **Last Updated:** 2026-09-02
 **Status:** Active
-**Next Task ID:** SP-247
+**Next Task ID:** SP-255
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v0.20.0** on npm (2026-09-02, minor — SP-241–SP-246 routing cost & verbosity economics; closes #164/#165/#166). Tag `v0.20.0`, commit `de8d5ec`. Prior: v0.19.3 patch (SP-239/#161 + SP-240); accidental empty `v0.19.4` deprecated. Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
+**Released:** **v0.20.0** on npm (2026-09-02, minor — SP-241–SP-246 routing cost & verbosity economics; closes #164/#165/#166). Tag `v0.20.0`, commit `de8d5ec`. **Next train:** v0.21.0 runtime integrity + capability hygiene (SP-247–SP-254) — packets authored, awaiting batch. Prior: v0.19.3 patch (SP-239/#161 + SP-240); accidental empty `v0.19.4` deprecated. Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
 
 ---
 
@@ -849,6 +849,25 @@
 **Operational notes:** Wave 0 merge conflict on `delegate-stream.ts` / `route-and-delegate.ts` (requestId + reasoningSignal). Wave 1 merge conflict on `routing-telemetry.test.ts` imports. Wave 3 SP-244 landed batch `20260902T000628-d239` (merge `e9726ae`). Allegretto profile used during Z.ai peak. Use `SMART_ROUTER_SKIP_LIVE_BENCHMARK_REFRESH=1` when live benchmark refresh would dirty the tree.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.20.0/manifest.md`
+
+### Phase 55 — Release v0.21.0 Runtime Integrity & Operator Trust (SP-247–SP-254)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-247 | Session-state eviction APIs + unit tests | S | — | Partial #145 |
+| SP-248 | Wire `session_end` + optional TTL fallback | S | SP-247 | Closes #145 |
+| SP-249 | HMAC-pepper `hashSessionIdForTelemetryExport` | S | — | Partial #146 |
+| SP-250 | CLI dedupe + contrib export contract tests | S | SP-249 | Closes #146 |
+| SP-251 | Missing-weights reason codes (HyDRA + K4) | S | — | Partial #148 |
+| SP-252 | `fail_closed_on_missing_weights` + sandwich integration | S | SP-251 | Closes #148 |
+| SP-253 | Operator docs for runtime-integrity theme | S | SP-248, SP-250, SP-252 | Theme docs |
+| SP-254 | Live leaderboard re-ingest + Gemini fleet aliases | S | — | Hygiene (scope expand) |
+
+**Source:** Operator-approved **v0.21.0** (2026-09-02, minor profile). Theme: runtime integrity & operator trust — session eviction (#145), HMAC telemetry hashes (#146), explicit degraded mode (#148). 7×S split from original 3×M; **scope expand** adds SP-254 capability grounding hygiene (live ingest + aliases; not a 4th enh issue). Dep majors remain #162/#163.
+
+**Status:** Packets authored (Phase 3 + SP-254 expand). **Not started** — author-only (no batch/implementation this turn). Scope ID: `SP-247,SP-248,SP-249,SP-250,SP-251,SP-252,SP-253,SP-254`.
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.21.0/manifest.md`
 
 ---
 

@@ -41,7 +41,7 @@
       "autoNudge": false,
       "thinking": "off"
     },
-    "activeProfile": "allegretto",
+    "activeProfile": "default",
     "profiles": {
       "default": {
         "worker": {
