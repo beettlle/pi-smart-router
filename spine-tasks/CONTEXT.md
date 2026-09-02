@@ -1,11 +1,11 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-08-30
+**Last Updated:** 2026-09-01
 **Status:** Active
 **Next Task ID:** SP-247
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** v0.19.3 on npm (2026-08-30, patch — SP-239/#161 de-flake + SP-240 pi-ai 0.84.4 dep refresh). Accidental empty `v0.19.4` also published and currently `latest` (await deprecate). **In progress:** v0.20.0 minor — routing cost & verbosity economics (SP-241–SP-246 / #164/#165/#166). Prior v0.19.2 SP-238/#160. Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
+**Released:** v0.19.3 on npm (2026-08-30, patch — SP-239/#161 de-flake + SP-240 pi-ai 0.84.4 dep refresh). Accidental empty `v0.19.4` also published and currently `latest` (await deprecate). **Ready to publish:** v0.20.0 minor — routing cost & verbosity economics (SP-241–SP-246 landed on main; closes #164/#165/#166). Prior v0.19.2 SP-238/#160. Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
 
 ---
 
@@ -844,7 +844,9 @@
 
 **Source:** Operator-approved **v0.20.0** (2026-08-30, minor profile). Theme: routing cost and verbosity economics — usage calibration (#164), peak/off-peak adapters (#165), adaptive reasoning (#166). Dep bumps: check-only (none this train); majors remain #162/#163.
 
-**Status:** Packets authored; awaiting Phase 4 batch execution.
+**Status:** All six tasks landed on `main` (waves 0–3, allegretto profile). Post-integrate `release:check` and `release:assert-content` green (2026-09-01). `spine preflight` green. Awaiting operator publish approval (Phase 6: single `npm version minor` → `0.20.0`).
+
+**Operational notes:** Wave 0 merge conflict on `delegate-stream.ts` / `route-and-delegate.ts` (requestId + reasoningSignal). Wave 1 merge conflict on `routing-telemetry.test.ts` imports. Wave 3 SP-244 landed batch `20260902T000628-d239` (merge `e9726ae`). Use `SMART_ROUTER_SKIP_LIVE_BENCHMARK_REFRESH=1` when live benchmark refresh would dirty the tree.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.20.0/manifest.md`
 
