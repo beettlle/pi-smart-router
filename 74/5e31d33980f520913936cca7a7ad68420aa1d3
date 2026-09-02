@@ -1,0 +1,23 @@
+src/domain/matching/hydra-matcher.ts
+  s_80df57d1d7565f::t_602c9f0172726c 31,57-62,72-80,372-376,391,410-427,445-453,518
+src/domain/matching/missing-weights-reason-codes.ts
+  s_80df57d1d7565f::t_e25e7cbef21233 1-22
+src/domain/matching/modernbert-heads.ts
+  s_80df57d1d7565f::t_379b918804030f 20-21,277-282,314-317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "745e31d33980f520913936cca7a7ad68420aa1d3",
+  "prompts": {},
+  "sessions": {
+    "s_80df57d1d7565f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-e9ca2e7b-2e88-403d-95a6-a786083a9d37",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
