@@ -1,7 +1,7 @@
 # SP-252: fail_closed_on_missing_weights + sandwich integration — Status
 
-**Current Step:** 2
-**Status:** In Progress
+**Current Step:** 2 (done)
+**Status:** Complete
 **Last Updated:** 2026-09-02
 **Review Level:** 1
 **Size:** S
@@ -47,15 +47,25 @@ Implementation (resumed session — work found on disk uncommitted, verified):
 
 ## Step 2: Testing & Verification
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Unit tests: default fail-open; fail-closed when enabled
-- [ ] Contract `testCommand` green
-- [ ] #148 closable with SP-251
+- [x] Contract `testCommand` green
+- [x] #148 closable with SP-251
+
+Verification evidence:
+- `npm run typecheck` — clean.
+- `npx vitest run tests/unit/hydra-matcher.test.ts tests/unit/modernbert-heads.test.ts`
+  — 89/89 passed (contract testCommand green).
+- Full `npm test` — 119 files, 2126/2126 passed.
+- Fail-open default asserted (matcher + pipeline); fail-closed asserted at both
+  matcher level (throws before embedding cost) and pipeline level (degraded
+  sandwich, `neural_misconfigured`, SP-251 code on decision `reason_code`).
+- Plan review checkpoint (RL=1, Step 1): engine-skipped (SP-195), spawnFailed=false.
 
 ## Completion Criteria
 
-- [ ] Fail-closed option + sandwich integration complete; #148 closable
+- [x] Fail-closed option + sandwich integration complete; #148 closable
 
 ## Discoveries
 
