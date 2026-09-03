@@ -17,8 +17,8 @@
   "properties": {
     "version": {
       "type": "integer",
-      "const": 1,
-      "description": "Contrib record format version."
+      "const": 2,
+      "description": "Contrib record format version. v2 (SP-250): session_id_hash is HMAC-SHA256 keyed with the install-local dataset pepper (was unsalted SHA-256 in v1)."
     },
     "timestamp": {
       "type": "string",
@@ -28,7 +28,7 @@
     "session_id_hash": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$",
-      "description": "One-way SHA-256 hash of install-local session_id for correlation without export."
+      "description": "One-way HMAC-SHA256 hash of session_id keyed with the install-local dataset pepper — stable per install, not correlatable across installs; raw session_id is never exported."
     },
     "turn_type": {
       "type": "string",

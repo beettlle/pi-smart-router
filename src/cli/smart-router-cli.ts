@@ -5,7 +5,6 @@
  * this module holds reusable subcommand logic for dogfooding and tests.
  */
 
-import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -16,13 +15,20 @@ import {
 } from '../domain/routing/p-success-classifier.js';
 import { SessionPinner } from '../domain/pinning/session-pinner.js';
 import { DATASET_MAX_ENTRIES } from '../infrastructure/telemetry/dataset-limits.js';
+import { loadOrCreateDatasetPepper } from '../infrastructure/telemetry/dataset-recorder.js';
+import { hashSessionIdForTelemetryExport } from '../infra/telemetry.js';
 import type { RoutingDatasetRecord, RoutingOutcomeRecord } from '../domain/types/index.js';
 import type { StorePort } from '../domain/types/store-port.js';
 
 export const UNPIN_SUBCOMMAND = 'unpin' as const;
 export const EXPORT_TELEMETRY_CONTRIB_COMMAND = 'export telemetry-contrib' as const;
 
-export const TELEMETRY_CONTRIB_VERSION = 1 as const;
+/**
+ * Contrib export format version. v2 (SP-250): session_id_hash switched from
+ * unsalted SHA-256 to install-pepper-keyed HMAC-SHA256 (SP-249 helper), so
+ * hashes are stable per install/cwd but not correlatable across installs.
+ */
+export const TELEMETRY_CONTRIB_VERSION = 2 as const;
 export const TELEMETRY_CONTRIB_SCHEMA_PATH =
   'specs/001-build-smart-router/contracts/telemetry-contrib.schema.json';
 
@@ -259,38 +265,36 @@ export function executeUnpinCommand(ctx: UnpinCommandContext): UnpinCommandResul
   };
 }
 
-export function hashSessionIdForContribExport(sessionId: string): string {
-  return createHash('sha256').update(sessionId).digest('hex');
-}
-
 function resolveSessionIdHash(
   record: RoutingDatasetRecord,
   outcomes: readonly RoutingOutcomeRecord[],
+  pepper?: Buffer,
 ): string {
   const sessionId = outcomes[0]?.session_id;
   if (typeof sessionId === 'string' && sessionId.length > 0) {
-    return hashSessionIdForContribExport(sessionId);
+    return hashSessionIdForTelemetryExport(sessionId, pepper);
   }
 
   const raw = record as RoutingDatasetRecord & { session_id?: string };
   if (typeof raw.session_id === 'string' && raw.session_id.length > 0) {
-    return hashSessionIdForContribExport(raw.session_id);
+    return hashSessionIdForTelemetryExport(raw.session_id, pepper);
   }
 
-  return hashSessionIdForContribExport('');
+  return hashSessionIdForTelemetryExport('', pepper);
 }
 
 /** Map a dataset row plus linked outcomes to a privacy-safe telemetry contrib record. */
 export function toTelemetryContribRecord(
   record: RoutingDatasetRecord,
   outcomes: readonly RoutingOutcomeRecord[] = [],
+  pepper?: Buffer,
 ): Record<string, unknown> {
   const { success, outcome_signals } = deriveSuccessLabel(outcomes);
 
   const contrib: Record<string, unknown> = {
     version: TELEMETRY_CONTRIB_VERSION,
     timestamp: record.timestamp,
-    session_id_hash: resolveSessionIdHash(record, outcomes),
+    session_id_hash: resolveSessionIdHash(record, outcomes, pepper),
     turn_type: record.turn_type,
     stage: record.stage,
     reason_code: record.reason_code,
@@ -371,12 +375,13 @@ export function validateTelemetryContribRecord(
 export function buildTelemetryContribRecords(
   datasetRecords: readonly RoutingDatasetRecord[],
   outcomeRecords: readonly RoutingOutcomeRecord[] = [],
+  pepper?: Buffer,
 ): Record<string, unknown>[] {
   const outcomesByRequest = indexOutcomesByRequestId(outcomeRecords);
 
   return datasetRecords.map((record) => {
     const linkedOutcomes = outcomesByRequest.get(record.request_id) ?? [];
-    const contrib = toTelemetryContribRecord(record, linkedOutcomes);
+    const contrib = toTelemetryContribRecord(record, linkedOutcomes, pepper);
     validateTelemetryContribRecord(contrib, record.request_id);
     return contrib;
   });
@@ -388,7 +393,11 @@ export async function exportTelemetryContrib(
 ): Promise<ExportTelemetryContribResult> {
   const datasetRecords = await ctx.store.listDatasetRecords({ limit: ctx.limit });
   const outcomeRecords = await ctx.store.listOutcomeRecords({ limit: ctx.limit });
-  const records = buildTelemetryContribRecords(datasetRecords, outcomeRecords);
+  // Install-local pepper keyed to the export cwd so hashes are stable per
+  // install but never correlatable across installs (SP-249/SP-250). Loaded
+  // lazily — no pepper file is created when there is nothing to export.
+  const pepper = datasetRecords.length > 0 ? loadOrCreateDatasetPepper(ctx.cwd) : undefined;
+  const records = buildTelemetryContribRecords(datasetRecords, outcomeRecords, pepper);
   const json = formatTelemetryContribJson(records);
 
   if (records.length === 0 || options?.writeFile === false) {
@@ -408,6 +417,7 @@ export async function exportTelemetryContrib(
 export function datasetExportRowToTelemetryContrib(
   exportRecord: Record<string, unknown>,
   outcomes: readonly RoutingOutcomeRecord[],
+  pepper?: Buffer,
 ): Record<string, unknown> {
   const joined = attachOutcomeLabelsToExport(exportRecord, outcomes);
   const contrib: Record<string, unknown> = {
@@ -422,7 +432,7 @@ export function datasetExportRowToTelemetryContrib(
   if (typeof exportRecord.session_id_hash === 'string') {
     contrib.session_id_hash = exportRecord.session_id_hash;
   } else if (typeof exportRecord.session_id === 'string') {
-    contrib.session_id_hash = hashSessionIdForContribExport(exportRecord.session_id);
+    contrib.session_id_hash = hashSessionIdForTelemetryExport(exportRecord.session_id, pepper);
   }
 
   delete contrib.session_id;
