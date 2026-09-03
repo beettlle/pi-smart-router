@@ -1,0 +1,33 @@
+spine-tasks/SP-252-fail-closed-missing-weights/STATUS.md
+  s_69f0033256bd03::t_08376c6ca2248f 3-4,13,15-27,31-35,37-46,50-54,56-64,68,72-76
+src/domain/matching/hydra-matcher.ts
+  s_69f0033256bd03::t_4a1223313ef332 95-121,419,439,489-494
+src/domain/matching/missing-weights-reason-codes.ts
+  s_69f0033256bd03::t_aaf38249fc1264 9-11
+src/domain/pipeline/router-pipeline.ts
+  s_69f0033256bd03::t_ebdbcaa990118f 72,1933-1946,1954-1977,2023,2060-2068,2077
+src/domain/types/schemas.ts
+  s_69f0033256bd03::t_105aa3421eab66 589-597,659-660
+tests/unit/hydra-matcher.test.ts
+  s_69f0033256bd03::t_813c7dae894fd8 9,1104-1197
+tests/unit/router-pipeline.test.ts
+  s_69f0033256bd03::t_97518707ca65e6 6,10,22,771-857
+tests/unit/schemas.test.ts
+  s_69f0033256bd03::t_bda925e6035ffb 11-12,279-312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b05b38bffef71a75aaed36f41ba04cfa6658fa69",
+  "prompts": {},
+  "sessions": {
+    "s_69f0033256bd03": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-699d7144-0810-4260-8f1e-ec076a945a61",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
