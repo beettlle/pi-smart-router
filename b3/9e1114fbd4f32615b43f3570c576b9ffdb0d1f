@@ -1,0 +1,21 @@
+README.md
+  s_69f0033256bd03::t_c30029a107e72a 492-493,575-584,779-784
+spine-tasks/SP-253-runtime-integrity-docs/STATUS.md
+  s_69f0033256bd03::t_a159cf81c12a53 3-5,13,15,19,21-23,27,29-36,40,44-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b39e1114fbd4f32615b43f3570c576b9ffdb0d1f",
+  "prompts": {},
+  "sessions": {
+    "s_69f0033256bd03": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-699d7144-0810-4260-8f1e-ec076a945a61",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
