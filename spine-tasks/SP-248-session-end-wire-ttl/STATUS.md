@@ -1,7 +1,7 @@
 # SP-248: Wire session_end + optional TTL fallback — Status
 
 **Current Step:** 2
-**Status:** In Progress
+**Status:** Complete
 **Last Updated:** 2026-09-02
 **Review Level:** 1
 **Size:** S
@@ -25,17 +25,20 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** 🔵 In Progress
+**Status:** ✅ Complete
 
-- [ ] Tests cover post-end eviction (and TTL if implemented)
-- [ ] Contract `testCommand` green
-- [ ] #145 closable with SP-247
+- [x] Tests cover post-end eviction (and TTL if implemented)
+- [x] Contract `testCommand` green
+- [x] #145 closable with SP-247
 
 ## Completion Criteria
 
-- [ ] Session teardown wired; #145 closable
+- [x] Session teardown wired; #145 closable
 
 ## Discoveries
 
 - SP-247 helper `evictInMemorySessionState` lives at `src/api/session-eviction.ts` (also re-exported from `src/index.ts`).
 - pi session-end API = `session_shutdown` (ExtensionAPI, `SessionShutdownEvent` reason: quit|reload|new|resume|fork); already registered in `session-lifecycle.ts` — eviction wires into that handler.
+- `ORPHAN_SESSION_TTL_MS = 24h` exported from `session-lifecycle.ts`; sweep runs on `session_start`, fails open.
+- GitNexus MCP tools mangled string params during this session (impact/query unusable); blast radius verified manually via grep — `setupSessionHooks` callers: `extension-setup.ts` + `smart-router-extension.test.ts` only. `detect_changes` (unstaged): low risk.
+- Verification: `npm run typecheck` clean; contract testCommand green (140/140); full `vitest run` green (2118/2118, 119 files).
