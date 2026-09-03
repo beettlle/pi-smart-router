@@ -1,0 +1,16 @@
+spine-tasks/SP-248-session-end-wire-ttl/.reviews/0-20260903T000810.md
+  h_ae151c586ac6c5 1-21
+spine-tasks/SP-248-session-end-wire-ttl/.reviews/final-20260903T000856.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ceb8d5de601958fd86e3246dd77a488381ec6e9c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
