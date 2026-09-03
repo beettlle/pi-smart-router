@@ -1,0 +1,16 @@
+.pi/extensions/smart-router/session-lifecycle.ts
+  h_ae151c586ac6c5 3,19-27,110-142,174-177,208-219
+spine-tasks/SP-248-session-end-wire-ttl/STATUS.md
+  h_ae151c586ac6c5 3-4,13,15-16,20,40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "88815e101e92c98f79a042da49b671451b43324c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
