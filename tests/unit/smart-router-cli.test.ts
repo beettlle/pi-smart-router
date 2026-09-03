@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -13,7 +14,7 @@ import {
   executeUnpinCommand,
   exportTelemetryContrib,
   formatTelemetryContribJson,
-  hashSessionIdForContribExport,
+  formatTelemetryContribJsonl,
   isExportTelemetryContribInvocation,
   isUnpinInvocation,
   parseExportTelemetryContribArgs,
@@ -24,6 +25,8 @@ import {
   EXPORT_TELEMETRY_CONTRIB_COMMAND,
   UNPIN_SUBCOMMAND,
 } from '../../src/cli/smart-router-cli.js';
+import { hashSessionIdForTelemetryExport } from '../../src/infra/telemetry.js';
+import { getDatasetPepperPath } from '../../src/infrastructure/telemetry/dataset-recorder.js';
 import {
   formatHistoryMessage,
   resolveHistoryModelId,
@@ -48,6 +51,10 @@ const SCHEMA_PATH = resolve(
   ROOT,
   'specs/001-build-smart-router/contracts/telemetry-contrib.schema.json',
 );
+
+// Test-local pepper — never derived from the repo cwd so tests stay hermetic.
+const TEST_PEPPER = Buffer.from('ab'.repeat(32), 'hex');
+const OTHER_PEPPER = Buffer.from('cd'.repeat(32), 'hex');
 
 type ValidateFn = (data: unknown) => boolean;
 
@@ -212,24 +219,82 @@ describe('export telemetry-contrib (SP-118)', () => {
     const record = makeDatasetRecord();
     const outcome = makeOutcome();
 
-    const exported = toTelemetryContribRecord(record, [outcome]);
+    const exported = toTelemetryContribRecord(record, [outcome], TEST_PEPPER);
 
     expect(exported.version).toBe(TELEMETRY_CONTRIB_VERSION);
     expect(exported).not.toHaveProperty('request_id');
     expect(exported).not.toHaveProperty('prompt_fingerprint');
     expect(exported).not.toHaveProperty('candidates_json');
     expect(exported.session_id_hash).toBe(
-      hashSessionIdForContribExport('sess-contrib-secret'),
+      hashSessionIdForTelemetryExport('sess-contrib-secret', TEST_PEPPER),
     );
     expect(exported.success_label).toBe(true);
     expect(exported.outcome_signals).toEqual(['feedback_good']);
     expect(exported.requirement_reasoning).toBe(0.5);
   });
 
+  it('uses pepper-keyed HMAC hashes, not unsalted SHA-256 (SP-250)', () => {
+    const exported = toTelemetryContribRecord(
+      makeDatasetRecord(),
+      [makeOutcome()],
+      TEST_PEPPER,
+    );
+
+    const unsalted = createHash('sha256').update('sess-contrib-secret').digest('hex');
+    expect(exported.session_id_hash).not.toBe(unsalted);
+    expect(exported.session_id_hash).toMatch(/^[a-f0-9]{64}$/);
+
+    // Stable per install (same pepper) but not correlatable across installs.
+    const again = toTelemetryContribRecord(
+      makeDatasetRecord(),
+      [makeOutcome()],
+      TEST_PEPPER,
+    );
+    expect(again.session_id_hash).toBe(exported.session_id_hash);
+
+    const otherInstall = toTelemetryContribRecord(
+      makeDatasetRecord(),
+      [makeOutcome()],
+      OTHER_PEPPER,
+    );
+    expect(otherInstall.session_id_hash).not.toBe(exported.session_id_hash);
+  });
+
+  it('formats contrib JSONL without raw session_id or pepper material', () => {
+    const records = buildTelemetryContribRecords(
+      [makeDatasetRecord(), makeDatasetRecord({ request_id: 'req-contrib-2' })],
+      [makeOutcome(), makeOutcome({ request_id: 'req-contrib-2' })],
+      TEST_PEPPER,
+    );
+
+    const jsonl = formatTelemetryContribJsonl(records);
+    const lines = jsonl.trim().split('\n');
+    expect(lines).toHaveLength(2);
+
+    expect(jsonl).not.toContain('sess-contrib-secret');
+    expect(jsonl).not.toContain('req-contrib-1');
+    expect(jsonl).not.toContain('req-contrib-2');
+    expect(jsonl).not.toContain(TEST_PEPPER.toString('hex'));
+    expect(jsonl).not.toContain('deadbeef');
+
+    for (const line of lines) {
+      const parsed = JSON.parse(line) as Record<string, unknown>;
+      expect(parsed).not.toHaveProperty('session_id');
+      expect(parsed).not.toHaveProperty('request_id');
+      expect(parsed).not.toHaveProperty('pepper');
+      expect(parsed.version).toBe(TELEMETRY_CONTRIB_VERSION);
+      expect(parsed.session_id_hash).toBe(
+        hashSessionIdForTelemetryExport('sess-contrib-secret', TEST_PEPPER),
+      );
+      expect(validateSchema(parsed)).toBe(true);
+    }
+  });
+
   it('produces schema-valid JSON with zero prompt content', () => {
     const records = buildTelemetryContribRecords(
       [makeDatasetRecord(), makeDatasetRecord({ request_id: 'req-contrib-2' })],
       [makeOutcome(), makeOutcome({ request_id: 'req-contrib-2', signal_type: 'feedback_bad' })],
+      TEST_PEPPER,
     );
 
     const json = formatTelemetryContribJson(records);
@@ -245,7 +310,7 @@ describe('export telemetry-contrib (SP-118)', () => {
 
   it('rejects tainted contrib payloads on validation', () => {
     const tainted = {
-      version: 1,
+      version: 2,
       timestamp: '2026-07-07T12:00:00.000Z',
       session_id_hash: 'a'.repeat(64),
       turn_type: 'main_loop',
@@ -261,7 +326,7 @@ describe('export telemetry-contrib (SP-118)', () => {
 
   it('strips install-local pepper fields from export rows', () => {
     const record = {
-      ...toTelemetryContribRecord(makeDatasetRecord(), [makeOutcome()]),
+      ...toTelemetryContribRecord(makeDatasetRecord(), [makeOutcome()], TEST_PEPPER),
       dataset_key: 'install-local',
       pepper: 'local-pepper',
       request_id: 'req-secret',
@@ -271,6 +336,10 @@ describe('export telemetry-contrib (SP-118)', () => {
     expect(sanitized).not.toHaveProperty('dataset_key');
     expect(sanitized).not.toHaveProperty('pepper');
     expect(sanitized).not.toHaveProperty('request_id');
+
+    const json = formatTelemetryContribJson([sanitized]);
+    expect(json).not.toContain('local-pepper');
+    expect(json).not.toContain('install-local');
   });
 
   it('writes export file under .pi-smart-router/exports', async () => {
@@ -293,8 +362,19 @@ describe('export telemetry-contrib (SP-118)', () => {
 
       const written = JSON.parse(readFileSync(result.path!, 'utf8')) as Record<string, unknown>[];
       expect(written).toHaveLength(1);
-      expect(written[0]).not.toHaveProperty('request_id');
-      expect(validateSchema(written[0])).toBe(true);
+      const first = written[0]!;
+      expect(first).not.toHaveProperty('request_id');
+      expect(first).not.toHaveProperty('session_id');
+      expect(validateSchema(first)).toBe(true);
+
+      // Hash is stable per install/cwd: keyed with the pepper file created
+      // under the export cwd, never exported alongside the rows.
+      const pepperHex = readFileSync(getDatasetPepperPath(cwd), 'utf8').trim();
+      const installPepper = Buffer.from(pepperHex, 'hex');
+      expect(first.session_id_hash).toBe(
+        hashSessionIdForTelemetryExport('sess-contrib-secret', installPepper),
+      );
+      expect(JSON.stringify(written)).not.toContain(pepperHex);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }
@@ -304,7 +384,7 @@ describe('export telemetry-contrib (SP-118)', () => {
     const contrib = datasetExportRowToTelemetryContrib(
       {
         request_id: 'req-secret',
-        session_id_hash: hashSessionIdForContribExport('sess-secret'),
+        session_id_hash: hashSessionIdForTelemetryExport('sess-secret', TEST_PEPPER),
         timestamp: '2026-07-07T12:00:00.000Z',
         turn_type: 'main_loop',
         reason_code: 'hydra_embedding_match',
@@ -313,11 +393,36 @@ describe('export telemetry-contrib (SP-118)', () => {
         prompt_text: 'strip me',
       },
       [makeOutcome()],
+      TEST_PEPPER,
     );
 
     expect(contrib).not.toHaveProperty('request_id');
     expect(contrib).not.toHaveProperty('prompt_text');
-    expect(contrib.session_id_hash).toBe(hashSessionIdForContribExport('sess-secret'));
+    expect(contrib.session_id_hash).toBe(
+      hashSessionIdForTelemetryExport('sess-secret', TEST_PEPPER),
+    );
+  });
+
+  it('hashes raw session_id rows with the shared HMAC helper', () => {
+    const contrib = datasetExportRowToTelemetryContrib(
+      {
+        request_id: 'req-secret',
+        session_id: 'sess-secret',
+        timestamp: '2026-07-07T12:00:00.000Z',
+        turn_type: 'main_loop',
+        reason_code: 'hydra_embedding_match',
+        selected_model_id: 'gpt-4o-mini',
+        routing_latency_ms: 12,
+      },
+      [makeOutcome()],
+      TEST_PEPPER,
+    );
+
+    expect(contrib).not.toHaveProperty('session_id');
+    expect(contrib.session_id_hash).toBe(
+      hashSessionIdForTelemetryExport('sess-secret', TEST_PEPPER),
+    );
+    expect(JSON.stringify(contrib)).not.toContain('sess-secret');
   });
 });
 
