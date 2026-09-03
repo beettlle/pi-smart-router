@@ -1,0 +1,16 @@
+spine-tasks/SP-252-fail-closed-missing-weights/.reviews/0-20260903T180942.md
+  h_ae151c586ac6c5 1-18
+spine-tasks/SP-252-fail-closed-missing-weights/.reviews/final-20260903T181018.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "23f7b997d8b6ef04664eee812e2401f8f293300d",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
