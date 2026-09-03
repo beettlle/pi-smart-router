@@ -186,8 +186,8 @@ Open-issue count (21) did **not** raise this release's enhancement or total-task
 - [x] `npm run release:assert-content` green (73 substantive paths vs `v0.20.0`)
 - [x] Manifest target == expected next version from `package.json` (0.20.0 + minor = 0.21.0)
 - [x] No existing git tag `v0.21.0` (tags end at `v0.20.0`)
-- [ ] CI workflow green on `HEAD` — **pending `git push origin main`** (local ahead 34; last remote CI is v0.20.0-era)
+- [x] CI workflow green on `HEAD` (https://github.com/beettlle/pi-smart-router/actions/runs/33817847475)
 - [x] `git status` clean (after Phase 5 tracking commit)
-- [ ] Operator approved publish bump type: **minor** (matches Phase 2)
-- [ ] **Exactly one** `npm version minor` then `git push && git push --tags` — then **STOP** (no second bump)
-- [ ] `release.yml` succeeded; `npm view` `latest` matches `0.21.0` (else Publish recovery, do not re-bump)
+- [x] Operator approved publish bump type: **minor** (matches Phase 2)
+- [x] **Exactly one** `npm version minor` then `git push && git push --tags` — then **STOP** (no second bump) — tag `v0.21.0`, commit `ccaedba`
+- [x] `release.yml` succeeded (https://github.com/beettlle/pi-smart-router/actions/runs/33818051940); `npm view` `latest` == `0.21.0`
