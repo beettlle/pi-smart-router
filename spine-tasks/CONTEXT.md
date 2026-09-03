@@ -5,7 +5,7 @@
 **Next Task ID:** SP-255
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v0.20.0** on npm (2026-09-02, minor — SP-241–SP-246 routing cost & verbosity economics; closes #164/#165/#166). Tag `v0.20.0`, commit `de8d5ec`. **Next train:** v0.21.0 runtime integrity + capability hygiene (SP-247–SP-254) — packets authored, awaiting batch. Prior: v0.19.3 patch (SP-239/#161 + SP-240); accidental empty `v0.19.4` deprecated. Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
+**Released:** **v0.21.0** on npm (2026-09-03, minor — SP-247–SP-254 runtime integrity & operator trust; closes #145/#146/#148). Tag `v0.21.0`, commit `ccaedba`. Prior: v0.20.0 (SP-241–SP-246); v0.19.3 patch (SP-239/#161 + SP-240); accidental empty `v0.19.4` deprecated. Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
 
 ---
 
@@ -865,9 +865,9 @@
 
 **Source:** Operator-approved **v0.21.0** (2026-09-02, minor profile). Theme: runtime integrity & operator trust — session eviction (#145), HMAC telemetry hashes (#146), explicit degraded mode (#148). 7×S split from original 3×M; **scope expand** adds SP-254 capability grounding hygiene (live ingest + aliases; not a 4th enh issue). Dep majors remain #162/#163.
 
-**Status:** **Ready to publish** (2026-09-03). All SP-247–SP-254 `.DONE` on `main`. Scope ID: `SP-247,SP-248,SP-249,SP-250,SP-251,SP-252,SP-253,SP-254`.
+**Status:** **Published v0.21.0** (2026-09-03). Release run https://github.com/beettlle/pi-smart-router/actions/runs/33818051940 success; `npm view` `latest` == `0.21.0`. Issues #145/#146/#148 closed. Scope ID: `SP-247,SP-248,SP-249,SP-250,SP-251,SP-252,SP-253,SP-254`.
 
-**Operational notes:** Wave 0 batch `20260902T232904-2631` (SP-247/249/251/254) landed; wave 1 `20260902T235656-478a` (SP-248/250/252 — SP-252 retried after kimi 5h quota, default profile); wave 2 `20260903T181330-01a2` (SP-253). Post-integrate logs: `/tmp/pi-smart-router-post-integrate-wave-0.log`, `…-wave-1.log`, `…-wave-2.log`. `release:assert-content` PASS vs `v0.20.0`. Branch **ahead 34** of `origin/main` — push required before CI-on-HEAD + Phase 6.
+**Operational notes:** Wave 0 batch `20260902T232904-2631` (SP-247/249/251/254); wave 1 `20260902T235656-478a` (SP-248/250/252 — SP-252 retried after kimi 5h quota); wave 2 `20260903T181330-01a2` (SP-253). Post-integrate logs: `/tmp/pi-smart-router-post-integrate-wave-{0,1,2}.log`. Pre-tag CI: https://github.com/beettlle/pi-smart-router/actions/runs/33817847475. Single `npm version minor` → `ccaedba` / tag `v0.21.0` — STOP (no second bump).
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.21.0/manifest.md`
 

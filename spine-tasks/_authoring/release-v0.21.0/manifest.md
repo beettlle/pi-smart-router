@@ -6,7 +6,7 @@
 **Bump type:** minor
 **Profile:** minor
 **Theme:** Runtime integrity and operator trust — routing state cannot leak across sessions, telemetry exports are privacy-hardened, and degraded neural stages are explicit instead of silent.
-**Operator approved scope:** yes (2026-09-02). **Scope expand (2026-09-02):** SP-254 hygiene. **Phase 4–5 complete (2026-09-03)** — awaiting publish approval.
+**Operator approved scope:** yes (2026-09-02). **Scope expand (2026-09-02):** SP-254 hygiene. **Published:** yes (2026-09-03 — operator "publish approved"; single `npm version minor` → `0.21.0` / `v0.21.0`).
 
 ---
 
