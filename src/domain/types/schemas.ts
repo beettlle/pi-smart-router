@@ -586,6 +586,15 @@ export const DegradedRouteConfigSchema = z.object({
    * override a predicted capability shortfall.
    */
   pattern_tool_use_ceiling: z.number().min(0).max(1),
+  /**
+   * SP-252 / #148: when true, missing/invalid HyDRA projection or ModernBERT K=4
+   * head weight artifacts are treated as `neural_misconfigured` — the matcher
+   * refuses to silently score with placeholder heads and routing drops into the
+   * degraded sandwich with the SP-251 reason codes (`hydra_weights_missing`,
+   * `k4_heads_placeholder`) surfaced on the decision path. Default false keeps
+   * the fail-open placeholder behavior for existing installs.
+   */
+  fail_closed_on_missing_weights: z.boolean().default(false),
 });
 
 export type DegradedRouteConfig = z.infer<typeof DegradedRouteConfigSchema>;
@@ -647,6 +656,8 @@ export const DEFAULT_DEGRADED_ROUTE_CONFIG: Readonly<DegradedRouteConfig> = {
   learned_min_confidence: 0.6,
   learned_max_entries: 512,
   pattern_tool_use_ceiling: 0.3,
+  /** SP-252 / #148: fail-open placeholders remain the default (#148 opt-in). */
+  fail_closed_on_missing_weights: false,
 } as const;
 
 /**

@@ -69,6 +69,7 @@ import {
   LOCAL_ZERO_DISABLED,
 } from '../../infrastructure/telemetry/routing-telemetry.js';
 import type { HydraMatcher as HydraMatcherType, MatchResult } from '../matching/hydra-matcher.js';
+import { MissingWeightsFailClosedError } from '../matching/hydra-matcher.js';
 import type { ClusterMatcher, ClusterMatchResult } from '../matching/cluster-matcher.js';
 import { clusterReasonCode } from '../../config/routing-clusters-loader.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
@@ -1929,6 +1930,20 @@ export class RouterPipeline {
     try {
       result = await matcher.match(request, fleetForMatch);
     } catch (error: unknown) {
+      // SP-252 / #148: operator fail-closed — placeholder requirement heads are
+      // not treated as learned production heads; the decision drops into the
+      // degraded sandwich as neural_misconfigured with SP-251 codes visible.
+      if (error instanceof MissingWeightsFailClosedError) {
+        console.warn(
+          'HyDRA fail-closed on missing weight artifacts; routing via degraded sandwich',
+          {
+            request_id: request.request_id,
+            session_id: request.session_id,
+            reason_codes: [...error.reasonCodes],
+          },
+        );
+        return this.degradedRouteStage(request, 'neural_misconfigured', error.reasonCodes);
+      }
       console.warn('HyDRA neural match failed; routing via degraded sandwich', {
         request_id: request.request_id,
         session_id: request.session_id,
@@ -1936,6 +1951,30 @@ export class RouterPipeline {
       });
       return this.degradedRouteStage(request, 'neural_error');
     }
+
+    // SP-252 / #148: pipeline-side fail-closed — honors the operator flag even
+    // when the matcher was constructed without it. Placeholder-scored
+    // requirements are discarded (not recorded as a neural success).
+    const degradedConfig =
+      this.options.degradedRouteConfig ??
+      DEFAULT_OPERATOR_CONFIG.degraded_route ??
+      DEFAULT_DEGRADED_ROUTE_CONFIG;
+    const missingWeightsCodes = result.requirement_reason_codes ?? [];
+    if (
+      degradedConfig.fail_closed_on_missing_weights &&
+      missingWeightsCodes.length > 0
+    ) {
+      console.warn(
+        'HyDRA fail-closed on missing weight artifacts; routing via degraded sandwich',
+        {
+          request_id: request.request_id,
+          session_id: request.session_id,
+          reason_codes: [...missingWeightsCodes],
+        },
+      );
+      return this.degradedRouteStage(request, 'neural_misconfigured', missingWeightsCodes);
+    }
+
     this.currentHydraResult = result;
 
     if (result.budgetExceeded && !result.selected) {
@@ -1981,6 +2020,7 @@ export class RouterPipeline {
   private degradedRouteStage(
     request: RoutingRequest,
     failure: NeuralFailureKind,
+    failureReasonCodes?: readonly string[],
   ): StageResult {
     const config =
       this.options.degradedRouteConfig ??
@@ -2017,6 +2057,15 @@ export class RouterPipeline {
       return { decided: false, stage: 'hydra_match' };
     }
 
+    // SP-252 / #148: when a fail-closed trigger carried SP-251 missing-weights
+    // codes, surface them as the decision reason_code so the degraded state is
+    // visible on the decision path (route_path still records the sandwich
+    // branch that resolved: learned / heuristic / safe_default).
+    const reasonCode =
+      failureReasonCodes && failureReasonCodes.length > 0
+        ? failureReasonCodes.join(',')
+        : resolution.reasonCode;
+
     return {
       decided: true,
       stage: 'hydra_match',
@@ -2025,7 +2074,7 @@ export class RouterPipeline {
         selected_model_id: resolution.model.id,
         tier: resolution.model.tier,
         stage: resolution.routePath === 'safe_default' ? 'fallback' : 'hydra_match',
-        reason_code: resolution.reasonCode,
+        reason_code: reasonCode,
         routing_latency_ms: 0,
         pin_reason: null,
       }),
