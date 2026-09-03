@@ -1,0 +1,14 @@
+spine-tasks/SP-248-session-end-wire-ttl/STATUS.md
+  h_ae151c586ac6c5 4,28,30-32,36,42-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7f31594d3b397c114eb37d52d3a1b572ac4d24dc",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
