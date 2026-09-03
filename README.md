@@ -489,6 +489,8 @@ v0.2.0 adds **Session-Aware Agentic Routing (SAAR)** pin knobs ([#72](https://gi
 
 See [routing-roadmap.md](docs/routing-roadmap.md) §2 P0 for design context.
 
+**Long-running pi sessions — in-memory state eviction (v0.21.0, [#145](https://github.com/beettlle/pi-smart-router/issues/145)).** Session pins and in-memory routing snapshots live in process memory, not in the SQLite telemetry store. When pi ends a session, the extension's `session_shutdown` handler (reason: `quit` / `reload` / `new` / `resume` / `fork`) calls `evictInMemorySessionState` (`src/api/session-eviction.ts`) and drops **all** in-memory routing state for that session — pins, cache-breakeven snapshots, turn metadata. A new session starts cold: no stale pin, no warm-cache assumption carries over. Persistent telemetry in `.pi-smart-router/state.db` is untouched. As a safety net for orphaned sessions (e.g. a crashed pi process that never emitted `session_shutdown`), a sweep on `session_start` evicts sessions idle longer than `ORPHAN_SESSION_TTL_MS` (**24 hours**, exported from `.pi/extensions/smart-router/session-lifecycle.ts`); the sweep fails open — a missing session id or sweep error never blocks session start.
+
 ### Planning delegate (v0.4.0 Delegate)
 
 When a **planning** turn would route primary inference to frontier while a warm **economical** session pin is active, smart-router prefers **cache-preserving delegation** ([#71](https://github.com/beettlle/pi-smart-router/issues/71)):
@@ -570,6 +572,16 @@ Explain/telemetry expose `route_path` (`neural` \| `learned` \| `heuristic` \| `
 | `learned_min_confidence` | `0.6` | Minimum learned-entry confidence to honor a tier suggestion |
 | `learned_max_entries` | `512` | Learned-map cap per key space (FIFO eviction) |
 | `pattern_tool_use_ceiling` | `0.3` | Tool-use cue ceiling for honoring cheaper-tier learned/pattern suggestions |
+| `fail_closed_on_missing_weights` | `false` | When `true`, missing/placeholder neural weights fail **closed**: the matcher throws before paying embedding cost and the pipeline routes through the degraded sandwich (`neural_misconfigured`) with the SP-251 reason codes on the decision. When `false` (default), routing stays fail-open — placeholder weights score with neutral defaults and the reason codes are advisory telemetry only |
+
+**Missing-weights reason codes (v0.21.0, [#148](https://github.com/beettlle/pi-smart-router/issues/148)).** When the HyDRA matcher cannot load real neural weights, the decision surfaces structured reason codes (`src/domain/matching/missing-weights-reason-codes.ts`) on the routing decision / `requirement_reason_codes` — visible in explain (`pi router explain` / `POST /v1/route/explain`), `/smart-router history`, and telemetry — not stderr-only:
+
+| Reason code | Meaning | Operator action |
+|-------------|---------|-----------------|
+| `hydra_weights_missing` | HyDRA projection-head weights artifact is absent or unloadable, so neural scoring is running on fallback behavior | Restore the weights artifact (see [HyDRA model cache](#hydra-model-cache)); routing continues fail-open unless `fail_closed_on_missing_weights` is set |
+| `k4_heads_placeholder` | ModernBERT K4 heads are placeholder (untrained) weights — scores are neutral defaults, not learned predictions | Regenerate/install the trained K4 heads artifact; treat current K4 scores as non-authoritative |
+
+With the default fail-open behavior these codes are advisory: the route proceeds with safe defaults. Set `degraded_route.fail_closed_on_missing_weights: true` when you prefer an explicit degraded-route decision (sandwich chain above, `route_path` records the branch taken) over silently routing on placeholder neural scores.
 
 Distinct from soft heat affinity (healthy-path bias): this is failover / skip-expensive-stage only. Routing remains **pre-generation** — no FrugalGPT-style cascades (see [routing-roadmap.md](docs/routing-roadmap.md) §1).
 
@@ -763,6 +775,12 @@ npx pi-smart-router export telemetry-contrib [--limit N]
 ```
 
 This writes schema-valid JSON to `.pi-smart-router/exports/telemetry-contrib-<timestamp>.json`. Each row conforms to [`telemetry-contrib.schema.json`](specs/001-build-smart-router/contracts/telemetry-contrib.schema.json).
+
+**Export schema v2 — session-hash migration (v0.21.0, [#146](https://github.com/beettlle/pi-smart-router/issues/146)).** The contrib export schema was bumped **v1 → v2** (`TELEMETRY_CONTRIB_VERSION = 2` in `src/cli/smart-router-cli.ts`). In v1, `session_id_hash` was an **unsalted SHA-256** of the raw session id; in v2 it is an **HMAC-SHA256 keyed with an install-local pepper** (`hashSessionIdForTelemetryExport` in `src/infra/telemetry.ts`). The pepper is generated once per install at `.pi-smart-router/.dataset-key` (mode 0600) and is **never** included in export payloads — ingest strips pepper fields before aggregation. Consequences for operators comparing exports:
+
+- Hashes are **stable per install** (same session → same hash within one install/cwd) but **not correlatable across installs** — two machines routing the same prompt produce different hashes.
+- **v1 hashes are not comparable with v2 hashes.** If you maintain baselines that join or diff older v1 contrib exports, **re-baseline** on v2 output — do not mix rows across the version boundary.
+- Raw `session_id` / `request_id` values never appear in the JSONL in either version.
 
 **How to contribute**
 
