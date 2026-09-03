@@ -6,7 +6,7 @@
 **Bump type:** minor
 **Profile:** minor
 **Theme:** Runtime integrity and operator trust — routing state cannot leak across sessions, telemetry exports are privacy-hardened, and degraded neural stages are explicit instead of silent.
-**Operator approved scope:** yes (2026-09-02 — "approve release scope"; Phase 3 author only — no batch/implementation this turn). **Scope expand (2026-09-02):** add SP-254 live leaderboard re-ingest + fleet alias retarget as documentation/hygiene (not a 4th enhancement issue).
+**Operator approved scope:** yes (2026-09-02). **Scope expand (2026-09-02):** SP-254 hygiene. **Phase 4–5 complete (2026-09-03)** — awaiting publish approval.
 
 ---
 
@@ -179,15 +179,15 @@ Open-issue count (21) did **not** raise this release's enhancement or total-task
 
 ## Publish checklist (Phase 5–6)
 
-- [ ] All release-scoped tasks `.DONE` on `main`
-- [ ] Post-integrate `release:check` green after **each wave** (log paths recorded)
-- [ ] `spine preflight` green
-- [ ] `npm run release:check` green on final `HEAD` (exit 0 verified)
-- [ ] `npm run release:assert-content` green (substantive delta vs `v0.20.0`)
-- [ ] Manifest target == expected next version from `package.json` (0.20.0 + minor = 0.21.0)
-- [ ] No existing git tag `v0.21.0` (verified: tags end at `v0.20.0`)
-- [ ] CI workflow green on `HEAD` (`gh run list` / `gh run watch`)
-- [ ] `git status` clean
+- [x] All release-scoped tasks `.DONE` on `main`
+- [x] Post-integrate `release:check` green after **each wave** (`/tmp/pi-smart-router-post-integrate-wave-{0,1,2}.log`)
+- [x] `spine preflight` green
+- [x] `npm run release:check` green on final `HEAD` (exit 0; wave-2 used `SMART_ROUTER_SKIP_LIVE_BENCHMARK_REFRESH=1`)
+- [x] `npm run release:assert-content` green (73 substantive paths vs `v0.20.0`)
+- [x] Manifest target == expected next version from `package.json` (0.20.0 + minor = 0.21.0)
+- [x] No existing git tag `v0.21.0` (tags end at `v0.20.0`)
+- [ ] CI workflow green on `HEAD` — **pending `git push origin main`** (local ahead 34; last remote CI is v0.20.0-era)
+- [x] `git status` clean (after Phase 5 tracking commit)
 - [ ] Operator approved publish bump type: **minor** (matches Phase 2)
 - [ ] **Exactly one** `npm version minor` then `git push && git push --tags` — then **STOP** (no second bump)
 - [ ] `release.yml` succeeded; `npm view` `latest` matches `0.21.0` (else Publish recovery, do not re-bump)

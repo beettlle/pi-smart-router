@@ -865,7 +865,9 @@
 
 **Source:** Operator-approved **v0.21.0** (2026-09-02, minor profile). Theme: runtime integrity & operator trust — session eviction (#145), HMAC telemetry hashes (#146), explicit degraded mode (#148). 7×S split from original 3×M; **scope expand** adds SP-254 capability grounding hygiene (live ingest + aliases; not a 4th enh issue). Dep majors remain #162/#163.
 
-**Status:** Packets authored (Phase 3 + SP-254 expand). **Not started** — author-only (no batch/implementation this turn). Scope ID: `SP-247,SP-248,SP-249,SP-250,SP-251,SP-252,SP-253,SP-254`.
+**Status:** **Ready to publish** (2026-09-03). All SP-247–SP-254 `.DONE` on `main`. Scope ID: `SP-247,SP-248,SP-249,SP-250,SP-251,SP-252,SP-253,SP-254`.
+
+**Operational notes:** Wave 0 batch `20260902T232904-2631` (SP-247/249/251/254) landed; wave 1 `20260902T235656-478a` (SP-248/250/252 — SP-252 retried after kimi 5h quota, default profile); wave 2 `20260903T181330-01a2` (SP-253). Post-integrate logs: `/tmp/pi-smart-router-post-integrate-wave-0.log`, `…-wave-1.log`, `…-wave-2.log`. `release:assert-content` PASS vs `v0.20.0`. Branch **ahead 34** of `origin/main` — push required before CI-on-HEAD + Phase 6.
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.21.0/manifest.md`
 
