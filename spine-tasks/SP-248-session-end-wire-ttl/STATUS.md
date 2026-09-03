@@ -1,7 +1,7 @@
 # SP-248: Wire session_end + optional TTL fallback — Status
 
-**Current Step:** 0
-**Status:** Not Started
+**Current Step:** 1
+**Status:** In Progress
 **Last Updated:** 2026-09-02
 **Review Level:** 1
 **Size:** S
@@ -10,14 +10,14 @@
 
 ## Step 0: Preflight
 
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Confirm SP-247 helper is importable
-- [ ] Locate pi session-end / dispose lifecycle API
+- [x] Confirm SP-247 helper is importable
+- [x] Locate pi session-end / dispose lifecycle API
 
 ## Step 1: Wire session_end + optional TTL
 
-**Status:** ⬜ Not Started
+**Status:** 🔵 In Progress
 
 - [ ] Register session-end handler; call eviction helper
 - [ ] Optional orphan TTL with documented constant
@@ -37,4 +37,5 @@
 
 ## Discoveries
 
-- (none yet)
+- SP-247 helper `evictInMemorySessionState` lives at `src/api/session-eviction.ts` (also re-exported from `src/index.ts`).
+- pi session-end API = `session_shutdown` (ExtensionAPI, `SessionShutdownEvent` reason: quit|reload|new|resume|fork); already registered in `session-lifecycle.ts` — eviction wires into that handler.

@@ -1,5 +1,6 @@
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 
+import { evictInMemorySessionState } from '../../../src/api/session-eviction.js';
 import { SessionPinner } from '../../../src/domain/pinning/session-pinner.js';
 import {
   bindSharedModelRegistry,
@@ -14,6 +15,15 @@ export const FLEET_MODE_ENTRY_TYPE = 'smart-router-fleet-mode' as const;
 
 const SMART_ROUTER_PROVIDER = 'smart-router' as const;
 const SMART_ROUTER_AUTO_ID = 'auto' as const;
+
+/**
+ * Orphan-session TTL fallback (SP-248, #145). `session_shutdown` is the primary
+ * teardown signal; if pi ever shuts a session down without delivering it
+ * (extension reload races, missed events), the session's in-memory routing
+ * state is evicted once it has been idle for ORPHAN_SESSION_TTL_MS. The sweep
+ * runs on `session_start` and fails open — eviction must never break startup.
+ */
+export const ORPHAN_SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export function isSmartRouterActive(model: { provider: string; id: string }): boolean {
   return model.provider === SMART_ROUTER_PROVIDER && model.id === SMART_ROUTER_AUTO_ID;
@@ -97,6 +107,39 @@ export function setupSessionHooks(
 ): void {
   let activeModel: { provider: string; id: string } | undefined;
 
+  // Last-seen stamp per session for the orphan-TTL fallback (SP-248).
+  const lastSeenBySession = new Map<string, number>();
+
+  /** Evict all in-memory routing state for one session via the SP-247 helper. */
+  function evictSessionState(sessionId: string | undefined): void {
+    // Fail open: a missing/empty session id must never break teardown.
+    if (sessionId === undefined || sessionId === '') {
+      return;
+    }
+    evictInMemorySessionState(sessionId, {
+      executionLedger: runtime.executionLedger,
+      lifecycleHookState: runtime.lifecycleHookState,
+      sessionRouting: runtime.sessionRouting,
+    });
+    lastSeenBySession.delete(sessionId);
+  }
+
+  /** Drop sessions idle longer than ORPHAN_SESSION_TTL_MS (never throws). */
+  function sweepOrphanedSessions(now: number): void {
+    try {
+      for (const [sessionId, lastSeen] of lastSeenBySession) {
+        if (now - lastSeen > ORPHAN_SESSION_TTL_MS) {
+          evictSessionState(sessionId);
+        }
+      }
+    } catch (error) {
+      console.warn(
+        '[smart-router] orphan session sweep failed (fail open)',
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+
   pi.on('session_start', async (_event, ctx) => {
     activeModel = ctx.model;
     bindSharedModelRegistry(runtime, ctx.modelRegistry);
@@ -128,6 +171,10 @@ export function setupSessionHooks(
     datasetNotify.fn = runtime.notifyDatasetEnabled;
 
     const sessionId = ctx.sessionManager.getSessionId();
+    const now = Date.now();
+    lastSeenBySession.set(sessionId, now);
+    sweepOrphanedSessions(now);
+
     await sessionPinner.restoreSessionPin(sessionId);
 
     if (ctx.model !== undefined && isSmartRouterActive(ctx.model)) {
@@ -158,5 +205,17 @@ export function setupSessionHooks(
     delete runtime.streamDeps.ensureFleetFresh;
     datasetNotify.fn = undefined;
     ctx.ui.setStatus('smart-router-lmu', undefined);
+
+    // SP-248 (#145): drop per-session routing state so long-running pi
+    // processes do not retain ledger/lifecycle/routing maps forever.
+    // Fail open — teardown cleanup must never crash the host agent.
+    try {
+      evictSessionState(ctx.sessionManager.getSessionId());
+    } catch (error) {
+      console.warn(
+        '[smart-router] session teardown eviction failed (fail open)',
+        error instanceof Error ? error.message : String(error),
+      );
+    }
   });
 }
