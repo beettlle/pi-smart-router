@@ -1,0 +1,16 @@
+specs/001-build-smart-router/contracts/telemetry-contrib.schema.json
+  h_ae151c586ac6c5 20-21,31
+src/cli/smart-router-cli.ts
+  h_ae151c586ac6c5 18-19,26-31,271,275,280,283,290,297,378,384,396-400,420,435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "afe8071201f5d9edadb09a9a1c69646ce200eac9",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
