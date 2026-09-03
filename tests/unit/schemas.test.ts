@@ -8,6 +8,8 @@ import {
   CompressedContextSpecSchema,
   SaarConfigSchema,
   SaarSessionStateSchema,
+  DegradedRouteConfigSchema,
+  DEFAULT_DEGRADED_ROUTE_CONFIG,
 } from '../../src/domain/types/schemas.js';
 
 const validSaarConfig = {
@@ -272,5 +274,39 @@ describe('OperatorConfigSchema pin_only_fallback (SP-161)', () => {
     });
 
     expect(result.pin_only_fallback).toBe(false);
+  });
+});
+
+describe('DegradedRouteConfigSchema fail_closed_on_missing_weights (SP-252, #148)', () => {
+  const validDegradedRouteConfig = {
+    enabled: true,
+    learned_min_confidence: 0.6,
+    learned_max_entries: 512,
+    pattern_tool_use_ceiling: 0.3,
+  };
+
+  it('defaults fail_closed_on_missing_weights to false when omitted (fail-open)', () => {
+    const result = DegradedRouteConfigSchema.parse(validDegradedRouteConfig);
+    expect(result.fail_closed_on_missing_weights).toBe(false);
+  });
+
+  it('accepts fail_closed_on_missing_weights: true (operator opt-in)', () => {
+    const result = DegradedRouteConfigSchema.parse({
+      ...validDegradedRouteConfig,
+      fail_closed_on_missing_weights: true,
+    });
+    expect(result.fail_closed_on_missing_weights).toBe(true);
+  });
+
+  it('rejects non-boolean fail_closed_on_missing_weights', () => {
+    const result = DegradedRouteConfigSchema.safeParse({
+      ...validDegradedRouteConfig,
+      fail_closed_on_missing_weights: 'yes',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('ships fail-open in DEFAULT_DEGRADED_ROUTE_CONFIG', () => {
+    expect(DEFAULT_DEGRADED_ROUTE_CONFIG.fail_closed_on_missing_weights).toBe(false);
   });
 });

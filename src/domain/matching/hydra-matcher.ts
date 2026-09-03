@@ -92,6 +92,33 @@ export interface HydraMatcherConfig {
   readonly frugality?: FrugalityWeights;
   readonly projectionWeightsPath?: string;
   readonly k4HeadWeightsPath?: string;
+  /**
+   * SP-252 / #148: when true, match() refuses to score with placeholder
+   * requirement heads and throws {@link MissingWeightsFailClosedError} carrying
+   * the SP-251 reason codes. Default false keeps fail-open placeholders.
+   */
+  readonly failClosedOnMissingWeights?: boolean;
+}
+
+/**
+ * Thrown by HydraMatcher.match when `failClosedOnMissingWeights` is enabled and
+ * learned weight artifacts are missing/invalid (SP-252, #148). Carries the
+ * SP-251 reason codes so callers (the router pipeline) can route through the
+ * degraded sandwich with the codes visible on the decision path.
+ */
+export class MissingWeightsFailClosedError extends Error {
+  override readonly name = 'MissingWeightsFailClosedError';
+
+  /** SP-251 reason codes (e.g. `hydra_weights_missing`, `k4_heads_placeholder`). */
+  readonly reasonCodes: readonly string[];
+
+  constructor(reasonCodes: readonly string[]) {
+    super(
+      `HyDRA learned weight artifacts missing/invalid and ` +
+        `fail_closed_on_missing_weights is enabled: ${reasonCodes.join(', ')}`,
+    );
+    this.reasonCodes = reasonCodes;
+  }
 }
 
 const DEFAULT_BUDGET_MS = 100;
@@ -389,6 +416,7 @@ export class HydraMatcher {
   private readonly hydraHeads: HydraHeads;
   private readonly projectionWeights: HydraProjectionWeights | null;
   private readonly requirementReasonCodes: readonly string[];
+  private readonly failClosedOnMissingWeights: boolean;
 
   constructor(provider: EmbeddingProvider, config: HydraMatcherConfig) {
     const budget = config.budgetMs ?? DEFAULT_BUDGET_MS;
@@ -408,6 +436,7 @@ export class HydraMatcher {
           )
         : null;
     this.requirementReasonCodes = this.computeRequirementReasonCodes(provider);
+    this.failClosedOnMissingWeights = config.failClosedOnMissingWeights ?? false;
   }
 
   /**
@@ -456,6 +485,12 @@ export class HydraMatcher {
     fleet: readonly ModelProfile[],
   ): Promise<MatchResult> {
     const start = performance.now();
+
+    // SP-252 / #148: fail closed before paying the embedding cost when the
+    // operator opted out of placeholder-as-learned requirement extraction.
+    if (this.failClosedOnMissingWeights && this.requirementReasonCodes.length > 0) {
+      throw new MissingWeightsFailClosedError(this.requirementReasonCodes);
+    }
 
     const requirements = await this.provider.extractRequirements(
       buildHydraInput(request),

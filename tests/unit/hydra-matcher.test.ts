@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import {
   HydraMatcher,
   HydraProjectionWeightsLoaderError,
+  MissingWeightsFailClosedError,
   createHydraEmbeddingProvider,
   k4CapabilityVectorToRequirements,
   loadHydraProjectionWeights,
@@ -1098,5 +1099,99 @@ describe('missing-weights reason codes (SP-251)', () => {
 
     expect(provider.requirementReasonCodes?.()).toEqual([]);
     expect(result.requirement_reason_codes).toEqual([]);
+  });
+});
+
+// ─── Fail-closed on missing weights (SP-252, #148) ───────────────────────────
+
+describe('fail_closed_on_missing_weights (SP-252)', () => {
+  it('throws MissingWeightsFailClosedError with hydra_weights_missing when enabled and the projection artifact is missing', async () => {
+    const provider = makeMockProvider({ reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 });
+    const matcher = new HydraMatcher(provider, {
+      ...DEFAULT_CONFIG,
+      hydraHeads: 'learned_projection',
+      projectionWeightsPath: '/tmp/missing-hydra-projection-weights.json',
+      failClosedOnMissingWeights: true,
+    });
+
+    const error = await matcher.match(makeRequest(), [makeModel()]).catch(
+      (err: unknown) => err,
+    );
+
+    expect(error).toBeInstanceOf(MissingWeightsFailClosedError);
+    expect((error as MissingWeightsFailClosedError).reasonCodes).toEqual([
+      HYDRA_WEIGHTS_MISSING_REASON_CODE,
+    ]);
+    // Fail fast: placeholder extraction must not run.
+    expect(provider.extractRequirements).not.toHaveBeenCalled();
+  });
+
+  it('throws with k4_heads_placeholder when enabled on the ModernBERT K4 placeholder path', async () => {
+    const predictor: ModernBertHeadsPredictor = {
+      usesLearnedHeads: () => false,
+      missingHeadsReasonCode: () => K4_HEADS_PLACEHOLDER_REASON_CODE,
+      predictCapabilities: vi.fn(async () => ({
+        reasoning: 0.6,
+        code_gen: 0.7,
+        tool_use: 0.4,
+        debugging: 0.9,
+      })),
+      dispose: vi.fn(async () => {}),
+    };
+    const provider = wrapModernBertHeadsEmbeddingProvider(predictor);
+    const matcher = new HydraMatcher(provider, {
+      ...DEFAULT_CONFIG,
+      hydraHeads: 'modernbert_k4',
+      failClosedOnMissingWeights: true,
+    });
+
+    await expect(matcher.match(makeRequest(), [makeModel()])).rejects.toThrow(
+      MissingWeightsFailClosedError,
+    );
+    await expect(matcher.match(makeRequest(), [makeModel()])).rejects.toThrow(
+      /k4_heads_placeholder/,
+    );
+    expect(predictor.predictCapabilities).not.toHaveBeenCalled();
+  });
+
+  it('does not throw when fail-closed is enabled but learned weights load', async () => {
+    const filePath = makeTempWeightsFile(makeProjectionWeights());
+    const provider = makeMockProvider({ reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 });
+
+    try {
+      const matcher = new HydraMatcher(provider, {
+        ...DEFAULT_CONFIG,
+        hydraHeads: 'learned_projection',
+        projectionWeightsPath: filePath,
+        failClosedOnMissingWeights: true,
+      });
+
+      const result = await matcher.match(makeRequest(), [makeModel()]);
+
+      expect(matcher.usesLearnedProjection()).toBe(true);
+      expect(result.selected).not.toBeNull();
+      expect(result.requirement_reason_codes).toEqual([]);
+    } finally {
+      rmSync(filePath, { recursive: true, force: true });
+    }
+  });
+
+  it('remains fail-open by default and when explicitly disabled', async () => {
+    for (const failClosedOnMissingWeights of [undefined, false] as const) {
+      const provider = makeMockProvider({ reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 });
+      const matcher = new HydraMatcher(provider, {
+        ...DEFAULT_CONFIG,
+        hydraHeads: 'learned_projection',
+        projectionWeightsPath: '/tmp/missing-hydra-projection-weights.json',
+        ...(failClosedOnMissingWeights === undefined
+          ? {}
+          : { failClosedOnMissingWeights }),
+      });
+
+      const result = await matcher.match(makeRequest(), [makeModel()]);
+
+      expect(result.selected).not.toBeNull();
+      expect(result.requirement_reason_codes).toEqual([HYDRA_WEIGHTS_MISSING_REASON_CODE]);
+    }
   });
 });

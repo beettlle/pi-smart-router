@@ -6,9 +6,9 @@
  * matchers fall back to deterministic placeholders (fail-open default).
  *
  * These codes make the degraded weight state explicit to operators instead of
- * stderr-only `console.warn`. Fail-closed operator config
- * (`fail_closed_on_missing_weights`) and degraded-sandwich integration are
- * SP-252; README reason-code table is SP-253.
+ * stderr-only `console.warn`. The optional operator fail-closed config
+ * (`degraded_route.fail_closed_on_missing_weights`) and degraded-sandwich
+ * integration landed in SP-252; README reason-code table is SP-253.
  */
 
 /** HyDRA learned projection weights missing/invalid → placeholder projection in use. */
