@@ -1,6 +1,6 @@
 # SP-248: Wire session_end + optional TTL fallback — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** In Progress
 **Last Updated:** 2026-09-02
 **Review Level:** 1
@@ -17,15 +17,15 @@
 
 ## Step 1: Wire session_end + optional TTL
 
-**Status:** 🔵 In Progress
+**Status:** ✅ Complete
 
-- [ ] Register session-end handler; call eviction helper
-- [ ] Optional orphan TTL with documented constant
-- [ ] Fail open if session id missing
+- [x] Register session-end handler; call eviction helper
+- [x] Optional orphan TTL with documented constant
+- [x] Fail open if session id missing
 
 ## Step 2: Testing & Verification
 
-**Status:** ⬜ Not Started
+**Status:** 🔵 In Progress
 
 - [ ] Tests cover post-end eviction (and TTL if implemented)
 - [ ] Contract `testCommand` green

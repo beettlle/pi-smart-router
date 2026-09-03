@@ -23,6 +23,7 @@ import { registerSmartRouterCommand } from '../../.pi/extensions/smart-router/co
 import * as pricingLifecycle from '../../.pi/extensions/smart-router/pricing-lifecycle.js';
 import {
   isSmartRouterActive,
+  ORPHAN_SESSION_TTL_MS,
   setupSessionHooks,
 } from '../../.pi/extensions/smart-router/session-lifecycle.js';
 import type { SmartRouterRuntime } from '../../.pi/extensions/smart-router/types.js';
@@ -3784,5 +3785,179 @@ describe('operator SAAR wiring (SP-173)', () => {
     );
 
     expect(result.action).toBe('use_pin');
+  });
+});
+
+describe('session teardown eviction (SP-248, #145)', () => {
+  type SessionHookName = 'session_start' | 'model_select' | 'session_shutdown';
+
+  function createTeardownHarness(sessionId: string | undefined = 'sess-tear') {
+    const handlers: Record<SessionHookName, Array<(event: unknown, ctx: unknown) => unknown>> = {
+      session_start: [],
+      model_select: [],
+      session_shutdown: [],
+    };
+
+    const pi = {
+      on(event: string, handler: unknown) {
+        if (event in handlers) {
+          handlers[event as SessionHookName].push(handler as (event: unknown, ctx: unknown) => unknown);
+        }
+      },
+    };
+
+    const store = new MemoryStore([]);
+    const sessionPinner = new SessionPinner({ store });
+    const executionLedger = new ExecutionLedger();
+    const lifecycleHookState = new LifecycleHookState();
+    const sessionRouting = new Map<string, unknown>();
+    const runtime = {
+      fleetMode: 'scoped' as const,
+      lastDecision: undefined,
+      priceCatalog: null,
+      modelRegistry: createMockRegistry(registryModels),
+      store,
+      sessionPinner,
+      executionLedger,
+      lifecycleHookState,
+      hydraMatcher: undefined,
+      sessionRouting,
+      streamDeps: {
+        router: createMockRouter(vi.fn(async () => makeDecision())),
+        modelRegistry: createMockRegistry(registryModels),
+        fleet,
+        executionLedger,
+      },
+    } as unknown as SmartRouterRuntime;
+
+    setupSessionHooks(pi as never, runtime, sessionPinner, { fn: undefined });
+
+    let currentSessionId: string | undefined = sessionId;
+    const ctx = {
+      cwd: '/tmp',
+      model: makeAutoModel(),
+      modelRegistry: createMockRegistry(registryModels),
+      sessionManager: {
+        getSessionId: () => {
+          if (currentSessionId === undefined) {
+            throw new Error('no active session');
+          }
+          return currentSessionId;
+        },
+        getEntries: () => [],
+      },
+      ui: {
+        setStatus: vi.fn(),
+        notify: vi.fn(),
+        theme: undefined,
+      },
+    };
+
+    return {
+      runtime,
+      executionLedger,
+      lifecycleHookState,
+      sessionRouting,
+      setSessionId(id: string | undefined) {
+        currentSessionId = id;
+      },
+      async fireSessionStart() {
+        await handlers.session_start[0]!({}, ctx);
+      },
+      async fireSessionShutdown() {
+        await handlers.session_shutdown[0]!(
+          { type: 'session_shutdown', reason: 'quit' },
+          ctx,
+        );
+      },
+    };
+  }
+
+  function seedSessionState(
+    harness: ReturnType<typeof createTeardownHarness>,
+    sessionId: string,
+  ): void {
+    harness.executionLedger.recordSuccess(sessionId, {
+      provider: 'openai',
+      api: 'openai-responses',
+      id: 'gpt-4o-mini',
+    });
+    harness.lifecycleHookState.markCompaction(sessionId);
+    harness.sessionRouting.set(sessionId, { decision: 'cloud-economical' });
+  }
+
+  beforeEach(() => {
+    vi.spyOn(fleetBootstrap, 'bindSharedModelRegistry').mockImplementation(() => {});
+    vi.spyOn(fleetBootstrap, 'rebuildFleet').mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('evicts ledger, lifecycle, and sessionRouting keys on session_shutdown', async () => {
+    const harness = createTeardownHarness('sess-tear');
+    await harness.fireSessionStart();
+    seedSessionState(harness, 'sess-tear');
+
+    expect(harness.executionLedger.getLastExecution('sess-tear')).not.toBeNull();
+    expect(harness.lifecycleHookState.has('sess-tear')).toBe(true);
+    expect(harness.sessionRouting.has('sess-tear')).toBe(true);
+
+    await harness.fireSessionShutdown();
+
+    expect(harness.executionLedger.getLastExecution('sess-tear')).toBeNull();
+    expect(harness.lifecycleHookState.has('sess-tear')).toBe(false);
+    expect(harness.sessionRouting.has('sess-tear')).toBe(false);
+  });
+
+  it('fails open when the session id is unavailable at shutdown', async () => {
+    const harness = createTeardownHarness('sess-tear');
+    await harness.fireSessionStart();
+    seedSessionState(harness, 'sess-tear');
+    harness.setSessionId(undefined);
+
+    await expect(harness.fireSessionShutdown()).resolves.toBeUndefined();
+
+    // Missing session id must not evict unrelated state (TTL catches it later).
+    expect(harness.executionLedger.getLastExecution('sess-tear')).not.toBeNull();
+    expect(harness.lifecycleHookState.has('sess-tear')).toBe(true);
+    expect(harness.sessionRouting.has('sess-tear')).toBe(true);
+  });
+
+  it('sweeps orphaned sessions idle beyond ORPHAN_SESSION_TTL_MS on session_start', async () => {
+    vi.useFakeTimers({ now: 1_000_000, toFake: ['Date'] });
+    const harness = createTeardownHarness('sess-old');
+    await harness.fireSessionStart();
+    seedSessionState(harness, 'sess-old');
+
+    vi.setSystemTime(1_000_000 + ORPHAN_SESSION_TTL_MS + 1);
+    harness.setSessionId('sess-new');
+    await harness.fireSessionStart();
+    seedSessionState(harness, 'sess-new');
+
+    expect(harness.executionLedger.getLastExecution('sess-old')).toBeNull();
+    expect(harness.lifecycleHookState.has('sess-old')).toBe(false);
+    expect(harness.sessionRouting.has('sess-old')).toBe(false);
+
+    expect(harness.executionLedger.getLastExecution('sess-new')).not.toBeNull();
+    expect(harness.lifecycleHookState.has('sess-new')).toBe(true);
+    expect(harness.sessionRouting.has('sess-new')).toBe(true);
+  });
+
+  it('retains recently-seen sessions below the TTL', async () => {
+    vi.useFakeTimers({ now: 1_000_000, toFake: ['Date'] });
+    const harness = createTeardownHarness('sess-old');
+    await harness.fireSessionStart();
+    seedSessionState(harness, 'sess-old');
+
+    vi.setSystemTime(1_000_000 + ORPHAN_SESSION_TTL_MS - 1000);
+    harness.setSessionId('sess-new');
+    await harness.fireSessionStart();
+
+    expect(harness.executionLedger.getLastExecution('sess-old')).not.toBeNull();
+    expect(harness.lifecycleHookState.has('sess-old')).toBe(true);
+    expect(harness.sessionRouting.has('sess-old')).toBe(true);
   });
 });
