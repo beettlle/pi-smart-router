@@ -1,11 +1,11 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-09-02
+**Last Updated:** 2026-09-04
 **Status:** Active
-**Next Task ID:** SP-255
+**Next Task ID:** SP-263
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v0.21.0** on npm (2026-09-03, minor — SP-247–SP-254 runtime integrity & operator trust; closes #145/#146/#148). Tag `v0.21.0`, commit `ccaedba`. Prior: v0.20.0 (SP-241–SP-246); v0.19.3 patch (SP-239/#161 + SP-240); accidental empty `v0.19.4` deprecated. Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
+**Released:** **v0.21.0** on npm (2026-09-03, minor — SP-247–SP-254 runtime integrity & operator trust; closes #145/#146/#148). Tag `v0.21.0`, commit `ccaedba`. **In progress:** v0.22.0 (SP-255–SP-262 — extension facade + coverage + ONNX pin/dispose; #149/#144/#147). Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
 
 ---
 
@@ -870,6 +870,27 @@
 **Operational notes:** Wave 0 batch `20260902T232904-2631` (SP-247/249/251/254); wave 1 `20260902T235656-478a` (SP-248/250/252 — SP-252 retried after kimi 5h quota); wave 2 `20260903T181330-01a2` (SP-253). Post-integrate logs: `/tmp/pi-smart-router-post-integrate-wave-{0,1,2}.log`. Pre-tag CI: https://github.com/beettlle/pi-smart-router/actions/runs/33817847475. Single `npm version minor` → `ccaedba` / tag `v0.21.0` — STOP (no second bump).
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.21.0/manifest.md`
+
+### Phase 56 — Release v0.22.0 Extension Boundary & ONNX Supply-Chain (SP-255–SP-262)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-255 | Public package facade exports for extension needs | S | — | Partial #149 |
+| SP-256 | Migrate extension deep `src/` imports to facade | S | SP-255 | Partial #149 |
+| SP-257 | ESLint/CI guard blocking extension deep imports | S | SP-256 | Closes #149 |
+| SP-258 | Vitest extension coverage include + threshold | S | — | Closes #144 |
+| SP-259 | Pin ONNX artifacts by SHA-256 + verify on load | S | — | Partial #147 |
+| SP-260 | Real embedder `dispose()` + lifecycle tests | S | SP-259 | Closes #147 (w/ SP-261) |
+| SP-261 | Supply-chain / offline cache operator docs | S | SP-259 | Partial #147 |
+| SP-262 | Theme docs: facade + coverage + pin operator notes | S | SP-257, SP-258, SP-260, SP-261 | Theme docs |
+
+**Source:** Operator-approved **v0.22.0** (2026-09-04, minor profile). Theme: extension package boundary and ONNX embedder supply-chain integrity — #149 facade, #144 coverage gate, #147 digest pins + dispose. 8×S. Dep majors remain #162/#163.
+
+**Status:** Packets authored; awaiting Phase 4 batch execution.
+
+**Scope ID:** `SP-255,SP-256,SP-257,SP-258,SP-259,SP-260,SP-261,SP-262`
+
+**Authoring notes:** `spine-tasks/_authoring/release-v0.22.0/manifest.md`
 
 ---
 
