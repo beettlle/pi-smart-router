@@ -1,0 +1,16 @@
+spine-tasks/SP-257-extension-deep-import-guard/.reviews/0-20260905T193925.md
+  h_ae151c586ac6c5 1-12
+spine-tasks/SP-257-extension-deep-import-guard/.reviews/final-20260905T194004.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ba178aacd29993226911e890f11bef985b88b2a2",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
