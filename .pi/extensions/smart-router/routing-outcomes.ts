@@ -1,5 +1,9 @@
-import type { RoutingDecision, RoutingRequest } from '../../../src/domain/types/index.js';
-import type { SessionRoutingSnapshot } from '../../../src/infrastructure/telemetry/outcome-recorder.js';
+import type {
+  RoutingDecision,
+  RoutingRequest,
+  SessionRoutingSnapshot,
+} from '../../../src/index.js';
+
 import type { StreamDelegationDeps } from './types.js';
 
 export function capturePreRouteOutcomes(

@@ -22,21 +22,22 @@ import {
   type TextContent,
 } from '@earendil-works/pi-ai/compat';
 
-import type {
-  CompressedContextSpec,
-  PlanningDelegateObservability,
-  RoutingDecision,
-} from '../../../src/domain/types/index.js';
-import { resolveAdaptiveReasoning } from '../../../src/domain/delegation/adaptive-reasoning.js';
-import { DEFAULT_PLANNING_DELEGATE_CONFIG } from '../../../src/domain/types/schemas.js';
 import {
+  resolveAdaptiveReasoning,
+  DEFAULT_PLANNING_DELEGATE_CONFIG,
   createPlanningDelegateObservability,
   enrichRoutingDecisionWithPlanningDelegate,
   PLANNING_DELEGATE,
   PLANNING_DELEGATE_TIMEOUT,
   PLANNING_DELEGATE_UNAVAILABLE,
   PLANNING_DIRECT_FRONTIER,
-} from '../../../src/infrastructure/telemetry/routing-telemetry.js';
+} from '../../../src/index.js';
+import type {
+  CompressedContextSpec,
+  PlanningDelegateObservability,
+  RoutingDecision,
+} from '../../../src/index.js';
+
 import { collectDelegatedStream } from './delegate-stream.js';
 import { findFleetProfile, resolveRegistryModel } from './delegation-runtime.js';
 import type { StreamDelegationDeps } from './types.js';

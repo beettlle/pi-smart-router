@@ -7,27 +7,28 @@ import type {
   SimpleStreamOptions,
 } from '@earendil-works/pi-ai/compat';
 
-import { safeCloudDefault } from '../../../src/domain/pipeline/safe-default.js';
-import { computeOutputHeadroom } from '../../../src/domain/delegation/output-headroom.js';
-import { resolvePeakPricingAdjustment } from '../../../src/domain/pricing/peak-pricing.js';
 import {
+  safeCloudDefault,
+  computeOutputHeadroom,
+  resolvePeakPricingAdjustment,
   CONTEXT_OVERFLOW_NO_FIT,
   resolveContextOverflowFallback,
-} from '../../../src/domain/routing/context-fit.js';
-import {
   assertRoutableFleetAfterGeminiToolHistoryGuard,
   GEMINI_TOOL_HISTORY_EXCLUDED,
   isGoogleGeminiProfile,
   resolveEffectiveFleet,
-} from '../../../src/domain/routing/tool-history-guard.js';
-import type { ModelProfile, RoutingDecision, RoutingRequest } from '../../../src/domain/types/index.js';
-import type { GeminiToolHistoryGuardResult } from '../../../src/domain/routing/tool-history-guard.js';
-import {
   isGeminiThoughtSignatureAssistantError,
   parseAssistantMessageError,
-} from '../../../src/infrastructure/delegation/provider-error.js';
-import { GEMINI_REPLAY_INCOMPATIBLE } from '../../../src/infra/gemini-provider.js';
-import { shouldFailoverOnProviderError } from '../../../src/infrastructure/gateway/gateway-dispatch.js';
+  GEMINI_REPLAY_INCOMPATIBLE,
+  shouldFailoverOnProviderError,
+} from '../../../src/index.js';
+import type {
+  ModelProfile,
+  RoutingDecision,
+  RoutingRequest,
+  GeminiToolHistoryGuardResult,
+} from '../../../src/index.js';
+
 import {
   commitPipedTerminal,
   delegateWithOutcome,

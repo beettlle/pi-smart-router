@@ -1,7 +1,12 @@
-import { DEFAULT_OPERATOR_CONFIG } from '../../../src/config/defaults.js';
-import type { PriceCatalog } from '../../../src/domain/types/index.js';
-import { fetchLitellmPriceCatalog } from '../../../src/infrastructure/pricing/litellm-fetch.js';
-import { checkStaleness } from '../../../src/infrastructure/pricing/pricing-monitor.js';
+import {
+  DEFAULT_OPERATOR_CONFIG,
+  fetchLitellmPriceCatalog,
+  checkStaleness,
+} from '../../../src/index.js';
+import type {
+  PriceCatalog,
+} from '../../../src/index.js';
+
 import type { SmartRouterRuntime } from './types.js';
 
 export async function refreshPricingCatalog(

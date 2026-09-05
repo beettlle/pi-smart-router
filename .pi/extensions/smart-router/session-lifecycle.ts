@@ -1,7 +1,10 @@
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 
-import { evictInMemorySessionState } from '../../../src/api/session-eviction.js';
-import { SessionPinner } from '../../../src/domain/pinning/session-pinner.js';
+import {
+  evictInMemorySessionState,
+  SessionPinner,
+} from '../../../src/index.js';
+
 import {
   bindSharedModelRegistry,
   ensureFleetFresh,

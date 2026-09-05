@@ -7,10 +7,15 @@ import type {
 } from '@earendil-works/pi-ai/compat';
 import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
 
-import type { HydraMatcher } from '../../../src/domain/matching/hydra-matcher.js';
-import { ExecutionLedger } from '../../../src/domain/delegation/execution-ledger.js';
-import { SessionPinner } from '../../../src/domain/pinning/session-pinner.js';
+import {
+  ExecutionLedger,
+  SessionPinner,
+  DatasetRecorder,
+  OutcomeRecorder,
+  LifecycleHookState,
+} from '../../../src/index.js';
 import type {
+  HydraMatcher,
   AdaptiveReasoningConfig,
   ModelProfile,
   PlanningDelegateConfig,
@@ -18,20 +23,12 @@ import type {
   RoutingDecision,
   RoutingReasoningTelemetry,
   RoutingUsageActuals,
-} from '../../../src/domain/types/index.js';
-import type { PlanningDelegateSpawnFn } from './planning-delegate.js';
-import type { StorePort } from '../../../src/domain/types/store-port.js';
-import {
-  DatasetRecorder,
-} from '../../../src/infrastructure/telemetry/dataset-recorder.js';
-import {
-  OutcomeRecorder,
-  type SessionRoutingSnapshot,
-} from '../../../src/infrastructure/telemetry/outcome-recorder.js';
-import {
-  LifecycleHookState,
-  type RouterHandle,
+  StorePort,
+  SessionRoutingSnapshot,
+  RouterHandle,
 } from '../../../src/index.js';
+
+import type { PlanningDelegateSpawnFn } from './planning-delegate.js';
 
 export type FleetMode = 'scoped' | 'all';
 

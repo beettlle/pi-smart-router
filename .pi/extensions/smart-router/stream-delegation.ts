@@ -7,8 +7,14 @@ import {
   createAssistantMessageEventStream,
 } from '@earendil-works/pi-ai/compat';
 
-import type { RoutingDecision, RoutingFeatureSidecar } from '../../../src/domain/types/index.js';
-import { resolvePeakPricingAdjustment } from '../../../src/domain/pricing/peak-pricing.js';
+import {
+  resolvePeakPricingAdjustment,
+} from '../../../src/index.js';
+import type {
+  RoutingDecision,
+  RoutingFeatureSidecar,
+} from '../../../src/index.js';
+
 import { createErrorMessage } from './delegation-runtime.js';
 import { routeAndDelegate } from './route-and-delegate.js';
 import type { StreamDelegationDeps } from './types.js';

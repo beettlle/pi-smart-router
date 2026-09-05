@@ -1,23 +1,21 @@
 import {
   DEFAULT_HISTORY_LIMIT,
   MAX_HISTORY_LIMIT,
-} from '../../../src/infrastructure/telemetry/telemetry-limits.js';
+  aggregateSessionStatsFromFleet,
+  DEFAULT_TELEMETRY_CONTRIB_EXPORT_LIMIT,
+  parseExportTelemetryContribArgs,
+} from '../../../src/index.js';
 import type {
   ModelProfile,
   PriceCatalog,
   RoutingDecision,
   RoutingTelemetry,
-} from '../../../src/domain/types/index.js';
-import {
-  aggregateSessionStatsFromFleet,
-  type SessionStatsSnapshot,
-} from '../../../src/infrastructure/telemetry/session-stats.js';
+  SessionStatsSnapshot,
+  PlacementPlanReport,
+} from '../../../src/index.js';
+
 import { SMART_ROUTER_USAGE } from './commands.js';
-import {
-  DEFAULT_TELEMETRY_CONTRIB_EXPORT_LIMIT,
-  parseExportTelemetryContribArgs,
-} from '../../../src/cli/smart-router-cli.js';
-import type { PlacementPlanReport } from '../../../src/infrastructure/hardware/placement-plan.js';
+
 import {
   DEFAULT_DATASET_EXPORT_LIMIT,
   MAX_DATASET_EXPORT_LIMIT,
