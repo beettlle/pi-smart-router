@@ -1,0 +1,22 @@
+spine-tasks/SP-260-embedder-dispose-lifecycle/PROMPT.md
+  s_32375749d3a45a::t_4ea310926bc9b7 96
+  s_32375749d3a45a::t_b7da972ee00f38 48-49,56-57,59
+spine-tasks/SP-260-embedder-dispose-lifecycle/STATUS.md
+  s_32375749d3a45a::t_618508128dace7 64-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "d670fa2a8f1f3484c0f6b78f8e0a1fd91fd8789d",
+  "prompts": {},
+  "sessions": {
+    "s_32375749d3a45a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-39701982-0dda-44b2-8313-744fc52cfbec",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
