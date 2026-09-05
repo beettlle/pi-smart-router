@@ -1,7 +1,7 @@
 # SP-259 — Pin ONNX artifacts by SHA-256 + verify on load — Status
 
-**Current Step:** Step 2: Testing & Verification
-**Status:** In Progress
+**Current Step:** Complete — all steps done
+**Status:** Complete
 **Last Updated:** 2026-09-05
 **Review Level:** 1
 **Review Counter:** 0
@@ -26,10 +26,10 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Unit tests green
-- [ ] Contract testCommand green
+- [x] Unit tests green
+- [x] Contract testCommand green
 
 ---
 
@@ -50,7 +50,7 @@
 | 2026-09-05 | Step 0 complete | cache path + model ids located; pin config location = dedicated file `config/onnx-artifact-pins.json` + env activation |
 | 2026-09-05 | Plan review step 1 | skipped by engine (real-pi worker session; engine runs reviews post-.DONE) |
 | 2026-09-05 | Step 1 complete | `verifyOnnxArtifactPins` + factory wiring in embedding-provider.ts; pins landed; typecheck + 28/28 unit tests green |
-| | | |
+| 2026-09-05 | Step 2 complete | Contract `npm run typecheck && npx vitest run tests/unit/embedding-provider.test.ts` green (28/28). Full `npm test`: 2151/2152 — sole failure `write-queue-lag.test.ts` is an unrelated SP-236 event-loop timing benchmark flake (passes in isolation; not touched by this change). `npm run coverage:check` exit 0; embedding-provider.ts 94.05% lines / 100% funcs. GitNexus detect_changes: medium risk, changes confined to embedding-provider.ts as scoped. |
 
 | Date | Blocker | Resolution |
 |------|---------|------------|
