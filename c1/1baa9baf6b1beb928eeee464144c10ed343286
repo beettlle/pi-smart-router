@@ -1,0 +1,16 @@
+spine-tasks/SP-258-extension-coverage-gate/.reviews/0-20260905T184156.md
+  h_ae151c586ac6c5 1-16
+spine-tasks/SP-258-extension-coverage-gate/.reviews/final-20260905T184343.md
+  h_ae151c586ac6c5 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c11baa9baf6b1beb928eeee464144c10ed343286",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
