@@ -59,3 +59,5 @@
 
 ## Notes
 
+
+- 2026-09-05: fileScopeMustChange → docs/extension-package-boundary.md (README pre-landed by SP-261).
