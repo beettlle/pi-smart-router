@@ -972,6 +972,32 @@ npm run benchmark:encoder
 
 The script reports p50/p95 latency for each encoder and asserts Granite p50/p95 stay within the 120 ms budget ceiling. Requires `@huggingface/transformers` and a one-time ONNX artifact download.
 
+#### Supply-chain: artifact pins, offline cache, and audit posture
+
+**Digest pinning (SP-259, [#147](https://github.com/beettlle/pi-smart-router/issues/147)).** The embedder verifies cached ONNX artifacts against SHA-256 pins before they are used. Pins live in [`config/onnx-artifact-pins.json`](config/onnx-artifact-pins.json) (`pins[modelId][cacheRelativePath] = sha256`; digests are the HuggingFace LFS oids for the default quantized artifacts). Pin mode is controlled by `SMART_ROUTER_ONNX_PIN_MODE`:
+
+| Mode | Behavior |
+|------|----------|
+| `off` (default) | No verification — first run downloads unpinned (local dogfood preserved). |
+| `verify` | Configured pins are verified after load; models without pins still download unpinned. |
+| `enforce` | CI/prod: pins are **required** for the loaded model — missing pin file, missing pins for the model, missing cached artifact, or any digest mismatch all fail closed. |
+
+Override the pin file location with `SMART_ROUTER_ONNX_PIN_FILE`. Verification runs **after** the transformers.js pipeline loads but **before** the embedder is returned, so even a first-run anonymous download is checked against configured pins — tampered or unexpected bytes fail closed and the session is never usable. Anonymous fetch does not silently bypass pins when they are configured. When upgrading model revisions, re-fetch digests from the HuggingFace API out-of-band and update the pin file; never pin a digest you have not verified.
+
+**Offline / air-gapped cache warm.** The artifact cache (`hydra.artifact_cache_path`, default `.pi-smart-router/models/`) is fully self-contained once warmed:
+
+1. On a networked host, warm the cache with the encoder you deploy — run any routed request, or `npm run benchmark:encoder -- --cache .pi-smart-router/models/`.
+2. Enable pin mode (`verify` or `enforce`) during the warm so digest mismatches surface on the networked host, before rollout.
+3. Copy the cache directory (and `config/onnx-artifact-pins.json` when pinning) to the offline host and point `hydra.artifact_cache_path` at the copy.
+4. Defense in depth: embedders can set `env.allowRemoteModels = false` (from `@huggingface/transformers`) before routing to forbid any network fetch, so no anonymous download path exists in production.
+
+**`npm audit` posture for the transformers chain.** The audit baseline includes high-severity advisories in `@huggingface/transformers` → `onnxruntime-node` → `adm-zip` ([GHSA-xcpc-8h2w-3j85](https://github.com/advisories/GHSA-xcpc-8h2w-3j85) — crafted ZIP triggers a 4GB memory allocation) and `sharp` (libvips CVEs), both **with no upstream fix available**. Accepted-risk rationale:
+
+- Model bytes in the pinned production path come only from the operator-controlled local cache, verified by SHA-256 — the vulnerable archive-decompression path is not exposed to untrusted input there.
+- Inference runs locally with no gradients and no untrusted deserialization; untrusted bytes enter only on first cache warm, over TLS from the HuggingFace hub, and (with pin mode on) are digest-checked before use.
+
+**Monitoring policy:** run `npm audit` at each release and record the baseline. A *new* high-severity advisory in the transformers/onnxruntime chain requires a documented exception with rationale (release notes or a linked issue) — never silently dismiss; exceptions without rationale are release blockers.
+
 ## Architecture
 
 ### Three execution tiers
