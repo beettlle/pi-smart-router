@@ -1,0 +1,21 @@
+spine-tasks/SP-262-v022-theme-docs/PROMPT.md
+  s_fb32292a02b01f::t_297c1d39c5a5cd 22-23,25,50-51,59,61,98
+spine-tasks/SP-262-v022-theme-docs/STATUS.md
+  s_fb32292a02b01f::t_2339e2a6bc3956 62-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "069179282e9d3a68d48bbad1f20732de0a86f582",
+  "prompts": {},
+  "sessions": {
+    "s_fb32292a02b01f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-72cea319-f932-4761-804c-e20725de97fc",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
