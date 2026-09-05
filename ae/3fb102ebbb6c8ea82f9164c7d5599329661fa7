@@ -1,0 +1,14 @@
+spine-tasks/SP-259-onnx-artifact-digest-pin/STATUS.md
+  h_ae151c586ac6c5 3-4,29,31-32,53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ae3fb102ebbb6c8ea82f9164c7d5599329661fa7",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
