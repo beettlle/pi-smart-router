@@ -1,0 +1,14 @@
+spine-tasks/SP-258-extension-coverage-gate/STATUS.md
+  h_ae151c586ac6c5 3-4,15,18-22,26,28-29,33-36,38,59-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "417693f083b626abc5d99c00023ad7dc21b6a21c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
