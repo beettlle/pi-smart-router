@@ -1,0 +1,16 @@
+spine-tasks/SP-262-v022-theme-docs/.reviews/0-20260905T201012.md
+  h_ae151c586ac6c5 1-21
+spine-tasks/SP-262-v022-theme-docs/.reviews/final-20260905T201039.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e579ba7b6cefa274fbd33eb538b11e713b16317c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
