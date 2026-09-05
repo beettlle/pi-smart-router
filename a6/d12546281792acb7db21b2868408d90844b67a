@@ -1,0 +1,50 @@
+.pi/extensions/smart-router/command-formatters.ts
+  h_ae151c586ac6c5 4-7,13-16,18
+.pi/extensions/smart-router/commands.ts
+  h_ae151c586ac6c5 13-17
+.pi/extensions/smart-router/dataset-export.ts
+  h_ae151c586ac6c5 9,12-18
+.pi/extensions/smart-router/delegate-stream.ts
+  h_ae151c586ac6c5 13-14,16-21
+.pi/extensions/smart-router/delegation-runtime.ts
+  h_ae151c586ac6c5 27-34
+.pi/extensions/smart-router/extension-setup.ts
+  h_ae151c586ac6c5 7-15
+.pi/extensions/smart-router/fleet-bootstrap.ts
+  h_ae151c586ac6c5 5,9,14,18-21,24-35
+.pi/extensions/smart-router/index.ts
+  h_ae151c586ac6c5 9-11,120,127
+.pi/extensions/smart-router/planning-delegate.ts
+  h_ae151c586ac6c5 26-27,34-40
+.pi/extensions/smart-router/pricing-lifecycle.ts
+  h_ae151c586ac6c5 1-9
+.pi/extensions/smart-router/route-and-delegate.ts
+  h_ae151c586ac6c5 11-13,22-31
+.pi/extensions/smart-router/routing-context.ts
+  h_ae151c586ac6c5 10-12,17
+.pi/extensions/smart-router/routing-outcomes.ts
+  h_ae151c586ac6c5 1-6
+.pi/extensions/smart-router/session-lifecycle.ts
+  h_ae151c586ac6c5 3-7
+.pi/extensions/smart-router/stream-delegation.ts
+  h_ae151c586ac6c5 10-17
+.pi/extensions/smart-router/types.ts
+  h_ae151c586ac6c5 10-16,18,26-28,31-32
+.pi/extensions/smart-router/utils.ts
+  h_ae151c586ac6c5 7-11
+spine-tasks/SP-256-migrate-extension-facade-imports/STATUS.md
+  h_ae151c586ac6c5 3-5,15,17-18,22,24-26,30,32-33,47-49,55-58
+src/index.ts
+  h_ae151c586ac6c5 197-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a6d12546281792acb7db21b2868408d90844b67a",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
