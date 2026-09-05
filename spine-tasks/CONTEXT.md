@@ -5,7 +5,7 @@
 **Next Task ID:** SP-263
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v0.21.0** on npm (2026-09-03, minor — SP-247–SP-254 runtime integrity & operator trust; closes #145/#146/#148). Tag `v0.21.0`, commit `ccaedba`. **In progress:** v0.22.0 (SP-255–SP-262 — extension facade + coverage + ONNX pin/dispose; #149/#144/#147). Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
+**Released:** **v0.21.0** on npm (2026-09-03, minor — SP-247–SP-254 runtime integrity & operator trust; closes #145/#146/#148). Tag `v0.21.0`, commit `ccaedba`. **Ready to publish:** v0.22.0 (SP-255–SP-262 landed; extension facade + coverage + ONNX pin/dispose; #149/#144/#147). Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
 
 ---
 
@@ -886,7 +886,7 @@
 
 **Source:** Operator-approved **v0.22.0** (2026-09-04, minor profile). Theme: extension package boundary and ONNX embedder supply-chain integrity — #149 facade, #144 coverage gate, #147 digest pins + dispose. 8×S. Dep majors remain #162/#163.
 
-**Status:** Packets authored; awaiting Phase 4 batch execution.
+**Status:** **Ready to publish** (2026-09-05). All SP-255–SP-262 `.DONE` on `main`; post-wave + final `release:check` EXIT=0; `release:assert-content` PASS (78 paths). Package still `0.21.0` — awaiting operator publish approve (`npm version minor` → `0.22.0`). CI on HEAD pending push (`main` ahead of origin).
 
 **Scope ID:** `SP-255,SP-256,SP-257,SP-258,SP-259,SP-260,SP-261,SP-262`
 

@@ -183,18 +183,29 @@ Open-issue count must **not** raise this release’s enhancement or total-task c
 
 ## Publish checklist (Phase 5–6)
 
-- [ ] All release-scoped tasks `.DONE` on `main`
-- [ ] Post-integrate `release:check` green after **each wave** (log paths recorded)
-- [ ] `spine preflight` green
-- [ ] `npm run release:check` green on final `HEAD` (exit 0 verified)
-- [ ] `npm run release:assert-content` green (substantive delta vs last release tag)
-- [ ] Manifest target == expected next version from `package.json` + bump type (`0.21.0` + minor → `0.22.0`)
-- [ ] No existing git tag `v0.22.0`
-- [ ] CI workflow green on `HEAD` (`gh run list` / `gh run watch`)
-- [ ] `git status` clean
-- [ ] Operator approved publish bump type: **minor** (matches Phase 2)
+- [x] All release-scoped tasks `.DONE` on `main` (SP-255–SP-262)
+- [x] Post-integrate `release:check` green after **each wave** (logs: `/tmp/pi-smart-router-post-integrate-wave-{0,1,2,3}-v0.22.0.log`)
+- [x] `spine preflight` green (2026-09-05 Phase 5)
+- [x] `npm run release:check` green on final `HEAD` (EXIT=0; `/tmp/pi-smart-router-release-check-v0.22.0.log`)
+- [x] `npm run release:assert-content` green (78 substantive paths; `/tmp/pi-smart-router-assert-content-v0.22.0.log`)
+- [x] Manifest target == expected next version from `package.json` + bump type (`0.21.0` + minor → `0.22.0`)
+- [x] No existing git tag `v0.22.0`
+- [ ] CI workflow green on `HEAD` — **blocked until push** (`main` ahead of `origin/main` by 43 commits; last CI success is v0.21.0-era)
+- [x] `git status` clean
+- [ ] Operator approved publish bump type: **minor** (matches Phase 2) — **awaiting**
 - [ ] **Exactly one** `npm version minor` then `git push && git push --tags` — then **STOP** (no second bump)
 - [ ] `release.yml` succeeded; `npm view` `latest` matches `0.22.0` (else Publish recovery, do not re-bump)
+
+### Execution log (Phase 4)
+
+| Wave | Tasks | Batch | Integrate | release:check |
+|------|-------|-------|-----------|---------------|
+| 0 | SP-255, SP-258, SP-259 | `20260905T183508-f844` | `e32621d` + benchmark refresh `bf3eac0` | `/tmp/pi-smart-router-post-integrate-wave-0-v0.22.0.log` EXIT=0 |
+| 1 | SP-256, SP-260, SP-261 | `20260905T190411-1f6a` (SP-256 contract retry) | landed on main | `/tmp/pi-smart-router-post-integrate-wave-1-v0.22.0.log` |
+| 2 | SP-257 | `20260905T193101-2b2a` | `190bf52` | `/tmp/pi-smart-router-post-integrate-wave-2-v0.22.0.log` EXIT=0 |
+| 3 | SP-262 | `20260905T200710-1d9b` | `ced5783` | `/tmp/pi-smart-router-post-integrate-wave-3-v0.22.0.log` EXIT=0 |
+
+**Ready to publish:** yes (local gates) — CI on HEAD pending push; bump awaits operator approve.
 
 ---
 
