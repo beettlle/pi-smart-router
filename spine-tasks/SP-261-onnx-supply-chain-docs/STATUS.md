@@ -1,8 +1,8 @@
 # SP-261 — Supply-chain / offline cache operator docs — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
-**Last Updated:** 2026-09-04
+**Current Step:** Step 2: Testing & Verification
+**Status:** In Progress
+**Last Updated:** 2026-09-05
 **Review Level:** 1
 **Review Counter:** 0
 **Iteration:** 0
@@ -12,17 +12,17 @@
 
 ## Step 0: Preflight
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Read SP-259 pin behavior
-- [ ] Locate README embedding section
+- [x] Read SP-259 pin behavior
+- [x] Locate README embedding section
 
 ## Step 1: Write supply-chain docs
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Pin/offline cache guidance
-- [ ] Audit posture note
+- [x] Pin/offline cache guidance
+- [x] Audit posture note
 
 ## Step 2: Testing & Verification
 
