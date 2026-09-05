@@ -2,10 +2,10 @@
 
 **Last Updated:** 2026-09-05
 **Status:** Active
-**Next Task ID:** SP-263
+**Next Task ID:** SP-280
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v0.22.0** on npm (2026-09-05, minor — SP-255–SP-262 extension package boundary & ONNX supply-chain; closes #149/#144/#147). Tag `v0.22.0`, commit `d2fce26`. Prior: v0.21.0 (SP-247–SP-254). Human #95 dogfood. #110/#96 open. Dep majors deferred: #162/#163.
+**Released:** **v0.22.0** on npm (2026-09-05, minor — SP-255–SP-262 extension package boundary & ONNX supply-chain; closes #149/#144/#147). Tag `v0.22.0`, commit `d2fce26`. Prior: v0.21.0 (SP-247–SP-254). **In progress:** release **v1.0.0** scope approved — SP-263–SP-279 (`spine-tasks/_authoring/release-v1.0.0/manifest.md`). Epic: #95/#110/#143/#150/#154/#155 + peer 0.85.1 + migration docs. Deferred: #96/#167/#162/#163/#157, hardware.
 
 ---
 
