@@ -1,0 +1,18 @@
+{
+  "_documentation": {
+    "purpose": "SP-259 (#147) — SHA-256 digest pins for ONNX embedding artifacts loaded by src/domain/matching/embedding-provider.ts. Verified on load when pin mode is enabled; mismatch or missing pinned artifact fails closed.",
+    "activation": "Set SMART_ROUTER_ONNX_PIN_MODE=verify (verify configured pins; unpinned models still download) or =enforce (CI/prod — pins REQUIRED for the loaded model; missing pin file, missing pins, missing cached artifact, or any mismatch fails closed). Default is off (unpinned local dogfood preserved). Override this file path with SMART_ROUTER_ONNX_PIN_FILE.",
+    "format": "pins[modelId][cacheRelativePath] = lowercase hex SHA-256. Paths are relative to the model directory inside the transformers.js cache (hydra.artifact_cache_path): <cache>/<modelId>/<path> (hub-style models--org--name/snapshots/<rev>/ layout also supported).",
+    "digest_source": "Digests are HuggingFace LFS oids (= SHA-256 of file content) from https://huggingface.co/api/models/<modelId>/tree/main/onnx, fetched 2026-09-05. onnx/model_quantized.onnx is the default q8 artifact transformers.js loads for feature-extraction.",
+    "refresh": "Re-fetch digests from the HF API when upgrading model revisions; never pin digests you have not verified out-of-band."
+  },
+  "version": 1,
+  "pins": {
+    "Xenova/all-MiniLM-L6-v2": {
+      "onnx/model_quantized.onnx": "afdb6f1a0e45b715d0bb9b11772f032c399babd23bfc31fed1c170afc848bdb1"
+    },
+    "onnx-community/granite-embedding-97m-multilingual-r2-ONNX": {
+      "onnx/model_quantized.onnx": "704c1ebca5fbb7cd83ced41827658ac4c9990c64f7f2874d22b78044e5022e22"
+    }
+  }
+}
