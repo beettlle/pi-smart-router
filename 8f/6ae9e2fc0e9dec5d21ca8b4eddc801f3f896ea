@@ -1,0 +1,18 @@
+README.md
+  h_ae151c586ac6c5 293,1131
+docs/extension-package-boundary.md
+  h_ae151c586ac6c5 1-111
+spine-tasks/SP-262-v022-theme-docs/STATUS.md
+  h_ae151c586ac6c5 3-5,15,17-18,22,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "8f6ae9e2fc0e9dec5d21ca8b4eddc801f3f896ea",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
