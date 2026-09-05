@@ -1,0 +1,16 @@
+spine-tasks/SP-260-embedder-dispose-lifecycle/.reviews/0-20260905T190959.md
+  h_ae151c586ac6c5 1-15
+spine-tasks/SP-260-embedder-dispose-lifecycle/.reviews/final-20260905T191044.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "8d83ed86d69cac7771b29fda042c6afd99162319",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
