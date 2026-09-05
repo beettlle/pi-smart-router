@@ -1,8 +1,8 @@
 # SP-259 — Pin ONNX artifacts by SHA-256 + verify on load — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
-**Last Updated:** 2026-09-04
+**Current Step:** Step 2: Testing & Verification
+**Status:** In Progress
+**Last Updated:** 2026-09-05
 **Review Level:** 1
 **Review Counter:** 0
 **Iteration:** 0
@@ -12,21 +12,21 @@
 
 ## Step 0: Preflight
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Locate cache/model ids
-- [ ] Choose pin config location
+- [x] Locate cache/model ids
+- [x] Choose pin config location
 
 ## Step 1: Digest pin + verify
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Add digests + verify
-- [ ] Fail closed on mismatch
+- [x] Add digests + verify
+- [x] Fail closed on mismatch
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Unit tests green
 - [ ] Contract testCommand green
@@ -43,19 +43,22 @@
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
-
-## Execution Log
+| 2026-09-05 | Cache path: `hydra.artifact_cache_path` (default `.pi-smart-router/models/`) passed as `cache_dir` to transformers.js pipeline; model ids `Xenova/all-MiniLM-L6-v2`, `onnx-community/granite-embedding-97m-multilingual-r2-ONNX`. transformers.js FS cache layout: `<cacheDir>/<modelId>/<filePath>` (hub-style `models--org--name/snapshots/<rev>/` fallback supported). | Verification targets `<cache>/<modelId>/<relPath>` |
 
 | Date | Event | Detail |
 |------|-------|--------|
+| 2026-09-05 | Step 0 complete | cache path + model ids located; pin config location = dedicated file `config/onnx-artifact-pins.json` + env activation |
+| 2026-09-05 | Plan review step 1 | skipped by engine (real-pi worker session; engine runs reviews post-.DONE) |
+| 2026-09-05 | Step 1 complete | `verifyOnnxArtifactPins` + factory wiring in embedding-provider.ts; pins landed; typecheck + 28/28 unit tests green |
 | | | |
-
-## Blockers
 
 | Date | Blocker | Resolution |
 |------|---------|------------|
 | | | |
 
 ## Notes
+
+- **Pin config location (Step 0 decision):** dedicated pin file `config/onnx-artifact-pins.json` (version + per-model relative-path → SHA-256 map). Rationale: `src/domain/matching/hydra-matcher.ts` and `src/domain/types/schemas.ts` are outside File Scope, so operator-config schema plumbing is not possible; activation is via env vars `SMART_ROUTER_ONNX_PIN_MODE` (`off`\|`verify`\|`enforce`, default `off`) and `SMART_ROUTER_ONNX_PIN_FILE`, plus an optional programmatic options param on the embedder factories.
+- **Real digests:** pinned `onnx/model_quantized.onnx` (transformers.js default q8 artifact) for both models, SHA-256 from HuggingFace API LFS `oid` (2026-09-05): MiniLM `afdb6f1a…bdb1`, Granite `704c1ebc…2e22`.
+- **Impact analysis (GitNexus, pre-edit):** `createOnnxFeatureEmbedder` blast radius HIGH — 8 symbols, 4 processes (hydra-matcher factories, benchmark/bootstrap scripts). Mitigation: changes are additive-only; existing call signatures remain valid; verification default-off.
 
