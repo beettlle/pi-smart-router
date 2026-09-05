@@ -1,0 +1,16 @@
+spine-tasks/SP-255-extension-public-facade/STATUS.md
+  h_ae151c586ac6c5 3-4,29,31-32,40,48,54-56
+tests/unit/index-exports.test.ts
+  h_ae151c586ac6c5 1-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "df91b9156249f5d7b7e70350a0f09477cd27d337",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
