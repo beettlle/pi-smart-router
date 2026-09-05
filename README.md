@@ -290,7 +290,7 @@ These behaviors run in `.pi/extensions/smart-router/` and have **no equivalent i
 ### Recommended integration path
 
 - **pi users:** install the **extension** (`pi install npm:pi-smart-router`). It is the full product — everything in the table above works out of the box, including failover, delegate spawn, headroom escalation, and quota reaction.
-- **npm embedders:** you get the **routing core** (12-stage pipeline, fleet mapping, telemetry, gateway health tracking, failover *selection*). Plan to implement your own stream delegation, failover iteration, headroom checks, and planning-delegate spawn around the decisions the pipeline returns — or track [#149](https://github.com/beettlle/pi-smart-router/issues/149) (**extension public facade**), the migration plan for exposing the extension's stream/delegation surface as supported library API so this gap closes over time. Until #149 lands, the extension modules also import `src/**` internals directly, so deep imports into `src/` are not a stable API.
+- **npm embedders:** you get the **routing core** (12-stage pipeline, fleet mapping, telemetry, gateway health tracking, failover *selection*). Plan to implement your own stream delegation, failover iteration, headroom checks, and planning-delegate spawn around the decisions the pipeline returns — or track [#149](https://github.com/beettlle/pi-smart-router/issues/149) (**extension public facade**), the migration plan for exposing the extension's stream/delegation surface as supported library API so this gap closes over time. Until #149 lands, the extension modules also import `src/**` internals directly, so deep imports into `src/` are not a stable API. See [docs/extension-package-boundary.md](docs/extension-package-boundary.md) for the facade vs internal-API boundary, the deep-import lint guard, and the extension coverage gate.
 
 ```text
 pi extension path (full product)        npm library path (routing core)
@@ -1128,7 +1128,7 @@ Contributors must run `npm run build` before publishing or consuming the library
 | `npm run verify:ci` | Full CI parity: build, typecheck, lint, test, coverage (baseline PR gate; see [PR and pre-release quality gate set](#pr-and-pre-release-quality-gate-set)) |
 | `npm run typecheck` | TypeScript strict mode check (`tsc --noEmit`) |
 | `npm test` | Run test suite (`vitest run`) |
-| `npm run coverage:check` | Tests with line-coverage thresholds |
+| `npm run coverage:check` | Tests with line-coverage thresholds (src + extension, 80% floor — see [docs/extension-package-boundary.md](docs/extension-package-boundary.md#extension-coverage-gate-144)) |
 | `npm run lint` | ESLint + fleet catalog validation |
 | `npm run routing:bootstrap-centroids` | Regenerate `config/routing-centroids.json` from cluster catalog |
 | `npm run routing:calibration-aggregate` | Aggregate community telemetry for calibration |
