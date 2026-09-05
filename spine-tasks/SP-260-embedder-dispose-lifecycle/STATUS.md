@@ -59,3 +59,5 @@
 
 ## Notes
 
+
+- 2026-09-05: Contract fileScopeMustChange redirected to tests/unit/embedding-provider.test.ts (SP-259 pre-landed embedding-provider.ts).
