@@ -1,8 +1,8 @@
 # SP-258 — Vitest extension coverage include + threshold — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
-**Last Updated:** 2026-09-04
+**Current Step:** Step 0: In progress
+**Status:** In progress
+**Last Updated:** 2026-09-05
 **Review Level:** 1
 **Review Counter:** 0
 **Iteration:** 0
@@ -12,9 +12,9 @@
 
 ## Step 0: Preflight
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Read coverage config
+- [x] Read coverage config
 - [ ] Optional baseline measure
 
 ## Step 1: Include extension + threshold
@@ -49,7 +49,7 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-09-05 | Step 0 complete | Current include only `src/**/*.ts`; thresholds lines/fn/stmts 50, branches 45. Extension-only baseline 82.28% lines — ≥80% combined gate achievable without new tests. |
 
 ## Blockers
 

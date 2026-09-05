@@ -12,13 +12,16 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],
-      include: ['src/**/*.ts'],
+      include: ['src/**/*.ts', '.pi/extensions/smart-router/**/*.ts'],
       exclude: ['spine-tasks/**'],
+      // Combined gate (src + extension). Measured 2026-09-05: lines 91.45%,
+      // statements 91.45%, functions 96.42%, branches 87.64% (SP-258 / #144).
+      // Extension-only baseline: lines 82.28%, branches 79.4%.
       thresholds: {
-        lines: 50,
-        functions: 50,
-        branches: 45,
-        statements: 50,
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
       },
     },
   },
