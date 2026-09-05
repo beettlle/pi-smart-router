@@ -1,0 +1,93 @@
+spine-tasks/SP-272-pipeline-stage-context-143/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-90
+spine-tasks/SP-269-calibration-aggregate-110/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-91
+spine-tasks/_authoring/release-v1.0.0/manifest.md
+  s_2c799f49039000::t_c3bec902f439fc 1-8,10-165,187-242
+  s_2c799f49039000::t_7558f4b7b88658 9
+  s_2c799f49039000::t_837fd1100103b0 166-186
+spine-tasks/SP-277-pipeline-tests-fragment-wave1-155/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-57
+spine-tasks/dependencies.json
+  s_2c799f49039000::t_fb6556637fa01c 712-755
+spine-tasks/SP-274-pipeline-extract-remaining-143/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-57
+spine-tasks/SP-272-pipeline-stage-context-143/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-58
+spine-tasks/SP-278-pipeline-tests-fragment-finish-155/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-56
+spine-tasks/CONTEXT.md
+  s_2c799f49039000::t_b109f6336ae04b 5,8
+spine-tasks/SP-268-calibration-bootstrap-docs-110/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-88
+spine-tasks/SP-273-pipeline-extract-first-stages-143/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-57
+spine-tasks/SP-276-telemetry-pinner-split-143/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-84
+spine-tasks/SP-277-pipeline-tests-fragment-wave1-155/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-84
+spine-tasks/SP-263-peer-bump-pi-0851/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-91
+spine-tasks/SP-279-v1-migration-semver-docs/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-56
+spine-tasks/SP-263-peer-bump-pi-0851/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-59
+spine-tasks/SP-275-pipeline-ports-invert-143/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-86
+spine-tasks/SP-265-scripts-src-artifact-guard-150/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-91
+spine-tasks/SP-270-calibration-train-verify-110/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-90
+spine-tasks/SP-264-ci-node-engines-154/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-91
+spine-tasks/SP-270-calibration-train-verify-110/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-57
+spine-tasks/SP-271-ship-routing-calibration-110/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-86
+spine-tasks/SP-267-shadow-dogfood-evidence-95/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-92
+spine-tasks/SP-278-pipeline-tests-fragment-finish-155/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-83
+spine-tasks/SP-265-scripts-src-artifact-guard-150/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-58
+spine-tasks/SP-271-ship-routing-calibration-110/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-58
+spine-tasks/SP-268-calibration-bootstrap-docs-110/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-56
+spine-tasks/SP-269-calibration-aggregate-110/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-58
+spine-tasks/SP-273-pipeline-extract-first-stages-143/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-84
+spine-tasks/SP-266-shadow-dogfood-protocol-95/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-58
+spine-tasks/SP-267-shadow-dogfood-evidence-95/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-58
+spine-tasks/SP-274-pipeline-extract-remaining-143/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-83
+spine-tasks/SP-276-telemetry-pinner-split-143/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-57
+spine-tasks/SP-279-v1-migration-semver-docs/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-89
+spine-tasks/SP-264-ci-node-engines-154/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-58
+spine-tasks/SP-275-pipeline-ports-invert-143/STATUS.md
+  s_2c799f49039000::t_fb6556637fa01c 1-58
+spine-tasks/SP-266-shadow-dogfood-protocol-95/PROMPT.md
+  s_2c799f49039000::t_fb6556637fa01c 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "776bfe604386bad391c595c5dd12cd6ac3af4c04",
+  "prompts": {},
+  "sessions": {
+    "s_2c799f49039000": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-5de9aa19-4e87-48b2-9ce3-f8ab2a4013a3",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
