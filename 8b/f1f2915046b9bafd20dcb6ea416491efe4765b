@@ -1,0 +1,22 @@
+config/onnx-artifact-pins.json
+  h_ae151c586ac6c5 1-18
+config/operator-config.json.example
+  h_ae151c586ac6c5 25
+spine-tasks/SP-259-onnx-artifact-digest-pin/STATUS.md
+  h_ae151c586ac6c5 3-5,15,17-18,22,24-25,29,46,50-52,61-64
+src/domain/matching/embedding-provider.ts
+  h_ae151c586ac6c5 9-12,33-216,250,259-262,292,294,303,305,312,316,318
+tests/unit/embedding-provider.test.ts
+  h_ae151c586ac6c5 1-6,12-14,209-533
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "8bf1f2915046b9bafd20dcb6ea416491efe4765b",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
