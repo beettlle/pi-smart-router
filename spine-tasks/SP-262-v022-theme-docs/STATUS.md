@@ -1,8 +1,8 @@
 # SP-262 — Theme docs: facade + coverage + pin operator notes — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
-**Last Updated:** 2026-09-04
+**Current Step:** Step 1: Theme documentation
+**Status:** In Progress
+**Last Updated:** 2026-09-05
 **Review Level:** 1
 **Review Counter:** 0
 **Iteration:** 0
@@ -12,14 +12,14 @@
 
 ## Step 0: Preflight
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Skim landed SP-257–SP-261
-- [ ] Locate README sections
+- [x] Skim landed SP-257–SP-261
+- [x] Locate README sections
 
 ## Step 1: Theme documentation
 
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Facade docs
 - [ ] Coverage + supply-chain cross-links
@@ -49,6 +49,7 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
+| 2026-09-05 | Step 0 complete | Skimmed SP-257 (eslintrc deep-import guard), SP-258 (vitest coverage include + 80% thresholds), SP-260 (embedder dispose fail-closed), SP-261 (README supply-chain section). Located README Embedding (`### HyDRA model cache` / supply-chain), Testing/Development sections, and manifest theme sentence. |
 | | | |
 
 ## Blockers
