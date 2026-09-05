@@ -1,0 +1,19 @@
+.eslintrc.cjs
+  s_c1150aad3ac898::t_b734db9ba6e3af 18-28,42-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "190bf520da2af662bfdd81ba13c3858251a2196b",
+  "prompts": {},
+  "sessions": {
+    "s_c1150aad3ac898": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-18233f0b-7659-440d-a515-b046009eaa9d",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
