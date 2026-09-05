@@ -6,15 +6,16 @@ import { createHash } from 'node:crypto';
 import {
   attachOutcomeLabelsToExport,
   indexOutcomesByRequestId,
-} from '../../../src/domain/routing/p-success-classifier.js';
-import { DATASET_MAX_ENTRIES } from '../../../src/infrastructure/telemetry/dataset-limits.js';
-import {
+  DATASET_MAX_ENTRIES,
   DatasetRecorder,
   DATASET_ENABLED_NOTIFY_MESSAGE,
-} from '../../../src/infrastructure/telemetry/dataset-recorder.js';
-import { OutcomeRecorder } from '../../../src/infrastructure/telemetry/outcome-recorder.js';
-import type { RoutingDatasetRecord, RoutingOutcomeRecord } from '../../../src/domain/types/index.js';
-import type { StorePort } from '../../../src/domain/types/store-port.js';
+  OutcomeRecorder,
+} from '../../../src/index.js';
+import type {
+  RoutingDatasetRecord,
+  RoutingOutcomeRecord,
+  StorePort,
+} from '../../../src/index.js';
 
 const DEFAULT_DATASET_EXPORT_DIR = '.pi-smart-router/exports';
 const DEFAULT_DATASET_EXPORT_LIMIT = DATASET_MAX_ENTRIES;

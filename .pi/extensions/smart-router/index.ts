@@ -6,8 +6,9 @@
  * hooks for routing state. Stream delegation routes each request through the
  * pipeline and forwards to the selected provider's built-in streaming API.
  *
- * Imports from ../../../src/** (not dist/) because the extension is loaded by pi
- * from source at dev time and is excluded from the npm dist artifact.
+ * Imports the package public facade (../../../src/index.js, not dist/) because
+ * the extension is loaded by pi from source at dev time and is excluded from
+ * the npm dist artifact. Deep src/** subpath imports are forbidden (SP-256/257).
  */
 
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
@@ -116,14 +117,14 @@ export { routeAndDelegate } from './route-and-delegate.js';
 export {
   formatGeminiThoughtSignatureErrorMessage,
   isGeminiThoughtSignatureAssistantError,
-} from '../../../src/infrastructure/delegation/provider-error.js';
+} from '../../../src/index.js';
 export {
   GEMINI_TOOL_HISTORY_EXCLUDED,
   hasToolCallHistory,
   hasToolCallHistoryFromContext,
   isGoogleGeminiProfile,
   resolveEffectiveFleet,
-} from '../../../src/domain/routing/tool-history-guard.js';
+} from '../../../src/index.js';
 
 export default async function smartRouterExtension(pi: ExtensionAPI): Promise<void> {
   const cwd = process.cwd();

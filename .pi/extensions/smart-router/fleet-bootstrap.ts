@@ -2,39 +2,37 @@ import type { Api, Model } from '@earendil-works/pi-ai/compat';
 import {
   ModelRegistry,
   SettingsManager,
-  type ExtensionAPI,
+  ExtensionAPI,
 } from '@earendil-works/pi-coding-agent';
 
-import { mapFleetFromRegistry } from '../../../src/config/pi-model-mapper.js';
 import {
+  mapFleetFromRegistry,
   DEFAULT_OPERATOR_CONFIG,
   resolveOperatorConfigFromEnv,
-} from '../../../src/config/defaults.js';
-import {
   HydraMatcher,
   createOnnxEmbeddingProvider,
-} from '../../../src/domain/matching/hydra-matcher.js';
-import { SessionPinner } from '../../../src/domain/pinning/session-pinner.js';
-import {
+  SessionPinner,
   collectPoolModelIds,
   resolveQuotaWindowEstimateConfigFromEnv,
   resolveQuotaWindowPosition,
-  type QuotaWindowAdapter,
-  type QuotaWindowEstimateConfig,
-} from '../../../src/domain/pricing/quota-window-feed.js';
-import type { ModelProfile, PriceCatalog } from '../../../src/domain/types/index.js';
-import type { QuotaWindowPosition } from '../../../src/domain/types/entities.js';
-import type { OperatorConfig } from '../../../src/domain/types/schemas.js';
-import type { StorePort } from '../../../src/domain/types/store-port.js';
-import { getDefaultSystemInfo } from '../../../src/infrastructure/hardware/hardware-probe.js';
-import { DEFAULT_LOCAL_CONFIG } from '../../../src/infrastructure/local/local-zero-tier.js';
-import { RoutingTelemetryEmitter } from '../../../src/infrastructure/telemetry/routing-telemetry.js';
-import { applyCatalogPricesToFleet } from '../../../src/infrastructure/pricing/price-broker.js';
-import {
+  getDefaultSystemInfo,
+  DEFAULT_LOCAL_CONFIG,
+  RoutingTelemetryEmitter,
+  applyCatalogPricesToFleet,
   createRouterFromFleet,
-  type GatewayDispatchOptions,
-  type PiExtensionHooks,
 } from '../../../src/index.js';
+import type {
+  QuotaWindowAdapter,
+  QuotaWindowEstimateConfig,
+  ModelProfile,
+  PriceCatalog,
+  QuotaWindowPosition,
+  OperatorConfig,
+  StorePort,
+  GatewayDispatchOptions,
+  PiExtensionHooks,
+} from '../../../src/index.js';
+
 import { resolveModelScope } from './pi-model-scope.js';
 import type { FleetMode, SmartRouterRuntime } from './types.js';
 import { resolveRateLimiter } from './utils.js';

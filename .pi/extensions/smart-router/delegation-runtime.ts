@@ -15,26 +15,23 @@ import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
 
 import {
   applyConcisenessHint,
-  type AdaptiveReasoningResult,
-} from '../../../src/domain/delegation/adaptive-reasoning.js';
-import {
   isGoogleDelegationTarget,
   normalizeDelegationContext,
   repairGeminiReplayContext,
-} from '../../../src/domain/delegation/delegation-context.js';
-import {
   computeOutputHeadroom,
-  type OutputHeadroomConfig,
-} from '../../../src/domain/delegation/output-headroom.js';
-import type { ModelProfile } from '../../../src/domain/types/index.js';
-import {
   formatGeminiThoughtSignatureErrorMessage,
   formatProviderErrorMessage,
   isGeminiThoughtSignatureAssistantError,
   parseAssistantMessageError,
   sanitizeLengthStopMessage,
-  type LengthStopHints,
-} from '../../../src/infrastructure/delegation/provider-error.js';
+} from '../../../src/index.js';
+import type {
+  AdaptiveReasoningResult,
+  OutputHeadroomConfig,
+  ModelProfile,
+  LengthStopHints,
+} from '../../../src/index.js';
+
 import type { StreamDelegationDeps } from './types.js';
 
 /** Stream options safe to forward to a delegated provider call. */

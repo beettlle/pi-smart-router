@@ -10,8 +10,11 @@ import {
   parseSmartRouterArgs,
 } from './command-formatters.js';
 import { exportDatasetToFile } from './dataset-export.js';
-import { exportTelemetryContrib } from '../../../src/cli/smart-router-cli.js';
-import { collectPlacementPlan } from '../../../src/infrastructure/hardware/placement-plan.js';
+import {
+  exportTelemetryContrib,
+  collectPlacementPlan,
+} from '../../../src/index.js';
+
 import { bindSharedModelRegistry, rebuildFleet } from './fleet-bootstrap.js';
 import { refreshPricingCatalog } from './pricing-lifecycle.js';
 import { FLEET_MODE_ENTRY_TYPE } from './session-lifecycle.js';

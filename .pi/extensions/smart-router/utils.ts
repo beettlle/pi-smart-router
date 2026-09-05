@@ -4,9 +4,11 @@ import {
   createResilientStore,
   SqliteStore,
   SqliteStoreError,
-} from '../../../src/infrastructure/persistence/sqlite-store.js';
-import type { StorePort } from '../../../src/domain/types/store-port.js';
-import type { RateLimitPort } from '../../../src/infrastructure/gateway/gateway-dispatch.js';
+} from '../../../src/index.js';
+import type {
+  StorePort,
+  RateLimitPort,
+} from '../../../src/index.js';
 
 export const DEFAULT_ROUTER_STATE_DB_PATH = '.pi-smart-router/state.db';
 export const DEFAULT_RATE_LIMIT_MAX_TOKENS = 60;

@@ -9,13 +9,16 @@ import {
   streamSimple as compatDelegateStream,
 } from '@earendil-works/pi-ai/compat';
 
-import { parseAssistantMessageError } from '../../../src/infrastructure/delegation/provider-error.js';
-import { extractUsageActuals } from '../../../src/infrastructure/telemetry/routing-telemetry.js';
 import {
+  parseAssistantMessageError,
+  extractUsageActuals,
   resolveAdaptiveReasoning,
-  type AdaptiveReasoningResult,
-  type AdaptiveReasoningSignal,
-} from '../../../src/domain/delegation/adaptive-reasoning.js';
+} from '../../../src/index.js';
+import type {
+  AdaptiveReasoningResult,
+  AdaptiveReasoningSignal,
+} from '../../../src/index.js';
+
 import {
   buildDelegationContext,
   forwardDelegatedEvent,

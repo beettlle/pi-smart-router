@@ -7,12 +7,14 @@ import {
   type TextContent,
 } from '@earendil-works/pi-ai/compat';
 
+import {
+  LifecycleHookState,
+} from '../../../src/index.js';
 import type {
   Message as RoutingMessage,
   RoutingRequest,
   TurnType,
-} from '../../../src/domain/types/index.js';
-import { LifecycleHookState } from '../../../src/index.js';
+} from '../../../src/index.js';
 
 const TOKEN_ESTIMATE_KEYS = [
   'estimatedInputTokens',

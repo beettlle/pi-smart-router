@@ -4,10 +4,15 @@ import {
   type ExtensionAPI,
 } from '@earendil-works/pi-coding-agent';
 
-import { resolveOperatorConfigFromEnv } from '../../../src/config/defaults.js';
-import { ExecutionLedger } from '../../../src/domain/delegation/execution-ledger.js';
-import type { SessionRoutingSnapshot } from '../../../src/infrastructure/telemetry/outcome-recorder.js';
-import { createRouterFromFleet, LifecycleHookState } from '../../../src/index.js';
+import {
+  resolveOperatorConfigFromEnv,
+  ExecutionLedger,
+  createRouterFromFleet,
+  LifecycleHookState,
+} from '../../../src/index.js';
+import type {
+  SessionRoutingSnapshot,
+} from '../../../src/index.js';
 
 import { registerSmartRouterCommand } from './commands.js';
 import {

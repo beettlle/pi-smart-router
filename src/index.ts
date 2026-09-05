@@ -194,6 +194,8 @@ export {
 export {
   GEMINI_TOOL_HISTORY_EXCLUDED,
   assertRoutableFleetAfterGeminiToolHistoryGuard,
+  hasToolCallHistory,
+  hasToolCallHistoryFromContext,
   isGoogleGeminiProfile,
   resolveEffectiveFleet,
   type GeminiToolHistoryGuardResult,
