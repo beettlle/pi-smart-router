@@ -1,6 +1,6 @@
 # SP-255 — Public package facade exports for extension needs — Status
 
-**Current Step:** Step 1: Facade exports
+**Current Step:** Step 2: Testing & Verification
 **Status:** In Progress
 **Last Updated:** 2026-09-05
 **Review Level:** 1
@@ -19,14 +19,14 @@
 
 ## Step 1: Facade exports
 
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Re-export required symbols
-- [ ] STATUS notes facade shape
+- [x] Re-export required symbols
+- [x] STATUS notes facade shape
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] index-exports tests green
 - [ ] Extension tree unchanged
