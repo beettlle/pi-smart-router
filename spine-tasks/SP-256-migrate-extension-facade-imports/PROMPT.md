@@ -46,8 +46,8 @@ Partial #149 — migrate `.pi/extensions/smart-router` off deep `../../../src/` 
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `.pi/extensions/smart-router/index.ts`, `.pi/extensions/smart-router/route-and-delegate.ts` |
-| May change | `.pi/extensions/smart-router/**`, `src/index.ts`, `tests/**` |
+| Must change | `.pi/extensions/smart-router` |
+| May change | `src/index.ts`, `tests` |
 | Must NOT change | `.eslintrc.cjs` (SP-257), `vitest.config.ts` (SP-258), `src/domain/matching/embedding-provider.ts` (SP-259/260), `README.md` (SP-262), `package.json` version field |
 
 ## Contract
@@ -55,9 +55,9 @@ Partial #149 — migrate `.pi/extensions/smart-router` off deep `../../../src/` 
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npm test` |
-| fileScopeMustChange | `.pi/extensions/smart-router/index.ts`, `.pi/extensions/smart-router/route-and-delegate.ts` |
+| fileScopeMustChange | `.pi/extensions/smart-router` |
 | fileScopeMustNotChange | `README.md`, `package.json`, `vitest.config.ts` |
-| completionCriteria | Zero deep `../../../src/` subpath imports under extension (facade via `src/index.js` OK); typecheck + tests green; Partial #149 |
+| completionCriteria | Zero deep `../../../src/` imports under extension; typecheck + tests green; Partial #149 |
 
 ## Steps
 
@@ -95,4 +95,4 @@ Partial #149 — migrate `.pi/extensions/smart-router` off deep `../../../src/` 
 
 ## Amendments
 
-- **2026-09-05 (contract fix):** `fileScopeMustChange` was a directory (`.pi/extensions/smart-router`) — contract verify requires concrete files. Redirected to `index.ts` + `route-and-delegate.ts`. Worker already migrated 78 deep imports → facade `../../../src/index.js` (0 subpath deep imports); retry should re-verify only.
+- None
