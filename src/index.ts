@@ -114,3 +114,152 @@ export { evictInMemorySessionState } from './api/session-eviction.js';
 export type { SessionEvictionTargets } from './api/session-eviction.js';
 export type { GatewayDispatchOptions } from './infrastructure/gateway/gateway-dispatch.js';
 export type { PipelineOptions } from './domain/pipeline/router-pipeline.js';
+
+// ─── Extension facade re-exports (SP-255, #149) ──────────────────────────────
+//
+// Stable public surface for everything `.pi/extensions/smart-router/` needs, so
+// the extension can import from `pi-smart-router` instead of deep `src/**`
+// paths. Additive only — no existing export is renamed or removed.
+
+// Domain types
+export type {
+  AdaptiveReasoningConfig,
+  CompressedContextSpec,
+  Message,
+  PlanningDelegateConfig,
+  PlanningDelegateObservability,
+  PriceCatalog,
+  RoutingDatasetRecord,
+  RoutingFeatureSidecar,
+  RoutingOutcomeRecord,
+  RoutingReasoningTelemetry,
+  RoutingRequest,
+  RoutingTelemetry,
+  RoutingUsageActuals,
+  StorePort,
+  TurnType,
+} from './domain/types/index.js';
+export type { QuotaWindowPosition } from './domain/types/entities.js';
+export type { OperatorConfig } from './domain/types/schemas.js';
+export { DEFAULT_PLANNING_DELEGATE_CONFIG } from './domain/types/schemas.js';
+
+// Config
+export {
+  DEFAULT_OPERATOR_CONFIG,
+  resolveOperatorConfigFromEnv,
+} from './config/defaults.js';
+export { mapFleetFromRegistry } from './config/pi-model-mapper.js';
+
+// Domain — delegation
+export {
+  applyConcisenessHint,
+  resolveAdaptiveReasoning,
+  type AdaptiveReasoningResult,
+  type AdaptiveReasoningSignal,
+} from './domain/delegation/adaptive-reasoning.js';
+export {
+  isGoogleDelegationTarget,
+  normalizeDelegationContext,
+  repairGeminiReplayContext,
+} from './domain/delegation/delegation-context.js';
+export { ExecutionLedger } from './domain/delegation/execution-ledger.js';
+export {
+  computeOutputHeadroom,
+  type OutputHeadroomConfig,
+} from './domain/delegation/output-headroom.js';
+
+// Domain — matching, pinning, pipeline, pricing, routing
+export {
+  HydraMatcher,
+  createOnnxEmbeddingProvider,
+} from './domain/matching/hydra-matcher.js';
+export { SessionPinner } from './domain/pinning/session-pinner.js';
+export { safeCloudDefault } from './domain/pipeline/safe-default.js';
+export { resolvePeakPricingAdjustment } from './domain/pricing/peak-pricing.js';
+export {
+  collectPoolModelIds,
+  resolveQuotaWindowEstimateConfigFromEnv,
+  resolveQuotaWindowPosition,
+  type QuotaWindowAdapter,
+  type QuotaWindowEstimateConfig,
+} from './domain/pricing/quota-window-feed.js';
+export {
+  CONTEXT_OVERFLOW_NO_FIT,
+  resolveContextOverflowFallback,
+} from './domain/routing/context-fit.js';
+export {
+  attachOutcomeLabelsToExport,
+  indexOutcomesByRequestId,
+} from './domain/routing/p-success-classifier.js';
+export {
+  GEMINI_TOOL_HISTORY_EXCLUDED,
+  assertRoutableFleetAfterGeminiToolHistoryGuard,
+  isGoogleGeminiProfile,
+  resolveEffectiveFleet,
+  type GeminiToolHistoryGuardResult,
+} from './domain/routing/tool-history-guard.js';
+
+// Infrastructure — providers, gateway, hardware, persistence, pricing
+export { GEMINI_REPLAY_INCOMPATIBLE } from './infra/gemini-provider.js';
+export {
+  formatGeminiThoughtSignatureErrorMessage,
+  formatProviderErrorMessage,
+  isGeminiThoughtSignatureAssistantError,
+  parseAssistantMessageError,
+  sanitizeLengthStopMessage,
+  type LengthStopHints,
+} from './infrastructure/delegation/provider-error.js';
+export {
+  shouldFailoverOnProviderError,
+  type RateLimitPort,
+} from './infrastructure/gateway/gateway-dispatch.js';
+export { getDefaultSystemInfo } from './infrastructure/hardware/hardware-probe.js';
+export {
+  collectPlacementPlan,
+  type PlacementPlanReport,
+} from './infrastructure/hardware/placement-plan.js';
+export { DEFAULT_LOCAL_CONFIG } from './infrastructure/local/local-zero-tier.js';
+export {
+  createResilientStore,
+  SqliteStore,
+  SqliteStoreError,
+} from './infrastructure/persistence/sqlite-store.js';
+export { fetchLitellmPriceCatalog } from './infrastructure/pricing/litellm-fetch.js';
+export { applyCatalogPricesToFleet } from './infrastructure/pricing/price-broker.js';
+export { checkStaleness } from './infrastructure/pricing/pricing-monitor.js';
+
+// Infrastructure — telemetry
+export { DATASET_MAX_ENTRIES } from './infrastructure/telemetry/dataset-limits.js';
+export {
+  DATASET_ENABLED_NOTIFY_MESSAGE,
+  DatasetRecorder,
+} from './infrastructure/telemetry/dataset-recorder.js';
+export {
+  OutcomeRecorder,
+  type SessionRoutingSnapshot,
+} from './infrastructure/telemetry/outcome-recorder.js';
+export {
+  PLANNING_DELEGATE,
+  PLANNING_DELEGATE_TIMEOUT,
+  PLANNING_DELEGATE_UNAVAILABLE,
+  PLANNING_DIRECT_FRONTIER,
+  RoutingTelemetryEmitter,
+  createPlanningDelegateObservability,
+  enrichRoutingDecisionWithPlanningDelegate,
+  extractUsageActuals,
+} from './infrastructure/telemetry/routing-telemetry.js';
+export {
+  aggregateSessionStatsFromFleet,
+  type SessionStatsSnapshot,
+} from './infrastructure/telemetry/session-stats.js';
+export {
+  DEFAULT_HISTORY_LIMIT,
+  MAX_HISTORY_LIMIT,
+} from './infrastructure/telemetry/telemetry-limits.js';
+
+// CLI helpers used by extension commands
+export {
+  DEFAULT_TELEMETRY_CONTRIB_EXPORT_LIMIT,
+  exportTelemetryContrib,
+  parseExportTelemetryContribArgs,
+} from './cli/smart-router-cli.js';
