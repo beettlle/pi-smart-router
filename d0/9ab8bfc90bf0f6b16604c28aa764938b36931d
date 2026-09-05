@@ -1,0 +1,16 @@
+spine-tasks/SP-256-migrate-extension-facade-imports/.reviews/0-20260905T191407.md
+  h_ae151c586ac6c5 1-9
+spine-tasks/SP-256-migrate-extension-facade-imports/STATUS.md
+  h_ae151c586ac6c5 41,59,69-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "d09ab8bfc90bf0f6b16604c28aa764938b36931d",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
