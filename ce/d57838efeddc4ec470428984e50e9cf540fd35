@@ -1,0 +1,19 @@
+README.md
+  s_c1150aad3ac898::t_3c776cb8824a89 293,1131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ced57838efeddc4ec470428984e50e9cf540fd35",
+  "prompts": {},
+  "sessions": {
+    "s_c1150aad3ac898": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-18233f0b-7659-440d-a515-b046009eaa9d",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
