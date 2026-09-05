@@ -1,12 +1,12 @@
 # Release manifest — v0.22.0
 
 **Created:** 2026-09-04
-**Current version:** 0.21.0 (package.json; last tag `v0.21.0`)
+**Current version:** 0.22.0 (package.json; tag `v0.22.0`)
 **Target version:** v0.22.0
 **Bump type:** minor
 **Profile:** minor
 **Theme:** Extension package boundary and ONNX embedder supply-chain integrity — stable public facade for the pi extension, measured extension coverage, and digest-pinned artifacts with real embedder dispose.
-**Operator approved scope:** yes (2026-09-04)
+**Operator approved scope:** yes (2026-09-04). **Published:** yes (2026-09-05 — operator "publish approved"; single `npm version minor` → `0.22.0` / `v0.22.0`).
 
 ---
 
@@ -189,12 +189,12 @@ Open-issue count must **not** raise this release’s enhancement or total-task c
 - [x] `npm run release:check` green on final `HEAD` (EXIT=0; `/tmp/pi-smart-router-release-check-v0.22.0.log`)
 - [x] `npm run release:assert-content` green (78 substantive paths; `/tmp/pi-smart-router-assert-content-v0.22.0.log`)
 - [x] Manifest target == expected next version from `package.json` + bump type (`0.21.0` + minor → `0.22.0`)
-- [x] No existing git tag `v0.22.0`
-- [ ] CI workflow green on `HEAD` — **blocked until push** (`main` ahead of `origin/main` by 43 commits; last CI success is v0.21.0-era)
+- [x] No existing git tag `v0.22.0` (pre-bump)
+- [x] CI workflow green on pre-bump `HEAD` (`73a4d5c`, run [33990494454](https://github.com/beettlle/pi-smart-router/actions/runs/33990494454))
 - [x] `git status` clean
-- [ ] Operator approved publish bump type: **minor** (matches Phase 2) — **awaiting**
-- [ ] **Exactly one** `npm version minor` then `git push && git push --tags` — then **STOP** (no second bump)
-- [ ] `release.yml` succeeded; `npm view` `latest` matches `0.22.0` (else Publish recovery, do not re-bump)
+- [x] Operator approved publish bump type: **minor** (2026-09-05)
+- [x] **Exactly one** `npm version minor` → `0.22.0` / tag `v0.22.0` (commit `d2fce26`); `git push && git push --tags` — **STOP** (no second bump)
+- [x] `release.yml` succeeded ([33990680726](https://github.com/beettlle/pi-smart-router/actions/runs/33990680726)); `npm view` `latest` == `0.22.0`
 
 ### Execution log (Phase 4)
 
@@ -205,7 +205,7 @@ Open-issue count must **not** raise this release’s enhancement or total-task c
 | 2 | SP-257 | `20260905T193101-2b2a` | `190bf52` | `/tmp/pi-smart-router-post-integrate-wave-2-v0.22.0.log` EXIT=0 |
 | 3 | SP-262 | `20260905T200710-1d9b` | `ced5783` | `/tmp/pi-smart-router-post-integrate-wave-3-v0.22.0.log` EXIT=0 |
 
-**Ready to publish:** yes (local gates) — CI on HEAD pending push; bump awaits operator approve.
+**Published:** yes (2026-09-05). Issues #149/#144/#147 closed.
 
 ---
 
