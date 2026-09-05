@@ -1,0 +1,16 @@
+spine-tasks/SP-255-extension-public-facade/.reviews/0-20260905T184409.md
+  h_ae151c586ac6c5 1-19
+spine-tasks/SP-255-extension-public-facade/.reviews/final-20260905T184526.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a463215c534b27d632aa7e1525f3d02a0b09db3e",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
