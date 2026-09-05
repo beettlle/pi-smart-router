@@ -82,7 +82,9 @@ describe('wrapHydraEmbeddingProvider', () => {
 
 // ─── createOnnxTextEmbedder ──────────────────────────────────────────────────
 
-const mockExtractor = vi.fn();
+const mockExtractor = Object.assign(vi.fn(), {
+  dispose: vi.fn(async () => {}),
+});
 const mockPipeline = vi.fn(async () => mockExtractor);
 
 vi.mock('@huggingface/transformers', () => ({

@@ -225,12 +225,22 @@ type OnnxExtractorFn = (
   options: { readonly pooling: string; readonly normalize: boolean },
 ) => Promise<OnnxPipelineOutput>;
 
+/**
+ * transformers.js pipeline callable plus its release handles. v3/v4 pipelines
+ * expose `dispose()` (releases the underlying ONNX inference sessions); the
+ * wrapped model's `dispose()` is the fallback handle (SP-260, #147).
+ */
+type OnnxPipeline = OnnxExtractorFn & {
+  readonly dispose?: () => Promise<void>;
+  readonly model?: { readonly dispose?: () => Promise<void> };
+};
+
 interface TransformersModule {
   pipeline(
     task: string,
     model: string,
     options: Record<string, unknown>,
-  ): Promise<OnnxExtractorFn>;
+  ): Promise<OnnxPipeline>;
 }
 
 async function loadTransformersModule(): Promise<TransformersModule> {
@@ -250,7 +260,7 @@ async function createOnnxFeatureEmbedder(
   pinOptions?: OnnxPinOptions,
 ): Promise<TextEmbedder> {
   const mod = await loadTransformersModule();
-  const extractor: OnnxExtractorFn = await mod.pipeline(
+  const extractor: OnnxPipeline = await mod.pipeline(
     'feature-extraction',
     modelId,
     { cache_dir: artifactCachePath },
@@ -260,8 +270,18 @@ async function createOnnxFeatureEmbedder(
   // verified before the embedder is returned; mismatch → fail closed).
   await verifyOnnxArtifactPins(modelId, artifactCachePath, pinOptions);
 
+  // SP-260 (#147): disposed embedders fail closed on embed() rather than
+  // silently recreating an ONNX session behind the caller's back.
+  let disposed = false;
+
   return {
     async embed(text: string): Promise<Float32Array> {
+      if (disposed) {
+        throw new Error(
+          `TextEmbedder for ${modelId} has been disposed; embed() fails closed. ` +
+            'Create a new embedder via createTextEmbedder to continue.',
+        );
+      }
       const output = await extractor(text, {
         pooling: 'mean',
         normalize: true,
@@ -275,7 +295,25 @@ async function createOnnxFeatureEmbedder(
     },
 
     async dispose(): Promise<void> {
-      /* @huggingface/transformers pipelines have no explicit dispose */
+      if (disposed) return; // idempotent: safe for shared-factory callers
+      disposed = true;
+      // Release the strongest available handle: pipeline.dispose() releases
+      // the ONNX inference sessions (transformers.js v3/v4); model.dispose()
+      // is the documented fallback. Fail loud when neither exists rather than
+      // pretending resources were freed.
+      if (typeof extractor.dispose === 'function') {
+        await extractor.dispose();
+        return;
+      }
+      if (typeof extractor.model?.dispose === 'function') {
+        await extractor.model.dispose();
+        return;
+      }
+      throw new Error(
+        `No dispose handle on @huggingface/transformers pipeline for ${modelId}: ` +
+          'expected pipeline.dispose() or model.dispose(). ONNX sessions may be ' +
+          'leaked; upgrade @huggingface/transformers.',
+      );
     },
   };
 }

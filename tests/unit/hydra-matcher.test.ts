@@ -928,7 +928,10 @@ describe('createHydraEmbeddingProvider hydra_heads branching', () => {
 
   it('routes learned_projection to ONNX embedder path', async () => {
     const mockData = new Float32Array(EMBEDDING_DIM).fill(0);
-    const mockExtractor = vi.fn(async () => ({ data: mockData }));
+    const mockExtractor = Object.assign(
+      vi.fn(async () => ({ data: mockData })),
+      { dispose: vi.fn(async () => {}) },
+    );
     const mockPipeline = vi.fn(async () => mockExtractor);
 
     vi.doMock('@huggingface/transformers', () => ({
