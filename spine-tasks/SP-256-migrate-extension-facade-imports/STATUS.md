@@ -38,7 +38,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-09-05 | 0 | plan | APPROVE (engine review, `.reviews/0-20260905T191407.md`) |
 
 ## Discoveries
 
@@ -56,6 +56,7 @@
 | 2026-09-05 | Plan review Step 1 | spine_review_step skipped (engine-owned per SP-195) |
 | 2026-09-05 | Step 1 complete | All extension imports/re-exports on facade; 0 deep subpath imports |
 | 2026-09-05 | Step 2 complete | typecheck clean; 120 test files / 2155 tests green |
+| 2026-09-05 | Contract fix retry | Re-verified after `fileScopeMustChange` redirect: 0 deep subpath imports (rg --pcre2), 31 facade refs; `npm run typecheck` clean; `npm test` 120 files / 2155 tests passed
 
 ## Blockers
 
@@ -64,4 +65,6 @@
 | | | |
 
 ## Notes
+
+Retry after 2026-09-05 contract fix (amendment): re-verification only — migration work was already committed in `a6d1254` / `f8e5c33`. All completion criteria met.
 
