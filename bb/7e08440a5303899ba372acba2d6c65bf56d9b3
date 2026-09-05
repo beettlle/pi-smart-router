@@ -1,0 +1,36 @@
+skills/router-release-operator/SKILL.md
+  s_c3be1608452e76::t_a1602554a9b42c 123-125
+  s_c3be1608452e76::t_0ac28b3bcc5ab7 144-146,148,156
+  s_c3be1608452e76::t_199dd52fdfa4e7 351-352,358
+  s_c3be1608452e76::t_cdfe6d5f80d6f5 58,63-65
+  s_c3be1608452e76::t_97bf1e8d1c9e84 329-332
+  s_c3be1608452e76::t_09ea9f8836f5b5 26
+  s_c3be1608452e76::t_d9d82c95e33e3b 341
+skills/router-release-operator/references/release-manifest-template.md
+  s_c3be1608452e76::t_415a92e7ca1430 29-44
+skills/router-release-operator/references/dependency-freshness.md
+  s_c3be1608452e76::t_16c14e6ed19482 1-67
+skills/router-release-operator/references/issue-intake-checklist.md
+  s_c3be1608452e76::t_e9a53eaae7ced2 120-133
+skills/router-release-operator/references/release-profiles.md
+  s_c3be1608452e76::t_43aabaeef9c518 144-145
+  s_c3be1608452e76::t_e5cf50439313ad 104-106,113,119-120
+  s_c3be1608452e76::t_c352649e9be8d3 61,63
+  s_c3be1608452e76::t_add3c416a9f305 42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "bb7e08440a5303899ba372acba2d6c65bf56d9b3",
+  "prompts": {},
+  "sessions": {
+    "s_c3be1608452e76": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9b1c5833-cc30-4892-b0de-e577157c8b38",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
