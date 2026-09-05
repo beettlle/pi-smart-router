@@ -45,18 +45,18 @@ Close #147 lifecycle half — implement **real** `TextEmbedder.dispose()`:
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `src/domain/matching/embedding-provider.ts`, `tests/unit/embedding-provider.test.ts` |
-| May change | `src/domain/matching/hydra-matcher.ts`, shared embedder wiring, `tests/unit/hydra-matcher.test.ts` |
+| Must change | `src/domain/matching/embedding-provider.ts`, `tests/unit/embedder-dispose-lifecycle.test.ts` |
+| May change | `src/domain/matching/hydra-matcher.ts`, shared embedder wiring, `tests/unit/embedding-provider.test.ts`, `tests/unit/hydra-matcher.test.ts` |
 | Must NOT change | `.pi/extensions/smart-router`, `README.md` (SP-261/262), `vitest.config.ts` (SP-258), `package.json` version field |
 
 ## Contract
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run typecheck && npx vitest run tests/unit/embedding-provider.test.ts tests/unit/hydra-matcher.test.ts` |
-| fileScopeMustChange | `tests/unit/embedding-provider.test.ts` |
+| testCommand | `npm run typecheck && npx vitest run tests/unit/embedder-dispose-lifecycle.test.ts tests/unit/embedding-provider.test.ts tests/unit/hydra-matcher.test.ts` |
+| fileScopeMustChange | `tests/unit/embedder-dispose-lifecycle.test.ts` |
 | fileScopeMustNotChange | `README.md`, `package.json`, `.pi/extensions/smart-router` |
-| completionCriteria | dispose releases resources (or documented strongest available release); lifecycle tests prove dispose; Closes #147 with SP-261 |
+| completionCriteria | dispose releases resources (or documented strongest available release); new lifecycle tests prove dispose; Closes #147 with SP-261 |
 
 ## Steps
 
@@ -93,4 +93,4 @@ Close #147 lifecycle half — implement **real** `TextEmbedder.dispose()`:
 
 ## Amendments
 
-- **2026-09-05 (pre-land redirect):** SP-259 already landed digest-pin edits in `src/domain/matching/embedding-provider.ts` on `main`. Contract `fileScopeMustChange` redirected to `tests/unit/embedding-provider.test.ts` (dispose lifecycle proof). Implementation still **Must change** `embedding-provider.ts` (replace no-op `dispose()`).
+- **2026-09-05 (pre-land redirect):** SP-259 already landed digest-pin edits in `src/domain/matching/embedding-provider.ts` and `tests/unit/embedding-provider.test.ts` on `main`. Contract `fileScopeMustChange` redirected to **new** `tests/unit/embedder-dispose-lifecycle.test.ts` (unique SP-260 delivery). Implementation still **Must change** `embedding-provider.ts` (replace no-op `dispose()`). Wave 1 batch `20260905T190315-7d04` aborted to apply this amend before restart.

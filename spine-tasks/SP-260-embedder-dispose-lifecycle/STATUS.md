@@ -61,3 +61,5 @@
 
 
 - 2026-09-05: Contract fileScopeMustChange redirected to tests/unit/embedding-provider.test.ts (SP-259 pre-landed embedding-provider.ts).
+
+- 2026-09-05: fileScopeMustChange → tests/unit/embedder-dispose-lifecycle.test.ts (new); aborted batch 20260905T190315-7d04 for restart.
