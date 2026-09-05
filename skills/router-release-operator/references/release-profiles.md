@@ -39,6 +39,7 @@ A growing GitHub issue backlog is a **queue**, not a reason to widen this train.
 - Respond with **more trains** (successive thin themed minors/patches), intake deferral, or backlog-orchestrator cycles — not a fatter manifest.
 - Prefer successive thin themed minors over one fat minor that mixes unrelated P1s.
 - P2/P3 chore and toolchain work: backlog cycles or a dedicated **hygiene** theme — do not bolt onto an unrelated routing minor.
+- Dependency **majors** / toolchain epics always stay deferred unless the theme is explicitly hygiene/deps (see [dependency-freshness.md](dependency-freshness.md)). Runtime peer-drift Size-S bumps may join a train without counting as enhancements; they still count toward total-task caps and must not raise those caps.
 - Final report must include a **next-train slate** (3–7 deferred Ready/Funnel items with candidate themes).
 
 ## Profile budgets
@@ -57,9 +58,9 @@ Stability and correctness only. No new capability.
 | Max waves | 1–2 | Prefer single wave when possible |
 | Task sizes | S preferred; M OK | M allowed only for bug-fix decomposition with disjoint scope; split L/XL |
 
-**Hygiene exception (patch only):** non-user-facing fixes (typo, flake clock, lint-only) allowed with a **one-line justification** in the manifest. Still **no** new capability.
+**Hygiene exception (patch only):** non-user-facing fixes (typo, flake clock, lint-only) and non-capability dependency refresh (peer alignment / in-range lockfile) allowed with a **one-line justification** in the manifest. Still **no** new capability. If a dep bump is judged capability-changing, reclassify as **minor**.
 
-**Defer by default:** all enhancements, roadmap items, eval/infra features, epics, hardware.
+**Defer by default:** all enhancements, roadmap items, eval/infra features, epics, hardware, dependency majors / toolchain epics.
 
 ### Minor (`minor`)
 
@@ -100,20 +101,23 @@ Apply in this order; stop when profile budget is full:
 
 1. **Documentation** — `label:documentation`, README/operator-guide clarifications fitting the theme
 2. **Bug fixes** — open `label:bug` with user impact; prefer already-tasked or quick S/M
-3. **Enhancements** — **minor/major only**; only theme-completing related issues
-4. **Defer** everything else with one-line rationale
+3. **Dependency freshness** — [dependency-freshness.md](dependency-freshness.md) action matrix: peer drift → Include S within total-task caps (not enhancement budget); in-range → operator choice; majors → Defer. Manifest freshness table required.
+4. **Enhancements** — **minor/major only**; only theme-completing related issues
+5. **Defer** everything else with one-line rationale
 
 ## Profile audit (must pass before Phase 3)
 
 | Check | Patch | Minor | Major |
 |-------|-------|-------|-------|
 | Theme present and coherent | Required | Required | Required |
+| Dependency freshness table | **Missing → FAIL** | Same | Same |
 | Enhancement count | **>0 → FAIL** (reclassify or drop) | >3 without override → WARN | — |
 | Bug count | 0 + no open bugs → **PASS (no open bugs)**; open bugs skipped without deferral → WARN | Same | Critical blockers skipped → WARN |
 | Total tasks | >8 → WARN | >15 → WARN | — |
 | M/L in patch | L/XL → split; M only for bug-fix decomposition | — | — |
 | Bump type vs content | Features in scope → must be **minor**, not patch OVERRIDE | — | — |
-| Anti-feature-magnet | Open-issue count used to raise caps → **FAIL** | Same | Same |
+| Anti-feature-magnet | Open-issue count or outdated deps used to raise caps → **FAIL** | Same | Same |
+| Dep majors auto-included | Unrelated-theme majors → **FAIL** (defer) | Same | Same |
 
 **Do not** use OVERRIDE to ship enhancements as patch. Change bump type to minor or drop the enhancement.
 
@@ -137,4 +141,6 @@ If the operator changes bump type at publish gate, update the manifest and confi
 | Hotfix only open bugs as **patch**, theme "Stability hotfix" | **PASS** |
 | Feature-only minor, 0 open bugs, theme "Live leaderboard ingest" | **PASS (no open bugs)** |
 | 20 open P1s → raise minor enhancements to 8 | **FAIL** — anti-feature-magnet; ship multiple thin themed minors |
+| Outdated deps → raise total-task or enhancement caps | **FAIL** — freshness check does not expand budgets |
+| Peer drift Include S on themed minor (within ≤15) | **PASS** — not an enhancement; majors still deferred |
 | Empty bump (only package.json version) | **FAIL** at `release:assert-content` / release.yml — do not publish |

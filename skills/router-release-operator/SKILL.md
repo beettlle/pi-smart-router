@@ -23,6 +23,7 @@ Invoke explicitly: `/skill:router-release-operator` or "release v0.10.0" / "patc
 | Concern | Delegate to |
 |---------|-------------|
 | Semver scope budgets / theme audit | [references/release-profiles.md](references/release-profiles.md) (**this repo — not pi-spine**) |
+| Dependency freshness (check / include / defer) | [references/dependency-freshness.md](references/dependency-freshness.md) |
 | Issue intake | [references/issue-intake-checklist.md](references/issue-intake-checklist.md) |
 | Manifest format | [references/release-manifest-template.md](references/release-manifest-template.md) |
 | PROMPT/STATUS/Contract authoring | `create-spine-tasks` + [packet-from-issue.md](../router-backlog-orchestrator/references/packet-from-issue.md) |
@@ -54,10 +55,14 @@ Invoke explicitly: `/skill:router-release-operator` or "release v0.10.0" / "patc
 - **Never** “fix” a wrong `latest` dist-tag with another bump — use Publish recovery (deprecate workflow)
 - **Always** parse target version / bump type **before** task selection (Phase 2)
 - **Always** use [references/release-profiles.md](references/release-profiles.md) for budgets (not pi-spine profiles)
+- **Always** run Phase 1 dependency freshness ([dependency-freshness.md](references/dependency-freshness.md)) and record the table in the manifest
 - **Always** prioritize documentation before enhancements within the theme
 - **Always** run `spine gate approve` before `spine integrate`
 - **Always** run `npm install` on `main` after successful integrate
 - **Always** run post-integrate `npm run release:check` on `main` after each wave before the next wave or push
+- **Never** auto-include dependency majors / toolchain epics into an unrelated theme
+- **Never** treat outdated deps as license to raise enhancement or total-task caps
+- **Never** run silent `npm update` at Phase 6 — dep bumps land as integrated SP-* only
 - **Never** judge `release:check` from `| tail` / `| head` alone — verify exit code
 - **Do not** execute tasks outside the approved manifest scope
 - **Do not** start a second batch while another is **running** on this repo
@@ -115,7 +120,9 @@ rg 'GitHub: beettlle/pi-smart-router#|Closes:|Partial:' spine-tasks/*/PROMPT.md
 
 Read `spine-tasks/CONTEXT.md` for `Next Task ID`. Skim `docs/routing-roadmap.md` for enhancement priority.
 
-**Output:** intake table (issue #, labels, mapped SP-* or gap, bucket, theme fit, profile fit).
+**Dependency freshness (required):** follow [references/dependency-freshness.md](references/dependency-freshness.md). Run inventory commands; build the Package / Declared / npm latest / Action table for the Phase 2 manifest. Missing table → fail profile audit.
+
+**Output:** intake table (issue #, labels, mapped SP-* or gap, bucket, theme fit, profile fit) plus dependency freshness table (actions may still be tentative until Phase 2).
 
 ---
 
@@ -134,10 +141,11 @@ Use [references/release-manifest-template.md](references/release-manifest-templa
 1. State the **theme** (one sentence)
 2. **Documentation** fitting the theme
 3. **Bug fixes** (all high-impact that fit the cap; 0 OK)
-4. **Enhancements** — only if profile is minor/major; 1–3 related issues completing the theme
-5. **Defer** everything else with one-line rationale
+4. **Dependency freshness** — apply [dependency-freshness.md](references/dependency-freshness.md) action matrix (peer drift → Include S; in-range → operator choice; majors → Defer). Finalize the manifest freshness table. Bump tasks count toward total-task caps, **not** the enhancement budget.
+5. **Enhancements** — only if profile is minor/major; 1–3 related issues completing the theme
+6. **Defer** everything else with one-line rationale
 
-Apply [release-profiles.md](references/release-profiles.md) budgets. **FAIL** if enhancements appear under patch — ask operator to bump to minor or drop features.
+Apply [release-profiles.md](references/release-profiles.md) budgets. **FAIL** if enhancements appear under patch — ask operator to bump to minor or drop features. **FAIL** if the dependency freshness table is missing.
 
 ### Operator gate
 
@@ -145,6 +153,7 @@ Present:
 
 - Target version, profile, **theme**
 - Selected SP-* / issues by bucket
+- Dependency freshness: Include / Current / Defer (majors and declined in-range)
 - Deferred count + reasons
 - Profile audit status
 
@@ -317,9 +326,10 @@ Do **not** fix a bad publish by running another `npm version` without a new them
 2. Tasks completed — SP-IDs, waves, issues closed
 3. Deferred backlog — count and top items
 4. **Next-train slate** — 3–7 deferred issues with candidate themes (Ready / Funnel / Parked); open-issue count must **not** raise profile caps
-5. Profile audit result (no feature-in-patch OVERRIDE)
-6. Verification — `release:check` + `release:assert-content` log paths / exit codes; CI run URL
-7. Publish — single bump (Y/N), tag, workflow URL, `npm view` latest == target, or awaiting approval / recovery
+5. **Dependency freshness** — peers current / bump SP-* shipped / deferred majors (and declined in-range)
+6. Profile audit result (no feature-in-patch OVERRIDE)
+7. Verification — `release:check` + `release:assert-content` log paths / exit codes; CI run URL
+8. Publish — single bump (Y/N), tag, workflow URL, `npm view` latest == target, or awaiting approval / recovery
 
 ## Repo-specific notes
 
@@ -328,6 +338,7 @@ Do **not** fix a bad publish by running another `npm version` without a new them
 | Tasks root | `spine-tasks/` |
 | Issues repo | `beettlle/pi-smart-router` |
 | Profiles | `skills/router-release-operator/references/release-profiles.md` |
+| Dep freshness | `skills/router-release-operator/references/dependency-freshness.md` |
 | Pre-publish gate | `npm run release:check` |
 | Content gate | `npm run release:assert-content` |
 | Publish | Tag-triggered `.github/workflows/release.yml` |
@@ -337,11 +348,12 @@ Do **not** fix a bad publish by running another `npm version` without a new them
 
 ```text
 Resume router release v{TARGET}: check manifest at
-spine-tasks/_authoring/release-v{TARGET}/manifest.md (theme + profile audit) →
+spine-tasks/_authoring/release-v{TARGET}/manifest.md (theme + profile audit +
+dependency freshness table present before scope approval) →
 spine status --diagnose → preflight → for each wave: batch start → diagnose →
 gate approve → integrate → npm install → batch complete →
 post-integrate release:check (exit 0) → final release:check → release:assert-content →
 CI green on HEAD → STOP for publish approval → single npm version (once) →
 push tags → verify npm latest == TARGET → STOP (no second bump).
-Post final report with theme, composition table, and next-train slate.
+Post final report with theme, composition table, dependency freshness, and next-train slate.
 ```

@@ -117,6 +117,20 @@ Read `spine-tasks/CONTEXT.md` for `Next Task ID` and phase notes.
 
 Cross-reference pending SP-* with open issues. The release executes **manifest scope only**, not all pending tasks.
 
+## Dependency freshness
+
+**Required** every release (all profiles). Follow [dependency-freshness.md](dependency-freshness.md).
+
+```bash
+npm outdated --long || true
+npm view @earendil-works/pi-ai version
+npm view @earendil-works/pi-coding-agent version
+```
+
+Build Package / Declared / npm latest / Action rows for runtime peers, runtime deps, and notable tooling. Finalize Include vs Defer in Phase 2 (action matrix). Do **not** auto-update all deps; majors stay deferred unless the theme is hygiene/deps.
+
+Copy the table into the release manifest (`## Dependency freshness`). Missing table → **FAIL** profile audit.
+
 ## Intake output table
 
 | Issue # | Labels | Mapped SP-* | Bucket | Intake | Theme fit | Profile fit | Notes |

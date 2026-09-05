@@ -26,6 +26,22 @@
 
 ---
 
+## Dependency freshness (Phase 1 — required)
+
+See [dependency-freshness.md](dependency-freshness.md). Missing table → **FAIL** profile audit.
+
+| Package | Declared | npm latest | Action this train |
+|---------|----------|------------|-------------------|
+| `@earendil-works/pi-ai` | ^x.y.z | x.y.z | Current / Include SP-### / Defer #NNN |
+| `@earendil-works/pi-coding-agent` | ^x.y.z | x.y.z | … |
+| `@huggingface/transformers` | … | … | … |
+| `better-sqlite3` | … | … | … |
+| `yaml` | … | … | … |
+| `zod` | … | … | Current / no bump / Include SP-### |
+| `typescript` / `vitest` / `eslint` / `tsx` / `@types/node` | … | … | Defer majors / Current |
+
+---
+
 ## Selected tasks
 
 | SP-ID | Issue | Bucket | Size | Title | Notes |
