@@ -1,0 +1,14 @@
+spine-tasks/SP-278-pipeline-tests-fragment-finish-155/STATUS.md
+  h_ae151c586ac6c5 4,15-19,21-36,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "029e1292f7449a2ad7183a59d4b9f09fbb35ef69",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
