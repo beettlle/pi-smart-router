@@ -1,0 +1,19 @@
+tests/unit/router-pipeline-safe-default.test.ts
+  s_248ba6df7914ff::t_afa5b66aff3083 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7a9fe5701659619a9397ef2096d5517d8171c5d3",
+  "prompts": {},
+  "sessions": {
+    "s_248ba6df7914ff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-94c464bf-22c7-4193-ac16-92fcc52bc1e5",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
