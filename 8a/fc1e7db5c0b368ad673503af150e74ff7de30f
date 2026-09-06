@@ -1,0 +1,14 @@
+spine-tasks/SP-269-calibration-aggregate-110/STATUS.md
+  h_ae151c586ac6c5 3-4,29,31-32,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "8afc1e7db5c0b368ad673503af150e74ff7de30f",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
