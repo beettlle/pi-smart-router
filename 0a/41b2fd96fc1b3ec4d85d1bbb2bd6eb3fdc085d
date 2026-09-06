@@ -1,0 +1,19 @@
+spine-tasks/_authoring/release-v1.0.0/shadow-dogfood-evidence.md
+  s_8900d6cad9229e::t_90d276d3684c6d 79-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "0a41b2fd96fc1b3ec4d85d1bbb2bd6eb3fdc085d",
+  "prompts": {},
+  "sessions": {
+    "s_8900d6cad9229e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-dd5a3afb-88dc-4b14-b291-637c9438f73f",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
