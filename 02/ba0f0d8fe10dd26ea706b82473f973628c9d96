@@ -1,0 +1,19 @@
+.spine/spine-config.json
+  s_248ba6df7914ff::t_2e596e1c395033 18,25,39,44,111,126,131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "02ba0f0d8fe10dd26ea706b82473f973628c9d96",
+  "prompts": {},
+  "sessions": {
+    "s_248ba6df7914ff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-94c464bf-22c7-4193-ac16-92fcc52bc1e5",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
