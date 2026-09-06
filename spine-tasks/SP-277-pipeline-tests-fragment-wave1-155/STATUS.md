@@ -1,6 +1,6 @@
 # SP-277 — Fragment router-pipeline.test.ts into stage-focused modules (wave 1). — Status
 
-**Current Step:** 0
+**Current Step:** 1
 **Status:** In Progress
 **Last Updated:** 2026-09-06
 **Review Level:** 1
@@ -12,7 +12,7 @@
 
 ## Step 0: Preflight
 
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Map describe blocks to stage modules
 - [x] Choose first extract set
@@ -41,10 +41,10 @@ Monolith keeps remaining ~1540 lines for SP-278 (wave 2) — not deleted per Do-
 
 ## Step 1: Extract wave-1 tests
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Move suites to stage-focused files
-- [ ] Share fixtures helpers if needed
+- [x] Move suites to stage-focused files
+- [x] Share fixtures helpers if needed
 
 ## Step 2: Testing & Verification
 
@@ -58,7 +58,7 @@ Monolith keeps remaining ~1540 lines for SP-278 (wave 2) — not deleted per Do-
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-09-06 | 0 | plan | skipped (engine policy — reviews post-.DONE) |
 
 ## Discoveries
 
@@ -71,6 +71,7 @@ Monolith keeps remaining ~1540 lines for SP-278 (wave 2) — not deleted per Do-
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-09-06 | Step 0 complete | Mapped 22 describe blocks to SP-273 stage modules; chose 4-file wave-1 extract set + shared fixtures |
+| 2026-09-06 | Step 1 complete | Extracted 4 stage modules + shared fixtures; monolith 2206→1528 lines; 85/85 its preserved; gitnexus detect_changes: low risk, 0 affected processes |
 | | | |
 
 ## Blockers
