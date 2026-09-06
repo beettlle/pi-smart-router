@@ -1,6 +1,6 @@
 # SP-278 — Finish test fragmentation and retire monolithic router-pipeline.test.ts. — Status
 
-**Current Step:** 0
+**Current Step:** 1
 **Status:** In Progress
 **Last Updated:** 2026-09-05
 **Review Level:** 1
@@ -37,10 +37,17 @@ Shared helpers move to router-pipeline-fixtures.ts: HARDWARE_CONFIG, LOCAL_TEST_
 
 ## Step 1: Finish fragmentation
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Move remaining suites
-- [ ] Delete or thin re-export monolith
+- [x] Move remaining suites
+- [x] Delete or thin re-export monolith
+
+### Outcome
+
+- 12 new stage-focused files created (all 52 its moved verbatim): stage-order (4), error-telemetry (3), feature-sidecar (4), gemini-deprioritization (4), turn-envelope (2), cost-telemetry (4), context-fit (7), low-intensity (8), local-zero-throughput (3), p-success (7), expected-cost (4), concurrent-route (2)
+- Shared helpers consolidated into router-pipeline-fixtures.ts: HARDWARE_CONFIG, LOCAL_TEST_CONFIG, READY_FETCH, makeSystemInfo, makeClusterMatcher, makeMockHydraProvider, makeHighPWeights/makeLowPWeights
+- `tests/unit/router-pipeline.test.ts` **deleted** (no importers; vitest glob picks up new files — no thin re-export needed)
+- Family run: 16 files / 85 tests green (52 wave-2 + 33 wave-1) — count preserved
 
 ## Step 2: Testing & Verification
 
@@ -54,7 +61,7 @@ Shared helpers move to router-pipeline-fixtures.ts: HARDWARE_CONFIG, LOCAL_TEST_
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-09-06 | 0 | plan | skipped (engine policy — reviews post-.DONE) |
 
 ## Discoveries
 
@@ -67,6 +74,7 @@ Shared helpers move to router-pipeline-fixtures.ts: HARDWARE_CONFIG, LOCAL_TEST_
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-09-06 | Step 0 complete | Inventoried 16 describes / 52 its in monolith; mapped to 12 wave-2 files aligned with SP-273/274 stage modules; confirmed no importers → full delete |
+| 2026-09-06 | Step 1 complete | 12 wave-2 files created, helpers shared into fixtures, monolith deleted; typecheck clean; family 85/85 green; detect_changes low risk 0 symbols |
 | | | |
 
 | Date | Blocker | Resolution |
