@@ -90,6 +90,7 @@
     "routing:test-projection": "npm run build && node --experimental-strip-types scripts/test-hydra-projection.ts",
     "benchmark:encoder": "tsx scripts/benchmark-encoder-latency.ts",
     "qa:shadow-dogfood": "bash scripts/qa/shadow-dogfood-session.sh",
+    "qa:dogfood-soft-feed": "tsx scripts/qa/dogfood-soft-feed.ts",
     "qa:count-labeled-econ": "tsx scripts/qa/count-labeled-econ.ts",
     "qa:export-dogfood-snapshot": "tsx scripts/qa/export-dogfood-snapshot.ts",
     "qa:dogfood-gather": "bash scripts/qa/dogfood-gather.sh",
@@ -108,7 +109,7 @@
     }
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "^0.84.4",
+    "@earendil-works/pi-coding-agent": "^0.85.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.15.21",
     "@typescript-eslint/eslint-plugin": "^8.62.1",
@@ -122,7 +123,7 @@
     "vitest": "^3.2.3"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "^0.84.4",
+    "@earendil-works/pi-ai": "^0.85.1",
     "@huggingface/transformers": "^4.2.0",
     "better-sqlite3": "^12.11.1",
     "yaml": "^2.9.0",
@@ -138,6 +139,6 @@
     "skills": [
       "./skills"
     ],
-    "minPiVersion": "0.80.8"
+    "minPiVersion": "0.85.1"
   }
 }
