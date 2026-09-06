@@ -1,7 +1,7 @@
 # SP-273 — Extract first stage cluster behind RoutingContext. — Status
 
-**Current Step:** 1
-**Status:** In Progress
+**Current Step:** 2
+**Status:** Complete
 **Last Updated:** 2026-09-06
 **Review Level:** 2
 **Review Counter:** 0
@@ -42,10 +42,12 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Contract testCommand green
-- [ ] npm run coverage:check
+- [x] Contract testCommand green
+- [x] npm run coverage:check
+
+**Evidence:** `npm run typecheck && npm test` → tsc clean, 122 files / 2169 tests passed. `npm run coverage:check` → exit 0 (combined gate green; domain/pipeline dir 92.37% lines).
 
 ---
 
@@ -59,7 +61,7 @@
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-09-06 | Extracted `session-pin-stage.ts` shows 71.13% line coverage; baseline diff shows the same arms (`saar_route`, `sub_route`, force_rejected-no-fallback) were already uncovered pre-refactor (HEAD~1 router-pipeline.ts lines 1235–1268, 1298–1306 uncovered). No coverage regression — extraction preserved the exact profile; combined coverage gate passes. | Recommend SP-277/SP-278 (test fragmentation) or a follow-up add pipeline-level tests for the saar_route / sub_route decision arms; out of SP-273 test scope ("minimal import path fixes"). |
 
 ## Execution Log
 
@@ -67,6 +69,7 @@
 |------|-------|--------|
 | 2026-09-06 | Step 0 complete | First cluster = triage / pin(+loop_escalation) / hydra; 4 new modules under src/domain/pipeline/; re-exports keep import paths stable |
 | 2026-09-06 | Step 1 complete | 4 new modules (stage-helpers, triage-stage, session-pin-stage, hydra-match-stage); orchestrator wires extracted stages via runStageWithContext; tests green |
+| 2026-09-06 | Step 2 complete | typecheck + 2169 tests green; coverage:check exit 0; all completion criteria met |
 | | | |
 
 ## Blockers
