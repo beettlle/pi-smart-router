@@ -1,6 +1,6 @@
 # SP-263 — Bump runtime peers to pi 0.85.1 and align minPiVersion. — Status
 
-**Current Step:** 1
+**Current Step:** 2
 **Status:** In Progress
 **Last Updated:** 2026-09-06
 **Review Level:** 1
@@ -19,7 +19,7 @@
 
 ## Step 1: Bump peers + lockfile
 
-**Status:** In Progress
+**Status:** Complete (plan review skipped — engine-owned, SP-195)
 
 - [x] Update dependency ranges to ^0.85.1
 - [x] npm install; align minPiVersion — lockfile resolves pi-ai@0.85.1 + pi-coding-agent@0.85.1; minPiVersion set to `0.85.1` (peer floor of ^0.85.1)
@@ -27,7 +27,7 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Run contract testCommand (`npm run release:check`)
 - [ ] STATUS records installed versions
