@@ -1,0 +1,14 @@
+spine-tasks/SP-267-shadow-dogfood-evidence-95/STATUS.md
+  h_ae151c586ac6c5 3-4,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "380cf2faeb27bd7d9687a7e3abe5d5290e5c6124",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
