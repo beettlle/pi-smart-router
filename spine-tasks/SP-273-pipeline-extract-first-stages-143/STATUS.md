@@ -1,8 +1,8 @@
 # SP-273 — Extract first stage cluster behind RoutingContext. — Status
 
-**Current Step:** 0
-**Status:** Pending
-**Last Updated:** 2026-09-05
+**Current Step:** 1
+**Status:** In Progress
+**Last Updated:** 2026-09-06
 **Review Level:** 2
 **Review Counter:** 0
 **Iteration:** 0
@@ -12,13 +12,22 @@
 
 ## Step 0: Preflight
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Choose first cluster seams; list target files in STATUS
+- [x] Choose first cluster seams; list target files in STATUS
+
+**First cluster seams (manifest: triage / pin / hydra; SP-274 takes the rest):**
+- **triage cluster** → new `src/domain/pipeline/triage-stage.ts`: `createTriageStage()` (`triage`) + `createTriageCloudFallbackStage()` (`triage_cloud_fallback`).
+- **pin cluster** → new `src/domain/pipeline/session-pin-stage.ts`: `createSessionPinStage()` (`session_pin`) + `createLoopEscalationStage()` (`loop_escalation` — mutates pin state, part of the pin seam, extraction is trivial).
+- **hydra cluster** → new `src/domain/pipeline/hydra-match-stage.ts`: `createHydraMatchStage()` (`hydra_match` + degraded-sandwich failover + learned-route recording).
+- **shared helpers** → new `src/domain/pipeline/stage-helpers.ts`: `TURN_TIER_MAP`, `withEstimatedCost`, `redactPromptFromError`, `isPinOnlyFallbackActive`, `enrichRequestWithSaarCandidate`, `constrainFleetToTierHint`, plus relocated pure gates `resolveLocalEligible` / `estimateCheapToolUseRequirement` / `resolveLocalZeroToolUseCeiling` (needed by both hydra module and the not-yet-extracted local_zero stage). Re-exported from `router-pipeline.ts` so all existing import paths (tests, src/index.ts) stay unchanged.
+- **orchestrator** (`router-pipeline.ts`, may-change): stage list wires extracted stages through a generic `runStageWithContext()` snapshot/sync-back helper (extends the SP-272 hardware_probe pattern); telemetry/finalize/attachFeatures stay in the orchestrator.
+- Deferred to SP-274: turn_envelope, context_fit, low_intensity, local_zero, safe_default, context_overflow_fallback.
+- GitNexus impact on `sessionPin`/`hydraMatcher`: LOW (private, 0 external callers). No behavior change; route outcomes untouched.
 
 ## Step 1: Extract stages
 
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Move logic to modules; wire orchestrator
 - [ ] Preserve telemetry hooks
@@ -48,6 +57,7 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
+| 2026-09-06 | Step 0 complete | First cluster = triage / pin(+loop_escalation) / hydra; 4 new modules under src/domain/pipeline/; re-exports keep import paths stable |
 | | | |
 
 ## Blockers
