@@ -1,7 +1,7 @@
 # SP-267 — Produce human dogfood evidence artifact for release gates. — Status
 
-**Current Step:** 2
-**Status:** In Progress
+**Current Step:** done
+**Status:** Complete
 **Last Updated:** 2026-09-06
 **Review Level:** 1
 **Review Counter:** 0
@@ -37,7 +37,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-09-06 | 1 | plan | skipped (engine-run post-.DONE, SP-195) |
 
 ## Discoveries
 
