@@ -1,0 +1,16 @@
+spine-tasks/SP-268-calibration-bootstrap-docs-110/.reviews/0-20260906T171851.md
+  h_ae151c586ac6c5 1-11
+spine-tasks/SP-268-calibration-bootstrap-docs-110/.reviews/final-20260906T171929.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2e01da4eb473c6a68b4913a8a8bc2e00bb67166f",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
