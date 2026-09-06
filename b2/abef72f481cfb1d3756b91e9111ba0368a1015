@@ -1,0 +1,20 @@
+spine-tasks/SP-272-pipeline-stage-context-143/STATUS.md
+  h_ae151c586ac6c5 3-5,15-22,24-26,30-33,35-39,60-61,67-68
+src/domain/pipeline/pipeline-stage.ts
+  h_ae151c586ac6c5 1-139
+src/domain/pipeline/router-pipeline.ts
+  h_ae151c586ac6c5 120-121,141-142,145,867-883,885-886,888-925
+tests/unit/pipeline-stage.test.ts
+  h_ae151c586ac6c5 1-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b2abef72f481cfb1d3756b91e9111ba0368a1015",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
