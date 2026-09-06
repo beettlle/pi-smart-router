@@ -1,0 +1,18 @@
+spine-tasks/SP-277-pipeline-tests-fragment-wave1-155/.DONE
+  h_ae151c586ac6c5 1-7
+spine-tasks/SP-277-pipeline-tests-fragment-wave1-155/.reviews/0-20260906T184600.md
+  h_ae151c586ac6c5 1-16
+spine-tasks/SP-277-pipeline-tests-fragment-wave1-155/.reviews/final-20260906T184646.md
+  h_ae151c586ac6c5 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7a69f83dc60303c1aa09346d78bdd43ac9bcc80f",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
