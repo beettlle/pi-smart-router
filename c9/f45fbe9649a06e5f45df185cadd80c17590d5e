@@ -1,0 +1,18 @@
+spine-tasks/SP-274-pipeline-extract-remaining-143/.reviews/0-20260906T184801.md
+  h_ae151c586ac6c5 1-22
+spine-tasks/SP-274-pipeline-extract-remaining-143/.reviews/2-20260906T184836.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-274-pipeline-extract-remaining-143/.reviews/final-20260906T185004.md
+  h_ae151c586ac6c5 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c9f45fbe9649a06e5f45df185cadd80c17590d5e",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
