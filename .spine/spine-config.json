@@ -15,14 +15,14 @@
   },
   "agents": {
     "worker": {
-      "model": "kimi-coding/k3",
+      "model": "zai/glm-5.3",
       "thinking": "high"
     },
     "reviewer": {
       "model": "google/gemini-3.1-pro-preview",
       "thinking": "high",
       "plan": {
-        "model": "google/gemini-flash-latest",
+        "model": "zai/glm-5.3-flash",
         "thinking": "low"
       },
       "code": {
@@ -36,12 +36,12 @@
     },
     "supervisor": {
       "enabled": false,
-      "model": "google/gemini-flash-lite-latest",
+      "model": "zai/glm-5.3-flash",
       "pollIntervalMs": 30000,
       "autoNudge": false,
       "thinking": "off"
     },
-    "activeProfile": "default",
+    "activeProfile": "budget",
     "profiles": {
       "default": {
         "worker": {
@@ -108,7 +108,7 @@
             "thinking": "low"
           },
           "code": {
-            "model": "kimi-coding/kimi-for-coding",
+            "model": "google/gemini-3.1-pro-preview",
             "thinking": "high"
           },
           "final": {
@@ -123,12 +123,12 @@
       },
       "hard": {
         "worker": {
-          "model": "kimi-coding/k3",
+          "model": "zai/glm-5.3",
           "thinking": "high"
         },
         "reviewer": {
           "plan": {
-            "model": "kimi-coding/kimi-for-coding",
+            "model": "zai/glm-5.3-flash",
             "thinking": "medium"
           },
           "code": {
