@@ -1,0 +1,21 @@
+spine-tasks/SP-272-pipeline-stage-context-143/.reviews/0-20260906T172706.md
+  s_8900d6cad9229e::t_548313d167ec5e 1-14
+spine-tasks/SP-272-pipeline-stage-context-143/.reviews/2-20260906T172739.md
+  s_8900d6cad9229e::t_13b915cbf95b37 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7d1a1bfcdedc12ab2347cd92b81e4d18fdf61839",
+  "prompts": {},
+  "sessions": {
+    "s_8900d6cad9229e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-dd5a3afb-88dc-4b14-b291-637c9438f73f",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
