@@ -1,0 +1,30 @@
+spine-tasks/SP-274-pipeline-extract-remaining-143/STATUS.md
+  h_ae151c586ac6c5 7,36-39,41-45
+src/domain/pipeline/context-fit-stage.ts
+  h_ae151c586ac6c5 1-32
+src/domain/pipeline/context-overflow-fallback-stage.ts
+  h_ae151c586ac6c5 1-111
+src/domain/pipeline/hardware-probe-stage.ts
+  h_ae151c586ac6c5 1-30
+src/domain/pipeline/local-zero-stage.ts
+  h_ae151c586ac6c5 1-226
+src/domain/pipeline/low-intensity-stage.ts
+  h_ae151c586ac6c5 1-312
+src/domain/pipeline/router-pipeline.ts
+  h_ae151c586ac6c5 11-17,21,35-39,41-44,50,62,71-76,85-89,91-99,239-240,242-244,247,251-253,610-614,619-621,623,626,663-664,704,709-712,717-728,737-740,749-750,753-754,757
+src/domain/pipeline/safe-default-stage.ts
+  h_ae151c586ac6c5 1-87
+src/domain/pipeline/turn-envelope-stage.ts
+  h_ae151c586ac6c5 1-298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "dea7bfd779119f916bd1dfc77fcc5be72ffb1bbe",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
