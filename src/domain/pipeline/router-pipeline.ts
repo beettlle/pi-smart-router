@@ -7,6 +7,13 @@
  *   → session_pin → triage → local_zero → triage_cloud_fallback → hydra_match
  *   → safe_default → context_overflow_fallback
  * Any stage failure falls back to safeCloudDefault(); never throws to host.
+ *
+ * SP-273 / #143 (partial): the first stage cluster (loop_escalation,
+ * session_pin, triage, triage_cloud_fallback, hydra_match) is extracted into
+ * focused modules behind the PipelineStage + RoutingContext contract
+ * (SP-272); the orchestrator wires them through runStageWithContext().
+ * Shared pure helpers live in ./stage-helpers.ts; SP-274 extracts the
+ * remaining stages. No behavior change.
  */
 
 import type {
@@ -31,7 +38,7 @@ import type { HttpFetchPort, LocalReadinessResult, LocalZeroTierConfig } from '.
 import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
 import { pingLocalServices } from '../../infrastructure/local/local-zero-tier.js';
 import { triage as triageClassify } from '../triage/triage-engine.js';
-import type { TriageResult, TriageVerdict } from '../triage/triage-engine.js';
+import type { TriageResult } from '../triage/triage-engine.js';
 import { classifyTurnEnvelope } from '../triage/turn-envelope.js';
 import { safeCloudDefault } from './safe-default.js';
 import {
@@ -52,12 +59,10 @@ import {
   FORCE_REJECTED_UNHEALTHY,
   type ModelSwitchBreakevenContext,
 } from '../pinning/session-pinner.js';
-import { evaluateLoopEscalation } from '../pinning/loop-escalation.js';
 import type { LoopEscalationConfig } from '../pinning/loop-escalation.js';
 import { selectLowestCostModel } from '../pinning/sub-route-policy.js';
 import {
   RoutingTelemetryEmitter,
-  estimateRoutingCost,
   enrichRoutingDecisionWithContextFit,
   enrichRoutingDecisionWithTierSelection,
   createPlanningDelegateObservability,
@@ -69,19 +74,14 @@ import {
   LOCAL_ZERO_DISABLED,
 } from '../../infrastructure/telemetry/routing-telemetry.js';
 import type { HydraMatcher as HydraMatcherType, MatchResult } from '../matching/hydra-matcher.js';
-import { MissingWeightsFailClosedError } from '../matching/hydra-matcher.js';
 import type { ClusterMatcher, ClusterMatchResult } from '../matching/cluster-matcher.js';
 import { clusterReasonCode } from '../../config/routing-clusters-loader.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
-import {
-  requirementFingerprint,
-  resolveDegradedRoute,
-  type CompiledPatternPack,
-  type DegradedRouteConfig,
-  type LearnedRouteStore,
-  type NeuralFailureKind,
+import type {
+  CompiledPatternPack,
+  DegradedRouteConfig,
+  LearnedRouteStore,
 } from '../routing/degraded-route-sandwich.js';
-import { DEFAULT_DEGRADED_ROUTE_CONFIG } from '../types/schemas.js';
 import {
   buildTierFeatures,
   scoreLowIntensity,
@@ -108,6 +108,21 @@ import {
   type PrewarmOutcome,
   type SpeculativePrewarmConfig,
 } from '../routing/speculative-prewarm.js';
+import { createTriageCloudFallbackStage, createTriageStage } from './triage-stage.js';
+import {
+  createLoopEscalationStage,
+  createSessionPinStage,
+} from './session-pin-stage.js';
+import { createHydraMatchStage } from './hydra-match-stage.js';
+import {
+  TURN_TIER_MAP,
+  estimateCheapToolUseRequirement,
+  isPinOnlyFallbackActive,
+  redactPromptFromError,
+  resolveLocalEligible,
+  resolveLocalZeroToolUseCeiling,
+  withEstimatedCost,
+} from './stage-helpers.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
 
@@ -145,102 +160,14 @@ interface NamedPipelineStage {
   readonly run: StageRun;
 }
 
-/** Inputs for local_zero eligibility beyond trivial-only triage (SP-111, #59). */
-export interface LocalEligibleInput {
-  readonly triageVerdict: TriageVerdict | null;
-  readonly tierHint: Tier | null;
-  readonly lowIntensityScore: number | null;
-  readonly highThreshold: number;
-  readonly clusterMatch: ClusterMatchResult | null;
-}
-
-export interface LocalEligibleResult {
-  readonly eligible: boolean;
-  readonly reason: string | null;
-}
-
-/**
- * Disjunction: triage trivial OR low-intensity zero-tier hint (high confidence)
- * OR high-confidence zero-tier cluster match.
- */
-export function resolveLocalEligible(input: LocalEligibleInput): LocalEligibleResult {
-  const clusterZeroTier =
-    input.clusterMatch?.confidence === 'high' &&
-    input.clusterMatch.tierBias === 'zero-tier';
-
-  const triageTrivial = input.triageVerdict === 'trivial';
-
-  // SP-211 / #123 (inverse of #97): a genuinely trivial / no-tool prompt is
-  // local-eligible on a high low-intensity score ALONE — decoupled from the
-  // expected-cost tier hint, which optimizes cost-quality among cloud tiers and
-  // may legitimately hint economical/frontier even for low-stakes turns. Without
-  // this, a no-tool conversational prompt that triage rates 'ambiguous' (no
-  // trivial keyword) falls through to economical even when a healthy local
-  // zero-tier model is ready. The local_zero stage still gates on healthy local
-  // readiness, throughput (#84), and tool-use capability (#98), and a 'complex'
-  // triage verdict is decided at the triage stage before this runs — so agentic
-  // / destructive prompts (#97) are never forced to zero-tier.
-  const lowIntensityEligible =
-    input.lowIntensityScore !== null &&
-    input.lowIntensityScore >= input.highThreshold &&
-    input.triageVerdict !== 'complex';
-
-  if (!triageTrivial && !lowIntensityEligible && !clusterZeroTier) {
-    return { eligible: false, reason: null };
-  }
-
-  if (triageTrivial) {
-    return { eligible: true, reason: 'triage_trivial' };
-  }
-
-  if (clusterZeroTier) {
-    return {
-      eligible: true,
-      reason: clusterReasonCode(input.clusterMatch!.clusterId),
-    };
-  }
-
-  return { eligible: true, reason: 'low_intensity_structural' };
-}
-
-/**
- * Cheap pre-HyDRA tool-use requirement estimate for local_zero gating (SP-177, #98).
- * Cue categories: git / bash-shell / edit / explore / delete / repo.
- * Returns 0–1; true trivial prompts (format/lint) stay near 0.
- */
-const TOOL_USE_CUE_PATTERNS: readonly { readonly id: string; readonly pattern: RegExp }[] = [
-  { id: 'git', pattern: /\b(git|commit|checkout|unstage|rebase|merge conflict)\b/i },
-  { id: 'bash', pattern: /\b(bash|shell|terminal|zsh|powershell|cmd\.exe)\b/i },
-  { id: 'edit', pattern: /\b(edit|rewrite|patch|apply diff)\b/i },
-  { id: 'explore', pattern: /\b(explore|navigate|search (the )?codebase|list files|find files)\b/i },
-  { id: 'delete', pattern: /\b(delete|remove files?|rm\b|unlink)\b/i },
-  { id: 'repo', pattern: /\b(repo|repository|workdir|working tree)\b/i },
-];
-
-export function estimateCheapToolUseRequirement(promptText: string): number {
-  if (!promptText || promptText.trim().length === 0) {
-    return 0;
-  }
-
-  let hits = 0;
-  for (const cue of TOOL_USE_CUE_PATTERNS) {
-    if (cue.pattern.test(promptText)) {
-      hits += 1;
-    }
-  }
-
-  if (hits === 0) return 0;
-  if (hits === 1) return 0.55;
-  if (hits === 2) return 0.75;
-  return 0.9;
-}
-
-export function resolveLocalZeroToolUseCeiling(
-  localToolUseCapability: number,
-  maxToolUseRequirement: number,
-): number {
-  return Math.min(localToolUseCapability, maxToolUseRequirement);
-}
+/** Inputs for local_zero eligibility beyond trivial-only triage (SP-111, #59).
+ * Moved to ./stage-helpers.ts (SP-273); re-exported for import-path stability. */
+export {
+  estimateCheapToolUseRequirement,
+  resolveLocalEligible,
+  resolveLocalZeroToolUseCeiling,
+} from './stage-helpers.js';
+export type { LocalEligibleInput, LocalEligibleResult } from './stage-helpers.js';
 
 // ─── Pipeline configuration ──────────────────────────────────────────────────
 
@@ -317,7 +244,7 @@ export class RouterPipeline {
   private currentPSuccessRaw: number | null = null;
   private currentPSuccessCalibrated: number | null = null;
   private currentPSuccessAlpha: number | null = null;
-  private currentExpectedCostByTier: ExpectedCostBreakdown[] | null = null;
+  private currentExpectedCostByTier: readonly ExpectedCostBreakdown[] | null = null;
   private currentLocalEligibleReason: string | null = null;
   private pSuccessWeightsLoaded = false;
   private cachedPSuccessWeights: PSuccessWeights | null = null;
@@ -340,6 +267,14 @@ export class RouterPipeline {
   private currentPrewarmOutcome: PrewarmOutcome | null = null;
   /** Lazily created session-scoped prewarm guard (acceptance state spans routes). */
   private prewarmGuardInstance: SpeculativePrewarmGuard | null = null;
+
+  /** Extracted stage instances (SP-273) — run via runStageWithContext(). */
+  private readonly loopEscalationPipelineStage: PipelineStage = createLoopEscalationStage();
+  private readonly sessionPinPipelineStage: PipelineStage = createSessionPinStage();
+  private readonly triagePipelineStage: PipelineStage = createTriageStage();
+  private readonly triageCloudFallbackPipelineStage: PipelineStage =
+    createTriageCloudFallbackStage();
+  private readonly hydraMatchPipelineStage: PipelineStage = createHydraMatchStage();
 
   /**
    * Single-flight serialization tail (SP-230, #141).
@@ -647,16 +582,8 @@ export class RouterPipeline {
       stage,
       request_id: request.request_id,
       session_id: request.session_id,
-      error: this.redactPromptFromError(error, request.prompt_text),
+      error: redactPromptFromError(error, request.prompt_text),
     });
-  }
-
-  private redactPromptFromError(error: unknown, promptText: string): string {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!promptText || !message.includes(promptText)) {
-      return message;
-    }
-    return message.replaceAll(promptText, '[REDACTED]');
   }
 
   private emitPipelineErrorTelemetry(
@@ -702,21 +629,6 @@ export class RouterPipeline {
       routePath,
       routePathConfidence,
     });
-  }
-
-  private withEstimatedCost(
-    request: RoutingRequest,
-    model: ModelProfile,
-    decision: RoutingDecision,
-  ): RoutingDecision {
-    return {
-      ...decision,
-      estimated_cost_usd: estimateRoutingCost(
-        model,
-        request,
-        this.options.priceCatalog ?? null,
-      ),
-    };
   }
 
   private buildFallbackDecision(
@@ -788,16 +700,21 @@ export class RouterPipeline {
     }
 
     const model = overflow.model!;
-    return this.withEstimatedCost(request, model, {
-      request_id: request.request_id,
-      selected_model_id: model.id,
-      tier: model.tier,
-      stage: 'fallback',
-      reason_code: overflow.reasonCode,
-      candidates: this.currentContextFitRejected,
-      routing_latency_ms: elapsedMs,
-      pin_reason: null,
-    });
+    return withEstimatedCost(
+      request,
+      model,
+      {
+        request_id: request.request_id,
+        selected_model_id: model.id,
+        tier: model.tier,
+        stage: 'fallback',
+        reason_code: overflow.reasonCode,
+        candidates: this.currentContextFitRejected,
+        routing_latency_ms: elapsedMs,
+        pin_reason: null,
+      },
+      this.options.priceCatalog ?? null,
+    );
   }
 
   /**
@@ -851,15 +768,6 @@ export class RouterPipeline {
         pin_reason: null,
       },
     };
-  }
-
-  private markContextOverflowFromPin(
-    request: RoutingRequest,
-    pinnedModelId: string,
-  ): void {
-    const pinnedModel = this.fullFleet.find((model) => model.id === pinnedModelId);
-    this.contextOverflowTriggered = true;
-    this.contextOverflowPreferredProvider = pinnedModel?.provider ?? null;
   }
 
   // ─── Implemented stages ─────────────────────────────────────────────────────
@@ -918,11 +826,77 @@ export class RouterPipeline {
     };
   }
 
-  private async hardwareProbeStage(request: RoutingRequest): Promise<StageResult> {
+  /**
+   * Run an extracted PipelineStage against a snapshot of the shared
+   * RoutingContext, then sync context writes back to the legacy per-route
+   * fields until SP-274 migrates the remaining stages behind the same
+   * interface (SP-272 seam). No behavior change.
+   */
+  private async runStageWithContext(
+    stage: PipelineStage,
+    request: RoutingRequest,
+  ): Promise<StageResult> {
     const context = this.buildRoutingContext(request);
-    const result = await this.hardwareProbePipelineStage.run(context);
-    this.currentHardwareResult = context.hardwareResult;
+    const result = await stage.run(context);
+    this.syncRoutingContext(context);
     return result;
+  }
+
+  /** Sync all mutable RoutingContext fields back to the per-route fields. */
+  private syncRoutingContext(context: RoutingContext): void {
+    this.activeFleet = context.fleet;
+    this.currentHardwareResult = context.hardwareResult;
+    this.currentTriageResult = context.triageResult;
+    this.currentHydraResult = context.hydraResult;
+    this.currentClusterMatch = context.clusterMatch;
+    this.currentTierHint = context.tierHint;
+    this.currentTierHintReasonCode = context.tierHintReasonCode;
+    this.currentLowIntensityScore = context.lowIntensityScore;
+    this.currentPSuccessCheap = context.pSuccessCheap;
+    this.currentPSuccessRaw = context.pSuccessRaw;
+    this.currentPSuccessCalibrated = context.pSuccessCalibrated;
+    this.currentPSuccessAlpha = context.pSuccessAlpha;
+    this.currentExpectedCostByTier = context.expectedCostByTier;
+    this.currentLocalEligibleReason = context.localEligibleReason;
+    this.currentContextFitRejected = context.contextFitRejected;
+    this.currentContextFitViableCount = context.contextFitViableCount;
+    this.contextOverflowTriggered = context.contextOverflowTriggered;
+    this.contextOverflowPreferredProvider = context.contextOverflowPreferredProvider;
+    this.currentBreakevenReason = context.breakevenReason;
+    this.currentPlanningDelegate = context.planningDelegate;
+    this.currentLocalZeroGateSkipReasons = context.localZeroGateSkipReasons;
+    this.currentRoutePath = context.routePath;
+    this.currentRoutePathConfidence = context.routePathConfidence;
+    this.currentPrewarmOutcome = context.prewarmOutcome;
+  }
+
+  private async hardwareProbeStage(request: RoutingRequest): Promise<StageResult> {
+    return this.runStageWithContext(this.hardwareProbePipelineStage, request);
+  }
+
+  // ─── Extracted stage wrappers (SP-273, #143) ────────────────────────────
+  // Thin delegations that keep the pre-extraction method names so prototype
+  // spies in tests (e.g. SP-071 stage-error telemetry) keep working; the
+  // stage logic lives in the extracted PipelineStage modules.
+
+  private async loopEscalation(request: RoutingRequest): Promise<StageResult> {
+    return this.runStageWithContext(this.loopEscalationPipelineStage, request);
+  }
+
+  private async sessionPin(request: RoutingRequest): Promise<StageResult> {
+    return this.runStageWithContext(this.sessionPinPipelineStage, request);
+  }
+
+  private async triage(request: RoutingRequest): Promise<StageResult> {
+    return this.runStageWithContext(this.triagePipelineStage, request);
+  }
+
+  private async triageCloudFallback(request: RoutingRequest): Promise<StageResult> {
+    return this.runStageWithContext(this.triageCloudFallbackPipelineStage, request);
+  }
+
+  private async hydraMatcher(request: RoutingRequest): Promise<StageResult> {
+    return this.runStageWithContext(this.hydraMatchPipelineStage, request);
   }
 
   /**
@@ -1123,212 +1097,6 @@ export class RouterPipeline {
     return null;
   }
 
-  // ─── Triage stage (FR-003, SC-004 <5ms budget) ──────────────────────────────
-
-  private async triage(request: RoutingRequest): Promise<StageResult> {
-    const result = triageClassify(request.prompt_text);
-    this.currentTriageResult = result;
-
-    if (result.verdict === 'ambiguous') {
-      return { decided: false, stage: 'triage' };
-    }
-
-    // Trivial prompts defer cloud routing until after local zero-tier (PRD Step 4).
-    if (result.verdict === 'trivial') {
-      return { decided: false, stage: 'triage' };
-    }
-
-    const targetTier = 'frontier-cloud';
-    const model = this.activeFleet.find((m) => m.tier === targetTier && m.healthy !== false);
-
-    if (!model) {
-      return { decided: false, stage: 'triage' };
-    }
-
-    return {
-      decided: true,
-      stage: 'triage',
-      decision: {
-        request_id: request.request_id,
-        selected_model_id: model.id,
-        tier: targetTier,
-        stage: 'triage',
-        reason_code: result.reason_code,
-        routing_latency_ms: 0,
-        pin_reason: null,
-      },
-    };
-  }
-
-  /**
-   * Economical-cloud fallback for trivial prompts after local zero-tier is skipped
-   * or unavailable (PRD Step 4 cloud fallback).
-   */
-  private async triageCloudFallback(request: RoutingRequest): Promise<StageResult> {
-    if (this.currentTriageResult?.verdict !== 'trivial') {
-      return { decided: false, stage: 'triage' };
-    }
-
-    const model = this.activeFleet.find(
-      (m) => m.tier === 'economical-cloud' && m.healthy !== false,
-    );
-
-    if (!model) {
-      return { decided: false, stage: 'triage' };
-    }
-
-    return {
-      decided: true,
-      stage: 'triage',
-      decision: {
-        request_id: request.request_id,
-        selected_model_id: model.id,
-        tier: 'economical-cloud',
-        stage: 'triage',
-        reason_code: this.currentTriageResult.reason_code,
-        routing_latency_ms: 0,
-        pin_reason: null,
-      },
-    };
-  }
-
-  // ─── Session pin stage (FR-006, FR-007, FR-008) ──────────────────────────
-
-  private async sessionPin(request: RoutingRequest): Promise<StageResult> {
-    const pinner = this.options.sessionPinner;
-    if (!pinner) {
-      return { decided: false, stage: 'session_pin' };
-    }
-
-    const existingPin = pinner.getPin(request.session_id);
-    const saarRequest = this.enrichRequestWithSaarCandidate(request);
-    const result = pinner.lookupPin(saarRequest, this.activeFleet);
-
-    switch (result.action) {
-      case 'use_pin': {
-        const model = result.pinnedModel!;
-        const pin = pinner.getPin(request.session_id);
-        const reasonCode =
-          result.saarReason === 'saar_hard_lock'
-            ? 'saar_hard_lock'
-            : result.saarReason === 'saar_tier_upgrade'
-              ? 'saar_tier_upgrade'
-              : this.isPinOnlyFallbackActive(request)
-                ? 'pin_only_fallback'
-                : 'session_pinned';
-        return {
-          decided: true,
-          stage: 'session_pin',
-          decision: this.withEstimatedCost(request, model, {
-            request_id: request.request_id,
-            selected_model_id: model.id,
-            tier: model.tier,
-            stage: 'session_pin',
-            reason_code: reasonCode,
-            routing_latency_ms: 0,
-            pin_reason: pin?.pin_reason ?? null,
-          }),
-        };
-      }
-
-      case 'saar_route': {
-        const model = result.saarRouteModel!;
-        const pin = pinner.getPin(request.session_id);
-        return {
-          decided: true,
-          stage: 'session_pin',
-          decision: this.withEstimatedCost(request, model, {
-            request_id: request.request_id,
-            selected_model_id: model.id,
-            tier: model.tier,
-            stage: 'session_pin',
-            reason_code: result.saarReason ?? 'saar_buffer_active',
-            routing_latency_ms: 0,
-            pin_reason: pin?.pin_reason ?? null,
-          }),
-        };
-      }
-
-      case 'sub_route': {
-        const model = result.subRouteModel!;
-        const pin = pinner.getPin(request.session_id);
-        return {
-          decided: true,
-          stage: 'session_pin',
-          decision: this.withEstimatedCost(request, model, {
-            request_id: request.request_id,
-            selected_model_id: model.id,
-            tier: model.tier,
-            stage: 'session_pin',
-            reason_code: 'tool_result_sub_route',
-            routing_latency_ms: 0,
-            pin_reason: pin?.pin_reason ?? null,
-          }),
-        };
-      }
-
-      case 'force_rejected': {
-        // SP-209 / #121: force_model_id could not be honored. Fail closed with
-        // an explicit reason — never silently remap to a different provider
-        // family. Degrade to the safe cloud default so the host agent still has
-        // a usable model (constitution: zero-crash resilience), but record the
-        // rejection as reason_code so explain / SMART_ROUTER_LOG_ROUTING=1
-        // surfaces it instead of masking it as a normal route.
-        const fallbackModel = safeCloudDefault(this.activeFleet, {
-          request,
-          ...(this.options.contextFitConfig !== undefined
-            ? { contextFitConfig: this.options.contextFitConfig }
-            : {}),
-        });
-        const forceReasonCode =
-          result.forceRejectionReason ?? FORCE_REJECTED_NOT_IN_FLEET;
-        return {
-          decided: true,
-          stage: 'session_pin',
-          decision: fallbackModel
-            ? this.withEstimatedCost(request, fallbackModel, {
-                request_id: request.request_id,
-                selected_model_id: fallbackModel.id,
-                tier: fallbackModel.tier,
-                stage: 'session_pin',
-                reason_code: forceReasonCode,
-                routing_latency_ms: 0,
-                pin_reason: 'user_forced',
-              })
-            : {
-                request_id: request.request_id,
-                selected_model_id: 'unknown',
-                tier: 'economical-cloud',
-                stage: 'session_pin',
-                reason_code: forceReasonCode,
-                routing_latency_ms: 0,
-                pin_reason: 'user_forced',
-              },
-        };
-      }
-
-      case 'break':
-        if (result.breakReason === 'context_overflow' && existingPin) {
-          this.markContextOverflowFromPin(request, existingPin.pinned_model_id);
-        }
-        return { decided: false, stage: 'session_pin' };
-
-      case 'no_pin':
-        if (existingPin) {
-          const wasContextRejected = this.currentContextFitRejected.some(
-            (candidate) => candidate.model_id === existingPin.pinned_model_id,
-          );
-          if (wasContextRejected) {
-            this.markContextOverflowFromPin(request, existingPin.pinned_model_id);
-          }
-        }
-        return { decided: false, stage: 'session_pin' };
-
-      default:
-        return { decided: false, stage: 'session_pin' };
-    }
-  }
-
   /**
    * After a routing decision, persist an initial pin when none exists.
    * Sub-routes and already-pinned decisions skip persistence.
@@ -1364,28 +1132,6 @@ export class RouterPipeline {
 
   private recordSaarTurnIfNeeded(request: RoutingRequest): void {
     this.options.sessionPinner?.recordSaarTurn(request.session_id);
-  }
-
-  private enrichRequestWithSaarCandidate(request: RoutingRequest): RoutingRequest {
-    if (request.candidate_model_id) {
-      return request;
-    }
-
-    const turnType = request.turn_type ?? classifyTurnEnvelope(request.messages);
-    const targetTier = RouterPipeline.TURN_TIER_MAP[turnType] ?? null;
-    if (!targetTier) {
-      return request;
-    }
-
-    const tierCandidates = this.activeFleet.filter(
-      (m) => m.tier === targetTier && m.healthy !== false,
-    );
-    const model = selectLowestCostModel(tierCandidates);
-    if (!model) {
-      return request;
-    }
-
-    return { ...request, candidate_model_id: model.id };
   }
 
   private shouldDeferPlanningForSaar(request: RoutingRequest): boolean {
@@ -1430,16 +1176,8 @@ export class RouterPipeline {
 
   // ─── Turn envelope stage (Step 2b, <2ms budget) ─────────────────────────
 
-  private static readonly TURN_TIER_MAP: Readonly<Record<string, Tier | null>> = {
-    planning: 'frontier-cloud',
-    tool_result: 'economical-cloud',
-    subagent: 'economical-cloud',
-    main_loop: null,
-    unknown: null,
-  };
-
   private async turnEnvelope(request: RoutingRequest): Promise<StageResult> {
-    if (this.isPinOnlyFallbackActive(request)) {
+    if (isPinOnlyFallbackActive(this.options, request)) {
       return { decided: false, stage: 'turn_envelope' };
     }
 
@@ -1452,7 +1190,7 @@ export class RouterPipeline {
     }
 
     const turnType = request.turn_type ?? classifyTurnEnvelope(request.messages);
-    const targetTier = RouterPipeline.TURN_TIER_MAP[turnType] ?? null;
+    const targetTier = TURN_TIER_MAP[turnType] ?? null;
 
     if (!targetTier) {
       return { decided: false, stage: 'turn_envelope' };
@@ -1538,17 +1276,22 @@ export class RouterPipeline {
     return {
       decided: true,
       stage: 'turn_envelope',
-      decision: this.withEstimatedCost(request, targetModel, {
-        request_id: request.request_id,
-        selected_model_id: targetModel.id,
-        tier: targetTier,
-        stage: 'turn_envelope',
-        reason_code: planningDirectFallback
-          ? PLANNING_DIRECT_FRONTIER
-          : directReasonCode,
-        routing_latency_ms: 0,
-        pin_reason: null,
-      }),
+      decision: withEstimatedCost(
+        request,
+        targetModel,
+        {
+          request_id: request.request_id,
+          selected_model_id: targetModel.id,
+          tier: targetTier,
+          stage: 'turn_envelope',
+          reason_code: planningDirectFallback
+            ? PLANNING_DIRECT_FRONTIER
+            : directReasonCode,
+          routing_latency_ms: 0,
+          pin_reason: null,
+        },
+        this.options.priceCatalog ?? null,
+      ),
     };
   }
 
@@ -1592,15 +1335,20 @@ export class RouterPipeline {
     return {
       decided: true,
       stage: 'turn_envelope',
-      decision: this.withEstimatedCost(request, pinnedModel, {
-        request_id: request.request_id,
-        selected_model_id: pinnedModel.id,
-        tier: pinnedModel.tier,
-        stage: 'turn_envelope',
-        reason_code: PLANNING_DELEGATE,
-        routing_latency_ms: 0,
-        pin_reason: null,
-      }),
+      decision: withEstimatedCost(
+        request,
+        pinnedModel,
+        {
+          request_id: request.request_id,
+          selected_model_id: pinnedModel.id,
+          tier: pinnedModel.tier,
+          stage: 'turn_envelope',
+          reason_code: PLANNING_DELEGATE,
+          routing_latency_ms: 0,
+          pin_reason: null,
+        },
+        this.options.priceCatalog ?? null,
+      ),
     };
   }
 
@@ -1624,7 +1372,7 @@ export class RouterPipeline {
    * the active fleet for subsequent HyDRA matching when confidence is high.
    */
   private async lowIntensityGate(request: RoutingRequest): Promise<StageResult> {
-    if (this.isPinOnlyFallbackActive(request)) {
+    if (isPinOnlyFallbackActive(this.options, request)) {
       return { decided: false, stage: 'low_intensity' };
     }
 
@@ -1808,20 +1556,6 @@ export class RouterPipeline {
     };
   }
 
-  /** True when pin-only emergency fallback is active for a warm session (SP-161). */
-  private isPinOnlyFallbackActive(request: RoutingRequest): boolean {
-    if (!this.options.pinOnlyFallback) {
-      return false;
-    }
-
-    const pinner = this.options.sessionPinner;
-    if (!pinner) {
-      return false;
-    }
-
-    return pinner.getPin(request.session_id) !== null;
-  }
-
   private resolvePSuccessWeights(): PSuccessWeights {
     if (this.options.pSuccessWeights) {
       return this.options.pSuccessWeights;
@@ -1914,243 +1648,4 @@ export class RouterPipeline {
     return 'high_intensity_structural';
   }
 
-  private constrainFleetToTierHint(
-    fleet: readonly ModelProfile[],
-    tierHint: Tier,
-  ): readonly ModelProfile[] {
-    const filtered = fleet.filter(
-      (model) => model.tier === tierHint && model.healthy !== false,
-    );
-    return filtered.length > 0 ? filtered : fleet;
-  }
-
-  // ─── Loop escalation (Step 3b — FR-014) ─────────────────────────────────
-
-  /**
-   * Observational loop escalation: detects repeated identical tool failures
-   * and re-pins the session to a frontier-capable tier.
-   *
-   * Runs before turn_envelope and session_pin so it can modify pin state.
-   * Never returns decided: true — turnEnvelope or sessionPin picks up the
-   * (potentially escalated) pin on subsequent stages.
-   */
-  private async loopEscalation(request: RoutingRequest): Promise<StageResult> {
-    const pinner = this.options.sessionPinner;
-    const config = this.options.loopEscalationConfig;
-    if (!pinner || !config) {
-      return { decided: false, stage: 'loop_escalation' };
-    }
-
-    const pin = pinner.getPin(request.session_id);
-    const result = evaluateLoopEscalation(pin, request, this.activeFleet, config);
-
-    if (result.updatedPin) {
-      pinner.loadPin(result.updatedPin);
-    }
-
-    if (result.shouldEscalate && result.escalationTarget) {
-      pinner.breakPin(request.session_id);
-      pinner.recordPin(
-        request.session_id,
-        result.escalationTarget.id,
-        'loop_escalation',
-      );
-    }
-
-    return { decided: false, stage: 'loop_escalation' };
-  }
-
-  /**
-   * Step 5: HyDRA embedding matcher for ambiguous prompts (T050).
-   * Scores fleet candidates via embedding cosine similarity with shortfall gate.
-   * Pass-through when no matcher is configured.
-   *
-   * SP-212 / #119: encoder/neural errors and budget overruns with no selection
-   * fail open through the degraded sandwich (learned → pattern → safe default)
-   * instead of throwing to the host.
-   */
-  private async hydraMatcher(request: RoutingRequest): Promise<StageResult> {
-    const matcher = this.options.hydraMatcher;
-    if (!matcher) {
-      return { decided: false, stage: 'hydra_match' };
-    }
-
-    const fleetForMatch = this.currentTierHint
-      ? this.constrainFleetToTierHint(this.activeFleet, this.currentTierHint)
-      : this.activeFleet;
-
-    let result: MatchResult;
-    try {
-      result = await matcher.match(request, fleetForMatch);
-    } catch (error: unknown) {
-      // SP-252 / #148: operator fail-closed — placeholder requirement heads are
-      // not treated as learned production heads; the decision drops into the
-      // degraded sandwich as neural_misconfigured with SP-251 codes visible.
-      if (error instanceof MissingWeightsFailClosedError) {
-        console.warn(
-          'HyDRA fail-closed on missing weight artifacts; routing via degraded sandwich',
-          {
-            request_id: request.request_id,
-            session_id: request.session_id,
-            reason_codes: [...error.reasonCodes],
-          },
-        );
-        return this.degradedRouteStage(request, 'neural_misconfigured', error.reasonCodes);
-      }
-      console.warn('HyDRA neural match failed; routing via degraded sandwich', {
-        request_id: request.request_id,
-        session_id: request.session_id,
-        error: this.redactPromptFromError(error, request.prompt_text),
-      });
-      return this.degradedRouteStage(request, 'neural_error');
-    }
-
-    // SP-252 / #148: pipeline-side fail-closed — honors the operator flag even
-    // when the matcher was constructed without it. Placeholder-scored
-    // requirements are discarded (not recorded as a neural success).
-    const degradedConfig =
-      this.options.degradedRouteConfig ??
-      DEFAULT_OPERATOR_CONFIG.degraded_route ??
-      DEFAULT_DEGRADED_ROUTE_CONFIG;
-    const missingWeightsCodes = result.requirement_reason_codes ?? [];
-    if (
-      degradedConfig.fail_closed_on_missing_weights &&
-      missingWeightsCodes.length > 0
-    ) {
-      console.warn(
-        'HyDRA fail-closed on missing weight artifacts; routing via degraded sandwich',
-        {
-          request_id: request.request_id,
-          session_id: request.session_id,
-          reason_codes: [...missingWeightsCodes],
-        },
-      );
-      return this.degradedRouteStage(request, 'neural_misconfigured', missingWeightsCodes);
-    }
-
-    this.currentHydraResult = result;
-
-    if (result.budgetExceeded && !result.selected) {
-      return this.degradedRouteStage(request, 'neural_budget_exceeded');
-    }
-
-    if (!result.selected) {
-      return { decided: false, stage: 'hydra_match' };
-    }
-
-    const selectedModel = this.activeFleet.find(
-      (m) => m.id === result.selected!.model_id,
-    );
-    if (!selectedModel) {
-      return { decided: false, stage: 'hydra_match' };
-    }
-
-    this.currentRoutePath = 'neural';
-    this.currentRoutePathConfidence = Math.min(1, Math.max(0, result.selected.score));
-    this.recordLearnedRoute(selectedModel.tier);
-
-    return {
-      decided: true,
-      stage: 'hydra_match',
-      decision: this.withEstimatedCost(request, selectedModel, {
-        request_id: request.request_id,
-        selected_model_id: selectedModel.id,
-        tier: selectedModel.tier,
-        stage: 'hydra_match',
-        reason_code: 'hydra_embedding_match',
-        candidates: result.candidates,
-        routing_latency_ms: result.elapsedMs,
-        pin_reason: null,
-      }),
-    };
-  }
-
-  /**
-   * SP-212 / #119 degraded sandwich stage: learned map → operator pattern pack
-   * → safe default. Never throws; falls through to the legacy safe_default
-   * stage when disabled or when no degraded path can select a model.
-   */
-  private degradedRouteStage(
-    request: RoutingRequest,
-    failure: NeuralFailureKind,
-    failureReasonCodes?: readonly string[],
-  ): StageResult {
-    const config =
-      this.options.degradedRouteConfig ??
-      DEFAULT_OPERATOR_CONFIG.degraded_route ??
-      DEFAULT_DEGRADED_ROUTE_CONFIG;
-
-    if (!config.enabled) {
-      return { decided: false, stage: 'hydra_match' };
-    }
-
-    const safeDefaultModel = safeCloudDefault(this.activeFleet, {
-      request,
-      ...(this.options.contextFitConfig !== undefined
-        ? { contextFitConfig: this.options.contextFitConfig }
-        : {}),
-    });
-
-    const resolution = resolveDegradedRoute({
-      failure,
-      fleet: this.activeFleet,
-      toolUseEstimate: estimateCheapToolUseRequirement(request.prompt_text),
-      clusterId: this.currentClusterMatch?.clusterId ?? null,
-      learnedStore: this.options.learnedRouteStore ?? null,
-      patternPack: this.options.patternPack ?? null,
-      safeDefaultModel,
-      config,
-      promptText: request.prompt_text,
-    });
-
-    this.currentRoutePath = resolution.routePath;
-    this.currentRoutePathConfidence = resolution.confidence;
-
-    if (!resolution.model) {
-      return { decided: false, stage: 'hydra_match' };
-    }
-
-    // SP-252 / #148: when a fail-closed trigger carried SP-251 missing-weights
-    // codes, surface them as the decision reason_code so the degraded state is
-    // visible on the decision path (route_path still records the sandwich
-    // branch that resolved: learned / heuristic / safe_default).
-    const reasonCode =
-      failureReasonCodes && failureReasonCodes.length > 0
-        ? failureReasonCodes.join(',')
-        : resolution.reasonCode;
-
-    return {
-      decided: true,
-      stage: 'hydra_match',
-      decision: this.withEstimatedCost(request, resolution.model, {
-        request_id: request.request_id,
-        selected_model_id: resolution.model.id,
-        tier: resolution.model.tier,
-        stage: resolution.routePath === 'safe_default' ? 'fallback' : 'hydra_match',
-        reason_code: reasonCode,
-        routing_latency_ms: 0,
-        pin_reason: null,
-      }),
-    };
-  }
-
-  /**
-   * Record the neural decision into the learned map (SP-212). Keys are the
-   * requirement fingerprint and/or cluster id — never raw prompt text.
-   */
-  private recordLearnedRoute(tier: Tier): void {
-    const store = this.options.learnedRouteStore;
-    if (!store) {
-      return;
-    }
-
-    const requirements = this.currentHydraResult?.requirements;
-    const fingerprint = requirements ? requirementFingerprint(requirements) : null;
-    const clusterId = this.currentClusterMatch?.clusterId ?? null;
-    if (fingerprint === null && clusterId === null) {
-      return;
-    }
-
-    store.record({ requirementFingerprint: fingerprint, clusterId }, tier);
-  }
 }
