@@ -1,0 +1,24 @@
+.github/workflows/calibration-verify.yml
+  h_ae151c586ac6c5 31
+.github/workflows/ci.yml
+  h_ae151c586ac6c5 22
+.github/workflows/eval-harness-smoke.yml
+  h_ae151c586ac6c5 27
+.github/workflows/release.yml
+  h_ae151c586ac6c5 89
+README.md
+  h_ae151c586ac6c5 55-57
+spine-tasks/SP-264-ci-node-engines-154/STATUS.md
+  h_ae151c586ac6c5 3-5,15,17-18,22,24-25,46-47,53-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "00c285204a5f6ce9eee97b6b2dbe6e7431c77587",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
