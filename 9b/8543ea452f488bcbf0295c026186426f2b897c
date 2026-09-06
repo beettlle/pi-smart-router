@@ -1,0 +1,18 @@
+README.md
+  h_ae151c586ac6c5 703,705,708-713,742-743
+docs/qa/shadow-dogfood-protocol.md
+  h_ae151c586ac6c5 69
+spine-tasks/SP-268-calibration-bootstrap-docs-110/STATUS.md
+  h_ae151c586ac6c5 3-5,15,17,21,23-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "9b8543ea452f488bcbf0295c026186426f2b897c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
