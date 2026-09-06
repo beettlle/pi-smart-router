@@ -1,10 +1,10 @@
 # SP-274 — Extract remaining stages and shrink RouterPipeline orchestrator. — Status
 
-**Current Step:** 1
-**Status:** In Progress
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-09-06
 **Review Level:** 2
-**Review Counter:** 1
+**Review Counter:** 3
 **Iteration:** 0
 **Size:** M
 
@@ -46,24 +46,31 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Contract testCommand green
-- [ ] npm run coverage:check
+- [x] Contract testCommand green
+- [x] npm run coverage:check
 
----
+**Evidence:** `npm run typecheck && npm test` → tsc clean, 122 files / 2169 tests passed, CONTRACT_EXIT=0 (identical test count to SP-273 baseline — behavior preserved). `npm run coverage:check` → exit 0 (combined gate green); `src/domain/pipeline` dir 92.68% lines (up from 92.37% at SP-273), `router-pipeline.ts` 93.69% lines; new modules: context-fit 100%, context-overflow-fallback 100%, hardware-probe 100%, safe-default-stage 98.21%, local-zero 96.81%, low-intensity 96.15%, turn-envelope 92.95% — all ≥77% threshold.
+
+## Completion Criteria
+
+- [x] Remaining stages extracted; orchestrator shrunk; Partial #143
 
 ## Reviews
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-09-06 | 0 | plan | skipped — engine runs reviews after .DONE (SP-195) |
+| 2026-09-06 | 1 | plan | skipped — engine runs reviews after .DONE (SP-195) |
+| 2026-09-06 | 2 | plan | skipped — engine runs reviews after .DONE (SP-195) |
 
 ## Discoveries
 
 | Date | Finding | Impact |
 |------|---------|--------|
-| | | |
+| 2026-09-06 | No `scripts/worker-verify.sh` in this repo; used the contract testCommand directly (typecheck && test) | None — evidence captured in Step 2 |
+| 2026-09-06 | gitnexus index predates the new SP-274 modules (e.g. shows `markContextOverflowFromPin` under router-pipeline); the HIGH risk heuristic on routing-core centrality is index-staleness + centrality, not a regression signal — detect_changes confirmed confinement to the must-change file and the full suite is green | Operator may run `/gitnexus analyze` post-merge to refresh |
 
 ## Execution Log
 
@@ -71,6 +78,8 @@
 |------|-------|--------|
 | 2026-09-06 | Task started | Resumed from clean tree; SP-273 merged; reading pipeline state |
 | 2026-09-06 | Step 0 complete | Remaining stages listed; seams + sizing planned |
+| 2026-09-06 | Step 1 complete | 7 stage modules extracted; orchestrator 1651→795 lines; 2169 tests green |
+| 2026-09-06 | Step 2 complete | Contract testCommand + coverage:check green; all criteria met |
 
 ## Blockers
 
