@@ -52,7 +52,9 @@ See [docs/PRD.md](docs/PRD.md) for full architectural justification, [docs/deep-
 
 | Dependency | Required | Notes |
 |------------|----------|-------|
-| [Node.js](https://nodejs.org/) >= 22 | Yes | ES module package; matches CI and `package.json` engines |
+| [Node.js](https://nodejs.org/) >= 22.19.0 | Yes | ES module package; matches `package.json` `engines.node` and CI (workflows pin Node `22.19.0`) |
+
+> **Engine floor:** `package.json` declares `engines.node >= 22.19.0`. If you (or your environment) enable `engine-strict=true` in `.npmrc`, installs on Node < 22.19.0 fail with `EBADENGINE`; on a supported Node (>= 22.19.0), `npm ci` completes with no `EBADENGINE` warnings.
 | [pi](https://pi.dev) coding agent | Yes | Extension host |
 | macOS Apple Silicon | MVP | Primary supported platform |
 | Linux (x64/arm64) | Experimental | Probe logic supported; not validated on real hardware |
