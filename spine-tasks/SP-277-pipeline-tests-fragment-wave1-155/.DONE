@@ -1,0 +1,7 @@
+SP-277 complete.
+
+Step 0: Preflight — mapped 22 describe blocks to SP-273 stage modules; chose wave-1 extract set.
+Step 1: Extract wave-1 tests — 4 stage-focused modules + shared fixtures; monolith 2206→1522 lines; 85/85 tests preserved.
+Step 2: Testing & Verification — npm test exit 0 (126 files / 2169 tests); typecheck clean.
+
+Commits: ca157a7, b208fb1, 3a49227.
