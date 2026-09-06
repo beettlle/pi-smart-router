@@ -1,0 +1,19 @@
+spine-tasks/SP-273-pipeline-extract-first-stages-143/.reviews/0-20260906T175203.md
+  s_8900d6cad9229e::t_8a5e6bd5959e4c 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "8bf81eac042b86ec23c8cba5144da0b498e044c4",
+  "prompts": {},
+  "sessions": {
+    "s_8900d6cad9229e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-dd5a3afb-88dc-4b14-b291-637c9438f73f",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
