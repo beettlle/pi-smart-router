@@ -1,0 +1,16 @@
+spine-tasks/SP-264-ci-node-engines-154/.reviews/0-20260906T170204.md
+  h_ae151c586ac6c5 1-19
+spine-tasks/SP-264-ci-node-engines-154/.reviews/final-20260906T170252.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5fdf7d1bab1afae6ab1bece9ce6aeb61457ff480",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
