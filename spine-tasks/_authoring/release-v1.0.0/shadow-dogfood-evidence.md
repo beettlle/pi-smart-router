@@ -76,3 +76,31 @@ Commands **not** run (human-owned, require live pi sessions): `/model smart-rout
 ---
 
 *Worker scope note: per SP-267 mission item 5, this artifact is the autonomous scaffold + dry-run evidence. Live session collection, sign-off form, and any gate-relaxation decision remain operator-owned.*
+
+---
+
+## Operator follow-up (2026-09-06 land loop) — historical dogfood rediscovered
+
+While waiting on SP-273, operator re-scanned **gitignored** `.pi-smart-router/` (SP-267 scaffold only searched git-tracked contrib):
+
+| Source | Rows | labeled_econ | floor (≥30) |
+|--------|------|--------------|-------------|
+| `exports/dataset-2026-07-14T23-04-27-983Z.jsonl` | 79 | **31** | **met** |
+| `exports/dataset-2026-07-14T22-53-22-549Z.jsonl` | 78 | 29 | unmet (−1) |
+| `qa-runs/dogfood-gather-20260714T224155Z/` | matrix A–E session logs | mid/final export notes | historical window |
+
+Offline companion re-run today:
+
+- `npm run qa:shadow-dogfood` → hard gates PASS; corpus soft FAIL archived under `.pi-smart-router/qa-runs/20260906T175136Z/`
+- `qa:dogfood-soft-feed` against the July **dataset JSONL** → **SKIP/error** (expects Track B document JSON, not dataset JSONL) — do not invent Track B labels from JSONL
+
+### Updated recommendation
+
+| Decision | Updated |
+|----------|---------|
+| Calibration sample floor (#110 path) | **Historical July export meets ≥30 labeled_econ** for aggregate/train packets (SP-269+) — use `dataset-2026-07-14T23-04-27-983Z.jsonl` with provenance `dogfood-export-2026-07-14` |
+| Frugality defaults | **Still KEEP** — protocol still wants ≥2 *independent* soft-feed windows in Track B form; July data is one historical window and is not Track-B soft-feedable without adapter |
+| #95 qualitative matrix (rows 1–6 today) | **Still needs more data for a fresh 1.0 window** — July gather logs exist but are not a 2026-09-06 matrix re-run |
+
+*No invented labels. Counts from `scripts/qa/count-labeled-econ.ts` on existing exports.*
+
