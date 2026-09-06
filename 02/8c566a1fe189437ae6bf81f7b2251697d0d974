@@ -1,0 +1,20 @@
+.github/workflows/ci.yml
+  h_ae151c586ac6c5 28-30
+.gitignore
+  h_ae151c586ac6c5 22-30
+package.json
+  h_ae151c586ac6c5 54,64-66,96-97
+scripts/assert-no-script-artifacts.sh
+  h_ae151c586ac6c5 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "028c566a1fe189437ae6bf81f7b2251697d0d974",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
