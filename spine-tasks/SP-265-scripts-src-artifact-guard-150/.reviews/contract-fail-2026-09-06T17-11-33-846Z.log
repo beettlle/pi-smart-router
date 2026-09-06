@@ -1,0 +1,73 @@
+Contract testCommand failure log
+Command: npm run typecheck && npm run release:check
+Exit code: 1
+Attempt: 2 of 2
+Timestamp: 2026-09-06T17:11:33.846Z
+Buffer overflow: no
+---
+
+> pi-smart-router@0.22.0 typecheck
+> tsc --noEmit
+
+
+> pi-smart-router@0.22.0 release:check
+> bash -c 'export VITEST_MAX_WORKERS="${VITEST_MAX_WORKERS:-2}"; npm run verify:script-artifacts && npm run release:refresh-benchmarks && npm run verify:ci && npm run release:consumer-pack && npm run release:functional-smoke'
+
+
+> pi-smart-router@0.22.0 verify:script-artifacts
+> bash scripts/assert-no-script-artifacts.sh
+
+scripts/: no tracked compiled artifacts
+
+> pi-smart-router@0.22.0 release:refresh-benchmarks
+> tsx scripts/release-refresh-benchmark-profiles.ts
+
+Release benchmark refresh: attempting live ingest (catalog_freeze_date=2026-09-06)…
+
+> pi-smart-router@0.22.0 routing:ingest-benchmarks
+> tsx scripts/ingest-benchmark-profiles.ts --live --catalog-freeze-date 2026-09-06 --scrape-date 2026-09-06
+
+Live ingest succeeded.
+
+> pi-smart-router@0.22.0 routing:verify-benchmark-profiles
+> vitest run tests/unit/ingest-benchmark-profiles.test.ts -t "checked-in artifact matches fixture ingest"
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260906T165847-f496/lane-3
+
+ ✓ tests/unit/ingest-benchmark-profiles.test.ts (25 tests | 24 skipped) 14ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 24 skipped (25)
+   Start at  10:11:33
+   Duration  271ms (transform 72ms, setup 0ms, collect 106ms, tests 14ms, environment 0ms, prepare 37ms)
+
+
+ingest-benchmark-profiles: swebench_verified source=live (https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json)
+ingest-benchmark-profiles: terminal_bench source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260906T165847-f496/lane-3/tests/fixtures/benchmark-leaderboards/recorded/terminal_bench.json)
+ingest-benchmark-profiles: livecodebench source=live (https://raw.githubusercontent.com/LiveCodeBench/livecodebench.github.io/main/src/mocks/performances_generation.json)
+ingest-benchmark-profiles: bfcl source=live (https://raw.githubusercontent.com/ShishirPatil/gorilla/gh-pages/data_overall.csv)
+ingest-benchmark-profiles: recorded 4 snapshot(s) under /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260906T165847-f496/lane-3/tests/fixtures/benchmark-leaderboards/recorded
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+ingest-benchmark-profiles: wrote v1 (4 model(s), 40 alias(es)) to /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260906T165847-f496/lane-3/config/benchmark-profiles.json [mode=live+record]
+  catalog_freeze_date=2026-09-06, scrape_date=2026-09-06
+  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows
+  fleet aliases: preserved from existing artifact when present; else DEFAULT_FLEET_BENCHMARK_ALIASES (SP-174)
+  AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > checked-in artifact matches fixture ingest
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+
+
+Release gate: benchmark profiles changed and are not committed.
+Ingest mode: live
+Dirty paths:
+  - config/benchmark-profiles.json
+  - tests/fixtures/benchmark-leaderboards/recorded/bfcl.json
+  - tests/fixtures/benchmark-leaderboards/recorded/livecodebench.json
+  - tests/fixtures/benchmark-leaderboards/recorded/swebench_verified.json
+  - tests/fixtures/benchmark-leaderboards/recorded/terminal_bench.json
+
+Commit these files on main, then re-run `npm run release:check` before tagging.
+Offline skip: SMART_ROUTER_SKIP_LIVE_BENCHMARK_REFRESH=1 npm run release:check
