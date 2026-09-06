@@ -4,7 +4,7 @@
 **Status:** In Progress
 **Last Updated:** 2026-09-06
 **Review Level:** 2
-**Review Counter:** 0
+**Review Counter:** 1
 **Iteration:** 0
 **Size:** M
 
@@ -33,10 +33,16 @@
 
 ## Step 1: Extract + shrink
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Move remaining stages
-- [ ] Keep orchestrator as thin coordinator
+- [x] Move remaining stages
+- [x] Keep orchestrator as thin coordinator
+
+**Implementation:**
+- New `hardware-probe-stage.ts` (`createHardwareProbeStage`), `context-fit-stage.ts` (`createContextFitStage`), `turn-envelope-stage.ts` (`createTurnEnvelopeStage` — SAAR planning deferral/buffer, pin-breakeven, planning-delegate SP-143 + direct-frontier observability, `resolveBreakevenContext`), `low-intensity-stage.ts` (`createLowIntensityStage` — lazy P(success) weights + isotonic calibrator caches in factory closure, expected-cost tier hint SP-149, SMART_ROUTER_LOG_ROUTING explain), `local-zero-stage.ts` (`createLocalZeroStage` — eligibility/capability/throughput gates + speculative prewarm SP-217 with session-scoped guard in factory closure), `safe-default-stage.ts` (`createSafeDefaultStage` + shared `buildSafeDefaultFallbackDecision`), `context-overflow-fallback-stage.ts` (`createContextOverflowFallbackStage` + shared `shouldAttemptContextOverflowFallback` / `buildContextOverflowFallbackDecision`).
+- Orchestrator: 1651 → **795 lines** (target ≤800 met); all pipeline files ≤312 lines except orchestrator. All 12 stages now behind PipelineStage + RoutingContext (SP-272 contract) via `runStageWithContext()` snapshot/sync-back; thin wrappers keep pre-extraction method names (SP-071 prototype-spy compatibility). Telemetry/feature attachment, single-flight serialization (SP-230), fallback error path (delegating to shared builders), and pin persistence stay in the orchestrator.
+- Public API unchanged: `RouterPipeline`, `PipelineOptions`, `StageResult`, `PIPELINE_STAGE_ORDER`, stage-helpers re-exports, `PipelineStage`/`RoutingContext` re-export — verified no external consumer changes needed.
+- typecheck clean; 122 files / 2169 tests green (identical count to SP-273 baseline — behavior preserved). gitnexus detect_changes: touched symbols confined to must-change `router-pipeline.ts`; flag on routing-core centrality (ContextOverflowFallback/SafeDefault processes) — all affected flows covered by the passing suite.
 
 ## Step 2: Testing & Verification
 

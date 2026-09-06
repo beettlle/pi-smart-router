@@ -8,15 +8,17 @@
  *   → safe_default → context_overflow_fallback
  * Any stage failure falls back to safeCloudDefault(); never throws to host.
  *
- * SP-273 / #143 (partial): the first stage cluster (loop_escalation,
- * session_pin, triage, triage_cloud_fallback, hydra_match) is extracted into
- * focused modules behind the PipelineStage + RoutingContext contract
- * (SP-272); the orchestrator wires them through runStageWithContext().
- * Shared pure helpers live in ./stage-helpers.ts; SP-274 extracts the
- * remaining stages. No behavior change.
+ * SP-273 + SP-274 / #143: every stage now lives in a focused module behind
+ * the PipelineStage + RoutingContext contract (SP-272) — triage / pin /
+ * hydra clusters (SP-273) and hardware_probe / turn_envelope / context_fit /
+ * low_intensity / local_zero / safe_default / context_overflow_fallback
+ * (SP-274). This file is the thin coordinator: stage wiring, per-route
+ * context snapshot/sync-back, telemetry + feature attachment, fallback and
+ * pin persistence. No behavior change.
  */
 
 import type {
+  CandidateScore,
   ModelProfile,
   PlanningDelegateConfig,
   PlanningDelegateObservability,
@@ -27,86 +29,52 @@ import type {
   RoutingRequest,
   SaarConfig,
   Tier,
-  CandidateScore,
 } from '../types/index.js';
 import type { QuotaWindowPosition } from '../types/entities.js';
 import type { LowIntensityConfig, LocalZeroConfig, VirtualCostV2Config } from '../types/schemas.js';
-import { DEFAULT_LOCAL_ZERO_CONFIG } from '../types/schemas.js';
-import type { HardwareProbeConfig, HardwareProbeResult, SystemInfo } from '../../infrastructure/hardware/hardware-probe.js';
+import type {
+  HardwareProbeConfig,
+  HardwareProbeResult,
+  SystemInfo,
+} from '../../infrastructure/hardware/hardware-probe.js';
 import type { ThroughputMeter } from '../../infrastructure/hardware/throughput-meter.js';
-import type { HttpFetchPort, LocalReadinessResult, LocalZeroTierConfig } from '../../infrastructure/local/local-zero-tier.js';
-import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
-import { pingLocalServices } from '../../infrastructure/local/local-zero-tier.js';
-import { triage as triageClassify } from '../triage/triage-engine.js';
+import type {
+  HttpFetchPort,
+  LocalZeroTierConfig,
+} from '../../infrastructure/local/local-zero-tier.js';
 import type { TriageResult } from '../triage/triage-engine.js';
-import { classifyTurnEnvelope } from '../triage/turn-envelope.js';
-import { safeCloudDefault } from './safe-default.js';
 import {
   isGoogleGeminiProfile,
   sessionHasGoogleReplayRiskForDeprioritize,
 } from '../routing/tool-history-guard.js';
-import {
-  filterFleetByContextFit,
-  needsContextOverflowFallback,
-  resolveContextOverflowFallback,
-  CONTEXT_OVERFLOW_NO_FIT,
-  type ContextFitConfig,
-} from '../routing/context-fit.js';
+import type { ContextFitConfig } from '../routing/context-fit.js';
 import type { SessionPinner } from '../pinning/session-pinner.js';
 import {
-  evaluateModelSwitchBreakeven,
   FORCE_REJECTED_NOT_IN_FLEET,
   FORCE_REJECTED_UNHEALTHY,
-  type ModelSwitchBreakevenContext,
 } from '../pinning/session-pinner.js';
 import type { LoopEscalationConfig } from '../pinning/loop-escalation.js';
-import { selectLowestCostModel } from '../pinning/sub-route-policy.js';
 import {
   RoutingTelemetryEmitter,
   enrichRoutingDecisionWithContextFit,
   enrichRoutingDecisionWithTierSelection,
-  createPlanningDelegateObservability,
-  PLANNING_DELEGATE,
-  PLANNING_DELEGATE_DISABLED,
-  PLANNING_DIRECT_FRONTIER,
-  THROUGHPUT_BELOW_THRESHOLD,
-  TOOL_USE_CAPABILITY_SHORTFALL,
   LOCAL_ZERO_DISABLED,
+  TOOL_USE_CAPABILITY_SHORTFALL,
 } from '../../infrastructure/telemetry/routing-telemetry.js';
 import type { HydraMatcher as HydraMatcherType, MatchResult } from '../matching/hydra-matcher.js';
 import type { ClusterMatcher, ClusterMatchResult } from '../matching/cluster-matcher.js';
-import { clusterReasonCode } from '../../config/routing-clusters-loader.js';
-import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
 import type {
   CompiledPatternPack,
   DegradedRouteConfig,
   LearnedRouteStore,
 } from '../routing/degraded-route-sandwich.js';
-import {
-  buildTierFeatures,
-  scoreLowIntensity,
-} from '../routing/tier-features.js';
-import {
-  applyIsotonicCalibratorTimed,
-  resolveIsotonicCalibrator,
-  type IsotonicCalibratorArtifact,
-} from '../routing/isotonic-calibrator.js';
-import {
-  predictPSuccessCheapTimed,
-  resolvePSuccessWeights,
-  tierFeaturesToPSuccessFeatures,
-  type PSuccessWeights,
-} from '../routing/p-success-classifier.js';
-import {
-  selectTierByExpectedCost,
-  type ExpectedCostBreakdown,
-} from '../routing/expected-cost.js';
-import {
-  DEFAULT_SPECULATIVE_PREWARM_CONFIG,
-  PREWARM_DISABLED_LOW_ACCEPTANCE,
+import type { IsotonicCalibratorArtifact } from '../routing/isotonic-calibrator.js';
+import type { PSuccessWeights } from '../routing/p-success-classifier.js';
+import type { ExpectedCostBreakdown } from '../routing/expected-cost.js';
+import type {
+  PrewarmOutcome,
+  SpeculativePrewarmConfig,
   SpeculativePrewarmGuard,
-  type PrewarmOutcome,
-  type SpeculativePrewarmConfig,
 } from '../routing/speculative-prewarm.js';
 import { createTriageCloudFallbackStage, createTriageStage } from './triage-stage.js';
 import {
@@ -114,15 +82,21 @@ import {
   createSessionPinStage,
 } from './session-pin-stage.js';
 import { createHydraMatchStage } from './hydra-match-stage.js';
+import { createHardwareProbeStage } from './hardware-probe-stage.js';
+import { createTurnEnvelopeStage } from './turn-envelope-stage.js';
+import { createContextFitStage } from './context-fit-stage.js';
+import { createLowIntensityStage } from './low-intensity-stage.js';
+import { createLocalZeroStage } from './local-zero-stage.js';
 import {
-  TURN_TIER_MAP,
-  estimateCheapToolUseRequirement,
-  isPinOnlyFallbackActive,
-  redactPromptFromError,
-  resolveLocalEligible,
-  resolveLocalZeroToolUseCeiling,
-  withEstimatedCost,
-} from './stage-helpers.js';
+  createSafeDefaultStage,
+  buildSafeDefaultFallbackDecision,
+} from './safe-default-stage.js';
+import {
+  createContextOverflowFallbackStage,
+  buildContextOverflowFallbackDecision,
+  shouldAttemptContextOverflowFallback,
+} from './context-overflow-fallback-stage.js';
+import { redactPromptFromError } from './stage-helpers.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
 
@@ -246,10 +220,6 @@ export class RouterPipeline {
   private currentPSuccessAlpha: number | null = null;
   private currentExpectedCostByTier: readonly ExpectedCostBreakdown[] | null = null;
   private currentLocalEligibleReason: string | null = null;
-  private pSuccessWeightsLoaded = false;
-  private cachedPSuccessWeights: PSuccessWeights | null = null;
-  private isotonicCalibratorLoaded = false;
-  private cachedIsotonicCalibrator: IsotonicCalibratorArtifact | null = null;
   private currentContextFitRejected: readonly CandidateScore[] = [];
   private currentContextFitViableCount = 0;
   private contextOverflowPreferredProvider: string | null = null;
@@ -265,16 +235,22 @@ export class RouterPipeline {
   private currentRoutePathConfidence: number | null = null;
   /** Speculative prewarm outcome for explain/telemetry (SP-217, #117). */
   private currentPrewarmOutcome: PrewarmOutcome | null = null;
-  /** Lazily created session-scoped prewarm guard (acceptance state spans routes). */
-  private prewarmGuardInstance: SpeculativePrewarmGuard | null = null;
 
-  /** Extracted stage instances (SP-273) — run via runStageWithContext(). */
+  /** Extracted stage instances (SP-273/SP-274) — run via runStageWithContext(). */
+  private readonly hardwareProbePipelineStage: PipelineStage = createHardwareProbeStage();
   private readonly loopEscalationPipelineStage: PipelineStage = createLoopEscalationStage();
+  private readonly turnEnvelopePipelineStage: PipelineStage = createTurnEnvelopeStage();
+  private readonly contextFitPipelineStage: PipelineStage = createContextFitStage();
+  private readonly lowIntensityPipelineStage: PipelineStage = createLowIntensityStage();
   private readonly sessionPinPipelineStage: PipelineStage = createSessionPinStage();
   private readonly triagePipelineStage: PipelineStage = createTriageStage();
+  private readonly localZeroPipelineStage: PipelineStage = createLocalZeroStage();
   private readonly triageCloudFallbackPipelineStage: PipelineStage =
     createTriageCloudFallbackStage();
   private readonly hydraMatchPipelineStage: PipelineStage = createHydraMatchStage();
+  private readonly safeDefaultPipelineStage: PipelineStage = createSafeDefaultStage();
+  private readonly contextOverflowFallbackPipelineStage: PipelineStage =
+    createContextOverflowFallbackStage();
 
   /**
    * Single-flight serialization tail (SP-230, #141).
@@ -631,167 +607,23 @@ export class RouterPipeline {
     });
   }
 
+  /**
+   * Pipeline-error / no-stage-decided fallback: overflow escalation when the
+   * context_fit stage rejected every economical candidate, else the safe
+   * cloud default. Builders live with their stages (SP-274).
+   */
   private buildFallbackDecision(
     request: RoutingRequest,
     elapsedMs: number,
   ): RoutingDecision {
-    if (this.shouldAttemptContextOverflowFallback(request)) {
-      return this.buildContextOverflowFallbackDecision(request, elapsedMs);
+    const context = this.buildRoutingContext(request);
+    if (shouldAttemptContextOverflowFallback(context)) {
+      return buildContextOverflowFallbackDecision(context, elapsedMs);
     }
-
-    const fallbackModel = safeCloudDefault(this.activeFleet, {
-      request,
-      ...(this.options.contextFitConfig !== undefined
-        ? { contextFitConfig: this.options.contextFitConfig }
-        : {}),
-    });
-    const modelId = fallbackModel?.id ?? 'unknown';
-    const tier = fallbackModel?.tier ?? 'economical-cloud';
-
-    return {
-      request_id: request.request_id,
-      selected_model_id: modelId,
-      tier,
-      stage: 'fallback',
-      reason_code: 'safe_cloud_default',
-      routing_latency_ms: elapsedMs,
-      pin_reason: null,
-    };
+    return buildSafeDefaultFallbackDecision(context, elapsedMs);
   }
 
-  private shouldAttemptContextOverflowFallback(request: RoutingRequest): boolean {
-    if (request.force_model_id) {
-      return false;
-    }
-
-    if (this.contextOverflowTriggered) {
-      return true;
-    }
-
-    return needsContextOverflowFallback(
-      this.activeFleet,
-      this.currentContextFitRejected,
-      this.fullFleet,
-    );
-  }
-
-  private buildContextOverflowFallbackDecision(
-    request: RoutingRequest,
-    elapsedMs: number,
-  ): RoutingDecision {
-    const overflow = resolveContextOverflowFallback(
-      this.fullFleet,
-      request,
-      this.contextOverflowPreferredProvider,
-      this.options.contextFitConfig,
-    );
-
-    if (overflow.kind === 'no_fit') {
-      return {
-        request_id: request.request_id,
-        selected_model_id: 'unknown',
-        tier: 'economical-cloud',
-        stage: 'fallback',
-        reason_code: CONTEXT_OVERFLOW_NO_FIT,
-        candidates: this.currentContextFitRejected,
-        routing_latency_ms: elapsedMs,
-        pin_reason: null,
-      };
-    }
-
-    const model = overflow.model!;
-    return withEstimatedCost(
-      request,
-      model,
-      {
-        request_id: request.request_id,
-        selected_model_id: model.id,
-        tier: model.tier,
-        stage: 'fallback',
-        reason_code: overflow.reasonCode,
-        candidates: this.currentContextFitRejected,
-        routing_latency_ms: elapsedMs,
-        pin_reason: null,
-      },
-      this.options.priceCatalog ?? null,
-    );
-  }
-
-  /**
-   * SP-095: after safe_default, escalate to largest-fit model when economical
-   * models cannot fit the current context.
-   */
-  private async contextOverflowFallback(request: RoutingRequest): Promise<StageResult> {
-    if (!this.shouldAttemptContextOverflowFallback(request)) {
-      return { decided: false, stage: 'context_overflow_fallback' };
-    }
-
-    const elapsedMs = 0;
-    const decision = this.buildContextOverflowFallbackDecision(request, elapsedMs);
-    return {
-      decided: true,
-      stage: 'context_overflow_fallback',
-      decision,
-    };
-  }
-
-  /**
-   * SP-022: economical-cloud default when no earlier stage decides.
-   * Defers to context_overflow_fallback when economical models were context-rejected.
-   */
-  private async safeDefaultStage(request: RoutingRequest): Promise<StageResult> {
-    if (this.shouldAttemptContextOverflowFallback(request)) {
-      return { decided: false, stage: 'safe_default' };
-    }
-
-    const fallbackModel = safeCloudDefault(this.activeFleet, {
-      request,
-      ...(this.options.contextFitConfig !== undefined
-        ? { contextFitConfig: this.options.contextFitConfig }
-        : {}),
-    });
-
-    if (!fallbackModel) {
-      return { decided: false, stage: 'safe_default' };
-    }
-
-    return {
-      decided: true,
-      stage: 'fallback',
-      decision: {
-        request_id: request.request_id,
-        selected_model_id: fallbackModel.id,
-        tier: fallbackModel.tier,
-        stage: 'fallback',
-        reason_code: 'safe_cloud_default',
-        routing_latency_ms: 0,
-        pin_reason: null,
-      },
-    };
-  }
-
-  // ─── Implemented stages ─────────────────────────────────────────────────────
-
-  /**
-   * SP-272 / #143 (partial): hardware_probe thin-wraps the PipelineStage
-   * contract against a shared RoutingContext. Context writes are synced back
-   * to the legacy per-route fields until SP-273/SP-274 migrate the remaining
-   * stages behind the same interface. No behavior change.
-   */
-  private readonly hardwareProbePipelineStage: PipelineStage = {
-    name: 'hardware_probe',
-    run: async (context) => {
-      const hardwareConfig = context.options.hardwareConfig;
-      const systemInfoProvider = context.options.systemInfoProvider;
-      if (!hardwareConfig || !systemInfoProvider) {
-        return { decided: false, stage: 'hardware_probe' };
-      }
-
-      const systemInfo = await systemInfoProvider();
-      context.hardwareResult = probeHardware(hardwareConfig, systemInfo);
-      return { decided: false, stage: 'hardware_probe' };
-    },
-  };
+  // ─── RoutingContext seam (SP-272 → SP-273/SP-274) ──────────────────────────
 
   /** Snapshot the per-route shared context (SP-272 seam for SP-273/SP-274). */
   private buildRoutingContext(request: RoutingRequest): RoutingContext {
@@ -828,9 +660,8 @@ export class RouterPipeline {
 
   /**
    * Run an extracted PipelineStage against a snapshot of the shared
-   * RoutingContext, then sync context writes back to the legacy per-route
-   * fields until SP-274 migrates the remaining stages behind the same
-   * interface (SP-272 seam). No behavior change.
+   * RoutingContext, then sync context writes back to the per-route fields
+   * (SP-272 seam). No behavior change.
    */
   private async runStageWithContext(
     stage: PipelineStage,
@@ -870,17 +701,29 @@ export class RouterPipeline {
     this.currentPrewarmOutcome = context.prewarmOutcome;
   }
 
-  private async hardwareProbeStage(request: RoutingRequest): Promise<StageResult> {
-    return this.runStageWithContext(this.hardwareProbePipelineStage, request);
-  }
-
-  // ─── Extracted stage wrappers (SP-273, #143) ────────────────────────────
+  // ─── Stage wrappers (SP-273/SP-274, #143) ──────────────────────────────────
   // Thin delegations that keep the pre-extraction method names so prototype
   // spies in tests (e.g. SP-071 stage-error telemetry) keep working; the
   // stage logic lives in the extracted PipelineStage modules.
 
+  private async hardwareProbeStage(request: RoutingRequest): Promise<StageResult> {
+    return this.runStageWithContext(this.hardwareProbePipelineStage, request);
+  }
+
   private async loopEscalation(request: RoutingRequest): Promise<StageResult> {
     return this.runStageWithContext(this.loopEscalationPipelineStage, request);
+  }
+
+  private async turnEnvelope(request: RoutingRequest): Promise<StageResult> {
+    return this.runStageWithContext(this.turnEnvelopePipelineStage, request);
+  }
+
+  private async contextFitStage(request: RoutingRequest): Promise<StageResult> {
+    return this.runStageWithContext(this.contextFitPipelineStage, request);
+  }
+
+  private async lowIntensityGate(request: RoutingRequest): Promise<StageResult> {
+    return this.runStageWithContext(this.lowIntensityPipelineStage, request);
   }
 
   private async sessionPin(request: RoutingRequest): Promise<StageResult> {
@@ -891,6 +734,10 @@ export class RouterPipeline {
     return this.runStageWithContext(this.triagePipelineStage, request);
   }
 
+  private async localZeroTierStage(request: RoutingRequest): Promise<StageResult> {
+    return this.runStageWithContext(this.localZeroPipelineStage, request);
+  }
+
   private async triageCloudFallback(request: RoutingRequest): Promise<StageResult> {
     return this.runStageWithContext(this.triageCloudFallbackPipelineStage, request);
   }
@@ -899,203 +746,15 @@ export class RouterPipeline {
     return this.runStageWithContext(this.hydraMatchPipelineStage, request);
   }
 
-  /**
-   * SP-093: filter fleet to models whose context window fits estimated input
-   * tokens before session pin and HyDRA matching.
-   */
-  private async contextFitStage(request: RoutingRequest): Promise<StageResult> {
-    const result = filterFleetByContextFit(
-      this.activeFleet,
-      request,
-      this.options.contextFitConfig,
-    );
-    this.activeFleet = result.effectiveFleet;
-    this.currentContextFitRejected = result.rejected;
-    this.currentContextFitViableCount = result.effectiveFleet.length;
-    return { decided: false, stage: 'context_fit' };
+  private async safeDefaultStage(request: RoutingRequest): Promise<StageResult> {
+    return this.runStageWithContext(this.safeDefaultPipelineStage, request);
   }
 
-  /**
-   * SC-007: classification_only MUST NOT dispatch full local.
-   * Eligibility: triage trivial OR low-intensity zero-tier hint OR zero-tier cluster (SP-111).
-   * Pre-dispatch tool-use capability gate (SP-177, #98) skips when predicted need exceeds
-   * min(local tool_use capability, local_zero.max_tool_use_requirement).
-   */
-  private async localZeroTierStage(request: RoutingRequest): Promise<StageResult> {
-    const lowIntensityConfig =
-      this.options.lowIntensityConfig ?? DEFAULT_OPERATOR_CONFIG.low_intensity;
-    const localZeroConfig =
-      this.options.localZeroConfig ??
-      DEFAULT_OPERATOR_CONFIG.local_zero ??
-      DEFAULT_LOCAL_ZERO_CONFIG;
-    const eligibility = resolveLocalEligible({
-      triageVerdict: this.currentTriageResult?.verdict ?? null,
-      tierHint: this.currentTierHint,
-      lowIntensityScore: this.currentLowIntensityScore,
-      highThreshold: lowIntensityConfig.high_threshold,
-      clusterMatch: this.currentClusterMatch,
-    });
-
-    if (!eligibility.eligible) {
-      return { decided: false, stage: 'local_zero' };
-    }
-
-    if (!localZeroConfig.enabled) {
-      this.currentLocalEligibleReason = eligibility.reason;
-      this.currentLocalZeroGateSkipReasons = [LOCAL_ZERO_DISABLED];
-      return { decided: false, stage: 'local_zero' };
-    }
-
-    if (this.currentHardwareResult !== 'full_local') {
-      return { decided: false, stage: 'local_zero' };
-    }
-
-    const localModel = this.activeFleet.find(
-      (m) => m.tier === 'zero-tier' && m.healthy !== false,
-    );
-
-    if (!localModel) {
-      return { decided: false, stage: 'local_zero' };
-    }
-
-    const predictedToolUse = estimateCheapToolUseRequirement(request.prompt_text);
-    const ceiling = resolveLocalZeroToolUseCeiling(
-      localModel.capabilities.tool_use,
-      localZeroConfig.max_tool_use_requirement,
-    );
-    if (predictedToolUse > ceiling) {
-      this.currentLocalEligibleReason = eligibility.reason;
-      this.currentLocalZeroGateSkipReasons = [TOOL_USE_CAPABILITY_SHORTFALL];
-      return { decided: false, stage: 'local_zero' };
-    }
-
-    const throughputMeter = this.options.throughputMeter;
-    if (throughputMeter && !throughputMeter.isAboveThreshold()) {
-      const economicalModel = this.activeFleet.find(
-        (m) => m.tier === 'economical-cloud' && m.healthy !== false,
-      );
-      if (!economicalModel) {
-        return { decided: false, stage: 'local_zero' };
-      }
-
-      this.currentLocalEligibleReason = eligibility.reason;
-      this.currentLocalZeroGateSkipReasons = [THROUGHPUT_BELOW_THRESHOLD];
-
-      return {
-        decided: true,
-        stage: 'local_zero',
-        decision: {
-          request_id: request.request_id,
-          selected_model_id: economicalModel.id,
-          tier: 'economical-cloud',
-          stage: 'local_zero',
-          reason_code: THROUGHPUT_BELOW_THRESHOLD,
-          routing_latency_ms: 0,
-          pin_reason: null,
-        },
-      };
-    }
-
-    // SP-217 / #117: speculative prewarm of the local runtime within a strict
-    // deadline when early signals lean local. Fail open — on timeout/miss we
-    // fall back to the normal unbounded readiness probe below (no hang).
-    const prewarmedReadiness = await this.attemptSpeculativePrewarm(request);
-    const readiness =
-      prewarmedReadiness ??
-      (await pingLocalServices(
-        this.options.localConfig,
-        this.options.httpFetchPort,
-      ));
-
-    if (!readiness.anyModelReady) {
-      return { decided: false, stage: 'local_zero' };
-    }
-
-    this.currentLocalEligibleReason = eligibility.reason;
-
-    return {
-      decided: true,
-      stage: 'local_zero',
-      decision: {
-        request_id: request.request_id,
-        selected_model_id: localModel.id,
-        tier: 'zero-tier',
-        stage: 'local_zero',
-        reason_code: 'local_model_ready',
-        routing_latency_ms: readiness.combinedLatencyMs,
-        pin_reason: null,
-      },
-    };
+  private async contextOverflowFallback(request: RoutingRequest): Promise<StageResult> {
+    return this.runStageWithContext(this.contextOverflowFallbackPipelineStage, request);
   }
 
-  // ─── Speculative prewarm (SP-217, #117) ─────────────────────────────────
-
-  private resolvePrewarmGuard(): SpeculativePrewarmGuard {
-    if (this.options.prewarmGuard) {
-      return this.options.prewarmGuard;
-    }
-    if (!this.prewarmGuardInstance) {
-      this.prewarmGuardInstance = new SpeculativePrewarmGuard(
-        this.options.prewarmConfig ??
-          DEFAULT_OPERATOR_CONFIG.speculative_prewarm ??
-          DEFAULT_SPECULATIVE_PREWARM_CONFIG,
-      );
-    }
-    return this.prewarmGuardInstance;
-  }
-
-  /**
-   * Bounded speculative prewarm of the local runtime (Colibri PILOT pattern).
-   * Runs only when local_zero eligibility already passed and the operator
-   * opted in. Returns the warm readiness result to reuse when accepted; null
-   * otherwise (caller falls back to the normal readiness probe — fail open).
-   * Pre-generation only: the warm probe is an I/O readiness ping; it never
-   * waits on generated tokens.
-   */
-  private async attemptSpeculativePrewarm(
-    request: RoutingRequest,
-  ): Promise<LocalReadinessResult | null> {
-    const guard = this.resolvePrewarmGuard();
-    if (!guard.isEnabled()) {
-      return null;
-    }
-
-    if (!guard.shouldAttempt(request.session_id)) {
-      this.currentPrewarmOutcome = {
-        attempted: false,
-        accepted: null,
-        target: 'local_runtime',
-        elapsed_ms: null,
-        reason:
-          guard.disabledReason(request.session_id) ??
-          PREWARM_DISABLED_LOW_ACCEPTANCE,
-      };
-      return null;
-    }
-
-    let captured: LocalReadinessResult | null = null;
-    const outcome = await guard.attempt(
-      request.session_id,
-      'local_runtime',
-      async (signal) => {
-        const readiness = await pingLocalServices(
-          this.options.localConfig,
-          this.options.httpFetchPort,
-        );
-        if (signal.aborted) {
-          return false;
-        }
-        captured = readiness;
-        return readiness.anyModelReady;
-      },
-    );
-    this.currentPrewarmOutcome = outcome;
-
-    if (outcome.accepted === true && captured !== null) {
-      return captured;
-    }
-    return null;
-  }
+  // ─── Pin persistence ────────────────────────────────────────────────────────
 
   /**
    * After a routing decision, persist an initial pin when none exists.
@@ -1133,519 +792,4 @@ export class RouterPipeline {
   private recordSaarTurnIfNeeded(request: RoutingRequest): void {
     this.options.sessionPinner?.recordSaarTurn(request.session_id);
   }
-
-  private shouldDeferPlanningForSaar(request: RoutingRequest): boolean {
-    const saarConfig = this.options.saarConfig;
-    const pinner = this.options.sessionPinner;
-    if (!saarConfig || !pinner) {
-      return false;
-    }
-
-    const pin = pinner.getPin(request.session_id);
-    if (!pin) {
-      return false;
-    }
-
-    const saarState = pinner.getSaarState(request.session_id);
-    const turnIndex = saarState?.turn_index ?? 0;
-    return turnIndex >= saarConfig.planning_turn_buffer;
-  }
-
-  /**
-   * SP-123: SAAR planning buffer explicitly allows frontier planning turns
-   * without breakeven gating (#73 composes with buffer, not replaces it).
-   */
-  private isSaarPlanningBufferActive(request: RoutingRequest): boolean {
-    const saarConfig = this.options.saarConfig;
-    const pinner = this.options.sessionPinner;
-    if (!saarConfig || !pinner) {
-      return false;
-    }
-
-    if (!pinner.getPin(request.session_id)) {
-      return false;
-    }
-
-    const saarState = pinner.getSaarState(request.session_id);
-    if (!saarState) {
-      return false;
-    }
-
-    return saarState.turn_index < saarConfig.planning_turn_buffer;
-  }
-
-  // ─── Turn envelope stage (Step 2b, <2ms budget) ─────────────────────────
-
-  private async turnEnvelope(request: RoutingRequest): Promise<StageResult> {
-    if (isPinOnlyFallbackActive(this.options, request)) {
-      return { decided: false, stage: 'turn_envelope' };
-    }
-
-    // SP-209 / #121: an explicit force_model_id override must be resolved by the
-    // session_pin stage (healthy in-fleet → use_pin; unavailable → fail-closed
-    // reason). Do not let the turn envelope short-circuit and silently drop the
-    // force, which previously caused first-turn forces to remap providers.
-    if (request.force_model_id) {
-      return { decided: false, stage: 'turn_envelope' };
-    }
-
-    const turnType = request.turn_type ?? classifyTurnEnvelope(request.messages);
-    const targetTier = TURN_TIER_MAP[turnType] ?? null;
-
-    if (!targetTier) {
-      return { decided: false, stage: 'turn_envelope' };
-    }
-
-    // SP-123: post-buffer planning defers to session_pin SAAR hard-lock.
-    if (turnType === 'planning' && this.shouldDeferPlanningForSaar(request)) {
-      return { decided: false, stage: 'turn_envelope' };
-    }
-
-    const tierCandidates = this.activeFleet.filter(
-      (m) => m.tier === targetTier && m.healthy !== false,
-    );
-    const targetModel = selectLowestCostModel(tierCandidates);
-    if (!targetModel) {
-      return { decided: false, stage: 'turn_envelope' };
-    }
-
-    const pinner = this.options.sessionPinner;
-    const pin = pinner?.getPin(request.session_id) ?? null;
-    const pinnedModel =
-      pin !== null
-        ? this.activeFleet.find(
-            (m) => m.id === pin.pinned_model_id && m.healthy !== false,
-          )
-        : undefined;
-
-    // SP-143: cache-preserving planning delegate when warm economical pin would switch to frontier.
-    if (
-      turnType === 'planning' &&
-      pinnedModel &&
-      pinnedModel.tier === 'economical-cloud' &&
-      pinnedModel.id !== targetModel.id
-    ) {
-      const delegateDecision = this.tryPlanningDelegateDecision(
-        request,
-        pinnedModel,
-        targetModel,
-      );
-      if (delegateDecision) {
-        return delegateDecision;
-      }
-    }
-
-    if (pinnedModel && pinnedModel.id !== targetModel.id) {
-      const skipBreakeven =
-        turnType === 'planning' && this.isSaarPlanningBufferActive(request);
-      if (!skipBreakeven) {
-        const tokenEstimate =
-          request.estimated_input_tokens ?? request.prompt_text.length;
-        const breakeven = evaluateModelSwitchBreakeven(
-          pinnedModel,
-          targetModel,
-          tokenEstimate,
-          tokenEstimate,
-          this.options.saarConfig,
-          this.resolveBreakevenContext(),
-        );
-        if (!breakeven.shouldSwitch) {
-          this.currentBreakevenReason = 'breakeven_blocked';
-          return { decided: false, stage: 'turn_envelope' };
-        }
-        this.currentBreakevenReason = 'breakeven_pass';
-      }
-    }
-
-    const directReasonCode = `turn_${turnType}`;
-    let planningDirectFallback: string | null = null;
-
-    if (
-      turnType === 'planning' &&
-      pinnedModel &&
-      pinnedModel.tier === 'economical-cloud' &&
-      pinnedModel.id !== targetModel.id
-    ) {
-      planningDirectFallback = this.resolvePlanningDirectFallbackReason();
-    }
-
-    if (planningDirectFallback) {
-      this.setPlanningDelegateDirectFallback(targetModel.id, planningDirectFallback);
-    }
-
-    return {
-      decided: true,
-      stage: 'turn_envelope',
-      decision: withEstimatedCost(
-        request,
-        targetModel,
-        {
-          request_id: request.request_id,
-          selected_model_id: targetModel.id,
-          tier: targetTier,
-          stage: 'turn_envelope',
-          reason_code: planningDirectFallback
-            ? PLANNING_DIRECT_FRONTIER
-            : directReasonCode,
-          routing_latency_ms: 0,
-          pin_reason: null,
-        },
-        this.options.priceCatalog ?? null,
-      ),
-    };
-  }
-
-  private resolvePlanningDirectFallbackReason(): string | null {
-    const config = this.resolvePlanningDelegateConfig();
-    if (!config.enabled) {
-      return PLANNING_DELEGATE_DISABLED;
-    }
-    return null;
-  }
-
-  private resolvePlanningDelegateConfig(): PlanningDelegateConfig {
-    return (
-      this.options.planningDelegateConfig ??
-      DEFAULT_OPERATOR_CONFIG.planning_delegate
-    );
-  }
-
-  /**
-   * SP-143: emit planning_delegate when enabled; otherwise record direct fallback
-   * observability and return null so breakeven-gated direct frontier can proceed.
-   */
-  private tryPlanningDelegateDecision(
-    request: RoutingRequest,
-    pinnedModel: ModelProfile,
-    frontierModel: ModelProfile,
-  ): StageResult | null {
-    const config = this.resolvePlanningDelegateConfig();
-    if (!config.enabled) {
-      return null;
-    }
-
-    this.currentPlanningDelegate = createPlanningDelegateObservability({
-      path: 'delegate',
-      primary_model_id: pinnedModel.id,
-      delegate_model_id: frontierModel.id,
-      compressed_context: config.compressed_context,
-      planning_delegate_reason_code: PLANNING_DELEGATE,
-    });
-
-    return {
-      decided: true,
-      stage: 'turn_envelope',
-      decision: withEstimatedCost(
-        request,
-        pinnedModel,
-        {
-          request_id: request.request_id,
-          selected_model_id: pinnedModel.id,
-          tier: pinnedModel.tier,
-          stage: 'turn_envelope',
-          reason_code: PLANNING_DELEGATE,
-          routing_latency_ms: 0,
-          pin_reason: null,
-        },
-        this.options.priceCatalog ?? null,
-      ),
-    };
-  }
-
-  private setPlanningDelegateDirectFallback(
-    delegateModelId: string | null,
-    fallbackReason: string,
-  ): void {
-    this.currentPlanningDelegate = createPlanningDelegateObservability({
-      path: 'direct',
-      delegate_model_id: delegateModelId,
-      planning_delegate_reason_code: PLANNING_DIRECT_FRONTIER,
-      fallback_reason: fallbackReason,
-    });
-  }
-
-  // ─── Low-intensity tier gate (SP-103, #58) ───────────────────────────────
-
-  /**
-   * Runs after turn_envelope and context_fit, before session_pin. Computes low-intensity score
-   * from structural signals and optional cluster match; sets tier_hint and constrains
-   * the active fleet for subsequent HyDRA matching when confidence is high.
-   */
-  private async lowIntensityGate(request: RoutingRequest): Promise<StageResult> {
-    if (isPinOnlyFallbackActive(this.options, request)) {
-      return { decided: false, stage: 'low_intensity' };
-    }
-
-    const config =
-      this.options.lowIntensityConfig ?? DEFAULT_OPERATOR_CONFIG.low_intensity;
-    const alpha = config.p_success_alpha;
-    this.currentPSuccessAlpha = alpha;
-
-    const triageResult = triageClassify(request.prompt_text);
-    let clusterMatch: ClusterMatchResult | undefined;
-
-    const matcher = this.options.clusterMatcher;
-    if (matcher) {
-      try {
-        const result = await matcher.match(request);
-        this.currentClusterMatch = result;
-        clusterMatch = result;
-      } catch {
-        this.currentClusterMatch = null;
-      }
-    }
-
-    const tierFeatures = buildTierFeatures(request, triageResult, undefined, clusterMatch);
-    const score = scoreLowIntensity(tierFeatures, config.weights);
-    this.currentLowIntensityScore = score;
-
-    const weights = this.resolvePSuccessWeights();
-    const pFeatures = tierFeaturesToPSuccessFeatures(tierFeatures);
-    const pResult = predictPSuccessCheapTimed(pFeatures, weights);
-    const calibrator = this.resolveIsotonicCalibrator();
-    const calibratedResult = applyIsotonicCalibratorTimed(pResult.probability, calibrator);
-    const pSuccessForGate = calibratedResult.calibrated;
-
-    this.currentPSuccessRaw = pResult.probability;
-    this.currentPSuccessCalibrated = pSuccessForGate;
-    this.currentPSuccessCheap = pSuccessForGate;
-
-    const structuralHint = this.resolveTierHint(
-      score,
-      config.high_threshold,
-      config.low_threshold,
-      clusterMatch,
-    );
-    const weightsTrained =
-      weights.trained_sample_count >= weights.min_training_samples;
-    const adjustedHint = weightsTrained
-      ? (() => {
-          const selection = this.selectExpectedCostTierHint(
-            request,
-            pSuccessForGate,
-            alpha,
-          );
-          this.logExpectedCostExplain(pSuccessForGate, alpha, selection, {
-            p_success_raw: pResult.probability,
-            p_success_calibrated: pSuccessForGate,
-            calibration_applied: calibratedResult.calibration_applied,
-          });
-          return {
-            tierHint: selection.tierHint,
-            reasonCode: selection.reasonCode,
-          };
-        })()
-      : structuralHint;
-    this.currentTierHint = adjustedHint.tierHint;
-    this.currentTierHintReasonCode = adjustedHint.reasonCode;
-
-    return { decided: false, stage: 'low_intensity' };
-  }
-
-  private selectExpectedCostTierHint(
-    request: RoutingRequest,
-    pSuccessCheap: number,
-    alpha: number,
-  ): {
-    tierHint: Tier | null;
-    reasonCode: string | null;
-    tierCosts: readonly ExpectedCostBreakdown[];
-    rationale: string;
-  } {
-    const estTokens =
-      request.estimated_input_tokens ?? request.prompt_text.length;
-    const pinner = this.options.sessionPinner;
-    const sessionPin = pinner?.getPin(request.session_id) ?? undefined;
-    const pinnedModel =
-      sessionPin !== undefined
-        ? this.activeFleet.find((model) => model.id === sessionPin.pinned_model_id)
-        : undefined;
-
-    const selection = selectTierByExpectedCost({
-      fleet: this.activeFleet,
-      priceCatalog: this.options.priceCatalog ?? null,
-      estTokens,
-      pSuccessCheap,
-      alpha,
-      localZeroReady: this.isLocalZeroTierReady(),
-      ...(pinnedModel !== undefined ? { pinnedModel } : {}),
-      ...(sessionPin !== undefined ? { sessionPin } : {}),
-      ...(this.options.quotaWindowPosition !== undefined
-        ? { quotaWindowPosition: this.options.quotaWindowPosition }
-        : {}),
-      ...(this.options.virtualCostV2Config !== undefined
-        ? { virtualCostV2Config: this.options.virtualCostV2Config }
-        : {}),
-    });
-
-    this.currentExpectedCostByTier = [...selection.tierCosts];
-
-    return {
-      tierHint: selection.tierHint,
-      reasonCode: selection.reasonCode,
-      tierCosts: selection.tierCosts,
-      rationale: selection.rationale,
-    };
-  }
-
-  private logExpectedCostExplain(
-    pSuccessCheap: number,
-    alpha: number,
-    selection: {
-      tierHint: Tier | null;
-      reasonCode: string | null;
-      tierCosts: readonly ExpectedCostBreakdown[];
-      rationale: string;
-    },
-    calibration?: {
-      readonly p_success_raw: number;
-      readonly p_success_calibrated: number;
-      readonly calibration_applied: boolean;
-    },
-  ): void {
-    // SP-223 / #138: gate stdout explain behind SMART_ROUTER_LOG_ROUTING —
-    // the full payload is already captured in decision features/telemetry, so
-    // default runs must not flood stdout on every eligible route.
-    if (process.env.SMART_ROUTER_LOG_ROUTING !== '1') {
-      return;
-    }
-    console.info('Expected-cost tier gate', {
-      reason: selection.reasonCode,
-      p_success_cheap: pSuccessCheap,
-      p_success_raw: calibration?.p_success_raw ?? pSuccessCheap,
-      p_success_calibrated: calibration?.p_success_calibrated ?? pSuccessCheap,
-      calibration_applied: calibration?.calibration_applied ?? false,
-      alpha,
-      chosen_tier: selection.tierHint,
-      rationale: selection.rationale,
-      expected_cost_by_tier: selection.tierCosts.map((entry) => ({
-        tier: entry.tier,
-        p_success: entry.pSuccess,
-        cost_per_1m: entry.costPer1M,
-        expected_cost_usd: entry.expectedCostUsd,
-        adjusted_expected_cost_usd: entry.adjustedExpectedCostUsd,
-        virtual_cost_v2: entry.virtualCostV2
-          ? {
-              quota_decay_lambda: entry.virtualCostV2.quotaDecayLambda,
-              quota_arbitrage_premium: entry.virtualCostV2.quotaArbitragePremium,
-              exhaustion_risk_premium: entry.virtualCostV2.exhaustionRiskPremium,
-              kv_cache_savings: entry.virtualCostV2.kvCacheSavings,
-              effective_cost_usd: entry.virtualCostV2.effectiveCostUsd,
-            }
-          : null,
-      })),
-    });
-  }
-
-  private resolveBreakevenContext(): ModelSwitchBreakevenContext | undefined {
-    if (
-      this.options.quotaWindowPosition === undefined &&
-      this.options.virtualCostV2Config === undefined
-    ) {
-      return undefined;
-    }
-
-    return {
-      priceCatalog: this.options.priceCatalog ?? null,
-      ...(this.options.quotaWindowPosition !== undefined
-        ? { quotaWindowPosition: this.options.quotaWindowPosition }
-        : {}),
-      ...(this.options.virtualCostV2Config !== undefined
-        ? { virtualCostV2Config: this.options.virtualCostV2Config }
-        : {}),
-    };
-  }
-
-  private resolvePSuccessWeights(): PSuccessWeights {
-    if (this.options.pSuccessWeights) {
-      return this.options.pSuccessWeights;
-    }
-
-    if (!this.pSuccessWeightsLoaded) {
-      this.cachedPSuccessWeights = resolvePSuccessWeights({
-        ...(this.options.pSuccessWeightsPath !== undefined
-          ? { filePath: this.options.pSuccessWeightsPath }
-          : {}),
-      });
-      this.pSuccessWeightsLoaded = true;
-    }
-
-    return this.cachedPSuccessWeights!;
-  }
-
-  private resolveIsotonicCalibrator(): IsotonicCalibratorArtifact | null {
-    if (this.options.isotonicCalibrator !== undefined) {
-      return this.options.isotonicCalibrator;
-    }
-
-    if (!this.isotonicCalibratorLoaded) {
-      this.cachedIsotonicCalibrator = resolveIsotonicCalibrator({
-        ...(this.options.routingCalibrationPath !== undefined
-          ? { filePath: this.options.routingCalibrationPath }
-          : {}),
-      });
-      this.isotonicCalibratorLoaded = true;
-    }
-
-    return this.cachedIsotonicCalibrator;
-  }
-
-  private resolveTierHint(
-    score: number,
-    highThreshold: number,
-    lowThreshold: number,
-    clusterMatch?: ClusterMatchResult,
-  ): { tierHint: Tier | null; reasonCode: string | null } {
-    if (score >= highThreshold) {
-      return {
-        tierHint: this.resolveLowIntensityTierHint(),
-        reasonCode: this.resolveLowIntensityReasonCode(clusterMatch),
-      };
-    }
-
-    if (score <= lowThreshold) {
-      return {
-        tierHint: 'frontier-cloud',
-        reasonCode: this.resolveHighIntensityReasonCode(clusterMatch),
-      };
-    }
-
-    return { tierHint: null, reasonCode: null };
-  }
-
-  private resolveLowIntensityTierHint(): Tier {
-    if (this.isLocalZeroTierReady()) {
-      return 'zero-tier';
-    }
-    return 'economical-cloud';
-  }
-
-  private isLocalZeroTierReady(): boolean {
-    const hasZeroTierModel = this.activeFleet.some(
-      (model) => model.tier === 'zero-tier' && model.healthy !== false,
-    );
-    if (!hasZeroTierModel) {
-      return false;
-    }
-    return this.currentHardwareResult === 'full_local';
-  }
-
-  private resolveLowIntensityReasonCode(clusterMatch?: ClusterMatchResult): string {
-    if (
-      clusterMatch?.confidence === 'high' &&
-      (clusterMatch.tierBias === 'zero-tier' ||
-        clusterMatch.tierBias === 'economical-cloud')
-    ) {
-      return clusterReasonCode(clusterMatch.clusterId);
-    }
-    return 'low_intensity_structural';
-  }
-
-  private resolveHighIntensityReasonCode(clusterMatch?: ClusterMatchResult): string {
-    if (clusterMatch?.confidence === 'high' && clusterMatch.tierBias === 'frontier-cloud') {
-      return clusterReasonCode(clusterMatch.clusterId);
-    }
-    return 'high_intensity_structural';
-  }
-
 }
