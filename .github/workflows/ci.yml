@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Script artifact guard (SP-265, #150)
+        run: npm run verify:script-artifacts
+
       - name: Build
         run: npm run build
 
