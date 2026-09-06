@@ -1,0 +1,14 @@
+spine-tasks/SP-275-pipeline-ports-invert-143/STATUS.md
+  h_ae151c586ac6c5 4-5,15-34,36-45,73-76,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "78020e942bb0b8e76380bf5cb49e7a1f641ff8f8",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
