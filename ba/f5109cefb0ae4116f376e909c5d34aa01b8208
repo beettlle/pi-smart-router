@@ -1,0 +1,21 @@
+README.md
+  s_8900d6cad9229e::t_e90ecee4751019 133
+spine-tasks/SP-263-peer-bump-pi-0851/STATUS.md
+  s_8900d6cad9229e::t_5dbb49616bc856 3-4,30,32-33,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "baf5109cefb0ae4116f376e909c5d34aa01b8208",
+  "prompts": {},
+  "sessions": {
+    "s_8900d6cad9229e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-dd5a3afb-88dc-4b14-b291-637c9438f73f",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
