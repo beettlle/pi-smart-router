@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
-import { fleet, makeModel, makeRequest } from './router-pipeline-fixtures.js';
+import { makeModel, makeRequest } from './router-pipeline-fixtures.js';
 
 describe('RouterPipeline', () => {
   describe('safe default fallback on failure', () => {
