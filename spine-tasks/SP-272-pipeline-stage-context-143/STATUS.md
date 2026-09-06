@@ -1,7 +1,7 @@
 # SP-272 — Introduce PipelineStage interface and shared RoutingContext. — Status
 
 **Current Step:** 2
-**Status:** In Progress
+**Status:** Complete
 **Last Updated:** 2026-09-06
 **Review Level:** 2
 **Review Counter:** 0
@@ -40,10 +40,16 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Contract testCommand green
-- [ ] coverage:check if app code changed
+- [x] Contract testCommand green
+- [x] coverage:check if app code changed
+
+**Evidence:**
+- `npm run typecheck` — green (tsc --noEmit, strict + exactOptionalPropertyTypes).
+- `npm test` — 122 files, 2169 tests, all pass.
+- `npm run coverage:check` (testWithCoverage) — exit 0, thresholds pass.
+- `gitnexus detect_changes` — risk_level low, no unexpected affected processes.
 
 ---
 
@@ -51,7 +57,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-09-06 | 1 | plan | skipped (engine-owned per SP-195; not a spawn failure) |
 
 ## Discoveries
 
@@ -66,6 +72,7 @@
 |------|-------|--------|
 | 2026-09-06 | Step 0 complete | Stage order + context fields mapped; grep-based impact LOW |
 | 2026-09-06 | Step 1 complete | pipeline-stage.ts added; hardware_probe wrapped; typecheck + 90 targeted tests green |
+| 2026-09-06 | Step 2 complete | Full suite 2169/2169 green; coverage:check exit 0; detect_changes low risk |
 
 ## Blockers
 
