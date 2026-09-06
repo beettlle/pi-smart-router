@@ -1,0 +1,16 @@
+spine-tasks/SP-267-shadow-dogfood-evidence-95/.reviews/0-20260906T174106.md
+  h_ae151c586ac6c5 1-21
+spine-tasks/SP-267-shadow-dogfood-evidence-95/.reviews/final-20260906T174150.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "092b4f50269f2b19402f7d1a5f58d2acf1eaad99",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
