@@ -138,6 +138,40 @@ npm run routing:assert-release-gates:corpus-report
 
 Archive stdout / generated reports with the sign-off (the QA script copies under `<package-root>/.pi-smart-router/qa-runs/<timestamp>/`, overridable via `SMART_ROUTER_QA_OUT_DIR`).
 
+## Attach dogfood exports to release gates (soft-feed dry-run)
+
+Wire a labeled dogfood export into the release gates **without** editing [`config/release-gates.json`](../../config/release-gates.json) or relaxing frugality defaults. This is the operator-facing half of #95: the same absolute gates that guard release fixtures are evaluated against your dogfood sessions in report-only mode.
+
+```bash
+# Dry-run: dogfood Track B export → harness fixtures → absolute gates (always exit 0 on gate outcome)
+npm run qa:dogfood-soft-feed -- --export path/to/dogfood-track-b-export.json
+
+# Optional: archive to a specific directory, override gate config, or add baseline regression
+npm run qa:dogfood-soft-feed -- --export export.json --out .pi-smart-router/qa-runs/my-run
+npm run qa:dogfood-soft-feed -- --export export.json --config path/to/gates.json
+npm run qa:dogfood-soft-feed -- --export export.json --baseline-version 0.6.0
+```
+
+Requirements and semantics:
+
+- The export must be a **dogfood Track B document** (`schema_version: "1.0.0"`, `track: "dogfood-track-b"`, `frozen_catalog`, `records[]`) with explicit outcome labels on every row: `success_label` (boolean), `min_tier`, `min_model_id`. See `scripts/eval/dogfood-track-b-adapter.ts` and the synthetic example at [`tests/eval/dogfood-track-b/synthetic-labeled-export.json`](../../tests/eval/dogfood-track-b/synthetic-labeled-export.json).
+- **Incomplete exports SKIP, they never fail silently and never invent labels** ([#111](https://github.com/beettlle/pi-smart-router/issues/111)): the command prints `dogfood-soft-feed: SKIP — <reason>`, writes a SUMMARY, and exits 0.
+- Exit codes: `0` for PASS, soft FAIL, or SKIP; `1` only for operator errors (missing file, invalid JSON).
+- Artifacts archive under `.pi-smart-router/qa-runs/dogfood-soft-feed-<timestamp>/` (adapted fixtures, observed metrics, SUMMARY.txt) — already gitignored.
+
+### What constitutes pass / fail for frugality relaxation
+
+This packet does **not** relax frugality defaults. The soft-feed exists to collect honest evidence. Interpret outcomes as:
+
+| Outcome | Meaning | Action |
+|---------|---------|--------|
+| PASS on dogfood fixtures | Observed sessions met all four absolute gates (`mean_capability_adequacy_rate ≥ 0.85`, `mean_quality_retention ≥ 0.7`, `mean_over_routing_rate ≤ 0.15`, `mean_pin_preserved_rate ≥ 0.6`) | Record in sign-off; no gate change justified by itself |
+| FAIL on `mean_over_routing_rate_max` only | Sessions over-routed (too expensive) relative to hindsight labels — same soft signal as TwinRouterBench | Evidence **for** discussing frugality relaxation in a separate, operator-approved packet; cite archived SUMMARY metrics |
+| FAIL on capability / quality / pin gates | Under-routing or pin instability — quality-first posture not proven | **No** frugality relaxation; investigate routing first |
+| SKIP | Export lacked required labels | Re-export with labels; do not hand-fill |
+
+Frugality relaxation requires: (1) repeated soft-feed over-routing FAILs across ≥2 independent dogfood windows, (2) hard gates (`npm run release:functional-smoke`) still green, (3) explicit operator approval in a dedicated packet. None of that is done here.
+
 ## Sign-off form
 
 Copy into the #95 comment or your QA tracker:
@@ -162,6 +196,8 @@ Offline:
   release:functional-smoke: pass / fail
   corpus soft-report archived: yes / no
   observed mean_over_routing_rate (if printed):
+  dogfood soft-feed (qa:dogfood-soft-feed): pass / fail / skip / not-run
+  dogfood soft-feed archive path:
 
 Subjective notes:
   Over-routing:

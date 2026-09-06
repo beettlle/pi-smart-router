@@ -90,6 +90,7 @@
     "routing:test-projection": "npm run build && node --experimental-strip-types scripts/test-hydra-projection.ts",
     "benchmark:encoder": "tsx scripts/benchmark-encoder-latency.ts",
     "qa:shadow-dogfood": "bash scripts/qa/shadow-dogfood-session.sh",
+    "qa:dogfood-soft-feed": "tsx scripts/qa/dogfood-soft-feed.ts",
     "qa:count-labeled-econ": "tsx scripts/qa/count-labeled-econ.ts",
     "qa:export-dogfood-snapshot": "tsx scripts/qa/export-dogfood-snapshot.ts",
     "qa:dogfood-gather": "bash scripts/qa/dogfood-gather.sh",

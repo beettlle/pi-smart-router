@@ -1202,6 +1202,7 @@ npm run routing:twinrouterbench:full-track
 | **Gate soft-feed** | `npm run routing:assert-release-gates:corpus-report` |
 | **Over-routing breakdown** | `npm run routing:analyze-overrouting` · [v0.11.0 analysis](spine-tasks/_authoring/release-v0.11.0/over-routing-analysis.md) (#112 / #95) |
 | **Human QA protocol** | [`docs/qa/shadow-dogfood-protocol.md`](docs/qa/shadow-dogfood-protocol.md) · `npm run qa:shadow-dogfood` |
+| **Dogfood export → gates soft-feed** | `npm run qa:dogfood-soft-feed -- --export <track-b-export.json>` (dry-run, always exit 0 on gate outcome; never invents labels — #111) |
 
 **Absolute release gates stay on default fixtures.** `npm run release:functional-smoke` continues to assert `tests/eval/fixtures` against `config/release-gates.json` — do not point it at the corpus without operator review. Today the corpus subset fails `mean_over_routing_rate_max` (≈0.85 vs absolute max 0.15); that gap is intentional soft signal for the [#95](https://github.com/beettlle/pi-smart-router/issues/95) public static-track acceptance criteria alongside live dogfood traces. Use `--fixtures tests/eval/corpus/twinrouterbench` (or the corpus-report script) for #95 public-track scoring; keep absolute threshold edits out of band until operators approve. For live shadow dogfood steps and sign-off, see the [shadow dogfood protocol](docs/qa/shadow-dogfood-protocol.md).
 
@@ -1219,7 +1220,7 @@ First-class **local / optional nightly** path for the pinned ~970-row bank. **Do
 
 PR corpus smoke remains the vendored ≤150 subset. Absolute `config/release-gates.json` thresholds and `release:functional-smoke` stay fixture-backed.
 
-**[#95 dual-gate protocol](https://github.com/beettlle/pi-smart-router/issues/95):** (1) live shadow dogfood (`docs/qa/shadow-dogfood-protocol.md` · `npm run qa:shadow-dogfood`) and (2) public static-track soft-feed (CI subset report, or full-track report above). Neither path edits absolute release thresholds.
+**[#95 dual-gate protocol](https://github.com/beettlle/pi-smart-router/issues/95):** (1) live shadow dogfood (`docs/qa/shadow-dogfood-protocol.md` · `npm run qa:shadow-dogfood`, plus `npm run qa:dogfood-soft-feed` to attach labeled dogfood exports to the gates as a dry-run) and (2) public static-track soft-feed (CI subset report, or full-track report above). Neither path edits absolute release thresholds.
 
 **Deferred:** RouterBench classic (outcome-matrix) smoke is out of scope for SP-188; prefer TwinRouterBench static track + dogfood for #95.
 
