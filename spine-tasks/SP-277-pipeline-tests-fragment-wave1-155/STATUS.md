@@ -1,7 +1,8 @@
 # SP-277 — Fragment router-pipeline.test.ts into stage-focused modules (wave 1). — Status
 
-**Current Step:** 1
-**Status:** In Progress
+**Current Step:** Done
+**Status:** Complete
+**Last Updated:** 2026-09-06
 **Last Updated:** 2026-09-06
 **Review Level:** 1
 **Review Counter:** 0
@@ -48,9 +49,9 @@ Monolith keeps remaining ~1540 lines for SP-278 (wave 2) — not deleted per Do-
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Contract testCommand green
+- [x] Contract testCommand green
 
 ---
 
@@ -59,6 +60,8 @@ Monolith keeps remaining ~1540 lines for SP-278 (wave 2) — not deleted per Do-
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-09-06 | 0 | plan | skipped (engine policy — reviews post-.DONE) |
+| 2026-09-06 | 1 | plan | skipped (engine policy — reviews post-.DONE) |
+| 2026-09-06 | 2 | plan | skipped (engine policy — reviews post-.DONE) |
 
 ## Discoveries
 
@@ -72,6 +75,7 @@ Monolith keeps remaining ~1540 lines for SP-278 (wave 2) — not deleted per Do-
 |------|-------|--------|
 | 2026-09-06 | Step 0 complete | Mapped 22 describe blocks to SP-273 stage modules; chose 4-file wave-1 extract set + shared fixtures |
 | 2026-09-06 | Step 1 complete | Extracted 4 stage modules + shared fixtures; monolith 2206→1528 lines; 85/85 its preserved; gitnexus detect_changes: low risk, 0 affected processes |
+| 2026-09-06 | Step 2 complete | npm test exit 0: 126 files / 2169 tests passed; npm run typecheck clean |
 | | | |
 
 ## Blockers
