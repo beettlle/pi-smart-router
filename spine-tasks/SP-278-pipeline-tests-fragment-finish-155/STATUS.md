@@ -1,8 +1,8 @@
 # SP-278 — Finish test fragmentation and retire monolithic router-pipeline.test.ts. — Status
 
-**Current Step:** 1
-**Status:** In Progress
-**Last Updated:** 2026-09-05
+**Current Step:** Done
+**Status:** Complete
+**Last Updated:** 2026-09-06
 **Review Level:** 1
 **Review Counter:** 0
 **Iteration:** 0
@@ -51,9 +51,20 @@ Shared helpers move to router-pipeline-fixtures.ts: HARDWARE_CONFIG, LOCAL_TEST_
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Contract testCommand green
+- [x] Contract testCommand green
+
+### Verification evidence
+
+- `npm test` exit 0: **137 files / 2169 tests passed** (126→137 files after +12/−1; test count identical to pre-fragmentation baseline — no assertion loss)
+- `npm run coverage:check` exit 0 (thresholds 80/80/80/80 met — no coverage reduction)
+- `npx tsc --noEmit` exit 0; `npm run lint` exit 0
+- Final `gitnexus detect_changes` (all scope): low risk, 0 changed src symbols, 0 affected processes
+
+## Completion Criteria
+
+- [x] Monolith retired (deleted, no thin re-export needed); Closes #155; npm test green
 
 ---
 
@@ -62,6 +73,8 @@ Shared helpers move to router-pipeline-fixtures.ts: HARDWARE_CONFIG, LOCAL_TEST_
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-09-06 | 0 | plan | skipped (engine policy — reviews post-.DONE) |
+| 2026-09-06 | 1 | plan | skipped (engine policy — reviews post-.DONE) |
+| 2026-09-06 | 2 | plan | skipped (engine policy — reviews post-.DONE) |
 
 ## Discoveries
 
@@ -75,7 +88,10 @@ Shared helpers move to router-pipeline-fixtures.ts: HARDWARE_CONFIG, LOCAL_TEST_
 |------|-------|--------|
 | 2026-09-06 | Step 0 complete | Inventoried 16 describes / 52 its in monolith; mapped to 12 wave-2 files aligned with SP-273/274 stage modules; confirmed no importers → full delete |
 | 2026-09-06 | Step 1 complete | 12 wave-2 files created, helpers shared into fixtures, monolith deleted; typecheck clean; family 85/85 green; detect_changes low risk 0 symbols |
+| 2026-09-06 | Step 2 complete | npm test 137 files/2169 tests exit 0; coverage:check exit 0; typecheck + lint exit 0; completion criteria met |
 | | | |
+
+## Blockers
 
 | Date | Blocker | Resolution |
 |------|---------|------------|
