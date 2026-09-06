@@ -1,7 +1,7 @@
 # SP-268 — Document zero-manual-label bootstrap fields for behavioral calibration. — Status
 
-**Current Step:** 1
-**Status:** In Progress
+**Current Step:** 2 (complete)
+**Status:** Complete
 **Last Updated:** 2026-09-06
 **Review Level:** 1
 **Review Counter:** 0
@@ -25,9 +25,9 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Contract testCommand green
+- [x] Contract testCommand green (`npm run typecheck` ✓; `npm test` ✓ 2164 passed)
 
 ---
 
@@ -35,7 +35,7 @@
 
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
-| | | | |
+| 2026-09-06 | 1 | plan | Skipped in-worker (engine runs reviews, SP-195); see .reviews/1-20260906T171454.md |
 
 ## Discoveries
 
@@ -47,7 +47,9 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-09-06 | Step 0 | Read #110 acceptance, README calibration section, config example, dogfood protocol |
+| 2026-09-06 | Step 1 | README bootstrap section: exact derived outcome_signals + label-derivation rules; aggregate/train/verify cross-links; dogfood protocol back-link |
+| 2026-09-06 | Step 2 | `npm run typecheck` green; `npm test` 121 files / 2164 tests green |
 
 ## Blockers
 
