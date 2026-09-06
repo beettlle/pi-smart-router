@@ -1,0 +1,32 @@
+spine-tasks/SP-277-pipeline-tests-fragment-wave1-155/.DONE
+  h_ae151c586ac6c5 1-7
+spine-tasks/SP-277-pipeline-tests-fragment-wave1-155/.reviews/0-20260906T184600.md
+  h_ae151c586ac6c5 1-16
+spine-tasks/SP-277-pipeline-tests-fragment-wave1-155/.reviews/final-20260906T184646.md
+  h_ae151c586ac6c5 1-11
+spine-tasks/SP-277-pipeline-tests-fragment-wave1-155/STATUS.md
+  h_ae151c586ac6c5 3-6,16,18-41,45,47-48,52,54,62-64,76-78
+tests/unit/router-pipeline-fixtures.ts
+  h_ae151c586ac6c5 1-43
+tests/unit/router-pipeline-hydra-match.test.ts
+  h_ae151c586ac6c5 1-101
+tests/unit/router-pipeline-safe-default.test.ts
+  h_ae151c586ac6c5 1-46
+tests/unit/router-pipeline-session-pin.test.ts
+  h_ae151c586ac6c5 1-471
+tests/unit/router-pipeline-stage-helpers.test.ts
+  h_ae151c586ac6c5 1-94
+tests/unit/router-pipeline.test.ts
+  h_ae151c586ac6c5 1-11,20,35-40,1522
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5b4431e52036e62c961f303331f942761edf4834",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
