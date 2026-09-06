@@ -108,7 +108,7 @@
     }
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "^0.84.4",
+    "@earendil-works/pi-coding-agent": "^0.85.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.15.21",
     "@typescript-eslint/eslint-plugin": "^8.62.1",
@@ -122,7 +122,7 @@
     "vitest": "^3.2.3"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "^0.84.4",
+    "@earendil-works/pi-ai": "^0.85.1",
     "@huggingface/transformers": "^4.2.0",
     "better-sqlite3": "^12.11.1",
     "yaml": "^2.9.0",
@@ -138,6 +138,6 @@
     "skills": [
       "./skills"
     ],
-    "minPiVersion": "0.80.8"
+    "minPiVersion": "0.85.1"
   }
 }

@@ -1,8 +1,8 @@
 # SP-263 — Bump runtime peers to pi 0.85.1 and align minPiVersion. — Status
 
-**Current Step:** 0
-**Status:** Pending
-**Last Updated:** 2026-09-05
+**Current Step:** 1
+**Status:** In Progress
+**Last Updated:** 2026-09-06
 **Review Level:** 1
 **Review Counter:** 0
 **Iteration:** 0
@@ -12,18 +12,18 @@
 
 ## Step 0: Preflight
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Confirm npm latest peers are 0.85.1
-- [ ] Note current minPiVersion
+- [x] Confirm npm latest peers are 0.85.1 — pi-ai@0.85.1 and pi-coding-agent@0.85.1 are npm latest
+- [x] Note current minPiVersion — was `0.80.8`
 
 ## Step 1: Bump peers + lockfile
 
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Update dependency ranges to ^0.85.1
-- [ ] npm install; align minPiVersion
-- [ ] Fix compile breaks if any
+- [x] Update dependency ranges to ^0.85.1
+- [x] npm install; align minPiVersion — lockfile resolves pi-ai@0.85.1 + pi-coding-agent@0.85.1; minPiVersion set to `0.85.1` (peer floor of ^0.85.1)
+- [x] Fix compile breaks if any — none; `tsc --noEmit` clean on 0.85.1
 
 ## Step 2: Testing & Verification
 
@@ -50,7 +50,8 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-09-06 | Preflight | npm latest pi-ai/pi-coding-agent = 0.85.1; prior minPiVersion 0.80.8 |
+| 2026-09-06 | Step 1 | Ranges bumped to ^0.85.1; npm install resolved 0.85.1; minPiVersion → 0.85.1; typecheck clean |
 
 ## Blockers
 
