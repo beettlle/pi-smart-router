@@ -1,0 +1,23 @@
+tests/unit/router-pipeline-context-fit.test.ts
+  s_707c67852967db::t_ab2338ec5f5894 1-203
+tests/unit/router-pipeline-cost-telemetry.test.ts
+  s_707c67852967db::t_f27217d63ce02d 1-117
+tests/unit/router-pipeline-turn-envelope.test.ts
+  s_707c67852967db::t_e54b29203b4329 1-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "1199a7c37c0e0aef1d56c073339b0079ae2fe264",
+  "prompts": {},
+  "sessions": {
+    "s_707c67852967db": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "62ed67c6-15a3-49e7-bd65-f529ffb91e39",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
