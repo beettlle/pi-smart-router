@@ -117,7 +117,8 @@ export interface StageResult {
   readonly stage: string;
 }
 
-export type PipelineStage = (request: RoutingRequest) => Promise<StageResult>;
+export type { PipelineStage, RoutingContext } from './pipeline-stage.js';
+import type { PipelineStage, RoutingContext } from './pipeline-stage.js';
 
 /** Canonical pipeline stage order — keep README/specs in sync (SP-119). */
 export const PIPELINE_STAGE_ORDER = [
@@ -137,9 +138,11 @@ export const PIPELINE_STAGE_ORDER = [
 
 export type PipelineStageName = (typeof PIPELINE_STAGE_ORDER)[number];
 
+type StageRun = (request: RoutingRequest) => Promise<StageResult>;
+
 interface NamedPipelineStage {
   readonly name: string;
-  readonly run: PipelineStage;
+  readonly run: StageRun;
 }
 
 /** Inputs for local_zero eligibility beyond trivial-only triage (SP-111, #59). */
@@ -861,15 +864,65 @@ export class RouterPipeline {
 
   // ─── Implemented stages ─────────────────────────────────────────────────────
 
-  private async hardwareProbeStage(request: RoutingRequest): Promise<StageResult> {
-    void request;
-    if (!this.options.hardwareConfig || !this.options.systemInfoProvider) {
-      return { decided: false, stage: 'hardware_probe' };
-    }
+  /**
+   * SP-272 / #143 (partial): hardware_probe thin-wraps the PipelineStage
+   * contract against a shared RoutingContext. Context writes are synced back
+   * to the legacy per-route fields until SP-273/SP-274 migrate the remaining
+   * stages behind the same interface. No behavior change.
+   */
+  private readonly hardwareProbePipelineStage: PipelineStage = {
+    name: 'hardware_probe',
+    run: async (context) => {
+      const hardwareConfig = context.options.hardwareConfig;
+      const systemInfoProvider = context.options.systemInfoProvider;
+      if (!hardwareConfig || !systemInfoProvider) {
+        return { decided: false, stage: 'hardware_probe' };
+      }
 
-    const systemInfo = await this.options.systemInfoProvider();
-    this.currentHardwareResult = probeHardware(this.options.hardwareConfig, systemInfo);
-    return { decided: false, stage: 'hardware_probe' };
+      const systemInfo = await systemInfoProvider();
+      context.hardwareResult = probeHardware(hardwareConfig, systemInfo);
+      return { decided: false, stage: 'hardware_probe' };
+    },
+  };
+
+  /** Snapshot the per-route shared context (SP-272 seam for SP-273/SP-274). */
+  private buildRoutingContext(request: RoutingRequest): RoutingContext {
+    return {
+      request,
+      options: this.options,
+      fleet: this.activeFleet,
+      fullFleet: this.fullFleet,
+      hardwareResult: this.currentHardwareResult,
+      triageResult: this.currentTriageResult,
+      hydraResult: this.currentHydraResult,
+      clusterMatch: this.currentClusterMatch,
+      tierHint: this.currentTierHint,
+      tierHintReasonCode: this.currentTierHintReasonCode,
+      lowIntensityScore: this.currentLowIntensityScore,
+      pSuccessCheap: this.currentPSuccessCheap,
+      pSuccessRaw: this.currentPSuccessRaw,
+      pSuccessCalibrated: this.currentPSuccessCalibrated,
+      pSuccessAlpha: this.currentPSuccessAlpha,
+      expectedCostByTier: this.currentExpectedCostByTier,
+      localEligibleReason: this.currentLocalEligibleReason,
+      contextFitRejected: this.currentContextFitRejected,
+      contextFitViableCount: this.currentContextFitViableCount,
+      contextOverflowTriggered: this.contextOverflowTriggered,
+      contextOverflowPreferredProvider: this.contextOverflowPreferredProvider,
+      breakevenReason: this.currentBreakevenReason,
+      planningDelegate: this.currentPlanningDelegate,
+      localZeroGateSkipReasons: this.currentLocalZeroGateSkipReasons,
+      routePath: this.currentRoutePath,
+      routePathConfidence: this.currentRoutePathConfidence,
+      prewarmOutcome: this.currentPrewarmOutcome,
+    };
+  }
+
+  private async hardwareProbeStage(request: RoutingRequest): Promise<StageResult> {
+    const context = this.buildRoutingContext(request);
+    const result = await this.hardwareProbePipelineStage.run(context);
+    this.currentHardwareResult = context.hardwareResult;
+    return result;
   }
 
   /**
