@@ -130,7 +130,7 @@ After auth or model list changes, restart pi or run `/reload`.
 
 ### Develop from clone
 
-Requires **Pi ≥ 0.80.8** (`pi.minPiVersion`). The extension loads TypeScript from this repo via pi’s loader — no `npm run build` needed for dogfooding.
+Requires **Pi ≥ 0.85.1** (`pi.minPiVersion`). The extension loads TypeScript from this repo via pi’s loader — no `npm run build` needed for dogfooding.
 
 **Recommended (works from any cwd):** install the clone as a **path package** and remove any published npm copy. npm and path packages have different identities; leaving both installed can double-load and you may keep running a stale npm tarball.
 

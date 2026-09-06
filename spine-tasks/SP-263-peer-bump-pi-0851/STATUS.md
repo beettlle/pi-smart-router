@@ -1,7 +1,7 @@
 # SP-263 — Bump runtime peers to pi 0.85.1 and align minPiVersion. — Status
 
-**Current Step:** 2
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-09-06
 **Review Level:** 1
 **Review Counter:** 0
@@ -27,10 +27,10 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** In Progress
+**Status:** Complete (operator land-loop 2026-09-06)
 
-- [ ] Run contract testCommand (`npm run release:check`)
-- [ ] STATUS records installed versions
+- [x] Run contract testCommand (`npm run release:check`) — green on main after lane salvage/merge (EXIT 0; 2169 tests)
+- [x] STATUS records installed versions — pi-ai@0.85.1, pi-coding-agent@0.85.1, minPiVersion=0.85.1
 
 ---
 
@@ -52,6 +52,7 @@
 |------|-------|--------|
 | 2026-09-06 | Preflight | npm latest pi-ai/pi-coding-agent = 0.85.1; prior minPiVersion 0.80.8 |
 | 2026-09-06 | Step 1 | Ranges bumped to ^0.85.1; npm install resolved 0.85.1; minPiVersion → 0.85.1; typecheck clean |
+| 2026-09-06 | Operator land-loop | Worker exited without `.DONE` mid Step 2; peers already on main; `npm run release:check` green; `.DONE` written |
 
 ## Blockers
 
