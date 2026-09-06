@@ -1,0 +1,14 @@
+spine-tasks/SP-273-pipeline-extract-first-stages-143/STATUS.md
+  h_ae151c586ac6c5 3-5,15-17,19-26,30,60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "f294daabf15f4d46c420527e3f7d585798e8477b",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
