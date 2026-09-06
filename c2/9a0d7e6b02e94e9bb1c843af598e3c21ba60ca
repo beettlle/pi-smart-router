@@ -1,0 +1,22 @@
+README.md
+  h_ae151c586ac6c5 1205,1223
+docs/qa/shadow-dogfood-protocol.md
+  h_ae151c586ac6c5 141-174,199-200
+package.json
+  h_ae151c586ac6c5 93
+scripts/qa/dogfood-soft-feed.ts
+  h_ae151c586ac6c5 1-215
+spine-tasks/SP-266-shadow-dogfood-protocol-95/STATUS.md
+  h_ae151c586ac6c5 3,24,26-29,44-45,51-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c29a0d7e6b02e94e9bb1c843af598e3c21ba60ca",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
