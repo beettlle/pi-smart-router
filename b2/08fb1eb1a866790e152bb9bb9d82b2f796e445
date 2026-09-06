@@ -1,0 +1,21 @@
+tests/unit/router-pipeline-stage-helpers.test.ts
+  s_248ba6df7914ff::t_4d789030eec289 1-94
+spine-tasks/SP-277-pipeline-tests-fragment-wave1-155/STATUS.md
+  s_248ba6df7914ff::t_a69c55f32992fb 3,15,44,46-47,61,74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b208fb1eb1a866790e152bb9bb9d82b2f796e445",
+  "prompts": {},
+  "sessions": {
+    "s_248ba6df7914ff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-94c464bf-22c7-4193-ac16-92fcc52bc1e5",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
