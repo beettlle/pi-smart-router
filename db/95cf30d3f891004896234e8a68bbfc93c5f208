@@ -1,0 +1,14 @@
+spine-tasks/SP-266-shadow-dogfood-protocol-95/STATUS.md
+  h_ae151c586ac6c5 3-4,33-38,40-50,72-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "db95cf30d3f891004896234e8a68bbfc93c5f208",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
