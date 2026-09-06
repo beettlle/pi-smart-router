@@ -700,10 +700,16 @@ Manual `/smart-router feedback good|bad` is **optional**. Passive dogfood signal
 
 | Passive field / signal | Role |
 |------------------------|------|
-| `model_override` | Failure — operator overrode the routed model |
+| `model_override` | Failure — operator overrode the routed model (behavioral) |
 | `compaction_pin_break` | Neutral/positive context — pin broke at compaction (not a cheap-tier failure by itself) |
-| Loop-escalation proxies (`tool_failure_chain`, pin reason `loop_escalation`) | Failure proxies for stuck tool loops |
+| Loop-escalation proxies (`tool_failure_chain`, pin reason `loop_escalation`) | Failure proxies for stuck tool loops (verifier-grade) |
 | `stop_reason` / `stop_reason_invalid` / `stop_reason_length` | Execution outcome — invalid or truncated stops mark failure |
+
+The train/aggregate paths derive a label per row (`deriveSuccessLabelFromExportRow` in `src/domain/routing/p-success-classifier.ts`) from the joined `outcome_signals` — **no operator annotation required**:
+
+- **Failure** (`success: false`) if any derived failure signal is present: behavioral (`model_override`, `feedback_bad`), verifier proxies (`tool_failure_chain`, `stop_reason_invalid`, `reprompt_detected`, `high_edit_distance`), or execution (`provider_failover`, `stop_reason_length`, `infra_error`).
+- **Success** (`success: true`) on explicit `feedback_good`, or when only neutral signals such as `compaction_pin_break` were recorded.
+- **Unlabeled** (`success: null`, skipped by training) when no outcome signals exist for the `request_id`.
 
 Optional `feedback_good` / `feedback_bad` only refine labels when the operator chooses to annotate; they are not required for a valid train path. **Do not invent labels** — incomplete exports skip or stay unlabeled rather than fabricating outcomes.
 
@@ -732,6 +738,8 @@ npm run routing:train-calibration -- --input path/to/aggregated.jsonl
 # 4) Verify artifact shapes / gates
 npm run routing:verify-calibration -- config/routing-calibration.json
 ```
+
+Command cross-links: contrib export + aggregation details in [Community telemetry contribution (calibration)](#community-telemetry-contribution-calibration); standalone weights vs full bundle flags in [Operator train / reload](#operator-train--reload-no-prompt-text); OATS centroid refinement inside `routing:train-calibration` in [OATS cluster centroid refinement](#oats-cluster-centroid-refinement-offline-calibration); ECE/holdout gating in [Privacy-safe label packs + calibration dry-run](#privacy-safe-label-packs--calibration-dry-run-sp-189sp-191--102); one-line script summaries in the [Scripts](#scripts) table. The dogfood-side capture checklist lives in [`docs/qa/shadow-dogfood-protocol.md`](docs/qa/shadow-dogfood-protocol.md).
 
 #### Operator train / reload (no prompt text)
 

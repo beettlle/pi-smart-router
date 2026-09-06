@@ -1,8 +1,8 @@
 # SP-268 — Document zero-manual-label bootstrap fields for behavioral calibration. — Status
 
-**Current Step:** 0
-**Status:** Pending
-**Last Updated:** 2026-09-05
+**Current Step:** 1
+**Status:** In Progress
+**Last Updated:** 2026-09-06
 **Review Level:** 1
 **Review Counter:** 0
 **Iteration:** 0
@@ -12,16 +12,16 @@
 
 ## Step 0: Preflight
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Read #110 acceptance + existing calibration docs
+- [x] Read #110 acceptance + existing calibration docs
 
 ## Step 1: Document bootstrap fields
 
-**Status:** Not Started
+**Status:** Complete (review skipped in-worker; engine runs review)
 
-- [ ] List outcome fields sufficient without /feedback
-- [ ] Link train/aggregate commands
+- [x] List outcome fields sufficient without /feedback
+- [x] Link train/aggregate commands
 
 ## Step 2: Testing & Verification
 
