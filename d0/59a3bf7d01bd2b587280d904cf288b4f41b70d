@@ -1,0 +1,18 @@
+data/calibration/dogfood-20260714-aggregate.jsonl
+  h_ae151c586ac6c5 1-79
+spine-tasks/SP-269-calibration-aggregate-110/STATUS.md
+  h_ae151c586ac6c5 3,22,24-25,54
+spine-tasks/_authoring/release-v1.0.0/calibration-aggregate-note.md
+  h_ae151c586ac6c5 1-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "d059a3bf7d01bd2b587280d904cf288b4f41b70d",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
