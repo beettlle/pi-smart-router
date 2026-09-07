@@ -82,6 +82,7 @@ Per mission item 4, artifacts stay local/worktree (committed on lane only for ha
 - Bundle floors not met (triage ≥50, hydra ≥100) — defaults kept; SP-271 should NOT advertise triage/hydra as dogfood-trained.
 - Standalone `config/p-success-weights.json` must be written by `train-p-success` **last** (or SP-271 adds provenance to the bundle's standalone refresh) — otherwise the provenance block is dropped by `train-calibration`'s refresh.
 - Soft ECE packs remain SAMPLE_STARVED report-only (13 rows / 10 ECE-eligible < 30) — enforcement (`--enforce-soft-ece`) correctly does not fail starved packs; no labels were invented to un-starve them.
+- **Test isolation must land before SP-271 commits the bundle repo-wide.** SP-147's default `routingCalibrationPath` (`config/routing-calibration.json`) is picked up by `loadClusterMatcherCatalog` / isotonic loading / `RouterPipeline` whenever a bundle file exists. With a trained bundle present in the working tree, 9 tests fail (3× `cluster-matcher.test.ts` — bundle centroid ids validated against each test's temp catalog; 6× `router-pipeline.test.ts` SP-105/106/175/223 — retrained bundle shifts P(success) routing behavior). Isolation-verified 2026-09-07: base commit 70/70 green; new `p-success-weights.json` alone still 70/70; failures appear **only** when the local bundle exists. Canonical state (untracked file, absent on CI/fresh clones) is fully green: **2171/2171** + coverage gates pass (91.57% lines). Not a product bug — bundle centroid ids match the shipped catalog exactly. Fix belongs to tests/src (out of SP-270 File Scope): pin `routingCalibrationPath` in affected tests, or add an env-var override for the default bundle path.
 
 ## Sign-off
 
@@ -91,3 +92,4 @@ Per mission item 4, artifacts stay local/worktree (committed on lane only for ha
 - [x] dry-run packs + `--enforce-soft-ece` correct (SAMPLE_STARVED report-only, exit 0)
 - [x] Zero invented labels — 47 unlabeled rows skipped by parser and trainers
 - [x] No encoder default flips (#96 untouched); artifacts staged for SP-271 only
+- [x] Full suite green in canonical state: npm test 2171/2171, coverage:check pass (2026-09-07; local bundle set aside, md5-verified restore)
