@@ -1,7 +1,7 @@
 # SP-271 — Ship checked-in routing-calibration.json and supersede synthetic weights when floors met. — Status
 
-**Current Step:** 1
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-09-07
 **Review Level:** 1
 **Review Counter:** 0
@@ -12,10 +12,10 @@
 
 ## Step 0: Preflight
 
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Confirm SP-270 verify metrics
-- [ ] Decide ship vs operator-local with rationale
+- [x] Confirm SP-270 verify metrics
+- [x] Decide ship vs operator-local with rationale
 
 ## Step 1: Ship artifacts + README
 
@@ -35,9 +35,9 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete (operator land-loop 2026-09-07 — foreground contract)
 
-- [ ] Contract testCommand green
+- [x] Contract testCommand green — `npm run routing:verify-calibration` 15/15 PASS; `npm run release:check` EXIT 0 (137 test files / release-gates PASS)
 
 ---
 
@@ -46,6 +46,7 @@
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-09-07 | 0 | plan | skipped in-worker (engine runs post-.DONE, SP-195) |
+| 2026-09-07 | 1 | plan | skipped in-worker (engine runs post-.DONE, SP-195) |
 
 ## Discoveries
 
@@ -65,6 +66,7 @@
 | 2026-09-07 | full suite with bundle | 9 failed / 2162 passed — matches SP-270's documented failure set (now in SP-277/278 fragmented files) |
 | 2026-09-07 | Step 0 plan review | skipped in-worker (SP-195); Step 0 complete |
 | 2026-09-07 | Step 1 verification | verify-calibration 15/15; typecheck clean; full suite 2171/2171 with bundle present |
+| 2026-09-07 | Operator Step 2 contract | Foreground `routing:verify-calibration && release:check` green; prior worker_done_missing was mid-verify:ci backgrounding |
 
 ## Blockers
 
