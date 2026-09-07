@@ -1,7 +1,7 @@
 # SP-275 — Define infra ports and invert domain→infra coupling. — Status
 
-**Current Step:** 2
-**Status:** In Progress
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-09-06
 **Review Level:** 2
 **Review Counter:** 0
@@ -53,10 +53,12 @@ Design notes:
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Contract testCommand green
-- [ ] npm run coverage:check
+- [x] Contract testCommand green
+- [x] npm run coverage:check
+
+**Evidence (2026-09-06):** `npm run typecheck` clean; `npm test` 126 files / 2169 tests passed (0 failed); `npm run coverage:check` exit 0 — All files 91.58% lines / 87.83% branches / 96.55% functions (thresholds 80). New port modules: hardware-probe-port 100%, local-runtime-port 93.02%, telemetry-emitter-port 95.25% lines.
 
 ---
 
