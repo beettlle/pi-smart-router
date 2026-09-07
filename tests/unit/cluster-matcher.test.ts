@@ -341,6 +341,7 @@ describe('routing centroid bootstrap', () => {
       const catalog = await loadClusterMatcherCatalog({
         clustersFilePath: clustersPath,
         centroidsFilePath: centroidsPath,
+        routingCalibrationPath: join(tempDir, 'missing-calibration.json'),
         embedder,
       });
 
@@ -358,6 +359,7 @@ describe('routing centroid bootstrap', () => {
       const catalog = await loadClusterMatcherCatalog({
         clustersFilePath: clustersPath,
         centroidsFilePath: centroidsPath,
+        routingCalibrationPath: join(tempDir, 'missing-calibration.json'),
         embedder,
       });
 
@@ -404,6 +406,7 @@ describe('routing centroid bootstrap', () => {
       const matcher = await createClusterMatcher({
         clustersFilePath: clustersPath,
         centroidsFilePath: centroidsPath,
+        routingCalibrationPath: join(tempDir, 'missing-calibration.json'),
         embedder,
       });
 
