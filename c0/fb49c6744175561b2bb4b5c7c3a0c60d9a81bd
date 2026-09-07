@@ -1,0 +1,39 @@
+src/domain/pipeline/context-overflow-fallback-stage.ts
+  s_707c67852967db::t_f986058f539bc6 88
+src/domain/pipeline/hardware-probe-stage.ts
+  s_707c67852967db::t_060df103a1f166 10,26-27
+src/domain/pipeline/hydra-match-stage.ts
+  s_707c67852967db::t_72c69e7a385d09 141,219
+src/domain/pipeline/local-zero-stage.ts
+  s_707c67852967db::t_2f7b28ab87778b 21-22,29,77-78,199,202
+src/domain/pipeline/pipeline-stage.ts
+  s_707c67852967db::t_0c46711dbb22c1 22,53-55
+src/domain/pipeline/router-pipeline.ts
+  s_707c67852967db::t_1e61f97b8dbc61 37,40-41,44,46,64-66,156-159,162-170
+src/domain/pipeline/session-pin-stage.ts
+  s_707c67852967db::t_b39fe66dec85a0 97,127,151,175,247
+src/domain/pipeline/stage-helpers.ts
+  s_707c67852967db::t_61a5ac048e4a6a 21,130-136,142,144-146,149
+src/domain/pipeline/turn-envelope-stage.ts
+  s_707c67852967db::t_0bb5329e8b3b16 30,153,295
+src/domain/ports/local-runtime-port.ts
+  s_707c67852967db::t_5d1486a1a06e47 1-198
+src/domain/ports/telemetry-emitter-port.ts
+  s_707c67852967db::t_465d59d1e71fdb 1-622
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c0fb49c6744175561b2bb4b5c7c3a0c60d9a81bd",
+  "prompts": {},
+  "sessions": {
+    "s_707c67852967db": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "62ed67c6-15a3-49e7-bd65-f529ffb91e39",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
