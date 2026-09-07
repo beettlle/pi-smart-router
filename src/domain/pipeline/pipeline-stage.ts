@@ -19,7 +19,7 @@ import type {
   RoutingRequest,
   Tier,
 } from '../types/index.js';
-import type { HardwareProbeResult } from '../../infrastructure/hardware/hardware-probe.js';
+import type { HardwareProbeResult } from '../ports/hardware-probe-port.js';
 import type { TriageResult } from '../triage/triage-engine.js';
 import type { MatchResult } from '../matching/hydra-matcher.js';
 import type { ClusterMatchResult } from '../matching/cluster-matcher.js';
@@ -50,8 +50,9 @@ export interface RoutingContext {
   readonly request: RoutingRequest;
 
   /**
-   * Operator/injected pipeline options. Infrastructure dependencies live here
-   * until SP-275 inverts them into domain ports.
+   * Operator/injected pipeline options. Infrastructure dependencies enter
+   * through domain ports (SP-275, #143): hardware probe, local runtime,
+   * telemetry emitter, and the routing cost estimator seam.
    */
   readonly options: PipelineOptions;
 

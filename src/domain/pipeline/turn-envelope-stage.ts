@@ -27,7 +27,7 @@ import {
   PLANNING_DELEGATE,
   PLANNING_DELEGATE_DISABLED,
   PLANNING_DIRECT_FRONTIER,
-} from '../../infrastructure/telemetry/routing-telemetry.js';
+} from '../ports/telemetry-emitter-port.js';
 import type { PipelineStage, RoutingContext } from './pipeline-stage.js';
 import type { StageResult } from './router-pipeline.js';
 import { TURN_TIER_MAP, isPinOnlyFallbackActive, withEstimatedCost } from './stage-helpers.js';
@@ -150,6 +150,7 @@ function tryPlanningDelegateDecision(
         pin_reason: null,
       },
       context.options.priceCatalog ?? null,
+      context.options.costEstimator,
     ),
   };
 }
@@ -291,6 +292,7 @@ export function createTurnEnvelopeStage(): PipelineStage {
             pin_reason: null,
           },
           context.options.priceCatalog ?? null,
+          context.options.costEstimator,
         ),
       };
     },

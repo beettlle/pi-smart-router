@@ -1,6 +1,6 @@
 # SP-275 — Define infra ports and invert domain→infra coupling. — Status
 
-**Current Step:** 0
+**Current Step:** 2
 **Status:** In Progress
 **Last Updated:** 2026-09-06
 **Review Level:** 2
@@ -46,10 +46,10 @@ Design notes:
 
 ## Step 1: Ports + adapters
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Add port interfaces
-- [ ] Wire adapters; remove concrete imports from domain
+- [x] Add port interfaces
+- [x] Wire adapters; remove concrete imports from domain
 
 ## Step 2: Testing & Verification
 
@@ -74,12 +74,18 @@ Design notes:
 | 2026-09-06 | `estimateRoutingCost` (3-arg domain call) embeds wall-clock peak-pricing bias via `resolveFrugalityCostPer1M` — not safely re-implementable in domain. | Injected via optional `PipelineOptions.costEstimator`; default wired in `GatewayDispatch` (documented seam, not a 4th named port) |
 | 2026-09-06 | Reason-code constants (`LOCAL_ZERO_DISABLED` etc.) are domain vocabulary written into decisions by domain stages. | Moved to `domain/ports/telemetry-emitter-port.ts`; infra re-exports for compat |
 | 2026-09-06 | GitNexus impact on `RouterPipeline` (upstream d2): MEDIUM — 3 production importers (index.ts, gateway-dispatch, router-explain) | Public API preserved: options fields only added/re-typed structurally; no caller breakage expected |
+| 2026-09-06 | GitNexus impact on `withEstimatedCost` (upstream): HIGH (5 direct callers) — index stale (symbol moved to stage-helpers.ts in SP-273/274) | All 5 callers updated in the same change (session-pin ×4, turn-envelope ×2, hydra-match ×2, context-overflow-fallback ×1); GatewayDispatch wires the identical default estimator; full suite green |
+| 2026-09-06 | DESIGN AMENDMENT vs Step-0 sketch: `enrichRoutingDecisionWithContextFit/WithTierSelection` + their pure builder chains MOVED into `domain/ports/telemetry-emitter-port.ts` instead of a `DecisionEnricher` options seam | Closure audit showed zero infra deps (domain types + `config/` loader constants only, and domain→config imports have precedent) — moving is the correct hexagonal direction, avoids permanent indirection and test churn; infra re-exports keep paths stable |
+| 2026-09-06 | Direct `new RouterPipeline()` without `costEstimator` yields decisions without `estimated_cost_usd` (production unaffected: GatewayDispatch is the only production constructor and wires `defaultRoutingCostEstimator`) | 4 SP-085 tests updated to inject `costEstimator: defaultRoutingCostEstimator` — demonstrates the seam |
+| 2026-09-06 | Domain default `defaultLocalRuntimePort` fails closed (no transport → `available:false`); infra `nodeLocalRuntimePort` binds Node global fetch | GatewayDispatch wires the infra adapter — production behavior unchanged (fail-open ping semantics preserved via ping-internal catch) |
 
 ## Execution Log
 
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-09-06 | Step 0 complete | Inventory of 11 domain→infra import sites recorded; 3 port files named; pricing coupling documented out of scope |
+| 2026-09-06 | Step 0 plan review | Engine-deferred (SP-195): batch engine runs reviews after .DONE; worker proceeded per real-pi standing orders |
+| 2026-09-06 | Step 1 implemented | 3 domain port modules (`hardware-probe-port`, `local-runtime-port`, `telemetry-emitter-port`); 7 pipeline files re-import from ports; 4 infra modules re-export domain symbols; GatewayDispatch wires `costEstimator` + `localRuntime` defaults; index.ts exports port types; typecheck + 2169/2169 tests green; detect_changes: medium, expected modules only |
 
 ## Blockers
 

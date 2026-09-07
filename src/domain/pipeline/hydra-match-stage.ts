@@ -138,6 +138,7 @@ export function createHydraMatchStage(): PipelineStage {
             pin_reason: null,
           },
           context.options.priceCatalog ?? null,
+          context.options.costEstimator,
         ),
       };
     },
@@ -215,6 +216,7 @@ function degradedRouteStage(
         pin_reason: null,
       },
       context.options.priceCatalog ?? null,
+      context.options.costEstimator,
     ),
   };
 }

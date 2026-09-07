@@ -18,15 +18,15 @@
  * it replaces.
  */
 
-import type { LocalReadinessResult } from '../../infrastructure/local/local-zero-tier.js';
-import { pingLocalServices } from '../../infrastructure/local/local-zero-tier.js';
+import type { LocalReadinessResult } from '../ports/local-runtime-port.js';
+import { defaultLocalRuntimePort } from '../ports/local-runtime-port.js';
 import { DEFAULT_LOCAL_ZERO_CONFIG } from '../types/schemas.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
 import {
   LOCAL_ZERO_DISABLED,
   THROUGHPUT_BELOW_THRESHOLD,
   TOOL_USE_CAPABILITY_SHORTFALL,
-} from '../../infrastructure/telemetry/routing-telemetry.js';
+} from '../ports/telemetry-emitter-port.js';
 import {
   DEFAULT_SPECULATIVE_PREWARM_CONFIG,
   PREWARM_DISABLED_LOW_ACCEPTANCE,
@@ -74,7 +74,8 @@ async function attemptSpeculativePrewarm(
     context.request.session_id,
     'local_runtime',
     async (signal) => {
-      const readiness = await pingLocalServices(
+      const localRuntime = context.options.localRuntime ?? defaultLocalRuntimePort;
+      const readiness = await localRuntime.pingServices(
         context.options.localConfig,
         context.options.httpFetchPort,
       );
@@ -195,9 +196,10 @@ export function createLocalZeroStage(): PipelineStage {
       // deadline when early signals lean local. Fail open — on timeout/miss we
       // fall back to the normal unbounded readiness probe below (no hang).
       const prewarmedReadiness = await attemptSpeculativePrewarm(ctx, resolvePrewarmGuard(ctx));
+      const localRuntime = ctx.options.localRuntime ?? defaultLocalRuntimePort;
       const readiness =
         prewarmedReadiness ??
-        (await pingLocalServices(
+        (await localRuntime.pingServices(
           ctx.options.localConfig,
           ctx.options.httpFetchPort,
         ));

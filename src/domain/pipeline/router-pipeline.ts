@@ -34,14 +34,16 @@ import type { QuotaWindowPosition } from '../types/entities.js';
 import type { LowIntensityConfig, LocalZeroConfig, VirtualCostV2Config } from '../types/schemas.js';
 import type {
   HardwareProbeConfig,
+  HardwareProbePort,
   HardwareProbeResult,
   SystemInfo,
-} from '../../infrastructure/hardware/hardware-probe.js';
-import type { ThroughputMeter } from '../../infrastructure/hardware/throughput-meter.js';
+  ThroughputMeter,
+} from '../ports/hardware-probe-port.js';
 import type {
   HttpFetchPort,
+  LocalRuntimePort,
   LocalZeroTierConfig,
-} from '../../infrastructure/local/local-zero-tier.js';
+} from '../ports/local-runtime-port.js';
 import type { TriageResult } from '../triage/triage-engine.js';
 import {
   isGoogleGeminiProfile,
@@ -55,12 +57,13 @@ import {
 } from '../pinning/session-pinner.js';
 import type { LoopEscalationConfig } from '../pinning/loop-escalation.js';
 import {
-  RoutingTelemetryEmitter,
   enrichRoutingDecisionWithContextFit,
   enrichRoutingDecisionWithTierSelection,
   LOCAL_ZERO_DISABLED,
   TOOL_USE_CAPABILITY_SHORTFALL,
-} from '../../infrastructure/telemetry/routing-telemetry.js';
+  type RoutingCostEstimator,
+  type TelemetryEmitterPort,
+} from '../ports/telemetry-emitter-port.js';
 import type { HydraMatcher as HydraMatcherType, MatchResult } from '../matching/hydra-matcher.js';
 import type { ClusterMatcher, ClusterMatchResult } from '../matching/cluster-matcher.js';
 import type {
@@ -150,9 +153,21 @@ export interface PipelineOptions {
   readonly localConfig?: LocalZeroTierConfig;
   readonly systemInfoProvider?: () => Promise<SystemInfo>;
   readonly httpFetchPort?: HttpFetchPort;
+  /** Injected hardware probe port (SP-275, #143); defaults to the pure domain kernel. */
+  readonly hardwareProbe?: HardwareProbePort;
+  /** Injected local runtime port (SP-275, #143); composition root binds the Node fetch adapter. */
+  readonly localRuntime?: LocalRuntimePort;
   readonly sessionPinner?: SessionPinner;
   readonly loopEscalationConfig?: LoopEscalationConfig;
-  readonly telemetryEmitter?: RoutingTelemetryEmitter;
+  /** Telemetry emitter port (SP-275, #143); infra implements (`RoutingTelemetryEmitter`). */
+  readonly telemetryEmitter?: TelemetryEmitterPort;
+  /**
+   * Routing cost estimator seam (SP-275, #143 partial). The default lives in
+   * infrastructure (`estimateRoutingCost`) until the pricing port is inverted;
+   * the composition root (`GatewayDispatch`) wires it. Unwired direct
+   * constructions produce decisions without `estimated_cost_usd`.
+   */
+  readonly costEstimator?: RoutingCostEstimator;
   readonly hydraMatcher?: HydraMatcherType;
   readonly clusterMatcher?: ClusterMatcher;
   readonly lowIntensityConfig?: LowIntensityConfig;

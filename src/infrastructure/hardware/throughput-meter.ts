@@ -5,7 +5,26 @@
  * estimate for hardware viability gating (wired in SP-164).
  *
  * Pure module with injectable sample store for testability.
+ *
+ * SP-275 (#143 partial): the throughput viability contracts are domain-owned
+ * (`domain/ports/hardware-probe-port.ts`); this module provides the factory,
+ * default config, and sample stores, and re-exports the contracts for
+ * import-path stability.
  */
+
+import type {
+  LocalViabilityPolicy,
+  ThroughputBreakdown,
+  ThroughputMeter,
+  ThroughputSamplePhase,
+} from '../../domain/ports/hardware-probe-port.js';
+
+export type {
+  LocalViabilityPolicy,
+  ThroughputBreakdown,
+  ThroughputMeter,
+  ThroughputSamplePhase,
+} from '../../domain/ports/hardware-probe-port.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -16,50 +35,9 @@ export interface ThroughputMeterConfig {
 
 // ─── Cold vs warm classification (SP-216, #116) ──────────────────────────────
 
-/**
- * Cold vs warm sample phase.
- *
- * - `warm` — steady-state generation measured after model load. Only warm
- *   samples count toward local viability.
- * - `cold` — sample includes cold-start cost (model load, warmup). Cold
- *   samples under-state steady-state TPS and never count toward viability;
- *   they are reported separately as cold-start evidence.
- *
- * Untagged `recordSample()` calls default to `warm`: the routing pipeline
- * measures post-load generation duration.
- */
-export type ThroughputSamplePhase = 'cold' | 'warm';
-
 export interface ThroughputSample {
   readonly tokensPerSecond: number;
   readonly phase: ThroughputSamplePhase;
-}
-
-/**
- * Cold/warm breakdown of the rolling window.
- *
- * Formula: `warmMedianTps = median(tps where phase='warm')`,
- * `coldMedianTps = median(tps where phase='cold')`.
- * Viability (see {@link ThroughputMeter.isViable}):
- * `viable = warmSamples > 0 AND warmMedianTps >= threshold`.
- * When policy `requireWarmSamples` is true (default) and only cold samples
- * exist, viability fails closed (local reported unavailable).
- */
-export interface ThroughputBreakdown {
-  readonly warmMedianTps: number | null;
-  readonly coldMedianTps: number | null;
-  readonly warmSamples: number;
-  readonly coldSamples: number;
-  readonly classification: 'warm' | 'cold-only' | 'no-samples';
-}
-
-/** Local viability policy for cold/warm TPS (SP-216, #116). */
-export interface LocalViabilityPolicy {
-  /**
-   * Fail closed when only cold samples exist (quality-preserving default).
-   * When false, cold-only windows are evaluated against the cold median.
-   */
-  readonly requireWarmSamples: boolean;
 }
 
 export const DEFAULT_LOCAL_VIABILITY_POLICY: Readonly<LocalViabilityPolicy> = {
@@ -82,15 +60,6 @@ export interface TaggedThroughputSampleStore extends ThroughputSampleStore {
   entries(): readonly ThroughputSample[];
 }
 
-export interface ThroughputMeter {
-  recordSample(tokens: number, durationMs: number, phase?: ThroughputSamplePhase): void;
-  getMedianTps(phase?: ThroughputSamplePhase): number | null;
-  isAboveThreshold(threshold?: number): boolean;
-  getSampleCount(phase?: ThroughputSamplePhase): number;
-  getBreakdown(): ThroughputBreakdown;
-  isViable(policy?: LocalViabilityPolicy, threshold?: number): boolean;
-  clear(): void;
-}
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
 

@@ -7,7 +7,7 @@
  * dispatch gating. Never decides.
  */
 
-import { probeHardware } from '../../infrastructure/hardware/hardware-probe.js';
+import { defaultHardwareProbePort } from '../ports/hardware-probe-port.js';
 import type { PipelineStage, RoutingContext } from './pipeline-stage.js';
 import type { StageResult } from './router-pipeline.js';
 
@@ -23,7 +23,8 @@ export function createHardwareProbeStage(): PipelineStage {
       }
 
       const systemInfo = await systemInfoProvider();
-      context.hardwareResult = probeHardware(hardwareConfig, systemInfo);
+      const probe = context.options.hardwareProbe ?? defaultHardwareProbePort;
+      context.hardwareResult = probe.probe(hardwareConfig, systemInfo);
       return { decided: false, stage: 'hardware_probe' };
     },
   };
