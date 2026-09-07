@@ -1,0 +1,19 @@
+spine-tasks/SP-276-telemetry-pinner-split-143/STATUS.md
+  s_b8479c51195674::t_b5fe3e929706aa 3-5,15,17-18,22,24-25,29,31,40-41,47-49,55-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a65408b8a946c8ba5e522887d1ba6f557daf6756",
+  "prompts": {},
+  "sessions": {
+    "s_b8479c51195674": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-eb8409e5-511b-4b58-92fd-20c40a7c6d60",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
