@@ -13,24 +13,25 @@
     "routing_latency_norm",
     "economical_tier"
   ],
-  "intercept": 4.101841550841884,
+  "intercept": 4.701249302874397,
   "coefficients": [
-    -3.9458158506645473,
-    -3.9458158506645473,
-    -4.6221357618419106,
-    -4.702014247565688,
-    -1.9442887494123497,
-    -2.945430358303044,
-    -2.8373347243581435,
     0,
-    0.09441030879566878,
-    4.101841550841884
+    -2.133314330611667,
+    -1.7877804272773417,
+    0,
+    0,
+    0,
+    -2.8284915884334176,
+    0,
+    0.003951961635619142,
+    1.5046698647843348
   ],
-  "trained_sample_count": 40,
+  "trained_sample_count": 32,
   "provenance": {
-    "source": "synthetic_fixture",
-    "task": "SP-175",
+    "source": "operator_export",
+    "training_input": "dogfood-20260714-aggregate.jsonl",
+    "task": "SP-270",
     "note": "Privacy-safe feature vectors + labels only; no prompt text.",
-    "trained_at": "2026-07-10"
+    "trained_at": "2026-09-06"
   }
 }
