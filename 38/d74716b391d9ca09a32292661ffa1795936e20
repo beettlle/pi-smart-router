@@ -1,0 +1,21 @@
+spine-tasks/SP-271-ship-routing-calibration-110/.reviews/0-20260907T171102.md
+  s_707c67852967db::t_c61e4db398d52b 1-24
+spine-tasks/SP-271-ship-routing-calibration-110/.reviews/final-20260907T171249.md
+  s_707c67852967db::t_0126c5f182fd19 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "38d74716b391d9ca09a32292661ffa1795936e20",
+  "prompts": {},
+  "sessions": {
+    "s_707c67852967db": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "62ed67c6-15a3-49e7-bd65-f529ffb91e39",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
