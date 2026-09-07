@@ -1,0 +1,18 @@
+README.md
+  h_ae151c586ac6c5 5,742,1449
+docs/migration-v1.md
+  h_ae151c586ac6c5 1-145
+spine-tasks/SP-279-v1-migration-semver-docs/STATUS.md
+  h_ae151c586ac6c5 21,23-24,28,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "bb989f6e05f9f4f18d8d19da82e262d7e76ecd7d",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
