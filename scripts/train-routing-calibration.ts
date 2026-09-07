@@ -42,11 +42,14 @@ import { CYCLOMATIC_THRESHOLD } from '../src/domain/triage/triage-engine.js';
 import {
   createDefaultPSuccessWeights,
   P_SUCCESS_FEATURE_NAMES,
-  parseTrainingExportLine,
   trainFromLabeledSamples,
   type LabeledTrainingSample,
   type PSuccessWeights,
 } from '../src/domain/routing/p-success-classifier.js';
+import {
+  aggregateRowRequestId,
+  labeledSampleFromContribRecord,
+} from './lib/contrib-training-samples.js';
 import {
   createDefaultIsotonicCalibratorArtifact,
   fitIsotonicCalibratorFromSamples,
@@ -433,9 +436,13 @@ export function resolveRoutingCalibrationBundle(
   }
 }
 
-function contribToLabeledSample(record: Record<string, unknown>): LabeledTrainingSample | null {
-  const line = JSON.stringify(record);
-  return parseTrainingExportLine(line);
+function contribToLabeledSample(
+  record: Record<string, unknown>,
+  fallbackRequestId: string,
+): LabeledTrainingSample | null {
+  // SP-270: aggregate rows carry no request_id (privacy-stripped); use a
+  // deterministic fallback id and skip unlabeled rows instead of coercing.
+  return labeledSampleFromContribRecord(record, fallbackRequestId);
 }
 
 function trainTriageThreshold(
@@ -554,7 +561,7 @@ function trainHydraProjection(
 
 function collectLabeledSamples(records: readonly Record<string, unknown>[]): LabeledTrainingSample[] {
   return records
-    .map((record) => contribToLabeledSample(record))
+    .map((record, index) => contribToLabeledSample(record, aggregateRowRequestId(index)))
     .filter((sample): sample is LabeledTrainingSample => sample !== null);
 }
 

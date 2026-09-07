@@ -20,6 +20,8 @@ import type {
 } from '../../domain/types/index.js';
 import { RouterPipeline } from '../../domain/pipeline/router-pipeline.js';
 import type { PipelineOptions } from '../../domain/pipeline/router-pipeline.js';
+import { defaultRoutingCostEstimator } from '../telemetry/routing-telemetry.js';
+import { nodeLocalRuntimePort } from '../local/local-zero-tier.js';
 import { CircuitBreaker, isInfraError } from './circuit-breaker.js';
 import type { CircuitBreakerConfig } from './circuit-breaker.js';
 
@@ -180,7 +182,16 @@ export class GatewayDispatch {
 
   constructor(fleet: readonly ModelProfile[], options?: GatewayDispatchOptions) {
     this.fleet = fleet;
-    this.pipeline = new RouterPipeline(fleet, options);
+    // SP-275 (#143) composition root: wire the infrastructure defaults for
+    // the pipeline's domain ports — the routing cost estimator (pricing
+    // resolution stays infra until the pricing port phase) and the
+    // Node-fetch-bound local runtime adapter. Behavior-identical to the
+    // pre-inversion direct calls.
+    this.pipeline = new RouterPipeline(fleet, {
+      ...options,
+      costEstimator: options?.costEstimator ?? defaultRoutingCostEstimator,
+      localRuntime: options?.localRuntime ?? nodeLocalRuntimePort,
+    });
     this.circuitBreaker = new CircuitBreaker(options?.circuitBreakerConfig);
     this.rateLimiter = options?.rateLimiter;
   }

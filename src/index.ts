@@ -115,6 +115,24 @@ export type { SessionEvictionTargets } from './api/session-eviction.js';
 export type { GatewayDispatchOptions } from './infrastructure/gateway/gateway-dispatch.js';
 export type { PipelineOptions } from './domain/pipeline/router-pipeline.js';
 
+// Domain-owned pipeline ports (SP-275, #143): the hexagonal boundaries the
+// routing pipeline depends on; infrastructure modules implement or adapt them.
+export type {
+  HardwareProbePort,
+  SystemInfoPort,
+  ThroughputMeter,
+} from './domain/ports/hardware-probe-port.js';
+export type {
+  HttpFetchPort,
+  LocalRuntimePort,
+} from './domain/ports/local-runtime-port.js';
+export type {
+  PeakPricingTelemetryFields,
+  RoutePathTelemetryExtras,
+  RoutingCostEstimator,
+  TelemetryEmitterPort,
+} from './domain/ports/telemetry-emitter-port.js';
+
 // ─── Extension facade re-exports (SP-255, #149) ──────────────────────────────
 //
 // Stable public surface for everything `.pi/extensions/smart-router/` needs, so
