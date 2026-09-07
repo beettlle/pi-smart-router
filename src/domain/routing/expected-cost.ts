@@ -21,7 +21,7 @@ import type {
 } from '../types/index.js';
 import type { QuotaWindowPosition } from '../types/entities.js';
 import type { VirtualCostV2Config } from '../types/schemas.js';
-import { resolveFrugalityCostPer1M } from '../../infrastructure/pricing/price-broker.js';
+import { resolveFrugalityCostPer1M } from '../pricing/price-resolution.js';
 import {
   evaluateCacheEconomics,
   type CacheEconomicsConfig,

@@ -6,22 +6,25 @@
  *   2. Registry snapshot (refreshed external data)
  *   3. YAML/catalog fallback (ModelProfile.pricing.fallback_cost_per_1m)
  *
- * The broker is a pure function layer; it reads from the PriceCatalog
- * and ModelProfile without side effects.
+ * SP-276 (#143): the pure cascade (`resolvePrice`) and the frugality rate
+ * (`resolveFrugalityCostPer1M`) moved to `domain/pricing/price-resolution.js`
+ * to finish the domain→infra inversion; this module re-exports them for
+ * import-path stability. What remains here is limit resolution and
+ * fleet-mapping, which depend on `config/pi-model-mapper` tier defaults.
  */
 
-import type { ModelProfile, ModelLimits, PriceCatalog, PriceSource } from '../../domain/types/index.js';
-import {
-  resolvePeakPricingAdjustment,
-  type PeakPricingOptions,
-} from '../../domain/pricing/peak-pricing.js';
+import type { ModelProfile, ModelLimits, PriceCatalog } from '../../domain/types/index.js';
 import { getDefaultLimitsForTier } from '../../config/pi-model-mapper.js';
 
-export interface ResolvedPrice {
-  readonly model_id: string;
-  readonly cost_per_1m_tokens: number;
-  readonly source: PriceSource;
-}
+export {
+  resolvePrice,
+  resolveFrugalityCostPer1M,
+  type ResolvedPrice,
+} from '../../domain/pricing/price-resolution.js';
+import {
+  resolvePrice,
+  type ResolvedPrice,
+} from '../../domain/pricing/price-resolution.js';
 
 export interface ResolvedLimits {
   readonly model_id: string;
@@ -86,45 +89,6 @@ export function applyCatalogLimitsToFleet(
 }
 
 /**
- * Resolve the effective price for a single model.
- *
- * Priority: operator override → registry snapshot → catalog fallback.
- * Always returns a price — the fallback from ModelProfile is guaranteed
- * by schema to exist.
- */
-export function resolvePrice(
-  model: ModelProfile,
-  catalog: PriceCatalog | null,
-): ResolvedPrice {
-  if (catalog) {
-    const override = catalog.user_overrides[model.id];
-    if (override !== undefined) {
-      return {
-        model_id: model.id,
-        cost_per_1m_tokens: override,
-        source: 'override',
-      };
-    }
-
-    const registryKey = model.pricing.registry_key ?? model.id;
-    const registryPrice = catalog.registry_snapshot[registryKey];
-    if (registryPrice !== undefined) {
-      return {
-        model_id: model.id,
-        cost_per_1m_tokens: registryPrice,
-        source: 'registry',
-      };
-    }
-  }
-
-  return {
-    model_id: model.id,
-    cost_per_1m_tokens: model.pricing.fallback_cost_per_1m,
-    source: 'yaml_fallback',
-  };
-}
-
-/**
  * Resolve prices for the entire fleet in a single pass.
  *
  * Returns a Map keyed by model ID for O(1) lookup during scoring.
@@ -170,25 +134,4 @@ export function applyCatalogPricesToFleet(
   });
 
   return applyCatalogLimitsToFleet(priced, catalog);
-}
-
-/**
- * Resolve per-request cost rate for frugality scoring and telemetry (SP-096).
- * Subscription-quota virtual cost takes precedence over API/catalog rates.
- *
- * SP-243 (#165): the resolved rate is soft-biased by the peak/off-peak
- * schedule adapters (Z.ai credits default 0.5× off-peak; DeepSeek 0.5×
- * off-peak) via `peak.now` (defaults to the current time). Non-target
- * providers resolve multiplier 1 — no invented clocks, fail open.
- */
-export function resolveFrugalityCostPer1M(
-  model: ModelProfile,
-  catalog: PriceCatalog | null,
-  peak?: PeakPricingOptions,
-): number {
-  const base =
-    model.pricing.quota_cost_per_1m !== undefined
-      ? model.pricing.quota_cost_per_1m
-      : resolvePrice(model, catalog).cost_per_1m_tokens;
-  return base * resolvePeakPricingAdjustment(model, peak).cost_multiplier;
 }
