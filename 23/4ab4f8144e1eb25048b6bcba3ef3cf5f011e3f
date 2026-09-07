@@ -1,0 +1,14 @@
+spine-tasks/SP-271-ship-routing-calibration-110/STATUS.md
+  h_ae151c586ac6c5 3-5,15,22,40,46-48,54-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "234ab4f8144e1eb25048b6bcba3ef3cf5f011e3f",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
