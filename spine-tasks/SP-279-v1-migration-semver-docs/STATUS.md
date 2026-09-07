@@ -18,14 +18,14 @@
 
 ## Step 1: Write migration + README
 
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Create docs/migration-v1.md
-- [ ] Update README SemVer / release notes pointers
+- [x] Create docs/migration-v1.md
+- [x] Update README SemVer / release notes pointers
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Contract testCommand green
 
@@ -49,6 +49,7 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
+| 2026-09-07 | Step 1 complete | Created docs/migration-v1.md (TL;DR checklist, raised requirements pi≥0.85.1/Node≥22.19.0/scripts-src removal, calibration artifacts + honest floors, pipeline architecture notes, shadow-dogfood↔calibration cross-link, SemVer stability surface, what-1.0-does-NOT-change). README: dropped "may change until 1.0.0" caveat + stale v0.16.2 literal → v1.0 SemVer-stable note (publish-safe, mirrors package.json); added migration-v1.md to Documentation table; cross-linked behavioral path loop |
 | 2026-09-07 | Step 0 complete | Read manifest theme, README SemVer note, dep STATUS files; verified shipped behavior in worktree: config/routing-calibration.json + p-success-weights.json present, src/domain/pipeline/*-stage.ts + src/domain/ports/* present, workflow node pins, scripts/src absent from git (v0.22.0 still had the tree) |
 
 ## Blockers

@@ -2,7 +2,7 @@
 
 **Auto-model router middleware for the [pi](https://pi.dev) coding agent.**
 
-> Current release: **v0.16.2** (mirrors `package.json`; SemVer `0.y.z`). The public API and routing behavior may change until `1.0.0`.
+> **v1.0 — SemVer stable.** From the `1.0.0` release on, the public API and documented operator surface follow [semantic versioning](https://semver.org): breaking changes land only in a new major version, each accompanied by a migration guide — start with [docs/migration-v1.md](docs/migration-v1.md). The published release always mirrors `package.json` ([npm](https://www.npmjs.com/package/pi-smart-router)).
 
 pi-smart-router intercepts every LLM inference request and dynamically routes it to the optimal execution engine — balancing cost, capability, latency, and time-to-first-token (TTFT) — without requiring you to manually pick a model for each turn.
 
@@ -739,7 +739,7 @@ npm run routing:train-calibration -- --input path/to/aggregated.jsonl
 npm run routing:verify-calibration -- config/routing-calibration.json
 ```
 
-Command cross-links: contrib export + aggregation details in [Community telemetry contribution (calibration)](#community-telemetry-contribution-calibration); standalone weights vs full bundle flags in [Operator train / reload](#operator-train--reload-no-prompt-text); OATS centroid refinement inside `routing:train-calibration` in [OATS cluster centroid refinement](#oats-cluster-centroid-refinement-offline-calibration); ECE/holdout gating in [Privacy-safe label packs + calibration dry-run](#privacy-safe-label-packs--calibration-dry-run-sp-189sp-191--102); one-line script summaries in the [Scripts](#scripts) table. The dogfood-side capture checklist lives in [`docs/qa/shadow-dogfood-protocol.md`](docs/qa/shadow-dogfood-protocol.md).
+Command cross-links: contrib export + aggregation details in [Community telemetry contribution (calibration)](#community-telemetry-contribution-calibration); standalone weights vs full bundle flags in [Operator train / reload](#operator-train--reload-no-prompt-text); OATS centroid refinement inside `routing:train-calibration` in [OATS cluster centroid refinement](#oats-cluster-centroid-refinement-offline-calibration); ECE/holdout gating in [Privacy-safe label packs + calibration dry-run](#privacy-safe-label-packs--calibration-dry-run-sp-189sp-191--102); one-line script summaries in the [Scripts](#scripts) table. The dogfood-side capture checklist lives in [`docs/qa/shadow-dogfood-protocol.md`](docs/qa/shadow-dogfood-protocol.md); the full dogfood → export → aggregate → train loop is diagrammed in [docs/migration-v1.md](docs/migration-v1.md#shadow-dogfood--calibration-behavioral-path).
 
 #### Operator train / reload (no prompt text)
 
@@ -1446,6 +1446,7 @@ Confirm https://pi.dev/packages/pi-smart-router shows the new version (may lag n
 
 | Document | Purpose |
 |----------|---------|
+| [docs/migration-v1.md](docs/migration-v1.md) | Upgrading to 1.0: raised requirements (pi ≥ 0.85.1, Node ≥ 22.19.0), calibration artifacts, pipeline architecture notes, SemVer stability surface |
 | [docs/PRD.md](docs/PRD.md) | Product requirements, research lineage, pipeline specification |
 | [docs/constitution.md](docs/constitution.md) | Project principles and non-negotiable rules |
 | [specs/001-build-smart-router/spec.md](specs/001-build-smart-router/spec.md) | Detailed feature specification |
