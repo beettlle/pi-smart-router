@@ -27,7 +27,7 @@ No database migrations, no config-file format changes, no session-state changes.
 
 | Requirement | `0.22.0` | `1.0.0` train | Notes |
 |-------------|----------|---------------|-------|
-| pi host (`pi.minPiVersion`) | `0.80.8` | **`0.85.1`** | Peer freshness ([#154](https://github.com/beettlle/pi-smart-router/issues/154)); the extension refuses to load on older hosts |
+| pi host (`pi.minPiVersion`) | `0.80.8` | **`0.85.1`** | Peer freshness ([#154](https://github.com/beettlle/pi-smart-router/issues/154)); `0.85.1` is the declared extension floor |
 | `@earendil-works/pi-ai` (runtime dependency) | `^0.84.4` | **`^0.85.1`** | Resolved by `npm install` / `pi install`; no embedder action beyond the normal update |
 | Node.js (`engines.node`) | `>=22.19.0` | `>=22.19.0` (unchanged) | The floor was already declared in `0.22.0`; the 1.0 train makes CI enforce it — `ci.yml`, `release.yml`, `calibration-verify.yml`, and `eval-harness-smoke.yml` pin `22.19.0`. With `engine-strict=true`, installs on Node `< 22.19.0` fail with `EBADENGINE` |
 | Committed `scripts/src/**` artifacts | Present in git | **Removed** | Plus a CI guard that fails closed if compile artifacts drift back in ([#150](https://github.com/beettlle/pi-smart-router/issues/150)) |
@@ -73,7 +73,7 @@ The `1.0.0` train restructured the routing pipeline internals with **zero routin
 | Change | Where | Before → after |
 |--------|-------|----------------|
 | Stage contract + shared context | `src/domain/pipeline/pipeline-stage.ts` | Stages implemented `PipelineStage` reading/writing a per-route `RoutingContext` instead of private orchestrator fields; one context per `route()` (calls are single-flight serialized, SP-230) |
-| Stage extraction | `src/domain/pipeline/*-stage.ts` | The ~2103-line `router-pipeline.ts` god file became a ~810-line orchestrator plus 12 stage modules matching `PIPELINE_STAGE_ORDER` (`hardware_probe` → `loop_escalation` → `turn_envelope` → `context_fit` → `low_intensity` → `session_pin` → `triage` → `local_zero` → `triage_cloud_fallback` → `hydra_match` → `safe_default` → `context_overflow_fallback`) |
+| Stage extraction | `src/domain/pipeline/*-stage.ts` | The ~2103-line `router-pipeline.ts` god file became a ~810-line orchestrator plus ten extracted stage modules (the remaining stages — `loop_escalation`, `triage_cloud_fallback` — still run in the orchestrator); stage order is defined by `PIPELINE_STAGE_ORDER` (`hardware_probe` → `loop_escalation` → `turn_envelope` → `context_fit` → `low_intensity` → `session_pin` → `triage` → `local_zero` → `triage_cloud_fallback` → `hydra_match` → `safe_default` → `context_overflow_fallback`) |
 | Domain ports | `src/domain/ports/` | `HardwareProbePort`, `LocalRuntimePort`, `TelemetryEmitterPort` (+ `RoutingCostEstimator` seam) — **domain owns the contracts, infrastructure implements them**. The pure policy kernels (probe thresholds, ping orchestration, observability builders) moved into `src/domain/`; impure host adapters stay in `src/infrastructure/` |
 | Telemetry split | `src/infrastructure/telemetry/` | The telemetry module split into `routing-telemetry.ts`, `pin-economics-telemetry.ts`, `planning-delegate-telemetry.ts`, `telemetry-scalar-fields.ts`, `telemetry-limits.ts` |
 | Test fragmentation | `tests/unit/router-pipeline-*.test.ts` | The 2206-line monolith test was deleted and rebuilt per-stage |
