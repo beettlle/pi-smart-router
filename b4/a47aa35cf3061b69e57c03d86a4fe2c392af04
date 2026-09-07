@@ -1,0 +1,51 @@
+tests/unit/router-pipeline-error-telemetry.test.ts
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-95
+spine-tasks/SP-278-pipeline-tests-fragment-finish-155/STATUS.md
+  s_b8479c51195674::t_b4b8e7aef8bc0f 3-5,15,17-36,40-45,47-50,54-65,67,75-77,89-92
+tests/unit/router-pipeline-low-intensity.test.ts
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-247
+tests/unit/router-pipeline-p-success.test.ts
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-187
+tests/unit/router-pipeline-stage-order.test.ts
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-57
+tests/unit/router-pipeline-cost-telemetry.test.ts
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-117
+  s_b8479c51195674::t_ae2a61bd80e1ca 118-126
+spine-tasks/SP-278-pipeline-tests-fragment-finish-155/.reviews/final-20260907T023304.md
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-8
+tests/unit/router-pipeline-feature-sidecar.test.ts
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-86
+tests/unit/router-pipeline-turn-envelope.test.ts
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-66
+tests/unit/router-pipeline-context-fit.test.ts
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-203
+tests/unit/router-pipeline-fixtures.ts
+  s_b8479c51195674::t_b4b8e7aef8bc0f 5-7,9-25,34-105
+  s_b8479c51195674::t_00afe6b3cae63a 106
+tests/unit/router-pipeline-local-zero-throughput.test.ts
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-96
+tests/unit/router-pipeline-gemini-deprioritization.test.ts
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-72
+tests/unit/router-pipeline-concurrent-route.test.ts
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-124
+spine-tasks/SP-278-pipeline-tests-fragment-finish-155/.reviews/0-20260907T023219.md
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-14
+tests/unit/router-pipeline-expected-cost.test.ts
+  s_b8479c51195674::t_b4b8e7aef8bc0f 1-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b4a47aa35cf3061b69e57c03d86a4fe2c392af04",
+  "prompts": {},
+  "sessions": {
+    "s_b8479c51195674": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-eb8409e5-511b-4b58-92fd-20c40a7c6d60",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
