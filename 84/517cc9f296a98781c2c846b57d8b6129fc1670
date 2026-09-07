@@ -1,0 +1,26 @@
+config/p-success-weights.json
+  h_ae151c586ac6c5 16,19-27,29,31-33,35
+scripts/lib/contrib-training-samples.ts
+  h_ae151c586ac6c5 1-58
+scripts/train-p-success-weights.ts
+  h_ae151c586ac6c5 13,26-29,55-61,63-76,192-195
+scripts/train-routing-calibration.ts
+  h_ae151c586ac6c5 49-52,439-445,564
+spine-tasks/SP-270-calibration-train-verify-110/STATUS.md
+  h_ae151c586ac6c5 22-27,29-40,60-62,70-72
+spine-tasks/_authoring/release-v1.0.0/calibration-train-note.md
+  h_ae151c586ac6c5 1-93
+tests/unit/train-p-success-weights.test.ts
+  h_ae151c586ac6c5 7-10,32-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "84517cc9f296a98781c2c846b57d8b6129fc1670",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
