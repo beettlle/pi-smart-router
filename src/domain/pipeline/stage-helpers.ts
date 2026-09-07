@@ -18,7 +18,7 @@ import type {
   RoutingRequest,
   Tier,
 } from '../types/index.js';
-import { estimateRoutingCost } from '../../infrastructure/telemetry/routing-telemetry.js';
+import type { RoutingCostEstimator } from '../ports/telemetry-emitter-port.js';
 import { classifyTurnEnvelope } from '../triage/turn-envelope.js';
 import type { TriageVerdict } from '../triage/triage-engine.js';
 import { selectLowestCostModel } from '../pinning/sub-route-policy.js';
@@ -127,16 +127,26 @@ export function resolveLocalZeroToolUseCeiling(
 
 // ─── Decision/cost helpers ───────────────────────────────────────────────────
 
-/** Attach estimated_cost_usd to a decision using the configured price catalog. */
+/**
+ * Attach estimated_cost_usd to a decision using the wired cost estimator
+ * (SP-275, #143): pricing resolution stays in infrastructure until the
+ * pricing port is inverted, so the estimator is injected via
+ * `PipelineOptions.costEstimator` (the composition root wires the default).
+ * Without an estimator the decision is returned unchanged — no estimate.
+ */
 export function withEstimatedCost(
   request: RoutingRequest,
   model: ModelProfile,
   decision: RoutingDecision,
   priceCatalog: PriceCatalog | null,
+  costEstimator?: RoutingCostEstimator,
 ): RoutingDecision {
+  if (!costEstimator) {
+    return decision;
+  }
   return {
     ...decision,
-    estimated_cost_usd: estimateRoutingCost(model, request, priceCatalog),
+    estimated_cost_usd: costEstimator(model, request, priceCatalog),
   };
 }
 

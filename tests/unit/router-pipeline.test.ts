@@ -20,6 +20,7 @@ import {
 import { RouterPipeline, PIPELINE_STAGE_ORDER } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { RoutingTelemetryEmitter } from '../../src/infrastructure/telemetry/routing-telemetry.js';
+import { defaultRoutingCostEstimator } from '../../src/infrastructure/telemetry/routing-telemetry.js';
 import { CONTEXT_FIT_EXCEEDED } from '../../src/domain/routing/context-fit.js';
 import type { HttpFetchPort } from '../../src/infrastructure/local/local-zero-tier.js';
 import type { SystemInfo } from '../../src/infrastructure/hardware/hardware-probe.js';
@@ -391,7 +392,10 @@ describe('RouterPipeline', () => {
     };
 
     it('populates estimated_cost_usd on turn_envelope decisions', async () => {
-      const pipeline = new RouterPipeline(pricingFleet, { priceCatalog: emptyCatalog });
+      const pipeline = new RouterPipeline(pricingFleet, {
+        priceCatalog: emptyCatalog,
+        costEstimator: defaultRoutingCostEstimator,
+      });
       const decision = await pipeline.route(
         makeRequest({ turn_type: 'tool_result', estimated_input_tokens: 1_000_000 }),
       );
@@ -415,6 +419,7 @@ describe('RouterPipeline', () => {
       const pipeline = new RouterPipeline(pinFleet, {
         sessionPinner: pinner,
         priceCatalog: emptyCatalog,
+        costEstimator: defaultRoutingCostEstimator,
       });
       const decision = await pipeline.route(
         makeRequest({ turn_type: 'main_loop', estimated_input_tokens: 2_000_000 }),
@@ -450,6 +455,7 @@ describe('RouterPipeline', () => {
       const pipeline = new RouterPipeline(hydraFleet, {
         hydraMatcher,
         priceCatalog: emptyCatalog,
+        costEstimator: defaultRoutingCostEstimator,
       });
       const decision = await pipeline.route(
         makeRequest({
@@ -468,6 +474,7 @@ describe('RouterPipeline', () => {
       const pipeline = new RouterPipeline(pricingFleet, {
         telemetryEmitter,
         priceCatalog: emptyCatalog,
+        costEstimator: defaultRoutingCostEstimator,
       });
 
       await pipeline.route(

@@ -4,80 +4,38 @@
  * Three-state gate: inspects platform/arch, unified memory, and battery
  * to return `full_local`, `classification_only`, or `disabled`.
  *
- * Pure function of SystemInfo × config; side-effect-free for testability.
- * Default SystemInfo provider reads from Node.js `os` and platform-specific
- * power sources (macOS pmset, Linux /sys/class/power_supply, Windows WMI).
+ * SP-275 (#143 partial): the probe contracts and the pure three-state kernel
+ * live in `domain/ports/hardware-probe-port.ts`; this module is the impure
+ * adapter — platform-specific SystemInfo readers (Node `os`, macOS pmset,
+ * Linux /sys/class/power_supply, Windows WMI) — and re-exports the domain
+ * symbols for import-path stability.
  */
 
 import * as os from 'node:os';
 import { execSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import {
+  probeHardware,
+  type HardwareProbeConfig,
+  type HardwareProbeResult,
+  type SystemInfo,
+  type SystemInfoPort,
+} from '../../domain/ports/hardware-probe-port.js';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Domain-owned contracts (re-export; SP-275, #143) ────────────────────────
 
-export type HardwareProbeResult = 'full_local' | 'classification_only' | 'disabled';
-
-export interface HardwareProbeConfig {
-  readonly min_memory_gb_full: number;
-  readonly min_memory_gb_classification: number;
-  readonly battery_threshold_pct: number;
-}
-
-export interface SystemInfo {
-  readonly totalMemoryGb: number;
-  readonly arch: string;
-  readonly platform: NodeJS.Platform;
-  readonly batteryLevel: number | null;
-  readonly isOnAcPower: boolean | null;
-}
-
-/** Port for dependency injection in tests. */
-export interface SystemInfoPort {
-  getSystemInfo(): Promise<SystemInfo>;
-}
-
-// ─── Pure probe logic ────────────────────────────────────────────────────────
-
-function isSupportedPlatform(info: SystemInfo): boolean {
-  if (info.platform === 'darwin' && info.arch === 'arm64') {
-    return true;
-  }
-  if (info.platform === 'linux' && (info.arch === 'x64' || info.arch === 'arm64')) {
-    return true;
-  }
-  if (info.platform === 'win32' && (info.arch === 'x64' || info.arch === 'arm64')) {
-    return true;
-  }
-  return false;
-}
-
-export function probeHardware(
-  config: HardwareProbeConfig,
-  info: SystemInfo,
-): HardwareProbeResult {
-  if (!isSupportedPlatform(info)) {
-    return 'disabled';
-  }
-
-  if (
-    info.isOnAcPower === false &&
-    info.batteryLevel !== null &&
-    info.batteryLevel < config.battery_threshold_pct
-  ) {
-    return 'disabled';
-  }
-
-  if (info.totalMemoryGb >= config.min_memory_gb_full) {
-    return 'full_local';
-  }
-
-  if (info.totalMemoryGb >= config.min_memory_gb_classification) {
-    return 'classification_only';
-  }
-
-  return 'disabled';
-}
+export type {
+  HardwareProbeConfig,
+  HardwareProbePort,
+  HardwareProbeResult,
+  SystemInfo,
+  SystemInfoPort,
+} from '../../domain/ports/hardware-probe-port.js';
+export {
+  defaultHardwareProbePort,
+  probeHardware,
+} from '../../domain/ports/hardware-probe-port.js';
 
 // ─── Platform-specific system info providers ───────────────────────────────
 

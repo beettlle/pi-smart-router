@@ -94,6 +94,7 @@ export function createSessionPinStage(): PipelineStage {
       const saarRequest = enrichRequestWithSaarCandidate(request, context.fleet);
       const result = pinner.lookupPin(saarRequest, context.fleet);
       const priceCatalog = context.options.priceCatalog ?? null;
+      const costEstimator = context.options.costEstimator;
 
       switch (result.action) {
         case 'use_pin': {
@@ -123,6 +124,7 @@ export function createSessionPinStage(): PipelineStage {
                 pin_reason: pin?.pin_reason ?? null,
               },
               priceCatalog,
+              costEstimator,
             ),
           };
         }
@@ -146,6 +148,7 @@ export function createSessionPinStage(): PipelineStage {
                 pin_reason: pin?.pin_reason ?? null,
               },
               priceCatalog,
+              costEstimator,
             ),
           };
         }
@@ -169,6 +172,7 @@ export function createSessionPinStage(): PipelineStage {
                 pin_reason: pin?.pin_reason ?? null,
               },
               priceCatalog,
+              costEstimator,
             ),
           };
         }
@@ -240,6 +244,7 @@ function forceRejectedDecision(
             pin_reason: 'user_forced',
           },
           priceCatalog,
+          context.options.costEstimator,
         )
       : {
           request_id: request.request_id,

@@ -85,6 +85,7 @@ export function buildContextOverflowFallbackDecision(
       pin_reason: null,
     },
     context.options.priceCatalog ?? null,
+    context.options.costEstimator,
   );
 }
 
