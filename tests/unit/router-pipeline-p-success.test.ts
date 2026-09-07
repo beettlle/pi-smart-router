@@ -15,9 +15,13 @@ import {
 
 describe('RouterPipeline', () => {
   describe('P(success) online inference (SP-105)', () => {
+    // Hermetic (SP-271): pin the calibration bundle path so these fixture-weight
+    // tests never pick up the shipped config/routing-calibration.json isotonic
+    // calibrator from the repo working tree.
     it('records P_success when trained weights are available', async () => {
       const pipeline = new RouterPipeline(fleet, {
         pSuccessWeights: makeHighPWeights(),
+        routingCalibrationPath: '/nonexistent/routing-calibration.json',
         lowIntensityConfig: {
           ...DEFAULT_OPERATOR_CONFIG.low_intensity,
           high_threshold: 0.9,
@@ -39,6 +43,7 @@ describe('RouterPipeline', () => {
       function makeGatePipeline(): RouterPipeline {
         return new RouterPipeline(fleet, {
           pSuccessWeights: makeHighPWeights(),
+          routingCalibrationPath: '/nonexistent/routing-calibration.json',
           lowIntensityConfig: {
             ...DEFAULT_OPERATOR_CONFIG.low_intensity,
             high_threshold: 0.9,
@@ -101,6 +106,7 @@ describe('RouterPipeline', () => {
       const pipeline = new RouterPipeline(fleet, {
         pSuccessWeights: makeLowPWeights(),
         clusterMatcher,
+        routingCalibrationPath: '/nonexistent/routing-calibration.json',
         lowIntensityConfig: {
           ...DEFAULT_OPERATOR_CONFIG.low_intensity,
           low_threshold: 0.55,
@@ -124,6 +130,7 @@ describe('RouterPipeline', () => {
     it('biases frontier when P_success is low and expected cost favors frontier', async () => {
       const pipeline = new RouterPipeline(fleet, {
         pSuccessWeights: makeLowPWeights(),
+        routingCalibrationPath: '/nonexistent/routing-calibration.json',
         lowIntensityConfig: {
           ...DEFAULT_OPERATOR_CONFIG.low_intensity,
           high_threshold: 0.1,
@@ -144,6 +151,7 @@ describe('RouterPipeline', () => {
     it('falls back to structural scoring when weights artifact is untrained', async () => {
       const pipeline = new RouterPipeline(fleet, {
         pSuccessWeightsPath: '/nonexistent/p-success-weights.json',
+        routingCalibrationPath: '/nonexistent/routing-calibration.json',
         lowIntensityConfig: {
           ...DEFAULT_OPERATOR_CONFIG.low_intensity,
           high_threshold: 0.9,
@@ -163,6 +171,7 @@ describe('RouterPipeline', () => {
     it('loads shipped dogfood weights and exposes raw vs used P(success) (SP-175)', async () => {
       const pipeline = new RouterPipeline(fleet, {
         pSuccessWeightsPath: 'config/p-success-weights.json',
+        routingCalibrationPath: '/nonexistent/routing-calibration.json',
         lowIntensityConfig: {
           ...DEFAULT_OPERATOR_CONFIG.low_intensity,
           high_threshold: 0.9,

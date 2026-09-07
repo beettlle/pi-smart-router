@@ -715,9 +715,9 @@ Optional `feedback_good` / `feedback_bad` only refine labels when the operator c
 
 **Sample floor:** collect at least **≥30** labeled **economical-tier** rows (`minimum_training_samples.p_success_weights` / `isotonic_calibrator` in [`config/routing-calibration.json.example`](config/routing-calibration.json.example)) before relying on non-neutral `P(success)` or isotonic. Below that floor the classifier returns neutral `P_success_cheap = 0.5`.
 
-**Provenance today vs behavioral adoption:** the checked-in `config/p-success-weights.json` remains **synthetic/fixture** (SP-175 — trained on `scripts/fixtures/p-success-synthetic-train.jsonl`, not community dogfood). Treat those weights as an interim dogfood enablement until real passive-signal floors are met and artifacts are retrained/shipped ([#110](https://github.com/beettlle/pi-smart-router/issues/110) train/ship slice — SP-206). Do not claim synthetic rows are behavioral.
+**Provenance today (behavioral-first, v1.0.0):** the checked-in `config/p-success-weights.json` and `config/routing-calibration.json` are trained on the operator's **real July 2026 dogfood aggregate** (`operator_export` of `dogfood-20260714-aggregate.jsonl` — privacy-safe feature vectors + outcome labels only, no prompt text). The synthetic SP-175 fixture weights are **superseded**: `p_success_weights` was retrained on **32 labeled samples** (27 good / 5 bad; floor ≥30 **met**) and the bundle additionally ships an **isotonic calibrator** (32 samples; holdout ECE 0.0695 → **0.0208**) plus bootstrap routing centroids. Floors not yet met stay neutral in the bundle — `triage_thresholds` (0 of ≥50) and `hydra_projection` (0 of ≥100) keep `trained_sample_count: 0` defaults; they are **not** dogfood-trained and are not advertised as such. Supersede with your own exports via the train path below; do not claim synthetic rows are behavioral.
 
-**SP-206 status (v0.12.0):** **deferred / Partial (B).** Operator had no #95 dogfood exports in this window (labeled economical-tier rows = **0**, floor ≥30). No behavioral `config/p-success-weights.json` or `config/routing-calibration.json` was shipped. See [`spine-tasks/_authoring/release-v0.12.0/behavioral-calibration-partial.md`](spine-tasks/_authoring/release-v0.12.0/behavioral-calibration-partial.md). Leave [#110](https://github.com/beettlle/pi-smart-router/issues/110) open until floors are met; never invent labels.
+**SP-206 status (v0.12.0 — resolved in v1.0.0):** **deferred / Partial (B)** at v0.12.0: the operator had no #95 dogfood exports in that window (labeled economical-tier rows = **0**, floor ≥30) and no behavioral artifact was shipped — see [`spine-tasks/_authoring/release-v0.12.0/behavioral-calibration-partial.md`](spine-tasks/_authoring/release-v0.12.0/behavioral-calibration-partial.md). **Resolved by [#110](https://github.com/beettlle/pi-smart-router/issues/110) (SP-268–SP-271, v1.0.0):** the July 2026 dogfood aggregate met the ≥30 labeled floor (32 rows; train/verify evidence in [`spine-tasks/_authoring/release-v1.0.0/calibration-train-note.md`](spine-tasks/_authoring/release-v1.0.0/calibration-train-note.md)) and the behavioral artifacts above are checked in. Never invent labels.
 
 **Zero-manual-label path (aggregate → train → verify):**
 
@@ -752,7 +752,8 @@ SMART_ROUTER_DATASET=1
 # Train standalone weights (≥30 labeled rows required)
 npm run routing:train-p-success -- --input path/to/export.jsonl --output config/p-success-weights.json
 
-# Or regenerate the checked-in dogfood weights from the synthetic fixture (interim only):
+# Retrain standalone weights from the synthetic fixture (fixture demo only — NOT behavioral;
+# the checked-in weights are real dogfood, see "Provenance today" above):
 npm run routing:train-p-success
 
 # Optional: merge isotonic into an existing calibration bundle (does not rewrite hydra/centroids)
@@ -765,7 +766,7 @@ npm run routing:train-calibration -- --input path/to/aggregated.jsonl
 
 Reload is file-based: replace `config/p-success-weights.json` (and optionally `config/routing-calibration.json` for isotonic) and restart the host agent — no prompt text is ever written into training artifacts.
 
-**Isotonic gap:** serve-time isotonic calibration loads from `config/routing-calibration.json` (`isotonic_calibrator`). The checked-in dogfood path ships trained **logistic** weights only; isotonic is produced when you pass `--calibration-output` or run `routing:train-calibration` with ≥30 labeled samples. Until that bundle exists, the pipeline uses raw logistic `P(success)` (identity / no-op calibrator) and still exposes `p_success_raw` vs `p_success_calibrated` / `p_success_cheap` on explain and telemetry.
+**Isotonic calibration (shipped since v1.0.0):** serve-time isotonic calibration loads from `config/routing-calibration.json` (`isotonic_calibrator`). The checked-in bundle ships a **trained isotonic calibrator** (32 dogfood samples; holdout ECE 0.0695 raw → 0.0208 calibrated), so `p_success_calibrated` / `p_success_cheap` are calibrated values while `p_success_raw` keeps the raw logistic score. Operators who retrain should pass `--calibration-output` or run `routing:train-calibration` with ≥30 labeled samples. Without a bundle (or below the floor) the pipeline degrades to the identity calibrator — raw logistic `P(success)` — and still exposes `p_success_raw` vs `p_success_calibrated` / `p_success_cheap` on explain and telemetry.
 
 Library helpers (see `src/domain/routing/p-success-classifier.ts`):
 

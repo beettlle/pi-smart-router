@@ -100,6 +100,7 @@ describe('RouterPipeline', () => {
     it('selects economical tier when P is high and price delta is significant', async () => {
       const pipeline = new RouterPipeline(pricedFleet, {
         pSuccessWeights: makeHighPWeights(),
+        routingCalibrationPath: '/nonexistent/routing-calibration.json',
         lowIntensityConfig: DEFAULT_OPERATOR_CONFIG.low_intensity,
       });
 
@@ -119,6 +120,7 @@ describe('RouterPipeline', () => {
     it('selects frontier when P is low even if economical per-token cost is lower', async () => {
       const pipeline = new RouterPipeline(pricedFleet, {
         pSuccessWeights: makeLowPWeights(),
+        routingCalibrationPath: '/nonexistent/routing-calibration.json',
         lowIntensityConfig: DEFAULT_OPERATOR_CONFIG.low_intensity,
       });
 
