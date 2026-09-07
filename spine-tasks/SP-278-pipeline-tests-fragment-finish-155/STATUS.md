@@ -89,6 +89,7 @@ Shared helpers move to router-pipeline-fixtures.ts: HARDWARE_CONFIG, LOCAL_TEST_
 | 2026-09-06 | Step 0 complete | Inventoried 16 describes / 52 its in monolith; mapped to 12 wave-2 files aligned with SP-273/274 stage modules; confirmed no importers → full delete |
 | 2026-09-06 | Step 1 complete | 12 wave-2 files created, helpers shared into fixtures, monolith deleted; typecheck clean; family 85/85 green; detect_changes low risk 0 symbols |
 | 2026-09-06 | Step 2 complete | npm test 137 files/2169 tests exit 0; coverage:check exit 0; typecheck + lint exit 0; completion criteria met |
+| 2026-09-06 | Re-verified pre-.DONE | typecheck exit 0; SPINE_WORKER_STUB=1 npm test exit 0 (137 files / 2169 tests); monolith deletion confirmed on disk |
 | | | |
 
 ## Blockers
