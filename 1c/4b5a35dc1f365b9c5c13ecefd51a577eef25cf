@@ -1,0 +1,19 @@
+spine-tasks/SP-270-calibration-train-verify-110/.reviews/0-20260907T024112.md
+  s_707c67852967db::t_66a75423bb9d03 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "1c4b5a35dc1f365b9c5c13ecefd51a577eef25cf",
+  "prompts": {},
+  "sessions": {
+    "s_707c67852967db": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "62ed67c6-15a3-49e7-bd65-f529ffb91e39",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
