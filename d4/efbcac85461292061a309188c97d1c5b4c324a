@@ -1,0 +1,19 @@
+spine-tasks/SP-278-pipeline-tests-fragment-finish-155/.reviews/final-20260907T023304.md
+  s_707c67852967db::t_890a51b0193b66 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "d4efbcac85461292061a309188c97d1c5b4c324a",
+  "prompts": {},
+  "sessions": {
+    "s_707c67852967db": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "62ed67c6-15a3-49e7-bd65-f529ffb91e39",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
