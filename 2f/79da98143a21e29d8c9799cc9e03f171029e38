@@ -1,0 +1,16 @@
+spine-tasks/SP-270-calibration-train-verify-110/STATUS.md
+  h_ae151c586ac6c5 3-4,22,44-58,60,68,77,88-90
+spine-tasks/_authoring/release-v1.0.0/calibration-train-note.md
+  h_ae151c586ac6c5 85,95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2f79da98143a21e29d8c9799cc9e03f171029e38",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
