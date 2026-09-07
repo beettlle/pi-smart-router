@@ -10,12 +10,11 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
   MIN_TRAINING_SAMPLES,
-  parseTrainingExportLine,
   trainFromLabeledSamples,
   type LabeledTrainingSample,
   type PSuccessWeights,
@@ -24,6 +23,10 @@ import {
   fitIsotonicCalibratorFromSamples,
   type IsotonicCalibratorArtifact,
 } from './lib/isotonic-calibrator.js';
+import {
+  aggregateRowRequestId,
+  labeledSampleFromContribRecord,
+} from './lib/contrib-training-samples.js';
 
 export const DEFAULT_P_SUCCESS_WEIGHTS_PATH = resolve('config', 'p-success-weights.json');
 export const DEFAULT_SYNTHETIC_TRAIN_INPUT = resolve(
@@ -49,12 +52,28 @@ export interface TrainPSuccessWeightsResult {
   readonly isotonic_holdout_sample_count: number;
 }
 
-/** Parse labeled JSONL export/contrib lines into training samples. */
+/** Parse labeled JSONL export/contrib lines into training samples (SP-270).
+ *
+ * Accepts both export rows (with `request_id`) and privacy-safe aggregate rows
+ * (request_id stripped by calibration-aggregate; a deterministic row-index
+ * fallback id keeps isotonic splits reproducible). Unlabeled rows are skipped —
+ * never coerced to a success label.
+ */
 export function parseLabeledJsonl(text: string): LabeledTrainingSample[] {
-  return text
-    .split('\n')
-    .map((line) => parseTrainingExportLine(line))
-    .filter((sample): sample is LabeledTrainingSample => sample !== null);
+  const samples: LabeledTrainingSample[] = [];
+  const lines = text.split('\n');
+  for (let index = 0; index < lines.length; index++) {
+    const trimmed = lines[index]!.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    const record = JSON.parse(trimmed) as Record<string, unknown>;
+    const sample = labeledSampleFromContribRecord(record, aggregateRowRequestId(index));
+    if (sample !== null) {
+      samples.push(sample);
+    }
+  }
+  return samples;
 }
 
 /** Train logistic weights + isotonic calibrator from labeled samples. */
@@ -170,7 +189,10 @@ async function main(): Promise<void> {
       source: inputPath.includes('p-success-synthetic-train')
         ? 'synthetic_fixture'
         : 'operator_export',
-      task: 'SP-175',
+      // SP-270: record the actual training input so dogfood artifacts don't
+      // misattribute to the synthetic SP-175 fixture run.
+      training_input: basename(inputPath),
+      task: inputPath.includes('p-success-synthetic-train') ? 'SP-175' : 'SP-270',
       note: 'Privacy-safe feature vectors + labels only; no prompt text.',
       trained_at: new Date().toISOString().slice(0, 10),
     },
