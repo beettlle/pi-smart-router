@@ -20,7 +20,6 @@ import type {
   ModelProfile,
   PlanningDelegateObservability,
   PriceCatalog,
-  RoutePath,
   RoutingDecision,
   RoutingReasoningTelemetry,
   RoutingRequest,
