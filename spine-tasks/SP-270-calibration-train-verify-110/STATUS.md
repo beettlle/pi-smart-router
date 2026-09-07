@@ -66,6 +66,7 @@ Evidence: [`_authoring/release-v1.0.0/calibration-train-note.md`](../_authoring/
 | Date | Step | Type | Outcome |
 |------|------|------|---------|
 | 2026-09-07 | 1 | plan | SKIPPED (in-worker spawn blocked, real-pi; engine reviews after .DONE per SP-195) |
+| 2026-09-07 | 2 | plan | SKIPPED (in-worker spawn blocked, real-pi; engine reviews after .DONE per SP-195) |
 
 ## Discoveries
 
