@@ -1,0 +1,19 @@
+spine-tasks/SP-275-pipeline-ports-invert-143/.reviews/0-20260907T025012.md
+  s_707c67852967db::t_45e2ad42696c0f 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "24bbabcff6dab5bb0c8f925f6b86fe69317a6f90",
+  "prompts": {},
+  "sessions": {
+    "s_707c67852967db": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "62ed67c6-15a3-49e7-bd65-f529ffb91e39",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
