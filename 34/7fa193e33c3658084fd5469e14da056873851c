@@ -1,0 +1,24 @@
+README.md
+  h_ae151c586ac6c5 718,720,755-756,769
+config/routing-calibration.json
+  h_ae151c586ac6c5 1-2838
+spine-tasks/SP-271-ship-routing-calibration-110/STATUS.md
+  h_ae151c586ac6c5 22-28,30-34,57,67
+tests/unit/cluster-matcher.test.ts
+  h_ae151c586ac6c5 344,362,409
+tests/unit/router-pipeline-expected-cost.test.ts
+  h_ae151c586ac6c5 103,123
+tests/unit/router-pipeline-p-success.test.ts
+  h_ae151c586ac6c5 18-20,24,46,109,133,154,174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "347fa193e33c3658084fd5469e14da056873851c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
