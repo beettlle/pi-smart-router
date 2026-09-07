@@ -1,0 +1,35 @@
+src/domain/pinning/session-pinner.ts
+  s_82584ee4a526df::t_7522f3968f979a 31
+src/domain/pricing/price-resolution.ts
+  s_82584ee4a526df::t_edfa2c8b2b050b 1-84
+src/domain/routing/expected-cost.ts
+  s_82584ee4a526df::t_f8a5f0d8705be3 24
+src/infrastructure/pricing/price-broker.ts
+  s_82584ee4a526df::t_9884b9f9f5ac9e 9-13,16,19-27
+src/infrastructure/telemetry/pin-economics-telemetry.ts
+  s_82584ee4a526df::t_87bb9e03ff3ee9 1-353
+src/infrastructure/telemetry/planning-delegate-telemetry.ts
+  s_82584ee4a526df::t_f77a33fad063a8 1-101
+src/infrastructure/telemetry/routing-decision-log.ts
+  s_82584ee4a526df::t_a33d466af493f9 1-262
+src/infrastructure/telemetry/routing-telemetry.ts
+  s_82584ee4a526df::t_4140b963e76902 2,6-17,32,37-41,54-67,99-119,121-127,129-144,146-155,157-163
+src/infrastructure/telemetry/telemetry-scalar-fields.ts
+  s_82584ee4a526df::t_01ddd62d1f0bdf 1-278
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e58bebe9ae32638ba98b411fb417eaaac0edd728",
+  "prompts": {},
+  "sessions": {
+    "s_82584ee4a526df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_82584ee4a526df",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
