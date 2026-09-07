@@ -28,7 +28,7 @@ import type {
 import type { QuotaWindowPosition } from '../types/entities.js';
 import { DEFAULT_SAAR_CONFIG, type VirtualCostV2Config } from '../types/schemas.js';
 import type { StorePort } from '../types/store-port.js';
-import { resolveFrugalityCostPer1M } from '../../infrastructure/pricing/price-broker.js';
+import { resolveFrugalityCostPer1M } from '../pricing/price-resolution.js';
 import {
   computeKvCacheSavings,
   computeVirtualCostV2,

@@ -1,68 +1,70 @@
 /**
- * Routing telemetry emitter — T039.
+ * Routing telemetry emitter — T039; bounded split SP-276 (#143).
  *
  * Maintains an append-only rolling window of routing decisions for
  * observability and audit. Window bounds: 168 hours (7 days), max 1111 entries.
+ *
+ * SP-275 (#143 partial): the reason-code vocabulary, pure observability
+ * builders, and the emitter port are domain-owned; infrastructure re-exports
+ * them for import-path stability.
+ *
+ * SP-276 (#143): the SAAR/pin-economics builders moved to
+ * `pin-economics-telemetry.ts`, planning-delegate fields to
+ * `planning-delegate-telemetry.ts`, default/derived scalars and record
+ * updates to `telemetry-scalar-fields.ts`, and the explain/log payload
+ * builders to `routing-decision-log.ts`. This module keeps the rolling-window
+ * emitter plus the cost estimator and re-exports the split symbols so
+ * existing import paths stay stable.
  */
 
 import type { ContextFitConfig } from '../../domain/routing/context-fit.js';
-import type { ClusterMatcher } from '../../domain/matching/cluster-matcher.js';
-import { evaluateModelSwitchBreakeven } from '../../domain/pinning/session-pinner.js';
-import {
-  FLIP_FLOP_SHADOW_TIER_FLIP,
-  FLIP_FLOP_SHADOW_TIER_PINNED,
-} from '../../domain/pinning/flip-flop-guard.js';
-import { selectLowestCostModel } from '../../domain/pinning/sub-route-policy.js';
 import type { SessionPinner } from '../../domain/pinning/session-pinner.js';
 import type {
-  BreakevenObservability,
-  ClusterMatchTableEntry,
   ModelProfile,
-  PlanningDelegateObservability,
   PriceCatalog,
   RoutingDecision,
-  RoutingReasoningTelemetry,
   RoutingRequest,
   RoutingTelemetry,
-  RoutingUsageActuals,
   SaarConfig,
-  SaarObservability,
-  Tier,
 } from '../../domain/types/index.js';
 import type { QuotaWindowPosition } from '../../domain/types/entities.js';
 import type { VirtualCostV2Config } from '../../domain/types/schemas.js';
-import { resolveFrugalityCostPer1M } from '../pricing/price-broker.js';
-import {
-  resolvePeakPricingAdjustment,
-  type PeakPricingOptions,
-  type PricingWindow,
-} from '../../domain/pricing/peak-pricing.js';
+import { resolveFrugalityCostPer1M } from '../../domain/pricing/price-resolution.js';
 import {
   resolveCostCalibrationRatio,
   type CostCalibrationPrior,
 } from '../../domain/routing/expected-cost.js';
+import type { PricingWindow } from '../../domain/pricing/peak-pricing.js';
+import {
+  resolvePeakPricingAdjustment,
+  type PeakPricingOptions,
+} from '../../domain/pricing/peak-pricing.js';
 import {
   TELEMETRY_MAX_ENTRIES,
   TELEMETRY_WINDOW_MS,
   evictExpiredTelemetryEntries,
   makeTelemetryRoom,
 } from './telemetry-limits.js';
-
-// SP-275 (#143 partial): the reason-code vocabulary, pure observability
-// builders, and the emitter port are domain-owned; this module implements
-// the emitter (rolling window, SAAR/pin-economics builders, dataset scalars)
-// and re-exports the domain symbols for import-path stability.
 import {
   buildContextFitObservability,
-  buildTierSelectionObservability,
-  emptyFeatureSidecar,
-  enrichRoutingDecisionWithContextFit,
-  enrichRoutingDecisionWithTierSelection,
   type PeakPricingTelemetryFields,
   type RoutePathTelemetryExtras,
   type RoutingCostEstimator,
 } from '../../domain/ports/telemetry-emitter-port.js';
+import {
+  pinEconomicsTelemetryFromInput,
+  type FlipFlopTelemetryFields,
+} from './pin-economics-telemetry.js';
+import { planningDelegateTelemetryFromDecision } from './planning-delegate-telemetry.js';
+import {
+  defaultContextFitTelemetry,
+  pinOnlyFallbackTelemetryFromDecision,
+  prewarmTelemetryFromDecision,
+  tierSelectionTelemetryFromDecision,
+} from './telemetry-scalar-fields.js';
 
+// SP-275: domain-owned reason codes, pure observability builders, and the
+// emitter port — re-exported here for import-path stability.
 export {
   CONTEXT_FIT_PASS,
   CONTEXT_FIT_REJECTED_ALL,
@@ -94,41 +96,71 @@ export type {
   TierSelectionObservabilityInput,
 } from '../../domain/ports/telemetry-emitter-port.js';
 
-/** Cache breakeven gate observability with virtual cost v2 scalars (SP-149). */
-export interface BreakevenObservabilityV2 extends BreakevenObservability {
-  readonly quota_premium_usd: number | null;
-  readonly kv_cache_credit_usd: number | null;
-}
-
-export const BREAKEVEN_BLOCKED = 'breakeven_blocked' as const;
-export const BREAKEVEN_PASS = 'breakeven_pass' as const;
-export const SAAR_BUFFER_ACTIVE = 'saar_buffer_active' as const;
-export const SAAR_HARD_LOCK = 'saar_hard_lock' as const;
-
-export const FLIP_FLOP_TIER_FLIP = FLIP_FLOP_SHADOW_TIER_FLIP;
-export const FLIP_FLOP_TIER_PINNED = FLIP_FLOP_SHADOW_TIER_PINNED;
-
-export const PLANNING_DELEGATE_UNAVAILABLE = 'planning_delegate_unavailable' as const;
-/** Reason recorded when a delegate sub-call exceeds its timeout budget (SP-213, #120). */
-export const PLANNING_DELEGATE_TIMEOUT = 'planning_delegate_timeout' as const;
-
-/** Emergency pin-on-first-turn fallback reason code (#83, SP-161/162). */
-export const PIN_ONLY_FALLBACK = 'pin_only_fallback' as const;
-
-const TURN_ENVELOPE_TIER_MAP: Readonly<Record<string, Tier | null>> = {
-  planning: 'frontier-cloud',
-  tool_result: 'economical-cloud',
-  subagent: 'economical-cloud',
-  main_loop: null,
-  unknown: null,
-};
-
-const SAAR_DECISION_REASON_CODES = new Set<string>([
+// SP-276 (#143): bounded telemetry builders split out of this module —
+// re-exported for import-path stability.
+export {
+  BREAKEVEN_BLOCKED,
+  BREAKEVEN_PASS,
+  DEFAULT_BREAKEVEN_TELEMETRY_FIELDS,
+  DEFAULT_SAAR_TELEMETRY_FIELDS,
+  FLIP_FLOP_TIER_FLIP,
+  FLIP_FLOP_TIER_PINNED,
   SAAR_BUFFER_ACTIVE,
   SAAR_HARD_LOCK,
-  'saar_tier_upgrade',
-  'saar_idle_reopen',
-]);
+  buildBreakevenObservability,
+  buildFlipFlopObservability,
+  buildSaarObservability,
+  enrichRoutingDecisionWithPinEconomics,
+} from './pin-economics-telemetry.js';
+export type {
+  BreakevenObservabilityV2,
+  FlipFlopObservability,
+  PinEconomicsObservabilityInput,
+} from './pin-economics-telemetry.js';
+
+export {
+  DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS,
+  PLANNING_DELEGATE_TIMEOUT,
+  PLANNING_DELEGATE_UNAVAILABLE,
+  buildPlanningDelegateObservability,
+  enrichRoutingDecisionWithPlanningDelegate,
+} from './planning-delegate-telemetry.js';
+
+export {
+  DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
+  DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
+  DEFAULT_PEAK_PRICING_TELEMETRY_FIELDS,
+  DEFAULT_PIN_ONLY_FALLBACK_TELEMETRY_FIELDS,
+  DEFAULT_PREWARM_TELEMETRY_FIELDS,
+  DEFAULT_TIER_SELECTION_DATASET_FIELDS,
+  DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
+  DEFAULT_USAGE_ACTUALS_TELEMETRY_FIELDS,
+  PIN_ONLY_FALLBACK,
+  applyReasoningTelemetry,
+  applyUsageActuals,
+  extractUsageActuals,
+  prewarmTelemetryFromDecision,
+  resolvePinOnlyFallbackActive,
+} from './telemetry-scalar-fields.js';
+
+export {
+  buildPeakPricingObservability,
+  buildRoutingDecisionLogPayload,
+  enrichRoutingDecisionForExplain,
+} from './routing-decision-log.js';
+export type {
+  ExplainEnrichmentOptions,
+  PeakPricingObservability,
+  RoutingDecisionLogDelegate,
+} from './routing-decision-log.js';
+
+export {
+  DEFAULT_HISTORY_LIMIT,
+  MAX_HISTORY_LIMIT,
+  TELEMETRY_MAX_ENTRIES,
+  TELEMETRY_WINDOW_HOURS,
+  TELEMETRY_WINDOW_MS,
+} from './telemetry-limits.js';
 
 /**
  * Estimate per-request routing cost in USD from resolved model pricing (SP-085).
@@ -163,14 +195,6 @@ export function estimateRoutingCost(
 /** Default {@link RoutingCostEstimator} — wired by the composition root (SP-275, #143). */
 export const defaultRoutingCostEstimator: RoutingCostEstimator = estimateRoutingCost;
 
-export {
-  DEFAULT_HISTORY_LIMIT,
-  MAX_HISTORY_LIMIT,
-  TELEMETRY_MAX_ENTRIES,
-  TELEMETRY_WINDOW_HOURS,
-  TELEMETRY_WINDOW_MS,
-} from './telemetry-limits.js';
-
 export interface TelemetryEmitterOptions {
   readonly maxEntries?: number;
   readonly windowMs?: number;
@@ -184,857 +208,6 @@ export interface TelemetryEmitterOptions {
   readonly quotaWindowPosition?: QuotaWindowPosition;
   readonly virtualCostV2Config?: VirtualCostV2Config;
 }
-
-export interface PinEconomicsObservabilityInput {
-  readonly request: RoutingRequest;
-  readonly decision: RoutingDecision;
-  readonly fleet?: readonly ModelProfile[] | undefined;
-  readonly sessionPinner?: SessionPinner | undefined;
-  readonly saarConfig?: SaarConfig | undefined;
-  readonly priceCatalog?: PriceCatalog | null;
-  readonly quotaWindowPosition?: QuotaWindowPosition;
-  readonly virtualCostV2Config?: VirtualCostV2Config;
-}
-
-function resolveTurnEnvelopeTargetTier(request: RoutingRequest): Tier | null {
-  const turnType = request.turn_type ?? 'unknown';
-  return TURN_ENVELOPE_TIER_MAP[turnType] ?? null;
-}
-
-function isSaarPlanningBufferActive(
-  request: RoutingRequest,
-  sessionPinner: SessionPinner | undefined,
-  saarConfig: SaarConfig | undefined,
-): boolean {
-  if (!saarConfig || !sessionPinner || request.turn_type !== 'planning') {
-    return false;
-  }
-
-  if (!sessionPinner.getPin(request.session_id)) {
-    return false;
-  }
-
-  const saarState = sessionPinner.getSaarState(request.session_id);
-  const turnIndex = saarState?.turn_index ?? 0;
-
-  return turnIndex < saarConfig.planning_turn_buffer;
-}
-
-function resolveSaarReasonCode(decision: RoutingDecision): string | null {
-  if (SAAR_DECISION_REASON_CODES.has(decision.reason_code)) {
-    return decision.reason_code;
-  }
-
-  return null;
-}
-
-/** Build planning delegate observability from routing decision features (SP-142). */
-export function buildPlanningDelegateObservability(
-  decision: RoutingDecision,
-): PlanningDelegateObservability | null {
-  return decision.features?.planning_delegate ?? null;
-}
-
-/** Attach planning delegate observability to routing decision features (SP-142). */
-export function enrichRoutingDecisionWithPlanningDelegate(
-  decision: RoutingDecision,
-  planningDelegate?: PlanningDelegateObservability | null,
-): RoutingDecision {
-  const observability = planningDelegate ?? buildPlanningDelegateObservability(decision);
-  if (!observability) {
-    return decision;
-  }
-
-  return {
-    ...decision,
-    features: {
-      ...(decision.features ?? emptyFeatureSidecar()),
-      planning_delegate: observability,
-    },
-  };
-}
-
-/** Flip-flop shadow log observability (SP-155, #82). */
-export interface FlipFlopObservability {
-  readonly consecutive_tier_flips: number;
-  readonly tier_pinned: Tier | null;
-  readonly shadow_event: string | null;
-}
-
-/** Build privacy-safe SAAR pin state for explain and telemetry (SP-126). */
-export function buildSaarObservability(
-  input: PinEconomicsObservabilityInput,
-): SaarObservability | null {
-  const { request, decision, sessionPinner, saarConfig } = input;
-  if (!saarConfig) {
-    return null;
-  }
-
-  const saarState = sessionPinner?.getSaarState(request.session_id) ?? null;
-  const pin = sessionPinner?.getPin(request.session_id) ?? null;
-
-  if (!pin && !saarState && !resolveSaarReasonCode(decision)) {
-    return null;
-  }
-
-  const turnIndex = saarState?.turn_index ?? (pin ? 0 : null);
-
-  return {
-    buffer_active:
-      turnIndex !== null ? turnIndex < saarConfig.planning_turn_buffer : false,
-    hard_lock: saarState?.hard_lock ?? false,
-    turn_index_in_session: turnIndex,
-    planning_turn_buffer: saarConfig.planning_turn_buffer,
-    idle_timeout_seconds: saarConfig.idle_timeout_seconds,
-    saar_reason_code: resolveSaarReasonCode(decision),
-  };
-}
-
-/** Build flip-flop shadow log observability from session pinner state (SP-155). */
-export function buildFlipFlopObservability(
-  input: PinEconomicsObservabilityInput,
-): FlipFlopObservability | null {
-  const { request, sessionPinner } = input;
-  if (!sessionPinner) {
-    return null;
-  }
-
-  const observation = sessionPinner.getLastFlipFlopObservation();
-  const state = sessionPinner.getFlipFlopState(request.session_id);
-  if (!observation && !state) {
-    return null;
-  }
-
-  return {
-    consecutive_tier_flips:
-      observation?.consecutive_tier_flips ?? state?.consecutive_tier_flips ?? 0,
-    tier_pinned: observation?.tier_pinned ?? state?.tier_pinned ?? null,
-    shadow_event: observation?.shadow_event ?? null,
-  };
-}
-
-/** Build cache breakeven breakdown when a pin would switch tiers (SP-126, SP-149). */
-export function buildBreakevenObservability(
-  input: PinEconomicsObservabilityInput,
-): BreakevenObservabilityV2 | null {
-  const {
-    request,
-    sessionPinner,
-    saarConfig,
-    fleet,
-    priceCatalog = null,
-    quotaWindowPosition,
-    virtualCostV2Config,
-  } = input;
-  if (!fleet || !sessionPinner) {
-    return null;
-  }
-
-  const pin = sessionPinner.getPin(request.session_id);
-  if (!pin) {
-    return null;
-  }
-
-  const targetTier = resolveTurnEnvelopeTargetTier(request);
-  if (!targetTier) {
-    return null;
-  }
-
-  if (isSaarPlanningBufferActive(request, sessionPinner, saarConfig)) {
-    return null;
-  }
-
-  const pinnedModel = fleet.find(
-    (model) => model.id === pin.pinned_model_id && model.healthy !== false,
-  );
-  const candidate = selectLowestCostModel(
-    fleet.filter((model) => model.tier === targetTier && model.healthy !== false),
-  );
-
-  if (!pinnedModel || !candidate || pinnedModel.id === candidate.id) {
-    return null;
-  }
-
-  const tokenEstimate =
-    request.estimated_input_tokens ?? request.prompt_text.length;
-  const breakevenContext =
-    quotaWindowPosition !== undefined || virtualCostV2Config !== undefined
-      ? {
-          priceCatalog,
-          ...(quotaWindowPosition !== undefined ? { quotaWindowPosition } : {}),
-          ...(virtualCostV2Config !== undefined ? { virtualCostV2Config } : {}),
-        }
-      : undefined;
-  const breakeven = evaluateModelSwitchBreakeven(
-    pinnedModel,
-    candidate,
-    tokenEstimate,
-    tokenEstimate,
-    saarConfig,
-    breakevenContext,
-  );
-
-  return {
-    marginal_savings: breakeven.marginal_savings,
-    future_cache_value: breakeven.future_cache_value,
-    cache_reprime_cost: breakeven.cache_reprime_cost,
-    decision: breakeven.shouldSwitch ? 'pass' : 'blocked',
-    breakeven_reason_code: breakeven.shouldSwitch ? BREAKEVEN_PASS : BREAKEVEN_BLOCKED,
-    quota_premium_usd: breakeven.quota_premium_usd,
-    kv_cache_credit_usd: breakeven.kv_cache_credit_usd,
-  };
-}
-
-function defaultBreakevenTelemetry(): Pick<
-  RoutingTelemetry,
-  | 'marginal_savings'
-  | 'future_cache_value'
-  | 'cache_reprime_cost'
-  | 'breakeven_decision'
-  | 'breakeven_reason_code'
-> {
-  return {
-    marginal_savings: null,
-    future_cache_value: null,
-    cache_reprime_cost: null,
-    breakeven_decision: null,
-    breakeven_reason_code: null,
-  };
-}
-
-function defaultSaarTelemetry(): Pick<
-  RoutingTelemetry,
-  | 'saar_buffer_active'
-  | 'saar_hard_lock'
-  | 'turn_index_in_session'
-  | 'saar_reason_code'
-> {
-  return {
-    saar_buffer_active: false,
-    saar_hard_lock: false,
-    turn_index_in_session: null,
-    saar_reason_code: null,
-  };
-}
-
-type FlipFlopTelemetryFields = {
-  readonly flip_flop_consecutive_tier_flips: number | null;
-  readonly flip_flop_tier_pinned: Tier | null;
-  readonly flip_flop_shadow_event: string | null;
-};
-
-function defaultFlipFlopTelemetry(): FlipFlopTelemetryFields {
-  return {
-    flip_flop_consecutive_tier_flips: null,
-    flip_flop_tier_pinned: null,
-    flip_flop_shadow_event: null,
-  };
-}
-
-/** Default breakeven telemetry scalars for tests and legacy store reads. */
-export const DEFAULT_BREAKEVEN_TELEMETRY_FIELDS = defaultBreakevenTelemetry();
-
-/** Default SAAR telemetry scalars for tests and legacy store reads. */
-export const DEFAULT_SAAR_TELEMETRY_FIELDS = defaultSaarTelemetry();
-
-function defaultPlanningDelegateTelemetry(): Pick<
-  RoutingTelemetry,
-  | 'planning_delegate_path'
-  | 'planning_delegate_primary_model_id'
-  | 'planning_delegate_model_id'
-  | 'planning_delegate_reason_code'
-  | 'planning_delegate_fallback_reason'
-  | 'planning_delegate_max_messages'
-  | 'planning_delegate_max_tokens'
-  | 'planning_delegate_exclude_execution_history'
-  | 'planning_delegate_workers_spawned'
-  | 'planning_delegate_workers_succeeded'
-  | 'planning_delegate_worker_timeout_count'
-> {
-  return {
-    planning_delegate_path: null,
-    planning_delegate_primary_model_id: null,
-    planning_delegate_model_id: null,
-    planning_delegate_reason_code: null,
-    planning_delegate_fallback_reason: null,
-    planning_delegate_max_messages: null,
-    planning_delegate_max_tokens: null,
-    planning_delegate_exclude_execution_history: null,
-    planning_delegate_workers_spawned: null,
-    planning_delegate_workers_succeeded: null,
-    planning_delegate_worker_timeout_count: null,
-  };
-}
-
-/** Default planning delegate telemetry scalars for tests and legacy store reads. */
-export const DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS = defaultPlanningDelegateTelemetry();
-
-function defaultPinOnlyFallbackTelemetry(): Pick<RoutingTelemetry, 'pin_only_fallback_active'> {
-  return {
-    pin_only_fallback_active: false,
-  };
-}
-
-/** Default pin-only fallback telemetry scalars for tests and legacy store reads. */
-export const DEFAULT_PIN_ONLY_FALLBACK_TELEMETRY_FIELDS = defaultPinOnlyFallbackTelemetry();
-
-function defaultPrewarmTelemetry(): Pick<
-  RoutingTelemetry,
-  'prewarm_attempted' | 'prewarm_accepted' | 'prewarm_disabled_reason'
-> {
-  return {
-    prewarm_attempted: false,
-    prewarm_accepted: null,
-    prewarm_disabled_reason: null,
-  };
-}
-
-/** Default speculative prewarm telemetry scalars for tests and legacy store reads (SP-217). */
-export const DEFAULT_PREWARM_TELEMETRY_FIELDS = defaultPrewarmTelemetry();
-
-function defaultPeakPricingTelemetry(): PeakPricingTelemetryFields {
-  return { pricing_window: 'none' };
-}
-
-/** Default peak-pricing telemetry scalars for tests and legacy store reads (SP-243). */
-export const DEFAULT_PEAK_PRICING_TELEMETRY_FIELDS = defaultPeakPricingTelemetry();
-
-/** Default usage-actuals scalars for tests and legacy store reads (SP-241, #164). */
-export const DEFAULT_USAGE_ACTUALS_TELEMETRY_FIELDS = {
-  actual_cost_usd: null,
-  actual_input_tokens: null,
-  actual_output_tokens: null,
-  actual_cache_read_tokens: null,
-  actual_cache_write_tokens: null,
-} as const satisfies Pick<
-  RoutingTelemetry,
-  | 'actual_cost_usd'
-  | 'actual_input_tokens'
-  | 'actual_output_tokens'
-  | 'actual_cache_read_tokens'
-  | 'actual_cache_write_tokens'
->;
-
-function toNonNegativeFinite(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
-}
-
-/**
- * Extract post-turn usage actuals from a pi assistant message `usage` object
- * (SP-241, #164). Structural and fail open: returns null when usage is missing
- * or carries no usable token counts (library embeds / non-pi hosts), so callers
- * can no-op without failing the route.
- *
- * Subscription / OAuth models report `cost.total === 0`: token actuals are
- * still recorded but `cost_usd` stays null so stats never invent USD.
- */
-export function extractUsageActuals(usage: unknown): RoutingUsageActuals | null {
-  if (usage === null || typeof usage !== 'object') {
-    return null;
-  }
-  const record = usage as Record<string, unknown>;
-  const input = toNonNegativeFinite(record.input);
-  const output = toNonNegativeFinite(record.output);
-  if (input === null && output === null) {
-    return null;
-  }
-  const cacheRead = toNonNegativeFinite(record.cacheRead) ?? 0;
-  const cacheWrite = toNonNegativeFinite(record.cacheWrite) ?? 0;
-
-  const cost = record.cost;
-  const costTotal =
-    cost !== null && typeof cost === 'object'
-      ? toNonNegativeFinite((cost as Record<string, unknown>).total)
-      : null;
-
-  return {
-    cost_usd: costTotal !== null && costTotal > 0 ? costTotal : null,
-    input_tokens: input ?? 0,
-    output_tokens: output ?? 0,
-    cache_read_tokens: cacheRead,
-    cache_write_tokens: cacheWrite,
-  };
-}
-
-/**
- * Attach usage actuals to a telemetry record, retaining `estimated_cost_usd`
- * (SP-241, #164). Pure — returns a new record.
- */
-export function applyUsageActuals(
-  entry: RoutingTelemetry,
-  actuals: RoutingUsageActuals,
-): RoutingTelemetry {
-  return {
-    ...entry,
-    actual_cost_usd: actuals.cost_usd,
-    actual_input_tokens: actuals.input_tokens,
-    actual_output_tokens: actuals.output_tokens,
-    actual_cache_read_tokens: actuals.cache_read_tokens,
-    actual_cache_write_tokens: actuals.cache_write_tokens,
-  };
-}
-
-/**
- * Attach post-delegation adaptive reasoning fields to a telemetry record
- * (SP-246, #166). Pure — returns a new record.
- */
-export function applyReasoningTelemetry(
-  entry: RoutingTelemetry,
-  fields: RoutingReasoningTelemetry,
-): RoutingTelemetry {
-  return {
-    ...entry,
-    reasoning_level_requested: fields.reasoning_level_requested,
-    reasoning_level_applied: fields.reasoning_level_applied,
-    reasoning_reason_code: fields.reasoning_reason_code,
-  };
-}
-
-/** Prewarm explain/telemetry fields from the decision feature sidecar (SP-217, #117). */
-export function prewarmTelemetryFromDecision(
-  decision: RoutingDecision,
-): ReturnType<typeof defaultPrewarmTelemetry> {
-  const features = decision.features;
-  return {
-    prewarm_attempted: features?.prewarm_attempted ?? false,
-    prewarm_accepted: features?.prewarm_accepted ?? null,
-    prewarm_disabled_reason: features?.prewarm_disabled_reason ?? null,
-  };
-}
-
-/** True when routing used emergency pin-only fallback for this decision (SP-162). */
-export function resolvePinOnlyFallbackActive(decision: RoutingDecision): boolean {
-  return decision.reason_code === PIN_ONLY_FALLBACK;
-}
-
-function pinOnlyFallbackTelemetryFromDecision(
-  decision: RoutingDecision,
-): ReturnType<typeof defaultPinOnlyFallbackTelemetry> {
-  return {
-    pin_only_fallback_active: resolvePinOnlyFallbackActive(decision),
-  };
-}
-
-function planningDelegateTelemetryFromDecision(
-  decision: RoutingDecision,
-): ReturnType<typeof defaultPlanningDelegateTelemetry> {
-  const observability = buildPlanningDelegateObservability(decision);
-  if (!observability) {
-    return defaultPlanningDelegateTelemetry();
-  }
-
-  return {
-    planning_delegate_path: observability.path === 'none' ? null : observability.path,
-    planning_delegate_primary_model_id: observability.primary_model_id,
-    planning_delegate_model_id: observability.delegate_model_id,
-    planning_delegate_reason_code: observability.planning_delegate_reason_code,
-    planning_delegate_fallback_reason: observability.fallback_reason,
-    planning_delegate_max_messages: observability.compressed_context?.max_messages ?? null,
-    planning_delegate_max_tokens: observability.compressed_context?.max_tokens ?? null,
-    planning_delegate_exclude_execution_history:
-      observability.compressed_context?.exclude_execution_history ?? null,
-    planning_delegate_workers_spawned: observability.workers_spawned,
-    planning_delegate_workers_succeeded: observability.workers_succeeded,
-    planning_delegate_worker_timeout_count: observability.worker_timeout_count,
-  };
-}
-
-function pinEconomicsTelemetryFromInput(
-  input: PinEconomicsObservabilityInput,
-): ReturnType<typeof defaultBreakevenTelemetry> &
-  ReturnType<typeof defaultSaarTelemetry> &
-  FlipFlopTelemetryFields {
-  const breakeven = buildBreakevenObservability(input);
-  const saar = buildSaarObservability(input);
-  const flipFlop = buildFlipFlopObservability(input);
-
-  return {
-    ...(breakeven
-      ? {
-          marginal_savings: breakeven.marginal_savings,
-          future_cache_value: breakeven.future_cache_value,
-          cache_reprime_cost: breakeven.cache_reprime_cost,
-          breakeven_decision: breakeven.decision,
-          breakeven_reason_code: breakeven.breakeven_reason_code,
-        }
-      : defaultBreakevenTelemetry()),
-    saar_buffer_active: saar?.buffer_active ?? false,
-    saar_hard_lock: saar?.hard_lock ?? false,
-    turn_index_in_session: saar?.turn_index_in_session ?? null,
-    saar_reason_code: saar?.saar_reason_code ?? null,
-    ...(flipFlop
-      ? {
-          flip_flop_consecutive_tier_flips: flipFlop.consecutive_tier_flips,
-          flip_flop_tier_pinned: flipFlop.tier_pinned,
-          flip_flop_shadow_event: flipFlop.shadow_event,
-        }
-      : defaultFlipFlopTelemetry()),
-  };
-}
-
-/** Attach breakeven and SAAR observability to routing decision features (SP-126). */
-export function enrichRoutingDecisionWithPinEconomics(
-  request: RoutingRequest,
-  decision: RoutingDecision,
-  options?: Omit<PinEconomicsObservabilityInput, 'request' | 'decision'>,
-): RoutingDecision {
-  const input: PinEconomicsObservabilityInput = {
-    request,
-    decision,
-    ...(options?.fleet !== undefined ? { fleet: options.fleet } : {}),
-    ...(options?.sessionPinner !== undefined
-      ? { sessionPinner: options.sessionPinner }
-      : {}),
-    ...(options?.saarConfig !== undefined ? { saarConfig: options.saarConfig } : {}),
-  };
-
-  const breakeven = buildBreakevenObservability(input);
-  const saar = buildSaarObservability(input);
-  const flipFlop = buildFlipFlopObservability(input);
-
-  if (!breakeven && !saar && !flipFlop) {
-    return decision;
-  }
-
-  return {
-    ...decision,
-    features: {
-      ...(decision.features ?? emptyFeatureSidecar()),
-      ...(breakeven ? { breakeven } : {}),
-      ...(saar ? { saar } : {}),
-    },
-  };
-}
-
-export interface ExplainEnrichmentOptions {
-  readonly fleet?: readonly ModelProfile[];
-  readonly contextFitConfig?: ContextFitConfig;
-  readonly clusterMatcher?: ClusterMatcher;
-  readonly sessionPinner?: SessionPinner;
-  readonly saarConfig?: SaarConfig;
-  readonly priceCatalog?: PriceCatalog | null;
-  readonly quotaWindowPosition?: QuotaWindowPosition;
-  readonly virtualCostV2Config?: VirtualCostV2Config;
-}
-
-/** Attach context-fit and tier-selection observability for explain responses (SP-110, SP-113). */
-export async function enrichRoutingDecisionForExplain(
-  request: RoutingRequest,
-  decision: RoutingDecision,
-  options?: ExplainEnrichmentOptions,
-): Promise<RoutingDecision> {
-  const withContextFit = enrichRoutingDecisionWithContextFit(
-    request,
-    decision,
-    options?.fleet,
-    options?.contextFitConfig,
-  );
-
-  let clusterMatchTable: readonly ClusterMatchTableEntry[] | null = null;
-  if (options?.clusterMatcher) {
-    try {
-      clusterMatchTable = await options.clusterMatcher.matchTable(request);
-    } catch {
-      clusterMatchTable = null;
-    }
-  }
-
-  return enrichRoutingDecisionWithPinEconomics(
-    request,
-    enrichRoutingDecisionWithPlanningDelegate(
-      enrichRoutingDecisionWithTierSelection(withContextFit, clusterMatchTable),
-    ),
-    pinEconomicsOptionsFromExplain(options),
-  );
-}
-
-function pinEconomicsOptionsFromExplain(
-  options?: ExplainEnrichmentOptions,
-): Omit<PinEconomicsObservabilityInput, 'request' | 'decision'> {
-  return {
-    ...(options?.fleet !== undefined ? { fleet: options.fleet } : {}),
-    ...(options?.sessionPinner !== undefined
-      ? { sessionPinner: options.sessionPinner }
-      : {}),
-    ...(options?.saarConfig !== undefined ? { saarConfig: options.saarConfig } : {}),
-    ...(options?.priceCatalog !== undefined ? { priceCatalog: options.priceCatalog } : {}),
-    ...(options?.quotaWindowPosition !== undefined
-      ? { quotaWindowPosition: options.quotaWindowPosition }
-      : {}),
-    ...(options?.virtualCostV2Config !== undefined
-      ? { virtualCostV2Config: options.virtualCostV2Config }
-      : {}),
-  };
-}
-
-export interface RoutingDecisionLogDelegate {
-  readonly provider: string;
-  readonly modelId: string;
-  readonly api: string;
-}
-
-/** Peak-pricing observability for explain/log payloads (SP-244, #165). */
-export interface PeakPricingObservability {
-  readonly window: PricingWindow;
-  readonly cost_multiplier: number;
-  readonly adapter_id: 'zai' | 'deepseek' | null;
-}
-
-/**
- * Resolve peak/off-peak pricing observability for a log/explain payload
- * (SP-244, #165). Prefers the fleet profile so provider-aware adapter matching
- * (e.g. `provider: 'zai'`) applies; falls back to the bare selected id so
- * `glm-*` / `deepseek-*` ids still classify when no fleet is available.
- * Never null — non-target providers yield `window: 'none'`, multiplier 1.
- */
-export function buildPeakPricingObservability(
-  modelId: string,
-  fleet?: readonly ModelProfile[],
-): PeakPricingObservability {
-  const profile = fleet?.find((entry) => entry.id === modelId);
-  const adjustment = resolvePeakPricingAdjustment(profile ?? { id: modelId });
-  return {
-    window: adjustment.window,
-    cost_multiplier: adjustment.cost_multiplier,
-    adapter_id: adjustment.adapter_id,
-  };
-}
-
-/** JSON payload for SMART_ROUTER_LOG_ROUTING=1 stderr lines (SP-110). */
-export function buildRoutingDecisionLogPayload(
-  request: RoutingRequest,
-  decision: RoutingDecision,
-  delegate?: RoutingDecisionLogDelegate,
-  fleet?: readonly ModelProfile[],
-  contextFitConfig?: ContextFitConfig,
-  pinEconomics?: Omit<PinEconomicsObservabilityInput, 'request' | 'decision' | 'fleet'>,
-): Record<string, unknown> {
-  const enriched = enrichRoutingDecisionWithPinEconomics(
-    request,
-    enrichRoutingDecisionWithPlanningDelegate(
-      enrichRoutingDecisionWithTierSelection(
-        enrichRoutingDecisionWithContextFit(
-          request,
-          decision,
-          fleet,
-          contextFitConfig,
-        ),
-      ),
-    ),
-    {
-      ...(fleet !== undefined ? { fleet } : {}),
-      ...(pinEconomics?.sessionPinner !== undefined
-        ? { sessionPinner: pinEconomics.sessionPinner }
-        : {}),
-      ...(pinEconomics?.saarConfig !== undefined
-        ? { saarConfig: pinEconomics.saarConfig }
-        : {}),
-    },
-  );
-
-  const tierSelection = enriched.features?.tier_selection;
-  const breakeven = enriched.features?.breakeven as BreakevenObservabilityV2 | undefined;
-  const saar = enriched.features?.saar;
-  const planningDelegate = enriched.features?.planning_delegate;
-  const flipFlop = buildFlipFlopObservability({
-    request,
-    decision,
-    ...(fleet !== undefined ? { fleet } : {}),
-    ...(pinEconomics?.sessionPinner !== undefined
-      ? { sessionPinner: pinEconomics.sessionPinner }
-      : {}),
-    ...(pinEconomics?.saarConfig !== undefined
-      ? { saarConfig: pinEconomics.saarConfig }
-      : {}),
-  });
-  // SP-244 / #165: surface peak vs off-peak rationale on the log payload.
-  const peakPricing = buildPeakPricingObservability(enriched.selected_model_id, fleet);
-
-  return {
-    request_id: enriched.request_id,
-    selected_model_id: enriched.selected_model_id,
-    tier: enriched.tier,
-    stage: enriched.stage,
-    reason_code: enriched.reason_code,
-    // Top-level checklist fields for SMART_ROUTER_LOG_ROUTING=1 (SP-178 / #99)
-    low_intensity_score:
-      tierSelection?.low_intensity_score ??
-      enriched.features?.low_intensity_score ??
-      null,
-    tier_hint: tierSelection?.tier_hint ?? enriched.features?.tier_hint ?? null,
-    local_eligible_reason:
-      tierSelection?.local_eligible_reason ??
-      enriched.features?.local_eligible_reason ??
-      null,
-    cluster_id: tierSelection?.cluster_id ?? null,
-    routing_latency_ms: enriched.routing_latency_ms,
-    features: enriched.features ?? null,
-    cluster_summary: tierSelection
-      ? {
-          cluster_id: tierSelection.cluster_id,
-          cluster_similarity: tierSelection.cluster_similarity,
-          cluster_margin: tierSelection.cluster_margin,
-          tier_hint: tierSelection.tier_hint,
-          tier_selection_reason_code: tierSelection.tier_selection_reason_code,
-          low_intensity_score: tierSelection.low_intensity_score,
-          p_success_cheap: tierSelection.p_success_cheap,
-        }
-      : null,
-    breakeven_summary: breakeven
-      ? {
-          marginal_savings: breakeven.marginal_savings,
-          future_cache_value: breakeven.future_cache_value,
-          cache_reprime_cost: breakeven.cache_reprime_cost,
-          decision: breakeven.decision,
-          breakeven_reason_code: breakeven.breakeven_reason_code,
-          quota_premium_usd: breakeven.quota_premium_usd,
-          kv_cache_credit_usd: breakeven.kv_cache_credit_usd,
-        }
-      : null,
-    saar_summary: saar
-      ? {
-          buffer_active: saar.buffer_active,
-          hard_lock: saar.hard_lock,
-          turn_index_in_session: saar.turn_index_in_session,
-          planning_turn_buffer: saar.planning_turn_buffer,
-          idle_timeout_seconds: saar.idle_timeout_seconds,
-          saar_reason_code: saar.saar_reason_code,
-        }
-      : null,
-    planning_delegate_summary: planningDelegate
-      ? {
-          path: planningDelegate.path,
-          primary_model_id: planningDelegate.primary_model_id,
-          delegate_model_id: planningDelegate.delegate_model_id,
-          compressed_context: planningDelegate.compressed_context,
-          planning_delegate_reason_code: planningDelegate.planning_delegate_reason_code,
-          fallback_reason: planningDelegate.fallback_reason,
-          workers_spawned: planningDelegate.workers_spawned,
-          workers_succeeded: planningDelegate.workers_succeeded,
-          worker_timeout_count: planningDelegate.worker_timeout_count,
-        }
-      : null,
-    flip_flop_summary: flipFlop
-      ? {
-          consecutive_tier_flips: flipFlop.consecutive_tier_flips,
-          tier_pinned: flipFlop.tier_pinned,
-          shadow_event: flipFlop.shadow_event,
-        }
-      : null,
-    pricing_window: peakPricing.window,
-    peak_pricing_summary: peakPricing,
-    pin_only_fallback_active: resolvePinOnlyFallbackActive(enriched),
-    delegate,
-  };
-}
-
-function defaultContextFitTelemetry(): Pick<
-  RoutingTelemetry,
-  | 'estimated_input_tokens'
-  | 'context_fit_viable_count'
-  | 'context_fit_rejected_json'
-  | 'context_overflow_pin_break'
-  | 'selected_model_max_input_tokens'
-  | 'context_fit_reason_code'
-> {
-  return {
-    estimated_input_tokens: null,
-    context_fit_viable_count: null,
-    context_fit_rejected_json: null,
-    context_overflow_pin_break: false,
-    selected_model_max_input_tokens: null,
-    context_fit_reason_code: null,
-  };
-}
-
-/** Default context-fit telemetry scalars for tests and legacy store reads. */
-export const DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS = defaultContextFitTelemetry();
-
-function defaultTierSelectionTelemetry(): Pick<
-  RoutingTelemetry,
-  | 'cluster_id'
-  | 'cluster_similarity'
-  | 'cluster_margin'
-  | 'low_intensity_score'
-  | 'tier_hint'
-  | 'p_success_cheap'
-  | 'local_eligible_reason'
-  | 'tier_selection_reason_code'
-> {
-  return {
-    cluster_id: null,
-    cluster_similarity: null,
-    cluster_margin: null,
-    low_intensity_score: null,
-    tier_hint: null,
-    p_success_cheap: null,
-    local_eligible_reason: null,
-    tier_selection_reason_code: null,
-  };
-}
-
-/** Default tier-selection telemetry scalars for tests and legacy store reads. */
-export const DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS = defaultTierSelectionTelemetry();
-
-function tierSelectionTelemetryFromDecision(
-  decision: RoutingDecision,
-): ReturnType<typeof defaultTierSelectionTelemetry> {
-  const observability = buildTierSelectionObservability({ decision });
-  if (!observability) {
-    return defaultTierSelectionTelemetry();
-  }
-
-  return {
-    cluster_id: observability.cluster_id,
-    cluster_similarity: observability.cluster_similarity,
-    cluster_margin: observability.cluster_margin,
-    low_intensity_score: observability.low_intensity_score,
-    tier_hint: observability.tier_hint,
-    p_success_cheap: observability.p_success_cheap,
-    local_eligible_reason: observability.local_eligible_reason,
-    tier_selection_reason_code: observability.tier_selection_reason_code,
-  };
-}
-
-/** Default context-fit dataset scalars for tests and legacy store reads. */
-export const DEFAULT_CONTEXT_FIT_DATASET_FIELDS = {
-  estimated_input_tokens_gate: null,
-  context_fit_viable_count: null,
-  context_fit_rejected_json: null,
-  context_overflow_pin_break: false,
-  selected_model_max_input_tokens: null,
-  context_fit_reason_code: null,
-} as const satisfies Pick<
-  import('../../domain/types/index.js').RoutingDatasetRecord,
-  | 'estimated_input_tokens_gate'
-  | 'context_fit_viable_count'
-  | 'context_fit_rejected_json'
-  | 'context_overflow_pin_break'
-  | 'selected_model_max_input_tokens'
-  | 'context_fit_reason_code'
->;
-
-/** Default tier-selection dataset scalars for tests and legacy store reads. */
-export const DEFAULT_TIER_SELECTION_DATASET_FIELDS = {
-  cluster_id: null,
-  cluster_similarity: null,
-  cluster_margin: null,
-  low_intensity_score: null,
-  tier_hint: null,
-  p_success_cheap: null,
-  local_eligible_reason: null,
-  tier_selection_reason_code: null,
-} as const satisfies Pick<
-  import('../../domain/types/index.js').RoutingDatasetRecord,
-  | 'cluster_id'
-  | 'cluster_similarity'
-  | 'cluster_margin'
-  | 'low_intensity_score'
-  | 'tier_hint'
-  | 'p_success_cheap'
-  | 'local_eligible_reason'
-  | 'tier_selection_reason_code'
->;
 
 // ─── Emitter ─────────────────────────────────────────────────────────────────
 
