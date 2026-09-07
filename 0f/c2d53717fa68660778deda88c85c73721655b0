@@ -1,0 +1,16 @@
+spine-tasks/SP-279-v1-migration-semver-docs/.reviews/0-20260907T172502.md
+  h_ae151c586ac6c5 1-16
+spine-tasks/SP-279-v1-migration-semver-docs/.reviews/final-20260907T172540.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "0fc2d53717fa68660778deda88c85c73721655b0",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
