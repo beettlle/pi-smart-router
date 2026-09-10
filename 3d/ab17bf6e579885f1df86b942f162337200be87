@@ -1,0 +1,19 @@
+spine-tasks/SP-280-v101-manifest-scaffold/.reviews/0-20260910T222113.md
+  s_73aaa01b99b77c::t_264ff7975fbaae 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3dab17bf6e579885f1df86b942f162337200be87",
+  "prompts": {},
+  "sessions": {
+    "s_73aaa01b99b77c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae947e36-a697-4ee4-9394-26f1d7da5e0c",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
