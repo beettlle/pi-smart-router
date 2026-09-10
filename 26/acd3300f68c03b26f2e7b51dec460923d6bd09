@@ -1,0 +1,129 @@
+config/p-success-weights.json
+  s_9b50a389c8f63e::t_0355097a3b1193 16,20-27,29
+spine-tasks/SP-286-operator-notes-issues/PROMPT.md
+  s_9b50a389c8f63e::t_40a978f5ea0fba 2-69,76-78
+  s_9b50a389c8f63e::t_fe3863bfe50e61 70-75
+  s_9b50a389c8f63e::t_160fff74f4e72b 1
+spine-tasks/SP-285-privacy-safe-embedding-export/PROMPT.md
+  s_9b50a389c8f63e::t_160fff74f4e72b 1
+  s_9b50a389c8f63e::t_40a978f5ea0fba 2-68,75-77
+  s_9b50a389c8f63e::t_fe3863bfe50e61 69-74
+spine-tasks/SP-283-verifier-grade-train/STATUS.md
+  s_9b50a389c8f63e::t_40a978f5ea0fba 1-29
+spine-tasks/SP-284-hard-gate-ship-bundle/STATUS.md
+  s_9b50a389c8f63e::t_40a978f5ea0fba 1-29
+spine-tasks/SP-282-adversarial-labeling-harness/PROMPT.md
+  s_9b50a389c8f63e::t_fe3863bfe50e61 69-74
+  s_9b50a389c8f63e::t_40a978f5ea0fba 2-68,75-77
+  s_9b50a389c8f63e::t_160fff74f4e72b 1
+tests/fixtures/benchmark-leaderboards/recorded/swebench_verified.json
+  s_9b50a389c8f63e::t_e30526aa194ec2 4
+scripts/qa/dogfood-gather.sh
+  s_9b50a389c8f63e::t_a74ef2d070c3e0 2-10,12,30,37-41
+  s_9b50a389c8f63e::t_2638a7e856000b 42
+spine-tasks/CONTEXT.md
+  s_9b50a389c8f63e::t_989b4c9cf580b7 3,5,8
+spine-tasks/SP-281-label-provenance-floors/STATUS.md
+  s_9b50a389c8f63e::t_40a978f5ea0fba 1-29
+tests/unit/router-pipeline-p-success.test.ts
+  s_9b50a389c8f63e::t_13988873724fec 190-193
+  s_9b50a389c8f63e::t_5abeb50c9dc56a 171,187-189
+scripts/verify-routing-calibration.ts
+  s_9b50a389c8f63e::t_6e14e111abfdca 74-82
+  s_9b50a389c8f63e::t_9c5a8e65535c8c 523-524,528-530,545,554-566
+  s_9b50a389c8f63e::t_cbfe1d49ba18b6 339-395
+  s_9b50a389c8f63e::t_16a51a5e082bbb 567
+spine-tasks/_authoring/release-v1.0.1/manifest.md
+  s_9b50a389c8f63e::t_40a978f5ea0fba 1-17
+tests/fixtures/benchmark-leaderboards/recorded/livecodebench.json
+  s_9b50a389c8f63e::t_e30526aa194ec2 4
+spine-tasks/SP-283-verifier-grade-train/PROMPT.md
+  s_9b50a389c8f63e::t_40a978f5ea0fba 2-69,76-78
+  s_9b50a389c8f63e::t_fe3863bfe50e61 70-75
+  s_9b50a389c8f63e::t_160fff74f4e72b 1
+spine-tasks/SP-282-adversarial-labeling-harness/STATUS.md
+  s_9b50a389c8f63e::t_40a978f5ea0fba 1-29
+spine-tasks/SP-280-v101-manifest-scaffold/PROMPT.md
+  s_9b50a389c8f63e::t_40a978f5ea0fba 2-67,74-76
+  s_9b50a389c8f63e::t_160fff74f4e72b 1
+  s_9b50a389c8f63e::t_fe3863bfe50e61 68-73
+spine-tasks/SP-284-hard-gate-ship-bundle/PROMPT.md
+  s_9b50a389c8f63e::t_160fff74f4e72b 1
+  s_9b50a389c8f63e::t_fe3863bfe50e61 68-73
+  s_9b50a389c8f63e::t_40a978f5ea0fba 2-67,74-76
+src/domain/routing/p-success-classifier.ts
+  s_9b50a389c8f63e::t_55b84a04277795 456-457
+  s_9b50a389c8f63e::t_20ecb4bc5026b2 422-424
+  s_9b50a389c8f63e::t_deb2670aa5351c 490,496,498,502-504,506,509,512-515
+  s_9b50a389c8f63e::t_ccf06e14f8541d 611-614,620
+spine-tasks/SP-281-label-provenance-floors/PROMPT.md
+  s_9b50a389c8f63e::t_160fff74f4e72b 1
+  s_9b50a389c8f63e::t_fe3863bfe50e61 69-74
+  s_9b50a389c8f63e::t_40a978f5ea0fba 2-68,75-77
+scripts/lib/isotonic-calibrator.ts
+  s_9b50a389c8f63e::t_e573cb12027242 125-126,128,130-133,135-146,148-152,154-156,171,174,214-217,223
+  s_9b50a389c8f63e::t_3b4a48bf087dfc 119-124,127,129,134,147,153,176-177
+spine-tasks/SP-280-v101-manifest-scaffold/STATUS.md
+  s_9b50a389c8f63e::t_40a978f5ea0fba 1-29
+tests/fixtures/benchmark-leaderboards/recorded/bfcl.json
+  s_9b50a389c8f63e::t_e30526aa194ec2 4
+tests/unit/local-zero-prefer-trivial.test.ts
+  s_9b50a389c8f63e::t_7c30eed8d201f6 14,29-30
+  s_9b50a389c8f63e::t_daa7d4114b61c9 136-141
+  s_9b50a389c8f63e::t_730057119da408 31
+spine-tasks/SP-285-privacy-safe-embedding-export/STATUS.md
+  s_9b50a389c8f63e::t_40a978f5ea0fba 1-29
+tests/unit/verify-routing-calibration.test.ts
+  s_9b50a389c8f63e::t_2cedea0d2f592d 316-354
+tests/fixtures/benchmark-leaderboards/recorded/terminal_bench.json
+  s_9b50a389c8f63e::t_e30526aa194ec2 4
+spine-tasks/dependencies.json
+  s_9b50a389c8f63e::t_fb0adfc3367a30 756-776
+config/benchmark-profiles.json
+  s_9b50a389c8f63e::t_e30526aa194ec2 10-11
+tests/unit/isotonic-calibrator.test.ts
+  s_9b50a389c8f63e::t_d4534d2f871fa2 79-101
+tests/unit/p-success-classifier.test.ts
+  s_9b50a389c8f63e::t_0d1b65524bc360 398-418
+  s_9b50a389c8f63e::t_7e2b242e971f49 154-171
+  s_9b50a389c8f63e::t_05deb20601d590 469-470,473,492-493
+  s_9b50a389c8f63e::t_e03e6f9f873aa8 99-104
+README.md
+  s_9b50a389c8f63e::t_bef1f1f7b28767 716-717,723,725
+  s_9b50a389c8f63e::t_760dc9c053e257 5
+  s_9b50a389c8f63e::t_f76a7ef6acb9c3 774
+package.json
+  s_9b50a389c8f63e::t_8fb888da89baa7 3
+config/routing-calibration.json
+  s_9b50a389c8f63e::t_0355097a3b1193 1178-1179,1196,1200-1207,1209,1219,1222-1224,2797-2800,2802-2804
+src/domain/pipeline/router-pipeline.ts
+  s_9b50a389c8f63e::t_6ad2dd5b5cc9c3 646,651,656,661,666,671,676
+  s_9b50a389c8f63e::t_2debce8e639677 610,621,626,631,636,641
+  s_9b50a389c8f63e::t_5b8d36effd190f 620,625,630,635,640,645,650,655,660,665,670,675
+docs/migration-v1.md
+  s_9b50a389c8f63e::t_be9c73fbdcf1f2 45
+  s_9b50a389c8f63e::t_a65203d902e27e 6
+  s_9b50a389c8f63e::t_3cf1952441041c 106
+  s_9b50a389c8f63e::t_245f452e97eda8 39,46,48,54-61,65-67
+  s_9b50a389c8f63e::t_e5d6540e487e76 118,124-125
+spine-tasks/SP-286-operator-notes-issues/STATUS.md
+  s_9b50a389c8f63e::t_40a978f5ea0fba 1-29
+package-lock.json
+  s_9b50a389c8f63e::t_0c4cebaedb22cb 3,9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "26acd3300f68c03b26f2e7b51dec460923d6bd09",
+  "prompts": {},
+  "sessions": {
+    "s_9b50a389c8f63e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "49d0b3ae-ff53-4e4a-8216-b8f2a895d28e",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
