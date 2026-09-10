@@ -15,6 +15,7 @@ import {
   makeTelemetryRoom,
 } from '../telemetry/telemetry-limits.js';
 import {
+  DATASET_MAX_ENTRIES,
   makeDatasetRoom,
 } from '../telemetry/dataset-limits.js';
 import {
@@ -83,7 +84,7 @@ export class MemoryStore implements StorePort {
   async listDatasetRecords(
     options?: ListDatasetOptions,
   ): Promise<readonly RoutingDatasetRecord[]> {
-    const limit = clampHistoryLimit(options?.limit);
+    const limit = clampDatasetLimit(options?.limit);
 
     return [...this.dataset]
       .reverse()
@@ -98,7 +99,7 @@ export class MemoryStore implements StorePort {
   async listOutcomeRecords(
     options?: ListOutcomeOptions,
   ): Promise<readonly RoutingOutcomeRecord[]> {
-    const limit = clampHistoryLimit(options?.limit);
+    const limit = clampDatasetLimit(options?.limit);
     const requestId = options?.requestId;
     const sessionId = options?.sessionId;
 
@@ -119,4 +120,11 @@ function clampHistoryLimit(limit: number | undefined): number {
     return DEFAULT_HISTORY_LIMIT;
   }
   return Math.min(Math.max(1, Math.floor(limit)), MAX_HISTORY_LIMIT);
+}
+
+function clampDatasetLimit(limit: number | undefined): number {
+  if (limit === undefined) {
+    return Math.min(DEFAULT_HISTORY_LIMIT, DATASET_MAX_ENTRIES);
+  }
+  return Math.min(Math.max(1, Math.floor(limit)), DATASET_MAX_ENTRIES);
 }

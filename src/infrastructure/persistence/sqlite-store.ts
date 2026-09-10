@@ -434,7 +434,9 @@ export class SqliteStore implements StorePort {
   ): Promise<readonly RoutingDatasetRecord[]> {
     // SP-235: flush first so reads see queued dataset rows (read-your-writes).
     this.writeQueue.flush();
-    const limit = clampHistoryLimit(options?.limit);
+    // Dataset exports must use DATASET_MAX_ENTRIES (10k), not telemetry's
+    // MAX_HISTORY_LIMIT (100) — dogfood gather floors were falsely unmet.
+    const limit = clampDatasetLimit(options?.limit);
 
     const rows = this.db
       .prepare(
@@ -485,7 +487,8 @@ export class SqliteStore implements StorePort {
   ): Promise<readonly RoutingOutcomeRecord[]> {
     // SP-235: flush first so reads see queued outcome rows (read-your-writes).
     this.writeQueue.flush();
-    const limit = clampHistoryLimit(options?.limit);
+    // Outcomes join dataset exports — same ceiling as DATASET_MAX_ENTRIES.
+    const limit = clampDatasetLimit(options?.limit);
     const requestId = options?.requestId;
     const sessionId = options?.sessionId;
 
@@ -1060,6 +1063,14 @@ function clampHistoryLimit(limit: number | undefined): number {
     return DEFAULT_HISTORY_LIMIT;
   }
   return Math.min(Math.max(1, Math.floor(limit)), MAX_HISTORY_LIMIT);
+}
+
+/** Dataset/outcome list ceiling — must track DATASET_MAX_ENTRIES, not telemetry history. */
+function clampDatasetLimit(limit: number | undefined): number {
+  if (limit === undefined) {
+    return Math.min(DEFAULT_HISTORY_LIMIT, DATASET_MAX_ENTRIES);
+  }
+  return Math.min(Math.max(1, Math.floor(limit)), DATASET_MAX_ENTRIES);
 }
 
 function telemetryRowToEntity(row: TelemetryRow): RoutingTelemetry {

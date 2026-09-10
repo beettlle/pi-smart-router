@@ -12,30 +12,27 @@
  * the PipelineStage + RoutingContext contract (SP-272) — triage / pin /
  * hydra clusters (SP-273) and hardware_probe / turn_envelope / context_fit /
  * low_intensity / local_zero / safe_default / context_overflow_fallback
- * (SP-274). This file is the thin coordinator: stage wiring, per-route
- * context snapshot/sync-back, telemetry + feature attachment, fallback and
- * pin persistence. No behavior change.
+ * (SP-274). This file is the thin coordinator: stage wiring, one per-route
+ * {@link RoutingContext} (sole cross-stage state), telemetry + feature
+ * attachment, fallback and pin persistence.
  */
 
 import type {
   CandidateScore,
   ModelProfile,
   PlanningDelegateConfig,
-  PlanningDelegateObservability,
   PriceCatalog,
   RoutePath,
   RoutingDecision,
   RoutingFeatureSidecar,
   RoutingRequest,
   SaarConfig,
-  Tier,
 } from '../types/index.js';
 import type { QuotaWindowPosition } from '../types/entities.js';
 import type { LowIntensityConfig, LocalZeroConfig, VirtualCostV2Config } from '../types/schemas.js';
 import type {
   HardwareProbeConfig,
   HardwareProbePort,
-  HardwareProbeResult,
   SystemInfo,
   ThroughputMeter,
 } from '../ports/hardware-probe-port.js';
@@ -44,7 +41,6 @@ import type {
   LocalRuntimePort,
   LocalZeroTierConfig,
 } from '../ports/local-runtime-port.js';
-import type { TriageResult } from '../triage/triage-engine.js';
 import {
   isGoogleGeminiProfile,
   sessionHasGoogleReplayRiskForDeprioritize,
@@ -64,8 +60,8 @@ import {
   type RoutingCostEstimator,
   type TelemetryEmitterPort,
 } from '../ports/telemetry-emitter-port.js';
-import type { HydraMatcher as HydraMatcherType, MatchResult } from '../matching/hydra-matcher.js';
-import type { ClusterMatcher, ClusterMatchResult } from '../matching/cluster-matcher.js';
+import type { HydraMatcher as HydraMatcherType } from '../matching/hydra-matcher.js';
+import type { ClusterMatcher } from '../matching/cluster-matcher.js';
 import type {
   CompiledPatternPack,
   DegradedRouteConfig,
@@ -73,9 +69,7 @@ import type {
 } from '../routing/degraded-route-sandwich.js';
 import type { IsotonicCalibratorArtifact } from '../routing/isotonic-calibrator.js';
 import type { PSuccessWeights } from '../routing/p-success-classifier.js';
-import type { ExpectedCostBreakdown } from '../routing/expected-cost.js';
 import type {
-  PrewarmOutcome,
   SpeculativePrewarmConfig,
   SpeculativePrewarmGuard,
 } from '../routing/speculative-prewarm.js';
@@ -110,7 +104,12 @@ export interface StageResult {
 }
 
 export type { PipelineStage, RoutingContext } from './pipeline-stage.js';
-import type { PipelineStage, RoutingContext } from './pipeline-stage.js';
+export { createRoutingContext } from './pipeline-stage.js';
+import {
+  createRoutingContext,
+  type PipelineStage,
+  type RoutingContext,
+} from './pipeline-stage.js';
 
 /** Canonical pipeline stage order — keep README/specs in sync (SP-119). */
 export const PIPELINE_STAGE_ORDER = [
@@ -215,41 +214,11 @@ export class RouterPipeline {
   private readonly fleet: readonly ModelProfile[];
   private readonly options: PipelineOptions;
 
-  /** Per-route transient fleet — defaults to constructor fleet. */
-  private activeFleet: readonly ModelProfile[] = [];
-
-  /** Unfiltered fleet for overflow escalation (SP-095). */
-  private fullFleet: readonly ModelProfile[] = [];
-
-  /** Per-route transient state — reset on each route() call. */
-  private currentHardwareResult: HardwareProbeResult = 'disabled';
-  private currentTriageResult: TriageResult | null = null;
-  private currentHydraResult: MatchResult | null = null;
-  private currentClusterMatch: ClusterMatchResult | null = null;
-  private currentTierHint: Tier | null = null;
-  private currentTierHintReasonCode: string | null = null;
-  private currentLowIntensityScore: number | null = null;
-  private currentPSuccessCheap: number | null = null;
-  private currentPSuccessRaw: number | null = null;
-  private currentPSuccessCalibrated: number | null = null;
-  private currentPSuccessAlpha: number | null = null;
-  private currentExpectedCostByTier: readonly ExpectedCostBreakdown[] | null = null;
-  private currentLocalEligibleReason: string | null = null;
-  private currentContextFitRejected: readonly CandidateScore[] = [];
-  private currentContextFitViableCount = 0;
-  private contextOverflowPreferredProvider: string | null = null;
-  private contextOverflowTriggered = false;
-  /** Internal breakeven gate reason for SP-126 explain wiring. */
-  private currentBreakevenReason: string | null = null;
-  /** Planning delegate observability for SP-143 explain/telemetry wiring. */
-  private currentPlanningDelegate: PlanningDelegateObservability | null = null;
-  /** Explicit local_zero gate skip reasons for tier-selection telemetry (SP-164). */
-  private currentLocalZeroGateSkipReasons: readonly string[] = [];
-  /** Degraded sandwich route path for explain/telemetry (SP-212, #119). */
-  private currentRoutePath: RoutePath | null = null;
-  private currentRoutePathConfidence: number | null = null;
-  /** Speculative prewarm outcome for explain/telemetry (SP-217, #117). */
-  private currentPrewarmOutcome: PrewarmOutcome | null = null;
+  /**
+   * Sole per-route shared state. Created at the start of each exclusive
+   * `route()`; stages mutate it in place. Cleared when the route finishes.
+   */
+  private routeContext: RoutingContext | null = null;
 
   /** Extracted stage instances (SP-273/SP-274) — run via runStageWithContext(). */
   private readonly hardwareProbePipelineStage: PipelineStage = createHardwareProbeStage();
@@ -271,14 +240,11 @@ export class RouterPipeline {
    * Single-flight serialization tail (SP-230, #141).
    *
    * Concurrency contract: `route()` calls on one RouterPipeline instance are
-   * serialized — a concurrent caller queues behind the in-flight call. The
-   * pipeline keeps per-route transient state on instance fields (the
-   * `current*` / `activeFleet` / `fullFleet` members above), which every stage
-   * reads and writes; overlapping route() executions would race on that state
-   * and corrupt routing decisions (e.g. a second call's reset swapping
-   * `activeFleet` mid-flight for the first). Routing is a fast, bounded,
-   * in-memory computation, so serialization costs at most one routing latency
-   * of queuing and never changes routing policy outcomes.
+   * serialized — a concurrent caller queues behind the in-flight call. Each
+   * exclusive route owns one {@link RoutingContext} on `routeContext`;
+   * overlapping executions would race on that object. Routing is a fast,
+   * bounded, in-memory computation, so serialization costs at most one
+   * routing latency of queuing and never changes routing policy outcomes.
    *
    * Safety notes:
    * - No reentrancy: nothing on a route() execution path awaits another
@@ -334,34 +300,15 @@ export class RouterPipeline {
     fleetOverride?: readonly ModelProfile[],
   ): Promise<RoutingDecision> {
     const start = Date.now();
-    this.activeFleet = this.prioritizeFleetForToolHistory(
+    const prioritizedFleet = this.prioritizeFleetForToolHistory(
       fleetOverride ?? this.fleet,
       request,
     );
-    this.fullFleet = this.activeFleet;
-    this.currentHardwareResult = 'disabled';
-    this.currentTriageResult = null;
-    this.currentHydraResult = null;
-    this.currentClusterMatch = null;
-    this.currentTierHint = null;
-    this.currentTierHintReasonCode = null;
-    this.currentLowIntensityScore = null;
-    this.currentPSuccessCheap = null;
-    this.currentPSuccessRaw = null;
-    this.currentPSuccessCalibrated = null;
-    this.currentPSuccessAlpha = null;
-    this.currentExpectedCostByTier = null;
-    this.currentLocalEligibleReason = null;
-    this.currentContextFitRejected = [];
-    this.currentContextFitViableCount = 0;
-    this.contextOverflowPreferredProvider = null;
-    this.contextOverflowTriggered = false;
-    this.currentBreakevenReason = null;
-    this.currentPlanningDelegate = null;
-    this.currentLocalZeroGateSkipReasons = [];
-    this.currentRoutePath = null;
-    this.currentRoutePathConfidence = null;
-    this.currentPrewarmOutcome = null;
+    this.routeContext = createRoutingContext({
+      request,
+      options: this.options,
+      fleet: prioritizedFleet,
+    });
 
     let currentStage: NamedPipelineStage | undefined;
 
@@ -375,6 +322,11 @@ export class RouterPipeline {
           return this.attachFeatures(request, result.decision);
         }
       }
+
+      const fallback = this.buildFallbackDecision(request, Date.now() - start);
+      this.finalizeRoute(request, fallback);
+      this.emitTelemetry(request, fallback);
+      return this.attachFeatures(request, fallback);
     } catch (error: unknown) {
       // Constitution VI: zero-crash resilience — degrade to safe default
       const failedStage = this.resolveFailedStage(currentStage);
@@ -385,12 +337,10 @@ export class RouterPipeline {
       this.persistPinIfNeeded(request, fallback);
       this.recordSaarTurnIfNeeded(request);
       return this.attachFeatures(request, fallback);
+    } finally {
+      // Drop after attachFeatures/fallbacks finish (return exprs run before finally).
+      this.routeContext = null;
     }
-
-    const fallback = this.buildFallbackDecision(request, Date.now() - start);
-    this.finalizeRoute(request, fallback);
-    this.emitTelemetry(request, fallback);
-    return this.attachFeatures(request, fallback);
   }
 
   /**
@@ -438,36 +388,37 @@ export class RouterPipeline {
     request: RoutingRequest,
     decision: RoutingDecision,
   ): RoutingDecision {
+    const ctx = this.requireRouteContext();
     const features: RoutingFeatureSidecar = {
-      triage: this.currentTriageResult
+      triage: ctx.triageResult
         ? {
-            verdict: this.currentTriageResult.verdict,
-            reason_code: this.currentTriageResult.reason_code,
-            cyclomatic_score: this.currentTriageResult.cyclomatic_score,
+            verdict: ctx.triageResult.verdict,
+            reason_code: ctx.triageResult.reason_code,
+            cyclomatic_score: ctx.triageResult.cyclomatic_score,
           }
         : null,
-      requirements: this.currentHydraResult?.requirements ?? null,
-      candidates: this.mergeFeatureCandidates(),
-      tier_hint: this.currentTierHint,
-      tier_hint_reason_code: this.currentTierHintReasonCode,
-      low_intensity_score: this.currentLowIntensityScore,
-      p_success_cheap: this.currentPSuccessCheap,
-      p_success_raw: this.currentPSuccessRaw,
-      p_success_calibrated: this.currentPSuccessCalibrated,
-      p_success_alpha: this.currentPSuccessAlpha,
-      local_eligible_reason: this.currentLocalEligibleReason,
-      ...(this.currentPlanningDelegate
-        ? { planning_delegate: this.currentPlanningDelegate }
+      requirements: ctx.hydraResult?.requirements ?? null,
+      candidates: this.mergeFeatureCandidates(ctx),
+      tier_hint: ctx.tierHint,
+      tier_hint_reason_code: ctx.tierHintReasonCode,
+      low_intensity_score: ctx.lowIntensityScore,
+      p_success_cheap: ctx.pSuccessCheap,
+      p_success_raw: ctx.pSuccessRaw,
+      p_success_calibrated: ctx.pSuccessCalibrated,
+      p_success_alpha: ctx.pSuccessAlpha,
+      local_eligible_reason: ctx.localEligibleReason,
+      ...(ctx.planningDelegate
+        ? { planning_delegate: ctx.planningDelegate }
         : {}),
       route_path: this.resolveRoutePathTelemetry(decision).routePath,
       route_path_confidence: this.resolveRoutePathTelemetry(decision).routePathConfidence,
-      ...(this.currentPrewarmOutcome
+      ...(ctx.prewarmOutcome
         ? {
-            prewarm_attempted: this.currentPrewarmOutcome.attempted,
-            prewarm_accepted: this.currentPrewarmOutcome.accepted,
-            prewarm_disabled_reason: this.currentPrewarmOutcome.attempted
+            prewarm_attempted: ctx.prewarmOutcome.attempted,
+            prewarm_accepted: ctx.prewarmOutcome.accepted,
+            prewarm_disabled_reason: ctx.prewarmOutcome.attempted
               ? null
-              : this.currentPrewarmOutcome.reason,
+              : ctx.prewarmOutcome.reason,
           }
         : {}),
     };
@@ -476,17 +427,21 @@ export class RouterPipeline {
     const withContextFit = enrichRoutingDecisionWithContextFit(
       request,
       withBaseFeatures,
-      this.fullFleet,
+      ctx.fullFleet,
       this.options.contextFitConfig,
     );
     return this.attachLocalZeroGateSkipReasons(
       enrichRoutingDecisionWithTierSelection(withContextFit),
+      ctx,
     );
   }
 
   /** Merge pipeline-recorded local_zero gate skip reasons into tier_selection (SP-164). */
-  private attachLocalZeroGateSkipReasons(decision: RoutingDecision): RoutingDecision {
-    if (this.currentLocalZeroGateSkipReasons.length === 0) {
+  private attachLocalZeroGateSkipReasons(
+    decision: RoutingDecision,
+    ctx: RoutingContext,
+  ): RoutingDecision {
+    if (ctx.localZeroGateSkipReasons.length === 0) {
       return decision;
     }
 
@@ -495,7 +450,7 @@ export class RouterPipeline {
       return decision;
     }
 
-    const capabilityGateActive = this.currentLocalZeroGateSkipReasons.some(
+    const capabilityGateActive = ctx.localZeroGateSkipReasons.some(
       (reason) =>
         reason === TOOL_USE_CAPABILITY_SHORTFALL || reason === LOCAL_ZERO_DISABLED,
     );
@@ -507,7 +462,7 @@ export class RouterPipeline {
 
     const mergedSkipReasons = [
       ...inferredReasons,
-      ...this.currentLocalZeroGateSkipReasons.filter(
+      ...ctx.localZeroGateSkipReasons.filter(
         (reason) => !inferredReasons.includes(reason),
       ),
     ];
@@ -536,10 +491,10 @@ export class RouterPipeline {
     };
   }
 
-  private mergeFeatureCandidates(): readonly CandidateScore[] | null {
-    const hydraCandidates = this.currentHydraResult?.candidates ?? [];
+  private mergeFeatureCandidates(ctx: RoutingContext): readonly CandidateScore[] | null {
+    const hydraCandidates = ctx.hydraResult?.candidates ?? [];
     const expectedCostCandidates =
-      this.currentExpectedCostByTier?.map((entry) => ({
+      ctx.expectedCostByTier?.map((entry) => ({
         model_id: `__expected_cost_${entry.tier}__`,
         score: entry.expectedCostUsd,
         shortfall: entry.adjustedExpectedCostUsd,
@@ -547,14 +502,14 @@ export class RouterPipeline {
       })) ?? [];
 
     if (
-      this.currentContextFitRejected.length === 0 &&
+      ctx.contextFitRejected.length === 0 &&
       hydraCandidates.length === 0 &&
       expectedCostCandidates.length === 0
     ) {
       return null;
     }
     return [
-      ...this.currentContextFitRejected,
+      ...ctx.contextFitRejected,
       ...expectedCostCandidates,
       ...hydraCandidates,
     ];
@@ -590,17 +545,18 @@ export class RouterPipeline {
 
   /**
    * Resolve route_path classification for telemetry/explain (SP-212, #119).
-   * Degraded/neural paths set currentRoutePath explicitly; other stages map
+   * Degraded/neural paths set context.routePath explicitly; other stages map
    * to heuristic (deterministic rules) or safe_default (fallback stage).
    */
   private resolveRoutePathTelemetry(decision: RoutingDecision): {
     routePath: RoutePath;
     routePathConfidence: number | null;
   } {
-    if (this.currentRoutePath !== null) {
+    const ctx = this.requireRouteContext();
+    if (ctx.routePath !== null) {
       return {
-        routePath: this.currentRoutePath,
-        routePathConfidence: this.currentRoutePathConfidence,
+        routePath: ctx.routePath,
+        routePathConfidence: ctx.routePathConfidence,
       };
     }
 
@@ -631,89 +587,31 @@ export class RouterPipeline {
     request: RoutingRequest,
     elapsedMs: number,
   ): RoutingDecision {
-    const context = this.buildRoutingContext(request);
+    const context = this.requireRouteContext();
     if (shouldAttemptContextOverflowFallback(context)) {
       return buildContextOverflowFallbackDecision(context, elapsedMs);
     }
     return buildSafeDefaultFallbackDecision(context, elapsedMs);
   }
 
-  // ─── RoutingContext seam (SP-272 → SP-273/SP-274) ──────────────────────────
+  // ─── RoutingContext (sole per-route state) ─────────────────────────────────
 
-  /** Snapshot the per-route shared context (SP-272 seam for SP-273/SP-274). */
-  private buildRoutingContext(request: RoutingRequest): RoutingContext {
-    return {
-      request,
-      options: this.options,
-      fleet: this.activeFleet,
-      fullFleet: this.fullFleet,
-      hardwareResult: this.currentHardwareResult,
-      triageResult: this.currentTriageResult,
-      hydraResult: this.currentHydraResult,
-      clusterMatch: this.currentClusterMatch,
-      tierHint: this.currentTierHint,
-      tierHintReasonCode: this.currentTierHintReasonCode,
-      lowIntensityScore: this.currentLowIntensityScore,
-      pSuccessCheap: this.currentPSuccessCheap,
-      pSuccessRaw: this.currentPSuccessRaw,
-      pSuccessCalibrated: this.currentPSuccessCalibrated,
-      pSuccessAlpha: this.currentPSuccessAlpha,
-      expectedCostByTier: this.currentExpectedCostByTier,
-      localEligibleReason: this.currentLocalEligibleReason,
-      contextFitRejected: this.currentContextFitRejected,
-      contextFitViableCount: this.currentContextFitViableCount,
-      contextOverflowTriggered: this.contextOverflowTriggered,
-      contextOverflowPreferredProvider: this.contextOverflowPreferredProvider,
-      breakevenReason: this.currentBreakevenReason,
-      planningDelegate: this.currentPlanningDelegate,
-      localZeroGateSkipReasons: this.currentLocalZeroGateSkipReasons,
-      routePath: this.currentRoutePath,
-      routePathConfidence: this.currentRoutePathConfidence,
-      prewarmOutcome: this.currentPrewarmOutcome,
-    };
+  private requireRouteContext(): RoutingContext {
+    if (this.routeContext === null) {
+      throw new Error('RouterPipeline.routeContext missing outside exclusive route()');
+    }
+    return this.routeContext;
   }
 
   /**
-   * Run an extracted PipelineStage against a snapshot of the shared
-   * RoutingContext, then sync context writes back to the per-route fields
-   * (SP-272 seam). No behavior change.
+   * Run an extracted PipelineStage against the sole per-route RoutingContext.
+   * Stages mutate the context in place — no dual-state sync.
    */
   private async runStageWithContext(
     stage: PipelineStage,
-    request: RoutingRequest,
+    _request: RoutingRequest,
   ): Promise<StageResult> {
-    const context = this.buildRoutingContext(request);
-    const result = await stage.run(context);
-    this.syncRoutingContext(context);
-    return result;
-  }
-
-  /** Sync all mutable RoutingContext fields back to the per-route fields. */
-  private syncRoutingContext(context: RoutingContext): void {
-    this.activeFleet = context.fleet;
-    this.currentHardwareResult = context.hardwareResult;
-    this.currentTriageResult = context.triageResult;
-    this.currentHydraResult = context.hydraResult;
-    this.currentClusterMatch = context.clusterMatch;
-    this.currentTierHint = context.tierHint;
-    this.currentTierHintReasonCode = context.tierHintReasonCode;
-    this.currentLowIntensityScore = context.lowIntensityScore;
-    this.currentPSuccessCheap = context.pSuccessCheap;
-    this.currentPSuccessRaw = context.pSuccessRaw;
-    this.currentPSuccessCalibrated = context.pSuccessCalibrated;
-    this.currentPSuccessAlpha = context.pSuccessAlpha;
-    this.currentExpectedCostByTier = context.expectedCostByTier;
-    this.currentLocalEligibleReason = context.localEligibleReason;
-    this.currentContextFitRejected = context.contextFitRejected;
-    this.currentContextFitViableCount = context.contextFitViableCount;
-    this.contextOverflowTriggered = context.contextOverflowTriggered;
-    this.contextOverflowPreferredProvider = context.contextOverflowPreferredProvider;
-    this.currentBreakevenReason = context.breakevenReason;
-    this.currentPlanningDelegate = context.planningDelegate;
-    this.currentLocalZeroGateSkipReasons = context.localZeroGateSkipReasons;
-    this.currentRoutePath = context.routePath;
-    this.currentRoutePathConfidence = context.routePathConfidence;
-    this.currentPrewarmOutcome = context.prewarmOutcome;
+    return stage.run(this.requireRouteContext());
   }
 
   // ─── Stage wrappers (SP-273/SP-274, #143) ──────────────────────────────────

@@ -34,10 +34,11 @@ import type {
 /**
  * Shared per-route state handed to every {@link PipelineStage}.
  *
- * Replaces the `RouterPipeline.current*` transient fields as the single
+ * Replaces the former `RouterPipeline.current*` dual-state as the single
  * source of truth for cross-stage data flow. One context exists per
- * `route()` execution; the orchestrator resets it between routes (route()
- * calls are already single-flight serialized, SP-230).
+ * `route()` execution; the orchestrator creates it at route start and drops
+ * it when the exclusive route finishes (route() calls are already
+ * single-flight serialized, SP-230).
  *
  * Mutability contract:
  * - `request`, `options`, and `fullFleet` are immutable for the route.
@@ -118,6 +119,47 @@ export interface RoutingContext {
 
   /** Speculative prewarm outcome for explain/telemetry (SP-217, #117). */
   prewarmOutcome: PrewarmOutcome | null;
+}
+
+/**
+ * Create a fresh per-route {@link RoutingContext} (sole source of truth).
+ * `fleet` and `fullFleet` start as the same prioritized snapshot; `context_fit`
+ * may later narrow `fleet` while overflow escalation still reads `fullFleet`.
+ */
+export function createRoutingContext(args: {
+  readonly request: RoutingRequest;
+  readonly options: PipelineOptions;
+  readonly fleet: readonly ModelProfile[];
+}): RoutingContext {
+  return {
+    request: args.request,
+    options: args.options,
+    fleet: args.fleet,
+    fullFleet: args.fleet,
+    hardwareResult: 'disabled',
+    triageResult: null,
+    hydraResult: null,
+    clusterMatch: null,
+    tierHint: null,
+    tierHintReasonCode: null,
+    lowIntensityScore: null,
+    pSuccessCheap: null,
+    pSuccessRaw: null,
+    pSuccessCalibrated: null,
+    pSuccessAlpha: null,
+    expectedCostByTier: null,
+    localEligibleReason: null,
+    contextFitRejected: [],
+    contextFitViableCount: 0,
+    contextOverflowTriggered: false,
+    contextOverflowPreferredProvider: null,
+    breakevenReason: null,
+    planningDelegate: null,
+    localZeroGateSkipReasons: [],
+    routePath: null,
+    routePathConfidence: null,
+    prewarmOutcome: null,
+  };
 }
 
 /**

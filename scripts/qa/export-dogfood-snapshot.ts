@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 /**
  * Export dataset + telemetry-contrib from the local SQLite store and print
- * labeled economical-tier counts for the #95 / #110 gather window.
+ * labeled economical-tier + triage-trainable counts for the #95 / #110 gather
+ * window.
+ *
+ * Exit codes:
+ *   0 — labeled_econ floor (≥30) and triage floor (≥50) both met
+ *   2 — labeled_econ floor unmet
+ *   3 — labeled_econ met but triage_trainable floor unmet
  *
  * Usage:
  *   npx tsx scripts/qa/export-dogfood-snapshot.ts [--limit 200] [--tag final]
@@ -73,7 +79,13 @@ async function main(): Promise<void> {
     };
 
     console.log(JSON.stringify(summary, null, 2));
-    process.exit(labeled.floor_met ? 0 : 2);
+    if (!labeled.floor_met) {
+      process.exit(2);
+    }
+    if (!labeled.triage_floor_met) {
+      process.exit(3);
+    }
+    process.exit(0);
   } finally {
     store.close();
   }

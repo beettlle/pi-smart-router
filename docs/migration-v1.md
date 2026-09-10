@@ -72,7 +72,7 @@ The `1.0.0` train restructured the routing pipeline internals with **zero routin
 
 | Change | Where | Before → after |
 |--------|-------|----------------|
-| Stage contract + shared context | `src/domain/pipeline/pipeline-stage.ts` | Stages implemented `PipelineStage` reading/writing a per-route `RoutingContext` instead of private orchestrator fields; one context per `route()` (calls are single-flight serialized, SP-230) |
+| Stage contract + shared context | `src/domain/pipeline/pipeline-stage.ts` | Stages implement `PipelineStage` against a per-route `RoutingContext` as the **sole** cross-stage state (dual-state `current*` sync removed); one context per `route()` (single-flight serialized, SP-230) |
 | Stage extraction | `src/domain/pipeline/*-stage.ts` | The ~2103-line `router-pipeline.ts` god file became a ~810-line orchestrator plus ten extracted stage modules (the remaining stages — `loop_escalation`, `triage_cloud_fallback` — still run in the orchestrator); stage order is defined by `PIPELINE_STAGE_ORDER` (`hardware_probe` → `loop_escalation` → `turn_envelope` → `context_fit` → `low_intensity` → `session_pin` → `triage` → `local_zero` → `triage_cloud_fallback` → `hydra_match` → `safe_default` → `context_overflow_fallback`) |
 | Domain ports | `src/domain/ports/` | `HardwareProbePort`, `LocalRuntimePort`, `TelemetryEmitterPort` (+ `RoutingCostEstimator` seam) — **domain owns the contracts, infrastructure implements them**. The pure policy kernels (probe thresholds, ping orchestration, observability builders) moved into `src/domain/`; impure host adapters stay in `src/infrastructure/` |
 | Telemetry split | `src/infrastructure/telemetry/` | The telemetry module split into `routing-telemetry.ts`, `pin-economics-telemetry.ts`, `planning-delegate-telemetry.ts`, `telemetry-scalar-fields.ts`, `telemetry-limits.ts` |
@@ -81,6 +81,23 @@ The `1.0.0` train restructured the routing pipeline internals with **zero routin
 ### Import-path stability
 
 Old import paths from the pre-split modules **continue to resolve** — the infrastructure modules re-export the port symbols, so existing deep imports do not break. That said, deep imports into `src/**` internals remain outside the stability surface (see below); prefer the public exports.
+
+### Composition roots: library `createRouter` vs pi extension
+
+Two composition roots wire the same pipeline. They are **not** equivalent defaults:
+
+| Root | Entry | What `GatewayDispatch` / `RouterPipeline` get by default |
+|------|-------|----------------------------------------------------------|
+| **Pi extension (supported product path)** | `.pi/extensions/smart-router/` → `createDispatchOptions()` in `fleet-bootstrap.ts` | Full operator wiring: `hardwareConfig` + `systemInfoProvider` (hardware probe), `telemetryEmitter` (store-backed), HyDRA matcher when available, session pinner, rate limiter, SAAR / loop-escalation / planning-delegate config |
+| **npm library (catalog / embedder path)** | `createRouter()` → `createRouterFromCatalog()` → `createRouterFromFleet()` → `new GatewayDispatch(...)` | Catalog fleet load only. Constructor defaults today: **`costEstimator`** + **`localRuntime`**. Hardware probe stays **disabled** and telemetry is **opt-in** unless you pass `GatewayDispatchOptions` / `PipelineOptions` yourself |
+
+**Operator guidance**
+
+- Prefer the **pi extension** for production routing inside pi (`pi install` / project-local extension). That is the supported composition root for hardware readiness, telemetry persistence, and the stream/delegation product surface.
+- Treat bare `createRouter()` / `createRouterFromFleet()` as a **catalog + routing-core** API for tests, custom hosts, and embedders who supply their own ports. Passing only a fleet path does **not** silently enable hardware probe or store telemetry.
+- To get extension-like probe/telemetry on the library path, pass the ports explicitly on `createRouterFromFleet(fleet, options)` (same option bag as `GatewayDispatchOptions`), or keep using the extension.
+
+This is intentional documentation of the composition split from the #143 ports inversion — not a silent capability loss on the extension path.
 
 ## Shadow dogfood → calibration behavioral path
 
@@ -132,7 +149,7 @@ To keep expectations matched to shipped behavior:
 
 - **Encoder defaults are unchanged.** MiniLM remains the default encoder; `granite` stays opt-in trial; `modernbert_k4` stays **off** by default — [#96](https://github.com/beettlle/pi-smart-router/issues/96) go/no-go evidence ([SP-204 artifact](../spine-tasks/_authoring/release-v0.11.0/encoder-gonogo-artifact.md), [SP-219 A/B](../spine-tasks/_authoring/release-v0.16.0/modernbert-k4-top1-artifact.md)) recommends keeping the default until trained heads exist. The gate is **not measurable as flipped**, and this guide does not claim it.
 - **Frugality defaults are kept** — the #95 human dogfood floor was unmet at release; no relaxation shipped.
-- **The extension vs library capability gap** (stream failover loop, planning delegate spawn, headroom escalation, quota reaction) remains extension-only pending [#149](https://github.com/beettlle/pi-smart-router/issues/149).
+- **The extension vs library capability gap** (stream failover loop, planning delegate spawn, headroom escalation, quota reaction, **and default hardware/telemetry wiring**) remains extension-only pending [#149](https://github.com/beettlle/pi-smart-router/issues/149). See [Composition roots](#composition-roots-library-createrouter-vs-pi-extension).
 - **Toolchain majors are deferred** — `better-sqlite3` v13 ([#162](https://github.com/beettlle/pi-smart-router/issues/162)), TS7/vitest4 ([#163](https://github.com/beettlle/pi-smart-router/issues/163)), ESLint flat config ([#157](https://github.com/beettlle/pi-smart-router/issues/157)) stay on current ranges.
 - **Absolute release gates are unchanged** — nothing in the 1.0 train edits `config/release-gates.json`.
 

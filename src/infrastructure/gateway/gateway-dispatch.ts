@@ -182,11 +182,11 @@ export class GatewayDispatch {
 
   constructor(fleet: readonly ModelProfile[], options?: GatewayDispatchOptions) {
     this.fleet = fleet;
-    // SP-275 (#143) composition root: wire the infrastructure defaults for
-    // the pipeline's domain ports — the routing cost estimator (pricing
-    // resolution stays infra until the pricing port phase) and the
-    // Node-fetch-bound local runtime adapter. Behavior-identical to the
-    // pre-inversion direct calls.
+    // SP-275 (#143) library composition root: default only costEstimator +
+    // localRuntime. Hardware probe, systemInfoProvider, and telemetryEmitter
+    // stay caller-supplied — the pi extension wires those in
+    // fleet-bootstrap createDispatchOptions(). Spreading `options` first lets
+    // callers override the two defaults.
     this.pipeline = new RouterPipeline(fleet, {
       ...options,
       costEstimator: options?.costEstimator ?? defaultRoutingCostEstimator,

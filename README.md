@@ -96,7 +96,7 @@ Then in pi:
 npm install pi-smart-router
 ```
 
-Use `createRouter()` / `createRouterFromFleet()` for programmatic integration without the pi extension. See [Optional: YAML fleet (library API)](#optional-yaml-fleet-library-api).
+Use `createRouter()` / `createRouterFromFleet()` for programmatic integration without the pi extension. That path is the **catalog / routing-core** composition root (not full extension wiring). See [Library vs extension](#library-vs-extension) and [Optional: YAML fleet (library API)](#optional-yaml-fleet-library-api).
 
 ### From source (contributors)
 
@@ -263,7 +263,7 @@ npm run verify:ci
 
 ## Concurrency contract
 
-`RouterPipeline.route()` calls on a single router instance are **single-flight**: concurrent calls are serialized internally (SP-230, [#141](https://github.com/beettlle/pi-smart-router/issues/141)). The pipeline keeps per-route transient state on instance fields while stages run, so overlapping executions are queued rather than interleaved — each queued call waits at most one routing latency. This applies to `createRouter()` / `createRouterFromFleet()` handles: a shared `router.dispatch` is safe to call concurrently, and serialization does not change routing policy outcomes. For parallel routing throughput, create separate router instances.
+`RouterPipeline.route()` calls on a single router instance are **single-flight**: concurrent calls are serialized internally (SP-230, [#141](https://github.com/beettlle/pi-smart-router/issues/141)). Each exclusive route owns one per-route `RoutingContext`; overlapping executions are queued rather than interleaved — each queued call waits at most one routing latency. This applies to `createRouter()` / `createRouterFromFleet()` handles: a shared `router.dispatch` is safe to call concurrently, and serialization does not change routing policy outcomes. For parallel routing throughput, create separate router instances.
 
 ## Library vs extension
 
@@ -271,8 +271,8 @@ pi-smart-router ships in two shapes, and they are **not** feature-identical ([#1
 
 | Path | What you get |
 |------|--------------|
-| **Pi extension** (`pi install npm:pi-smart-router`, or project-local `.pi/extensions/smart-router/` when developing from clone) | The full product — the routing pipeline **plus** the stream-level behaviors below |
-| **npm library** (`createRouter()` / `createRouterFromFleet()` / `GatewayDispatch`) | The routing core — the 12-stage pipeline, fleet mapping, telemetry, and gateway health/failover *selection*. Stream-level behaviors are stubbed or left to your embedder loop |
+| **Pi extension** (`pi install npm:pi-smart-router`, or project-local `.pi/extensions/smart-router/` when developing from clone) — **supported product composition root** | The full product — the routing pipeline **plus** the stream-level behaviors below, with hardware probe + store-backed telemetry wired via `createDispatchOptions()` in `.pi/extensions/smart-router/fleet-bootstrap.ts` |
+| **npm library** (`createRouter()` / `createRouterFromFleet()` / `GatewayDispatch`) — **catalog / embedder composition root** | The routing core — the 12-stage pipeline, fleet mapping, gateway health/failover *selection*, and constructor defaults for **`costEstimator` + `localRuntime` only**. Hardware probe stays disabled and telemetry is opt-in unless you pass those ports. Stream-level behaviors are stubbed or left to your embedder loop |
 
 ### Extension-only capabilities
 
@@ -291,8 +291,8 @@ These behaviors run in `.pi/extensions/smart-router/` and have **no equivalent i
 
 ### Recommended integration path
 
-- **pi users:** install the **extension** (`pi install npm:pi-smart-router`). It is the full product — everything in the table above works out of the box, including failover, delegate spawn, headroom escalation, and quota reaction.
-- **npm embedders:** you get the **routing core** (12-stage pipeline, fleet mapping, telemetry, gateway health tracking, failover *selection*). Plan to implement your own stream delegation, failover iteration, headroom checks, and planning-delegate spawn around the decisions the pipeline returns — or track [#149](https://github.com/beettlle/pi-smart-router/issues/149) (**extension public facade**), the migration plan for exposing the extension's stream/delegation surface as supported library API so this gap closes over time. Until #149 lands, the extension modules also import `src/**` internals directly, so deep imports into `src/` are not a stable API. See [docs/extension-package-boundary.md](docs/extension-package-boundary.md) for the facade vs internal-API boundary, the deep-import lint guard, and the extension coverage gate.
+- **pi users:** install the **extension** (`pi install npm:pi-smart-router`). It is the supported composition root — everything in the table above works out of the box, including failover, delegate spawn, headroom escalation, quota reaction, hardware probe, and store-backed routing telemetry.
+- **npm embedders:** you get the **routing core** (12-stage pipeline, fleet mapping, gateway health tracking, failover *selection*). Bare `createRouter()` does **not** wire hardware probe or telemetry by default — pass `GatewayDispatchOptions` on `createRouterFromFleet(fleet, options)` when you need those ports. Plan to implement your own stream delegation, failover iteration, headroom checks, and planning-delegate spawn around the decisions the pipeline returns — or track [#149](https://github.com/beettlle/pi-smart-router/issues/149) (**extension public facade**), the migration plan for exposing the extension's stream/delegation surface as supported library API so this gap closes over time. Until #149 lands, the extension modules also import `src/**` internals directly, so deep imports into `src/` are not a stable API. See [docs/extension-package-boundary.md](docs/extension-package-boundary.md) for the facade vs internal-API boundary, the deep-import lint guard, and the extension coverage gate. See also [Composition roots in the 1.0 migration guide](docs/migration-v1.md#composition-roots-library-createrouter-vs-pi-extension).
 
 ```text
 pi extension path (full product)        npm library path (routing core)
@@ -325,7 +325,9 @@ To refresh after auth or settings changes, restart pi or `/reload` extensions.
 
 ## Optional: YAML fleet (library API)
 
-For programmatic integration **without** the pi extension, load a static fleet catalog from YAML and route via `GatewayDispatch.dispatch()`:
+For programmatic integration **without** the pi extension, load a static fleet catalog from YAML and route via `GatewayDispatch.dispatch()`.
+
+This path is **catalog-oriented**: `createRouter()` loads `models.yaml` and constructs `GatewayDispatch` with library defaults (`costEstimator` + `localRuntime`). It does **not** call the extension's `createDispatchOptions()` — so hardware probe remains disabled and no store-backed `telemetryEmitter` is attached unless you pass those options yourself. Prefer the [pi extension](#library-vs-extension) when you want the full product composition root.
 
 ```bash
 cp config/models.yaml.example ./config/models.yaml
@@ -333,13 +335,16 @@ cp config/models.yaml.example ./config/models.yaml
 ```
 
 ```typescript
-import { createRouter } from 'pi-smart-router';
+import { createRouter, createRouterFromFleet } from 'pi-smart-router';
 
 const router = createRouter({ modelsPath: './config/models.yaml' });
 router.register(piExtensionHooks); // lifecycle only: compaction + model override
 
 const decision = await router.dispatch.dispatch(routingRequest);
 // Embedder forwards inference to decision.selected_model_id
+
+// Optional: wire probe/telemetry yourself (same options bag as GatewayDispatch)
+// createRouterFromFleet(fleet, { systemInfoProvider, hardwareConfig, telemetryEmitter, ... })
 ```
 
 ### Embedder integration paths

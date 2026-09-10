@@ -1,15 +1,28 @@
 #!/usr/bin/env bash
 # Automated second-window dogfood gather for #95 / #110.
 # Runs matrix packs via `pi -p`, records honest feedback_good/bad outcomes into
-# state.db, then exports dataset + telemetry-contrib and prints labeled_econ counts.
+# state.db, then exports dataset + telemetry-contrib and prints labeled_econ +
+# triage-trainable counts.
+#
+# Packs:
+#   A–E — original quality/diversity matrix (July 2026 gather)
+#   T   — trivial keyword prompts (triage_verdict=trivial for trainTriageThreshold)
+#   X   — complex keyword prompts (triage_verdict=complex)
+#
+# Labels are scripted from pack intent / exit heuristics (not an LLM judge).
+# smart-router/auto may select different models across packs — that is routing,
+# not cross-model grading. HyDRA projection still needs 384-dim embeddings in
+# contrib rows (not privacy-safe dogfood JSONL today) — leave hydra untrained
+# unless a separate embedding export path exists.
 #
 # Requires: pi, sqlite3, node, SMART_ROUTER_DATASET=1 (set by this script).
 # Never invents labels for turns that did not run — only records outcomes for
 # successful routing turns that actually produced request_ids.
 #
 # Exit codes:
-#   0 — labeled economical floor (≥30) met after export
-#   2 — floor not met
+#   0 — labeled economical floor (≥30) and triage floor (≥50) both met
+#   2 — labeled_econ floor unmet
+#   3 — labeled_econ met but triage_trainable floor unmet
 #   1 — tool / setup failure
 
 set -euo pipefail
@@ -152,7 +165,7 @@ done
 # Mid-count after A+B
 echo
 echo "==> Mid-count after Packs A+B (DB outcomes + re-export probe)"
-npx --yes tsx "$ROOT/scripts/qa/export-dogfood-snapshot.ts" --limit 200 --tag mid-ab >"$LOG_DIR/mid-ab-export.txt" 2>&1 || true
+npx --yes tsx "$ROOT/scripts/qa/export-dogfood-snapshot.ts" --limit 10000 --tag mid-ab >"$LOG_DIR/mid-ab-export.txt" 2>&1 || true
 cat "$LOG_DIR/mid-ab-export.txt" || true
 
 # --- Pack C: planning ---
@@ -195,14 +208,92 @@ for prompt in "${E_PROMPTS[@]}"; do
   fi
 done
 
+# --- Pack T: trivial keyword prompts (triage_verdict=trivial; offline-validated) ---
+# Targets trainTriageThreshold floor (≥50 trivial|complex + cyclomatic_score).
+T_PROMPTS=(
+  "Please lint this TypeScript file and fix eslint spacing only. No architecture changes."
+  "Format package.json with prettier indentation. Do not refactor."
+  "Rename the unused variable foo to bar and remove unused imports. No tools needed beyond read."
+  "Fix whitespace and semicolon style only in one short function. Simple formatting task."
+  "Sort imports and fix linting warnings about unused import. No redesign."
+  "Correct a typo in a comment and fix indentation with prettier. Keep behavior identical."
+  "Add export for helper formatDate only; remove unused import. Boilerplate change."
+  "Move file scripts/qa/tmp-note.md is not needed — instead fix spacing in a one-line comment."
+  "Uncomment a single eslint-disable line and fix whitespace. Template-level edit."
+  "Simple test: assert 1+1===2 in one line. Formatting only, no architecture."
+  "Fix import path typo and lint unused variable. No refactoring."
+  "Apply prettier formatting to README.md heading spacing. No content rewrite."
+  "Remove unused import from a tiny util and fix indent. Lint-only."
+  "Rename indent helper to indentationHelper. No behavior change."
+  "Fix eslint prettier conflict on spacing in one object literal."
+  "Boilerplate: add a one-line template comment with correct indentation."
+  "Format a JSON snippet with prettier. Do not change keys."
+  "Lint-only: remove unused variable leftover from a rename."
+  "Fix semicolon and spacing on a single return statement."
+  "Sort imports alphabetically in one file. No other edits."
+  "Correct typo in function name comment; keep code as-is."
+  "Add missing export keyword to an already-written helper. Boilerplate."
+  "Remove unused eslint-disable and fix lint formatting."
+  "Indentation fix for a nested if block; no logic change."
+  "Simple formatting pass: prettier + eslint autofix for spacing."
+)
+
+i=0
+for prompt in "${T_PROMPTS[@]}"; do
+  i=$((i + 1))
+  run_turn "T$i" "good" "--no-tools" "$prompt"
+done
+
+# --- Pack X: complex keyword prompts (triage_verdict=complex; offline-validated) ---
+X_PROMPTS=(
+  "Architect a distributed microservice migration with concurrency-safe deadlock avoidance. Plan only."
+  "Debug a race condition in concurrent infrastructure optimization for scalability. Detailed steps."
+  "Refactor the routing architecture for distributed queue migration without downtime. Plan only."
+  "Design concurrency controls to prevent deadlock during a multi-service refactor. Architecture notes."
+  "Propose infrastructure optimization for microservice scalability under concurrent load."
+  "Plan a migration that rewrites distributed locking to eliminate race conditions."
+  "Architecture review: refactor hydra matching for concurrent request scalability."
+  "Debug intermittent deadlock in concurrent session pinning across microservices."
+  "Optimize distributed telemetry ingestion for scalability; include concurrency risks."
+  "Migrate calibration train path to concurrent workers without race conditions. Plan."
+  "Architect failover infrastructure for multi-region routing under concurrency pressure."
+  "Refactor pipeline stages for distributed tracing; address deadlock and race condition risks."
+  "Complex debugging: concurrency bug causing race condition in session pin upgrades."
+  "Scalability architecture for hydra embedding cache across microservices. Plan only."
+  "Plan infrastructure migration of SQLite store to distributed durable queue."
+  "Design concurrent batch orchestration that avoids deadlock during gate approval."
+  "Optimize routing calibration training for distributed CPU with concurrency limits."
+  "Architecture spike: refactor triage+hydra boundary for microservice deployment."
+  "Debug distributed race condition between telemetry write and dataset export."
+  "Propose concurrent-safe migration of release gates evaluation across workers."
+  "Infrastructure plan: scalability of ONNX embedding under concurrent hydra matches."
+  "Refactor circuit-breaker architecture for distributed provider failover. Deep plan."
+  "Concurrency design for multi-lane spine integrate without deadlock."
+  "Architect optimization of quota window feed under concurrent stream failures."
+  "Migration plan: distribute modernbert inference; address race conditions."
+  "Complex architecture: concurrent soft-feed runs with deadlock-free archival."
+)
+
+i=0
+for prompt in "${X_PROMPTS[@]}"; do
+  i=$((i + 1))
+  run_turn "X$i" "good" "--no-tools" "$prompt"
+done
+
 echo
-echo "==> Final export + labeled_econ count"
+echo "==> Mid-count after Packs T+X (triage trainable probe)"
+npx --yes tsx "$ROOT/scripts/qa/export-dogfood-snapshot.ts" --limit 10000 --tag mid-tx >"$LOG_DIR/mid-tx-export.txt" 2>&1 || true
+cat "$LOG_DIR/mid-tx-export.txt" || true
+
+echo
+echo "==> Final export + labeled_econ + triage counts"
 set +e
-npx --yes tsx "$ROOT/scripts/qa/export-dogfood-snapshot.ts" --limit 200 --tag final | tee "$LOG_DIR/final-export.txt"
+npx --yes tsx "$ROOT/scripts/qa/export-dogfood-snapshot.ts" --limit 10000 --tag final | tee "$LOG_DIR/final-export.txt"
 EXPORT_EC=${PIPESTATUS[0]}
 set -e
 
 echo
 echo "Gather logs: $LOG_DIR"
-echo "Next: npm run qa:shadow-dogfood && post #95 sign-off"
+echo "Exit semantics: 0=econ+triage floors, 2=econ unmet, 3=triage unmet (hydra stays honest-untrained)"
+echo "Next: aggregate → train-calibration → verify; npm run qa:shadow-dogfood"
 exit "$EXPORT_EC"

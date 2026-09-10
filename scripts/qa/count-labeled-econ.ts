@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 /**
- * Count labeled economical-tier rows in a dogfood dataset JSONL export.
- * Used by the #95 / #110 gather window (docs/qa/shadow-dogfood-protocol.md).
+ * Count labeled economical-tier rows (and triage-trainable rows) in a dogfood
+ * dataset JSONL export. Used by the #95 / #110 gather window
+ * (docs/qa/shadow-dogfood-protocol.md).
+ *
+ * Triage training (`trainTriageThreshold`) only counts rows with
+ * triage_verdict trivial|complex plus a numeric triage_cyclomatic_score —
+ * ambiguous verdicts are skipped.
  *
  * Usage:
  *   npx tsx scripts/qa/count-labeled-econ.ts path/to/dataset.jsonl
@@ -13,6 +18,8 @@ import { resolve } from 'node:path';
 
 const ECON_TIERS = new Set(['economical-cloud', 'zero-tier']);
 const FLOOR = 30;
+const TRIAGE_FLOOR = 50;
+const TRIAGE_TRAINABLE = new Set(['trivial', 'complex']);
 
 export interface LabeledEconCount {
   readonly path: string;
@@ -25,6 +32,13 @@ export interface LabeledEconCount {
   readonly need: number;
   readonly floor: number;
   readonly floor_met: boolean;
+  readonly triage_trainable: number;
+  readonly triage_trivial: number;
+  readonly triage_complex: number;
+  readonly triage_ambiguous: number;
+  readonly triage_floor: number;
+  readonly triage_need: number;
+  readonly triage_floor_met: boolean;
   readonly signals: Readonly<Record<string, number>>;
 }
 
@@ -41,6 +55,10 @@ export function countLabeledEcon(jsonlPath: string): LabeledEconCount {
   let bad = 0;
   let unlabeledEcon = 0;
   let frontierLabeled = 0;
+  let triageTrainable = 0;
+  let triageTrivial = 0;
+  let triageComplex = 0;
+  let triageAmbiguous = 0;
   const signals: Record<string, number> = {};
 
   for (const line of lines) {
@@ -53,6 +71,9 @@ export function countLabeledEcon(jsonlPath: string): LabeledEconCount {
     const isEcon = ECON_TIERS.has(tier);
     const label = row.success_label;
     const hasLabel = typeof label === 'boolean';
+    const verdict = typeof row.triage_verdict === 'string' ? row.triage_verdict : null;
+    const cyclomatic = row.triage_cyclomatic_score;
+    const hasCyclomatic = typeof cyclomatic === 'number' && Number.isFinite(cyclomatic);
 
     if (Array.isArray(row.outcome_signals)) {
       for (const signal of row.outcome_signals) {
@@ -60,6 +81,18 @@ export function countLabeledEcon(jsonlPath: string): LabeledEconCount {
           signals[signal] = (signals[signal] ?? 0) + 1;
         }
       }
+    }
+
+    if (verdict === 'ambiguous') {
+      triageAmbiguous += 1;
+    } else if (verdict === 'trivial') {
+      triageTrivial += 1;
+    } else if (verdict === 'complex') {
+      triageComplex += 1;
+    }
+
+    if (verdict !== null && TRIAGE_TRAINABLE.has(verdict) && hasCyclomatic) {
+      triageTrainable += 1;
     }
 
     if (isEcon && hasLabel) {
@@ -84,6 +117,13 @@ export function countLabeledEcon(jsonlPath: string): LabeledEconCount {
     need: Math.max(0, FLOOR - labeledEcon),
     floor: FLOOR,
     floor_met: labeledEcon >= FLOOR,
+    triage_trainable: triageTrainable,
+    triage_trivial: triageTrivial,
+    triage_complex: triageComplex,
+    triage_ambiguous: triageAmbiguous,
+    triage_floor: TRIAGE_FLOOR,
+    triage_need: Math.max(0, TRIAGE_FLOOR - triageTrainable),
+    triage_floor_met: triageTrainable >= TRIAGE_FLOOR,
     signals,
   };
 }
@@ -97,7 +137,13 @@ function main(argv: readonly string[]): void {
 
   const result = countLabeledEcon(pathArg);
   console.log(JSON.stringify(result, null, 2));
-  process.exit(result.floor_met ? 0 : 2);
+  if (!result.floor_met) {
+    process.exit(2);
+  }
+  if (!result.triage_floor_met) {
+    process.exit(3);
+  }
+  process.exit(0);
 }
 
 const entry = process.argv[1] ?? '';

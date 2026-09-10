@@ -46,13 +46,19 @@ export interface RouterHandle {
 /**
  * Create a router handle from the default fleet catalog (T022).
  *
+ * Composition root: **catalog / library path**. Loads YAML fleet and builds
+ * `GatewayDispatch` with library defaults only (`costEstimator` +
+ * `localRuntime`). Hardware probe and store-backed telemetry are **not**
+ * wired here — pass them via `createRouterFromFleet(fleet, options)`, or use
+ * the pi extension (`createDispatchOptions` in fleet-bootstrap) for the
+ * supported full-product composition root. See `docs/migration-v1.md`.
+ *
  * Concurrency contract (SP-230, #141): the underlying `RouterPipeline`
- * serializes concurrent `route()` calls (single-flight) because per-route
- * transient state lives on instance fields while stages run. A shared handle
- * is therefore safe under overlapping requests — a concurrent caller queues
- * behind the in-flight route for at most one routing latency, and routing
- * policy outcomes are unchanged. Create separate handles for parallel
- * routing throughput.
+ * serializes concurrent `route()` calls (single-flight) because each route
+ * owns one per-route `RoutingContext`. A shared handle is safe under
+ * overlapping requests — a concurrent caller queues behind the in-flight
+ * route for at most one routing latency, and routing policy outcomes are
+ * unchanged. Create separate handles for parallel routing throughput.
  */
 export function createRouter(options?: RouterFactoryOptions): RouterHandle {
   const catalog = loadModels(
@@ -70,6 +76,13 @@ export interface CreateRouterFromFleetOptions extends GatewayDispatchOptions {
   readonly lifecycleHookState?: LifecycleHookState;
 }
 
+/**
+ * Create a router handle from an in-memory fleet.
+ *
+ * Optional `options` are forwarded to `GatewayDispatch` (pipeline ports,
+ * session pinner, HyDRA matcher, telemetry emitter, …). Omitting them keeps
+ * the library catalog defaults — not the pi extension wiring.
+ */
 export function createRouterFromFleet(
   fleet: ModelProfile[],
   options?: CreateRouterFromFleetOptions,
