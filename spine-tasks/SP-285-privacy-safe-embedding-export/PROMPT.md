@@ -47,7 +47,7 @@ Add opt-in privacy-safe embedding export + prompt_length completeness so HyDRA â
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck` |
-| fileScopeMustChange | (see Must change in File Scope) |
+| fileScopeMustChange | `src/`, `scripts/` |
 | completionCriteria | Mission outcomes met; STATUS honest |
 
 ## Steps

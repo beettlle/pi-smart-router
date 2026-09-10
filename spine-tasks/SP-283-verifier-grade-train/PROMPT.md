@@ -48,7 +48,7 @@ Aggregate + train p_success/isotonic/triage on verifier-grade labels only. Must 
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run routing:verify-calibration -- --skip-embed` |
-| fileScopeMustChange | (see Must change in File Scope) |
+| fileScopeMustChange | `scripts/`, `spine-tasks/_authoring/release-v1.1.0/` |
 | completionCriteria | Mission outcomes met; STATUS honest |
 
 ## Steps

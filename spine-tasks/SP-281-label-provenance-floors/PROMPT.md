@@ -47,7 +47,7 @@ Add label provenance tagging (`human_feedback` | `llm_judge` | `scripted_intent`
 | Field | Value |
 |-------|-------|
 | testCommand | `npx vitest run tests/unit/p-success-classifier.test.ts` |
-| fileScopeMustChange | (see Must change in File Scope) |
+| fileScopeMustChange | `scripts/qa/dogfood-gather.sh`, `scripts/calibration-aggregate.ts` |
 | completionCriteria | Mission outcomes met; STATUS honest |
 
 ## Steps

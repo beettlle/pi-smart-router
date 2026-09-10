@@ -46,7 +46,7 @@ If hard gates pass, ship candidate `config/routing-calibration.json` + `config/p
 | Field | Value |
 |-------|-------|
 | testCommand | `SMART_ROUTER_SKIP_LIVE_BENCHMARK_REFRESH=1 npm run release:check` |
-| fileScopeMustChange | (see Must change in File Scope) |
+| fileScopeMustChange | `config/routing-calibration.json`, `config/p-success-weights.json`, `README.md`, `docs/migration-v1.md` |
 | completionCriteria | Mission outcomes met; STATUS honest |
 
 ## Steps
