@@ -1,0 +1,19 @@
+spine-tasks/SP-280-v101-manifest-scaffold/PROMPT.md
+  s_73aaa01b99b77c::t_82d3d2c14b423b 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a74b8bb864fad8abb1a724dfbe3e1e8c3da98db3",
+  "prompts": {},
+  "sessions": {
+    "s_73aaa01b99b77c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae947e36-a697-4ee4-9394-26f1d7da5e0c",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
