@@ -101,7 +101,7 @@ Spine plan — ids
 7 task(s) · 6 wave(s) · maxParallel 3
 
 Wave 0 · 1 task
-  Lane 1: SP-280 — v1.0.1 manifest scaffold
+  Lane 1: SP-280 — v1.1.0 manifest scaffold
 
 Wave 1 · 2 tasks · 2 lanes in parallel
   Lane 1: SP-281 — label provenance floors

@@ -48,7 +48,7 @@ Write operator notes linking #168–#172 and #110/#95 status. No default flips (
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck` |
-| fileScopeMustChange | (see Must change in File Scope) |
+| fileScopeMustChange | `spine-tasks/_authoring/release-v1.1.0/` |
 | completionCriteria | Mission outcomes met; STATUS honest |
 
 ## Steps
