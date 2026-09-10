@@ -1,4 +1,4 @@
-# Task: SP-280 — v1.0.1 manifest scaffold
+# Task: SP-280 — v1.1.0 manifest scaffold
 
 **Created:** 2026-09-10
 **Size:** S
@@ -11,12 +11,12 @@
 ## Source
 
 - GitHub: beettlle/pi-smart-router#110
-- Release: v1.0.1
-- Manifest: `spine-tasks/_authoring/release-v1.0.1/manifest.md`
+- Release: v1.1.0
+- Manifest: `spine-tasks/_authoring/release-v1.1.0/manifest.md`
 
 ## Mission
 
-Confirm authoring manifest, CONTEXT Next Task ID, and dependencies.json edges for SP-280–SP-286. No product code changes.
+Confirm v1.1.0 authoring manifest, CONTEXT Next Task ID, and dependencies.json edges for SP-280–SP-286. No product code changes.
 
 ## Dependencies
 
@@ -25,7 +25,7 @@ Confirm authoring manifest, CONTEXT Next Task ID, and dependencies.json edges fo
 ## Context to Read First
 
 - `spine-tasks/CONTEXT.md`
-- `spine-tasks/_authoring/release-v1.0.1/manifest.md`
+- `spine-tasks/_authoring/release-v1.1.0/manifest.md`
 - `docs/migration-v1.md` (honest-untrained 1.0 posture)
 - Issue beettlle/pi-smart-router#110
 
@@ -38,7 +38,7 @@ Confirm authoring manifest, CONTEXT Next Task ID, and dependencies.json edges fo
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `spine-tasks/CONTEXT.md`, `spine-tasks/dependencies.json`, `spine-tasks/_authoring/release-v1.0.1/manifest.md` |
+| Must change | `spine-tasks/CONTEXT.md`, `spine-tasks/dependencies.json`, `spine-tasks/_authoring/release-v1.1.0/manifest.md` |
 | Must NOT change | `config/**`, `src/**` |
 
 ## Contract

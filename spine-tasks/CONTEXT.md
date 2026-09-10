@@ -5,7 +5,7 @@
 **Next Task ID:** SP-287
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v1.0.0** package version bumped locally (honest-untrained calibration; publish remains operator). Prior: **v0.22.0** on npm (2026-09-05). **v1.0.0 train** SP-263–SP-279 complete. **Post-1.0 calibration:** SP-280–SP-286 authored under `spine-tasks/_authoring/release-v1.0.1/manifest.md` (GitHub #168–#172, parent #110/#95). Deferred: #96/#167/#162/#163/#157, hardware.
+**Released:** **v1.0.0** package version bumped locally (honest-untrained calibration; publish remains operator). Prior: **v0.22.0** on npm (2026-09-05). **v1.0.0 train** SP-263–SP-279 complete. **Post-1.0 calibration train:** SP-280–SP-286 retargeted to `spine-tasks/_authoring/release-v1.1.0/manifest.md` (v1.1.0 minor; GitHub #168/#169/#170, parent #110). Deferred: #171/#172/#96/#167/#162/#163/#157/#95, hardware.
 
 ---
 

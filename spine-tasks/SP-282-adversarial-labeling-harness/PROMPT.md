@@ -11,8 +11,8 @@
 ## Source
 
 - GitHub: beettlle/pi-smart-router#169
-- Release: v1.0.1
-- Manifest: `spine-tasks/_authoring/release-v1.0.1/manifest.md`
+- Release: v1.1.0
+- Manifest: `spine-tasks/_authoring/release-v1.1.0/manifest.md`
 
 ## Mission
 
@@ -25,7 +25,7 @@ Build adversarial LLM labeling harness: multi-model generate, blinded graders, â
 ## Context to Read First
 
 - `spine-tasks/CONTEXT.md`
-- `spine-tasks/_authoring/release-v1.0.1/manifest.md`
+- `spine-tasks/_authoring/release-v1.1.0/manifest.md`
 - `docs/migration-v1.md` (honest-untrained 1.0 posture)
 - Issue beettlle/pi-smart-router#169
 
