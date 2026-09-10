@@ -35,3 +35,13 @@
 - [x] Update STATUS with evidence — additionally ran full `npm test` per orchestrator instruction: **137 test files / 2177 tests passed**, exit **0** (11.13s). No product code changed; coverage gate N/A (docs-only bookkeeping packet). Mission outcomes met without inventing labels or flipping #96 defaults (v1.0 honest-untrained neutralize untouched in `config/**`; #96 explicitly deferred).
 
 **Plan review note:** Review Level 1 — `spine_review_step` (step 1, plan) returned `skipped` per SP-195: in-worker review spawn blocked by design; batch engine runs final review after `.DONE`.
+
+## Resume Session 2 (2026-09-10) — wrap-up
+
+Prior session ended after `a74b8bb` without `.DONE` (uncommitted sibling-sync files present). Resume actions:
+
+- [x] Committed remainder of main sync `8ca00a7`: SP-281–SP-286 PROMPT `fileScopeMustChange` placeholder → explicit (commit `87a8ddd`; one-line markdown swap each, verbatim from main, zero authorship — mechanical continuation of `a74b8bb`)
+- [x] Re-ran contract testCommand on final tree: `npm run typecheck` → exit 0
+- [x] Re-ran `npm test` on final tree — **137 test files / 2177 tests passed, exit 0** (13.16s, 2026-09-10 15:39)
+
+**Scope note:** SP-281–SP-286 PROMPT files sit outside this packet's listed Must-change paths, but the diffs are byte-identical to main tip `8ca00a7` (verified via `git diff main` — files clean vs main), continue the sync pattern already committed as `a74b8bb`, and touch no Must-NOT-change path (`config/**`, `src/**` untouched). No product code changed (GitNexus impact/detect-changes N/A for markdown-only diffs).
