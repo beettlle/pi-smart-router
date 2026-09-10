@@ -1,5 +1,5 @@
-**Current Step:** Step 1: In progress
-**Status:** In progress
+**Current Step:** Complete (all steps done)
+**Status:** Complete
 **Last Updated:** 2026-09-10
 **Review Level:** 1
 **Review Counter:** 0
@@ -29,7 +29,9 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run contract testCommand
-- [ ] Update STATUS with evidence
+- [x] Run contract testCommand — `npm run typecheck` → `tsc --noEmit` exit **0** (2026-09-10)
+- [x] Update STATUS with evidence — additionally ran full `npm test` per orchestrator instruction: **137 test files / 2177 tests passed**, exit **0** (11.13s). No product code changed; coverage gate N/A (docs-only bookkeeping packet). Mission outcomes met without inventing labels or flipping #96 defaults (v1.0 honest-untrained neutralize untouched in `config/**`; #96 explicitly deferred).
+
+**Plan review note:** Review Level 1 — `spine_review_step` (step 1, plan) returned `skipped` per SP-195: in-worker review spawn blocked by design; batch engine runs final review after `.DONE`.
