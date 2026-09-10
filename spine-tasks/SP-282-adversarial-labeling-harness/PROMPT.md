@@ -47,7 +47,7 @@ Build adversarial LLM labeling harness: multi-model generate, blinded graders, â
 | Field | Value |
 |-------|-------|
 | testCommand | `npx vitest run tests/unit/label-pack-schema.test.ts` |
-| fileScopeMustChange | (see Must change in File Scope) |
+| fileScopeMustChange | `scripts/qa/`, `scripts/calibration/` |
 | completionCriteria | Mission outcomes met; STATUS honest |
 
 ## Steps

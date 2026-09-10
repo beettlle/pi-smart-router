@@ -46,7 +46,7 @@ Confirm v1.1.0 authoring manifest, CONTEXT Next Task ID, and dependencies.json e
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck` |
-| fileScopeMustChange | (see Must change in File Scope) |
+| fileScopeMustChange | `spine-tasks/CONTEXT.md`, `spine-tasks/_authoring/release-v1.1.0/manifest.md` |
 | completionCriteria | Mission outcomes met; STATUS honest |
 
 ## Steps
