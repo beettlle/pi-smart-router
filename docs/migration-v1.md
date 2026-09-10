@@ -3,7 +3,7 @@
 **Audience:** operators running the pi extension and library embedders upgrading from `0.22.x` (or any earlier `0.y.z`).
 **Scope:** what the `1.0.0` release train changed, what you must do, and the SemVer stability policy that starts with it.
 
-`1.0.0` is a **stability marker, not a routing-behavior rewrite**. The 12-stage pipeline, tiers, operator commands, environment variables, and telemetry store are unchanged from `0.22.x`. The release train that produced `1.0.0` shipped behavioral calibration artifacts, an internal pipeline architecture cleanup, and publish hygiene — none of which change routing policy for existing installs.
+`1.0.0` is a **stability marker, not a routing-behavior rewrite**. The 12-stage pipeline, tiers, operator commands, environment variables, and telemetry store are unchanged from `0.22.x`. The release train that produced `1.0.0` shipped **honest calibration defaults** (floors unmet → neutral), an internal pipeline architecture cleanup, publish hygiene, and hard ECE gates that reject Sept-class isotonic collapse — none of which claim proven cheap-tier behavioral routing.
 
 If you are skipping versions, also read the notes for the releases you jumped over (notably the **telemetry-contrib schema v2 session-hash migration** in `v0.21.0` — v1 and v2 export hashes are not comparable; re-baseline, do not mix rows across the version boundary).
 
@@ -36,33 +36,35 @@ No database migrations, no config-file format changes, no session-state changes.
 
 ## Behavioral calibration artifacts (#110)
 
-`1.0.0` is the first release whose checked-in calibration artifacts are trained on **real dogfood behavior** rather than synthetic fixtures. This resolves the long-standing "Partial (B)" posture of SP-206.
+`1.0.0` ships **honest-untrained** calibration defaults. Scripted Sept dogfood gather and the interim hybrid bundle are **not** shipped as trained quality claims. Verifier-graded recalibration remains tracked on [#110](https://github.com/beettlle/pi-smart-router/issues/110).
 
 ### What ships
 
 | Artifact | Contents | Provenance |
 |----------|----------|------------|
-| `config/p-success-weights.json` | Logistic P(success) weights, `trained_sample_count: 32` | Operator's real **July 2026 dogfood aggregate** — privacy-safe feature vectors + outcome labels only, no prompt text |
-| `config/routing-calibration.json` (bundle v2) | P(success) weights + **trained isotonic calibrator** + bootstrap routing centroids | Same aggregate; isotonic holdout ECE **0.0695 raw → 0.0208 calibrated** (fit 26 / holdout 6, 18 knots) |
+| `config/p-success-weights.json` | Logistic P(success) weights, `trained_sample_count: 0` | `neutralized_for_v1_honesty` — structural hints / `P=0.5` at serve time |
+| `config/routing-calibration.json` (bundle v2) | Neutral P(success) + identity isotonic + triage threshold **15** (untrained) + bootstrap centroids | Same neutralize provenance; HyDRA `0/<100` |
 
-The synthetic SP-175 fixture weights are **superseded**. The labeled-sample floor (≥30 economical-tier rows) was met with **32 labeled samples (27 good / 5 bad)**; 47 unlabeled rows were skipped, never coerced. Train/verify evidence: [`spine-tasks/_authoring/release-v1.0.0/calibration-train-note.md`](../spine-tasks/_authoring/release-v1.0.0/calibration-train-note.md).
+Hard train gates (when a future train claims floors met): `holdout_ece_calibrated ≤ holdout_ece_raw`, absolute calibrated ECE ≤ **0.10**, `y_knots` span ≥ **0.05**. Soft dry-run advisory ECE 0.25 remains separate.
 
 ### What did *not* train (honest floors)
 
-Floors that were not met keep neutral defaults with `trained_sample_count: 0` — they are **not** dogfood-trained and are not advertised as such:
-
 | Bundle component | Floor | Samples | Shipped state |
 |------------------|-------|---------|---------------|
-| `p_success_weights` / `isotonic_calibrator` | ≥30 | 32 | **Trained** (dogfood) |
-| `triage_thresholds` | ≥50 | 0 | Neutral defaults |
-| `hydra_projection` | ≥100 | 0 | Neutral defaults |
-| `routing_centroids` | ≥10 (for OATS shift) | — | Bootstrap centroids (4 clusters, verify PASS) |
+| `p_success_weights` / `isotonic_calibrator` | ≥30 | 0 | **Honest-untrained** |
+| `triage_thresholds` | ≥50 | 0 | Live engine uses hardcoded **15**; bundle matches |
+| `hydra_projection` | ≥100 | 0 | Neutral defaults (privacy-safe exports lack embeddings) |
+| `routing_centroids` | ≥10 (for OATS shift) | — | Bootstrap centroids (verify PASS) |
+
+### TwinRouterBench corpus soft-fail
+
+`npm run routing:assert-release-gates:corpus-report` reports `mean_over_routing_rate ≈ 0.87` vs absolute max 0.15 (**report-only**, exit 0). Root cause: harness `downgrade_first_candidate` on missing baselines for `zero-tier` labels — **not** live pipeline over-routing ([#112](https://github.com/beettlle/pi-smart-router/issues/112), [`over-routing-analysis.md`](../spine-tasks/_authoring/release-v0.11.0/over-routing-analysis.md)). Absolute `release:functional-smoke` stays on `tests/eval/fixtures`. Frugality defaults remain; [#95](https://github.com/beettlle/pi-smart-router/issues/95) stays open.
 
 ### Operator impact
 
-- **Default installs:** nothing to do. The bundle loads automatically; `p_success_calibrated` / `p_success_cheap` on explain and telemetry are calibrated values (`p_success_raw` keeps the raw logistic score).
-- **Below floors / missing bundle:** the pipeline degrades to the identity calibrator and neutral `P_success_cheap = 0.5` — routing never fails on calibration state.
-- **Retrain with your own data:** see [Shadow dogfood → calibration behavioral path](#shadow-dogfood--calibration-behavioral-path) below, or the [zero-manual-label bootstrap](../README.md#psuccess-training-export-baseline-classifier) in the README. Never invent labels — exports without outcome signals stay unlabeled and are skipped.
+- **Default installs:** nothing to do. Neutral P(success) and structural tier hints match pre-trained-weight behavior.
+- **Below floors / missing bundle:** the pipeline uses the identity calibrator and neutral `P_success_cheap = 0.5` — routing never fails on calibration state.
+- **Retrain with your own data:** see [Shadow dogfood → calibration behavioral path](#shadow-dogfood--calibration-behavioral-path) below. Never invent labels; never feed `dogfood-gather.sh` scripted_intent into ship trains.
 
 ## Pipeline architecture notes (#143 / #155)
 
@@ -101,7 +103,7 @@ This is intentional documentation of the composition split from the #143 ports i
 
 ## Shadow dogfood → calibration behavioral path
 
-The shadow dogfood protocol and the behavioral calibration pipeline are two ends of one loop: dogfood sessions produce privacy-safe outcome-labeled rows; those rows train the calibration artifacts that ship back into routing. `1.0.0` closes the loop with real data.
+The shadow dogfood protocol and the behavioral calibration pipeline are two ends of one loop: dogfood sessions produce privacy-safe outcome-labeled rows; those rows can train calibration artifacts that ship back into routing. `1.0.0` ships the **pipeline, hard ECE gates, and honest-untrained defaults** — verifier-graded trained artifacts remain post-1.0 ([#168](https://github.com/beettlle/pi-smart-router/issues/168) / #110).
 
 ```text
 SMART_ROUTER_DATASET=1 dogfood sessions (/model smart-router/auto)
@@ -113,14 +115,14 @@ npm run routing:calibration-aggregate -- --contrib-dir data/contrib     (rejects
         ▼
 npm run routing:train-p-success / routing:train-calibration             (≥30 labeled floor)
         ▼
-npm run routing:verify-calibration                                      (15/15 gates)
+npm run routing:verify-calibration                                      (shapes + hard ECE when trained)
         ▼
 config/*.json artifacts → reload + restart → routed decisions carry calibrated P(success)
 ```
 
 - **Protocol (human QA):** [`docs/qa/shadow-dogfood-protocol.md`](qa/shadow-dogfood-protocol.md) — session matrix, prerequisites, and the [#95](https://github.com/beettlle/pi-smart-router/issues/95) dual-gate decision procedure. Companion scripts: `npm run qa:shadow-dogfood` and `npm run qa:dogfood-soft-feed`.
-- **Behavioral labels:** derived passively from outcome signals (`model_override`, `feedback_bad`, `tool_failure_chain`, `stop_reason_invalid`, …) via `deriveSuccessLabelFromExportRow` — no manual annotation required, and none invented.
-- **1.0.0 evidence posture:** the [#95 evidence artifact](../spine-tasks/_authoring/release-v1.0.0/shadow-dogfood-evidence.md) records that the *human* dogfood floor was **not** met at release time (0 human sessions), so frugality defaults are **kept** and absolute release gates are unchanged. The calibration bundle's 32 labeled rows come from the operator's own July 2026 aggregate — a separate, disclosed provenance.
+- **Behavioral labels:** derived passively from outcome signals (`model_override`, `feedback_bad`, `tool_failure_chain`, `stop_reason_invalid`, …) via `deriveSuccessLabelFromExportRow` — no manual annotation required, and none invented. Neutral signals (`compaction_pin_break`) stay unlabeled.
+- **1.0.0 evidence posture:** the [#95 evidence artifact](../spine-tasks/_authoring/release-v1.0.0/shadow-dogfood-evidence.md) records that the *human* dogfood floor was **not** met at release time (0 human sessions), so frugality defaults are **kept** and absolute release gates are unchanged. Shipped calibration is **honest-untrained** pending verifier-graded post-1.0 retrain; TwinRouterBench corpus soft-fail is disclosed as a harness artifact ([#112](https://github.com/beettlle/pi-smart-router/issues/112)).
 
 ## SemVer stability surface
 

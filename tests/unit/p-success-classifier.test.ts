@@ -96,6 +96,12 @@ describe('deriveSuccessLabel', () => {
     expect(result.outcome_signals).toEqual([]);
   });
 
+  it('returns null success for neutral signals such as compaction_pin_break', () => {
+    const result = deriveSuccessLabel([makeOutcome({ signal_type: 'compaction_pin_break' })]);
+    expect(result.success).toBeNull();
+    expect(result.outcome_signals).toEqual(['compaction_pin_break']);
+  });
+
   it('marks verifier failure proxies as failure when provided', () => {
     const result = deriveSuccessLabel([], {
       failureProxies: {
@@ -144,6 +150,24 @@ describe('joinDatasetWithOutcomes', () => {
     expect(samples).toHaveLength(2);
     expect(samples[0]?.success).toBe(true);
     expect(samples[1]?.success).toBe(false);
+  });
+
+  it('skips unlabeled rows instead of coercing null success to true', () => {
+    const samples = joinDatasetWithOutcomes(
+      [
+        makeDatasetRecord({ request_id: 'req-labeled' }),
+        makeDatasetRecord({ request_id: 'req-unlabeled' }),
+        makeDatasetRecord({ request_id: 'req-neutral' }),
+      ],
+      [
+        makeOutcome({ request_id: 'req-labeled', signal_type: 'feedback_good' }),
+        makeOutcome({ request_id: 'req-neutral', signal_type: 'compaction_pin_break' }),
+      ],
+    );
+
+    expect(samples).toHaveLength(1);
+    expect(samples[0]?.request_id).toBe('req-labeled');
+    expect(samples[0]?.success).toBe(true);
   });
 });
 
@@ -371,6 +395,27 @@ describe('trainFromExportJsonl', () => {
     expect(parsed?.request_id).toBe('export-3');
     expect(parsed?.success).toBe(false);
   });
+
+  it('returns null from parseTrainingExportLine when success_label is absent', () => {
+    const parsed = parseTrainingExportLine(
+      JSON.stringify({
+        request_id: 'export-unlabeled',
+        prompt_length_chars: 50,
+        estimated_input_tokens: 12,
+        triage_cyclomatic_score: 0.5,
+        requirement_reasoning: 0.2,
+        requirement_code_gen: 0.2,
+        requirement_tool_use: 0.2,
+        has_tool_context: false,
+        compaction_flag: false,
+        routing_latency_ms: 10,
+        tier: 'economical-cloud',
+        outcome_signals: [],
+      }),
+    );
+
+    expect(parsed).toBeNull();
+  });
 });
 
 describe('loadPSuccessWeights (SP-105)', () => {
@@ -421,11 +466,11 @@ describe('predictPSuccessCheapTimed (SP-105)', () => {
   });
 });
 
-describe('shipped dogfood P(success) weights (SP-175)', () => {
-  it('loads config/p-success-weights.json above the min-sample gate with non-neutral scores', () => {
+describe('shipped dogfood P(success) weights (v1.0 honesty)', () => {
+  it('loads config/p-success-weights.json as honest-untrained with neutral scores', () => {
     const weights = loadPSuccessWeights();
     expect(weights).not.toBeNull();
-    expect(weights!.trained_sample_count).toBeGreaterThanOrEqual(MIN_TRAINING_SAMPLES);
+    expect(weights!.trained_sample_count).toBeLessThan(MIN_TRAINING_SAMPLES);
     expect(weights!.min_training_samples).toBe(MIN_TRAINING_SAMPLES);
 
     const easy = extractPSuccessFeatures(
@@ -444,10 +489,7 @@ describe('shipped dogfood P(success) weights (SP-175)', () => {
       }),
     );
 
-    const easyP = predictPSuccessCheap(easy, weights!);
-    const hardP = predictPSuccessCheap(hard, weights!);
-    expect(easyP).not.toBe(NEUTRAL_P_SUCCESS);
-    expect(hardP).not.toBe(NEUTRAL_P_SUCCESS);
-    expect(easyP).toBeGreaterThan(hardP);
+    expect(predictPSuccessCheap(easy, weights!)).toBe(NEUTRAL_P_SUCCESS);
+    expect(predictPSuccessCheap(hard, weights!)).toBe(NEUTRAL_P_SUCCESS);
   });
 });

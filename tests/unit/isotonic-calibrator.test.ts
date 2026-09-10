@@ -76,6 +76,29 @@ describe('isotonic calibrator (SP-132)', () => {
     }
   });
 
+  it('pools same-score mixed labels instead of last-write-wins to 1.0', () => {
+    // Sept regression: 15 successes + 5 failures share raw score 0.756.
+    const sharedScore = 0.756;
+    const scores = [
+      ...Array.from({ length: 5 }, () => sharedScore),
+      ...Array.from({ length: 15 }, () => sharedScore),
+      0.9,
+      0.95,
+    ];
+    const labels = [
+      ...Array.from({ length: 5 }, () => false),
+      ...Array.from({ length: 15 }, () => true),
+      true,
+      true,
+    ];
+
+    const { x_knots, y_knots } = fitIsotonicPAV(scores, labels);
+    const knotIndex = x_knots.findIndex((x) => Math.abs(x - sharedScore) < 1e-9);
+    expect(knotIndex).toBeGreaterThanOrEqual(0);
+    expect(y_knots[knotIndex]!).toBeCloseTo(0.75, 5);
+    expect(applyIsotonicLookup(sharedScore, x_knots, y_knots)).toBeCloseTo(0.75, 5);
+  });
+
   it('applies piecewise lookup with endpoint clamping', () => {
     const xKnots = [0, 0.5, 1];
     const yKnots = [0.1, 0.6, 0.9];

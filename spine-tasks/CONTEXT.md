@@ -1,11 +1,11 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-09-05
+**Last Updated:** 2026-09-10
 **Status:** Active
-**Next Task ID:** SP-280
+**Next Task ID:** SP-287
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v0.22.0** on npm (2026-09-05, minor — SP-255–SP-262 extension package boundary & ONNX supply-chain; closes #149/#144/#147). Tag `v0.22.0`, commit `d2fce26`. Prior: v0.21.0 (SP-247–SP-254). **In progress:** release **v1.0.0** scope approved — SP-263–SP-279 (`spine-tasks/_authoring/release-v1.0.0/manifest.md`). Epic: #95/#110/#143/#150/#154/#155 + peer 0.85.1 + migration docs. Deferred: #96/#167/#162/#163/#157, hardware.
+**Released:** **v1.0.0** package version bumped locally (honest-untrained calibration; publish remains operator). Prior: **v0.22.0** on npm (2026-09-05). **v1.0.0 train** SP-263–SP-279 complete. **Post-1.0 calibration:** SP-280–SP-286 authored under `spine-tasks/_authoring/release-v1.0.1/manifest.md` (GitHub #168–#172, parent #110/#95). Deferred: #96/#167/#162/#163/#157, hardware.
 
 ---
 

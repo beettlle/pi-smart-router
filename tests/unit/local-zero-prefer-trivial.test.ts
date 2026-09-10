@@ -11,6 +11,7 @@ import { THROUGHPUT_BELOW_THRESHOLD } from '../../src/infrastructure/telemetry/r
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
 import { createDefaultPSuccessWeights } from '../../src/domain/routing/p-success-classifier.js';
+import { makeLowPWeights } from './router-pipeline-fixtures.js';
 
 /**
  * SP-211 / #123 — Prefer Healthy local_zero on Trivial Turns.
@@ -24,6 +25,9 @@ import { createDefaultPSuccessWeights } from '../../src/domain/routing/p-success
 
 /** Pre-SP-175 structural weights: isolate the eligibility path from shipped dogfood bias. */
 const UNTRAINED_P_SUCCESS_WEIGHTS = createDefaultPSuccessWeights();
+
+/** Synthetic trained weights for expected-cost path tests (shipped artifact is honest-untrained). */
+const TRAINED_P_SUCCESS_WEIGHTS = makeLowPWeights();
 
 const HARDWARE_CONFIG = {
   min_memory_gb_full: 16,
@@ -129,12 +133,12 @@ function makeHealthyLocalPipeline(opts: HealthyLocalOptions = {}): RouterPipelin
     localConfig: LOCAL_TEST_CONFIG,
     systemInfoProvider: () => Promise.resolve(makeSystemInfo()),
     httpFetchPort: opts.fetchPort ?? READY_FETCH,
-    // Default: load shipped trained weights (production expected-cost path that
-    // previously routed no-tool prompts to economical). Pass trainedWeights:false
-    // to force the structural-hint path.
-    ...(opts.trainedWeights === false
-      ? { pSuccessWeights: UNTRAINED_P_SUCCESS_WEIGHTS }
-      : {}),
+    // Default: synthetic trained weights exercise the expected-cost path (shipped
+    // config/p-success-weights.json is honest-untrained for v1.0). Pass
+    // trainedWeights:false to force the structural-hint path.
+    pSuccessWeights:
+      opts.trainedWeights === false ? UNTRAINED_P_SUCCESS_WEIGHTS : TRAINED_P_SUCCESS_WEIGHTS,
+    routingCalibrationPath: '/nonexistent/routing-calibration.json',
     ...(opts.throughputMeter !== undefined
       ? { throughputMeter: opts.throughputMeter }
       : {}),

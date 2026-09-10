@@ -607,10 +607,7 @@ export class RouterPipeline {
    * Run an extracted PipelineStage against the sole per-route RoutingContext.
    * Stages mutate the context in place — no dual-state sync.
    */
-  private async runStageWithContext(
-    stage: PipelineStage,
-    _request: RoutingRequest,
-  ): Promise<StageResult> {
+  private async runStageWithContext(stage: PipelineStage): Promise<StageResult> {
     return stage.run(this.requireRouteContext());
   }
 
@@ -620,51 +617,63 @@ export class RouterPipeline {
   // stage logic lives in the extracted PipelineStage modules.
 
   private async hardwareProbeStage(request: RoutingRequest): Promise<StageResult> {
-    return this.runStageWithContext(this.hardwareProbePipelineStage, request);
+    void request;
+    return this.runStageWithContext(this.hardwareProbePipelineStage);
   }
 
   private async loopEscalation(request: RoutingRequest): Promise<StageResult> {
-    return this.runStageWithContext(this.loopEscalationPipelineStage, request);
+    void request;
+    return this.runStageWithContext(this.loopEscalationPipelineStage);
   }
 
   private async turnEnvelope(request: RoutingRequest): Promise<StageResult> {
-    return this.runStageWithContext(this.turnEnvelopePipelineStage, request);
+    void request;
+    return this.runStageWithContext(this.turnEnvelopePipelineStage);
   }
 
   private async contextFitStage(request: RoutingRequest): Promise<StageResult> {
-    return this.runStageWithContext(this.contextFitPipelineStage, request);
+    void request;
+    return this.runStageWithContext(this.contextFitPipelineStage);
   }
 
   private async lowIntensityGate(request: RoutingRequest): Promise<StageResult> {
-    return this.runStageWithContext(this.lowIntensityPipelineStage, request);
+    void request;
+    return this.runStageWithContext(this.lowIntensityPipelineStage);
   }
 
   private async sessionPin(request: RoutingRequest): Promise<StageResult> {
-    return this.runStageWithContext(this.sessionPinPipelineStage, request);
+    void request;
+    return this.runStageWithContext(this.sessionPinPipelineStage);
   }
 
   private async triage(request: RoutingRequest): Promise<StageResult> {
-    return this.runStageWithContext(this.triagePipelineStage, request);
+    void request;
+    return this.runStageWithContext(this.triagePipelineStage);
   }
 
   private async localZeroTierStage(request: RoutingRequest): Promise<StageResult> {
-    return this.runStageWithContext(this.localZeroPipelineStage, request);
+    void request;
+    return this.runStageWithContext(this.localZeroPipelineStage);
   }
 
   private async triageCloudFallback(request: RoutingRequest): Promise<StageResult> {
-    return this.runStageWithContext(this.triageCloudFallbackPipelineStage, request);
+    void request;
+    return this.runStageWithContext(this.triageCloudFallbackPipelineStage);
   }
 
   private async hydraMatcher(request: RoutingRequest): Promise<StageResult> {
-    return this.runStageWithContext(this.hydraMatchPipelineStage, request);
+    void request;
+    return this.runStageWithContext(this.hydraMatchPipelineStage);
   }
 
   private async safeDefaultStage(request: RoutingRequest): Promise<StageResult> {
-    return this.runStageWithContext(this.safeDefaultPipelineStage, request);
+    void request;
+    return this.runStageWithContext(this.safeDefaultPipelineStage);
   }
 
   private async contextOverflowFallback(request: RoutingRequest): Promise<StageResult> {
-    return this.runStageWithContext(this.contextOverflowFallbackPipelineStage, request);
+    void request;
+    return this.runStageWithContext(this.contextOverflowFallbackPipelineStage);
   }
 
   // ─── Pin persistence ────────────────────────────────────────────────────────

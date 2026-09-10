@@ -313,3 +313,42 @@ describe('calibration dry-run ECE from label packs (SP-191)', () => {
     expect(labelPackRowToTrainingSample(eligible[0]!).request_id).toBe('ece-0');
   });
 });
+
+describe('assertIsotonicTrainingGates (v1.0 hard ECE)', () => {
+  it('passes honest-untrained isotonic without ECE metrics', async () => {
+    const { assertIsotonicTrainingGates } = await import(
+      '../../scripts/verify-routing-calibration.js'
+    );
+    const results = assertIsotonicTrainingGates({
+      trained_sample_count: 0,
+      min_training_samples: 30,
+      y_knots: [0, 1],
+      holdout_ece_raw: null,
+      holdout_ece_calibrated: null,
+    });
+    expect(results).toHaveLength(1);
+    expect(results[0]?.passed).toBe(true);
+    expect(results[0]?.id).toBe('isotonic_training_gates');
+  });
+
+  it('rejects trained constant y_knots and ECE regressions', async () => {
+    const { assertIsotonicTrainingGates, CALIBRATION_HARD_ECE_THRESHOLD } = await import(
+      '../../scripts/verify-routing-calibration.js'
+    );
+    const collapsed = assertIsotonicTrainingGates({
+      trained_sample_count: 32,
+      min_training_samples: 30,
+      y_knots: [1, 1, 1, 1],
+      holdout_ece_raw: 0.13,
+      holdout_ece_calibrated: 0.17,
+    });
+    expect(collapsed.some((entry) => entry.id === 'isotonic_y_span' && !entry.passed)).toBe(true);
+    expect(collapsed.some((entry) => entry.id === 'isotonic_ece_improves' && !entry.passed)).toBe(
+      true,
+    );
+    expect(collapsed.some((entry) => entry.id === 'isotonic_ece_absolute' && !entry.passed)).toBe(
+      true,
+    );
+    expect(CALIBRATION_HARD_ECE_THRESHOLD).toBe(0.1);
+  });
+});

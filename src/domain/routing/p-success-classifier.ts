@@ -419,12 +419,9 @@ export function deriveSuccessLabel(
     return { success: true, outcome_signals: signals };
   }
 
-  if (signals.length === 0) {
-    return { success: null, outcome_signals: signals };
-  }
-
-  // compaction_pin_break and other neutral signals — treat as unlabeled success.
-  return { success: true, outcome_signals: signals };
+  // compaction_pin_break and other non-failure / non-feedback_good signals are
+  // unlabeled — never invent a positive training label (#110).
+  return { success: null, outcome_signals: signals };
 }
 
 /** Derive training labels from a privacy-safe export/contrib row (no prompt text). */
@@ -456,11 +453,8 @@ export function deriveSuccessLabelFromExportRow(
     };
   }
 
-  if (mergedSignals.length === 0) {
-    return { success: null, outcome_signals: mergedSignals, failure_proxies };
-  }
-
-  return { success: true, outcome_signals: mergedSignals, failure_proxies };
+  // Neutral / unknown signals without an explicit success_label stay unlabeled.
+  return { success: null, outcome_signals: mergedSignals, failure_proxies };
 }
 
 /** Attach normalized failure proxy fields for calibration export rows. */
@@ -493,26 +487,32 @@ export function indexOutcomesByRequestId(
   return byRequest;
 }
 
-/** Join dataset rows with outcome labels for training export. */
+/** Join dataset rows with outcome labels for training export. Skips unlabeled rows. */
 export function joinDatasetWithOutcomes(
   datasetRecords: readonly RoutingDatasetRecord[],
   outcomeRecords: readonly RoutingOutcomeRecord[],
 ): LabeledTrainingSample[] {
   const outcomesByRequest = indexOutcomesByRequestId(outcomeRecords);
+  const samples: LabeledTrainingSample[] = [];
 
-  return datasetRecords.map((record) => {
+  for (const record of datasetRecords) {
     const linked = outcomesByRequest.get(record.request_id) ?? [];
     const failure_proxies = extractFailureProxies(record as unknown as Record<string, unknown>);
     const { success, outcome_signals } = deriveSuccessLabel(linked, { failureProxies: failure_proxies });
+    if (success === null) {
+      continue;
+    }
 
-    return {
+    samples.push({
       request_id: record.request_id,
       features: extractPSuccessFeatures(record),
-      success: success ?? true,
+      success,
       outcome_signals,
       failure_proxies,
-    };
-  });
+    });
+  }
+
+  return samples;
 }
 
 /** Attach join labels to a privacy-safe export object. */
@@ -608,12 +608,16 @@ export function parseTrainingExportLine(line: string): LabeledTrainingSample | n
   }
 
   const labeled = deriveSuccessLabelFromExportRow(parsed);
+  if (labeled.success === null) {
+    return null;
+  }
+
   const record = parsed as unknown as RoutingDatasetRecord;
 
   return {
     request_id: requestId,
     features: extractPSuccessFeatures(record),
-    success: labeled.success === false ? false : true,
+    success: labeled.success,
     outcome_signals: labeled.outcome_signals,
     failure_proxies: labeled.failure_proxies,
   };

@@ -116,6 +116,44 @@ export function computeExpectedCalibrationError(
   return ece;
 }
 
+interface WeightedScorePair {
+  readonly score: number;
+  readonly sum: number;
+  readonly weight: number;
+}
+
+/**
+ * Collapse identical scores into one weighted pair before PAV.
+ * Same-x labels are pooled so knot emission cannot last-write to constant 1.0.
+ */
+function poolIdenticalScores(pairs: readonly ScoreLabelPair[]): WeightedScorePair[] {
+  if (pairs.length === 0) {
+    return [];
+  }
+
+  const pooled: WeightedScorePair[] = [];
+  let score = pairs[0]!.score;
+  let sum = pairs[0]!.label;
+  let weight = 1;
+
+  for (let index = 1; index < pairs.length; index++) {
+    const pair = pairs[index]!;
+    if (pair.score === score) {
+      sum += pair.label;
+      weight += 1;
+      continue;
+    }
+
+    pooled.push({ score, sum, weight });
+    score = pair.score;
+    sum = pair.label;
+    weight = 1;
+  }
+
+  pooled.push({ score, sum, weight });
+  return pooled;
+}
+
 /** Pool-adjacent-violators isotonic regression on sorted scores. */
 export function fitIsotonicPAV(scores: readonly number[], labels: readonly boolean[]): {
   readonly x_knots: readonly number[];
@@ -130,12 +168,13 @@ export function fitIsotonicPAV(scores: readonly number[], labels: readonly boole
     label: labels[index]! ? 1 : 0,
   }));
   pairs.sort((left, right) => left.score - right.score || left.label - right.label);
+  const pooledPairs = poolIdenticalScores(pairs);
 
   const blocks: PavBlock[] = [];
-  for (const pair of pairs) {
+  for (const pair of pooledPairs) {
     blocks.push({
-      weight: 1,
-      sum: pair.label,
+      weight: pair.weight,
+      sum: pair.sum,
       minScore: pair.score,
       maxScore: pair.score,
     });
@@ -172,12 +211,16 @@ export function fitIsotonicPAV(scores: readonly number[], labels: readonly boole
   return normalizeKnots(x_knots, y_knots);
 }
 
+/**
+ * Emit a knot. Same-x collisions pool y via simple mean so adjacent PAV blocks
+ * that share an endpoint cannot overwrite a lower empirical rate with 1.0.
+ */
 function pushKnot(xKnots: number[], yKnots: number[], x: number, y: number): void {
   const clampedX = clamp01(x);
   const clampedY = clamp01(y);
   const lastIndex = xKnots.length - 1;
   if (lastIndex >= 0 && xKnots[lastIndex] === clampedX) {
-    yKnots[lastIndex] = clampedY;
+    yKnots[lastIndex] = clamp01((yKnots[lastIndex]! + clampedY) / 2);
     return;
   }
   xKnots.push(clampedX);

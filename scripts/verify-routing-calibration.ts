@@ -71,6 +71,15 @@ import {
 /** Soft advisory ECE ceiling for pack dry-run (not a release-gate absolute). */
 export const CALIBRATION_DRY_RUN_SOFT_ECE_THRESHOLD = 0.25;
 
+/**
+ * Hard ship gate for trained isotonic artifacts: calibrated ECE must beat raw
+ * and stay below this absolute ceiling (Sept collapse defense).
+ */
+export const CALIBRATION_HARD_ECE_THRESHOLD = 0.1;
+
+/** Minimum y_knots span for a trained isotonic artifact (reject near-constant 1.0). */
+export const CALIBRATION_MIN_Y_KNOT_SPAN = 0.05;
+
 /** Pack outcome signal that excludes a row from holdout ECE metrics (SP-190 weak labels). */
 export const EXCLUDE_FROM_HOLDOUT_ECE_SIGNAL = 'exclude_from_holdout_ece';
 
@@ -327,6 +336,63 @@ export class CalibrationVerifyError extends Error {
   }
 }
 
+/**
+ * Hard gates for trained isotonic artifacts. Honest-untrained (below floor)
+ * always passes; trained fits must improve ECE, stay under the absolute ceiling,
+ * and keep non-degenerate y_knots.
+ */
+export function assertIsotonicTrainingGates(isotonic: {
+  readonly trained_sample_count: number;
+  readonly min_training_samples: number;
+  readonly y_knots: readonly number[];
+  readonly holdout_ece_raw: number | null;
+  readonly holdout_ece_calibrated: number | null;
+}): BenchmarkAssertionResult[] {
+  const trained = isotonic.trained_sample_count >= isotonic.min_training_samples;
+  if (!trained) {
+    return [
+      {
+        id: 'isotonic_training_gates',
+        passed: true,
+        message: `honest-untrained samples=${isotonic.trained_sample_count}<${isotonic.min_training_samples}`,
+      },
+    ];
+  }
+
+  const results: BenchmarkAssertionResult[] = [];
+  const yMin = Math.min(...isotonic.y_knots);
+  const yMax = Math.max(...isotonic.y_knots);
+  const ySpan = yMax - yMin;
+  results.push({
+    id: 'isotonic_y_span',
+    passed: ySpan >= CALIBRATION_MIN_Y_KNOT_SPAN,
+    message: `y_span=${ySpan.toFixed(4)} (min ${CALIBRATION_MIN_Y_KNOT_SPAN})`,
+  });
+
+  const raw = isotonic.holdout_ece_raw;
+  const calibrated = isotonic.holdout_ece_calibrated;
+  if (raw === null || calibrated === null) {
+    results.push({
+      id: 'isotonic_ece_present',
+      passed: false,
+      message: 'trained isotonic requires holdout_ece_raw and holdout_ece_calibrated',
+    });
+    return results;
+  }
+
+  results.push({
+    id: 'isotonic_ece_improves',
+    passed: calibrated <= raw,
+    message: `ece_calibrated=${calibrated.toFixed(4)} vs ece_raw=${raw.toFixed(4)}`,
+  });
+  results.push({
+    id: 'isotonic_ece_absolute',
+    passed: calibrated <= CALIBRATION_HARD_ECE_THRESHOLD,
+    message: `ece_calibrated=${calibrated.toFixed(4)} (max ${CALIBRATION_HARD_ECE_THRESHOLD})`,
+  });
+  return results;
+}
+
 /** Evaluate triage cyclomatic gate using bundle threshold (no prompt storage in training path). */
 export function evaluateTriageWithBundleThreshold(
   prompt: string,
@@ -454,10 +520,14 @@ export function verifyArtifactShapes(bundle: RoutingCalibrationBundle): Benchmar
     tier: 'economical-cloud',
   });
   const probability = predictPSuccessCheap(pSuccessFeatures, bundle.p_success_weights);
+  const pSuccessTrained =
+    bundle.p_success_weights.trained_sample_count >= bundle.p_success_weights.min_training_samples;
   results.push({
     id: 'p_success_weights',
     passed: Number.isFinite(probability) && probability >= 0 && probability <= 1,
-    message: `p_success=${probability.toFixed(3)}`,
+    message: pSuccessTrained
+      ? `trained p_success=${probability.toFixed(3)} samples=${bundle.p_success_weights.trained_sample_count}`
+      : `honest-untrained p_success=${probability.toFixed(3)} samples=${bundle.p_success_weights.trained_sample_count}<${bundle.p_success_weights.min_training_samples}`,
   });
 
   try {
@@ -472,6 +542,7 @@ export function verifyArtifactShapes(bundle: RoutingCalibrationBundle): Benchmar
       passed: Number.isFinite(calibrated) && calibrated >= 0 && calibrated <= 1,
       message: `isotonic knots=${bundle.isotonic_calibrator.x_knots.length}, calibrated=${calibrated.toFixed(3)}`,
     });
+    results.push(...assertIsotonicTrainingGates(bundle.isotonic_calibrator));
   } catch (err: unknown) {
     results.push({
       id: 'isotonic_calibrator',
@@ -479,6 +550,20 @@ export function verifyArtifactShapes(bundle: RoutingCalibrationBundle): Benchmar
       message: err instanceof Error ? err.message : String(err),
     });
   }
+
+  const triageFloor = bundle.minimum_training_samples.triage_thresholds;
+  const triageTrained = bundle.triage_thresholds.trained_sample_count >= triageFloor;
+  results.push({
+    id: 'triage_thresholds',
+    passed: triageTrained
+      ? bundle.triage_thresholds.cyclomatic_threshold >= 5 &&
+        bundle.triage_thresholds.cyclomatic_threshold <= 30
+      : bundle.triage_thresholds.cyclomatic_threshold === 15 &&
+        bundle.triage_thresholds.trained_sample_count < triageFloor,
+    message: triageTrained
+      ? `trained threshold=${bundle.triage_thresholds.cyclomatic_threshold} samples=${bundle.triage_thresholds.trained_sample_count}`
+      : `honest-untrained threshold=${bundle.triage_thresholds.cyclomatic_threshold} samples=${bundle.triage_thresholds.trained_sample_count}<${triageFloor}`,
+  });
 
   results.push({
     id: 'routing_centroids',

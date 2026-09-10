@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
-# Automated second-window dogfood gather for #95 / #110.
-# Runs matrix packs via `pi -p`, records honest feedback_good/bad outcomes into
+# Automated dogfood gather matrix (smoke / pack diversity only).
+#
+# *** QUARANTINE — NOT A #110 TRAINING SOURCE ***
+# Labels are scripted from pack intent / exit heuristics (label_provenance=
+# scripted_intent). Do NOT feed this output into routing:train-* for ship
+# artifacts or claim floors met for behavioral calibration (#110).
+# Verifier-graded / human_feedback / llm_judge labels are required for ship.
+#
+# Runs matrix packs via `pi -p`, records pack-intent feedback_good/bad into
 # state.db, then exports dataset + telemetry-contrib and prints labeled_econ +
-# triage-trainable counts.
+# triage-trainable counts. Suitable for smoke / harness exercise only.
 #
 # Packs:
 #   A–E — original quality/diversity matrix (July 2026 gather)
@@ -20,12 +27,18 @@
 # successful routing turns that actually produced request_ids.
 #
 # Exit codes:
-#   0 — labeled economical floor (≥30) and triage floor (≥50) both met
+#   0 — labeled economical floor (≥30) and triage floor (≥50) both met (smoke only)
 #   2 — labeled_econ floor unmet
 #   3 — labeled_econ met but triage_trainable floor unmet
 #   1 — tool / setup failure
 
 set -euo pipefail
+
+if [[ "${DOGFOOD_GATHER_ALLOW_TRAINING:-}" == "1" ]]; then
+  echo "dogfood-gather: DOGFOOD_GATHER_ALLOW_TRAINING=1 set — still scripted_intent; do not ship." >&2
+else
+  echo "dogfood-gather: QUARANTINE — scripted_intent labels; not for routing:train-* ship artifacts (#110)." >&2
+fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"

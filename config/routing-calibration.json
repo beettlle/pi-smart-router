@@ -1175,8 +1175,8 @@
   },
   "triage_thresholds": {
     "version": 1,
-    "cyclomatic_threshold": 5,
-    "trained_sample_count": 57
+    "cyclomatic_threshold": 15,
+    "trained_sample_count": 0
   },
   "p_success_weights": {
     "version": 1,
@@ -1193,67 +1193,35 @@
       "routing_latency_norm",
       "economical_tier"
     ],
-    "intercept": 5.1862862200594515,
+    "intercept": 0,
     "coefficients": [
       0,
-      2.041117160917367,
-      2.789344797085637,
-      0.34578403211237796,
-      0.3460531192480666,
-      0.3470897798500917,
-      -5.4373715603398995,
       0,
-      0.012311754004918655,
-      -0.6586529184943752
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
     ],
-    "trained_sample_count": 147
+    "trained_sample_count": 0
   },
   "isotonic_calibrator": {
     "version": 1,
     "min_training_samples": 30,
     "x_knots": [
       0,
-      0.7762791731109997,
-      0.9076143468304525,
-      0.9287692008366822,
-      0.9545364403124723,
-      0.9549509050694267,
-      0.954996925008461,
-      0.954996986634206,
-      0.9550431827662135,
-      0.9550884925983248,
-      0.9550886364616538,
-      0.9550886622142934,
-      0.955134168492052,
-      0.9551797959957378,
-      0.987430119869407,
-      0.9897556700035793,
-      0.9912107607187399,
       1
     ],
     "y_knots": [
-      0.875,
-      0.875,
-      0.875,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
+      0,
       1
     ],
-    "trained_sample_count": 32,
-    "holdout_ece_raw": 0.0694823861835979,
-    "holdout_ece_calibrated": 0.020833333333333332
+    "trained_sample_count": 0,
+    "holdout_ece_raw": null,
+    "holdout_ece_calibrated": null
   },
   "routing_centroids": {
     "version": 1,
@@ -2826,16 +2794,13 @@
     ]
   },
   "provenance": {
-    "source": "hybrid_operator_export",
-    "training_input_primary": "data/calibration/dogfood-20260909-aggregate.jsonl",
-    "training_input_isotonic": "data/calibration/dogfood-20260714-aggregate.jsonl",
-    "training_rows": 179,
-    "labeled_samples_p_success": 147,
-    "labeled_samples_triage": 57,
-    "labeled_samples_isotonic": 32,
+    "source": "neutralized_for_v1_honesty",
+    "labeled_samples_p_success": 0,
+    "labeled_samples_triage": 0,
+    "labeled_samples_isotonic": 0,
     "hydra_trained_sample_count": 0,
-    "note": "Hybrid SP-271 follow-up (2026-09-09): p_success + triage + centroids from Sept dogfood gather (Packs A–E+T+X). Isotonic kept from July 2026 artifact because Sept PAV collapsed y_knots→constant 1.0 (same-x knot overwrite; calibrated ECE worsened 0.131→0.172). July isotonic holdout ECE 0.0695→0.0208. Hydra remains honest-untrained (0<100; privacy-safe exports lack 384-dim embeddings).",
-    "trained_at": "2026-09-09",
-    "hybrid_reason": "isotonic_ece_regression_sept_constant_one"
+    "note": "v1.0 honesty neutralize (2026-09-10): hybrid Sept P(success)/July isotonic rejected for ship. Scripted dogfood-gather labels are not #110 evidence. Serve-time p_success/isotonic/triage floors unmet so structural tier hints resume. PAV same-x pooling + null-label skip landed in code. Verifier-graded recalibration tracked post-1.0 (spine SP-280+). TwinRouterBench corpus over-routing ~0.87 is harness adapter artifact (#112), not live pipeline.",
+    "trained_at": "2026-09-10",
+    "neutralize_reason": "hybrid_harms_sept_distribution_and_scripted_labels"
   }
 }

@@ -168,7 +168,7 @@ describe('RouterPipeline', () => {
       expect(decision.features?.tier_hint_reason_code).toBeNull();
     });
 
-    it('loads shipped dogfood weights and exposes raw vs used P(success) (SP-175)', async () => {
+    it('loads shipped honest-untrained weights and stays at neutral P(success)', async () => {
       const pipeline = new RouterPipeline(fleet, {
         pSuccessWeightsPath: 'config/p-success-weights.json',
         routingCalibrationPath: '/nonexistent/routing-calibration.json',
@@ -184,13 +184,13 @@ describe('RouterPipeline', () => {
         makeRequest({ prompt_text: 'Hello, how are you today?' }),
       );
 
-      expect(decision.features?.p_success_raw).not.toBeNull();
-      expect(decision.features?.p_success_calibrated).not.toBeNull();
-      expect(decision.features?.p_success_cheap).not.toBeNull();
-      expect(decision.features?.p_success_cheap).not.toBe(0.5);
-      expect(decision.features?.p_success_cheap).toBe(decision.features?.p_success_calibrated);
-      expect(decision.features?.p_success_raw).toBe(decision.features?.p_success_calibrated);
-      expect(decision.features?.tier_hint_reason_code).toMatch(/^expected_cost_/);
+      expect(decision.features?.p_success_raw).toBe(0.5);
+      expect(decision.features?.p_success_calibrated).toBe(0.5);
+      expect(decision.features?.p_success_cheap).toBe(0.5);
+      const reason = decision.features?.tier_hint_reason_code;
+      if (typeof reason === 'string') {
+        expect(reason).not.toMatch(/^expected_cost_/);
+      }
     });
   });
 });
