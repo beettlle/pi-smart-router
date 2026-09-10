@@ -1,0 +1,14 @@
+spine-tasks/SP-280-v101-manifest-scaffold/.reviews/final-20260910T224021.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2fd9e0b692cddada567f6db6c7e7519b4cfcb465",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
