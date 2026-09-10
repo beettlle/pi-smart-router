@@ -892,6 +892,28 @@
 
 **Authoring notes:** `spine-tasks/_authoring/release-v0.22.0/manifest.md`
 
+### Phase 57 — Release v1.1.0 Post-1.0 Verifier-Graded Calibration (SP-280–SP-286)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-280 | v1.1.0 manifest scaffold | S | — | Parent bookkeeping #110 |
+| SP-281 | label provenance floors | M | SP-280 | Partial #168 |
+| SP-282 | adversarial labeling harness | M | SP-281 | Closes #169 |
+| SP-283 | verifier-grade train | M | SP-281, SP-282 | Partial #168 |
+| SP-284 | hard-gate ship bundle | M | SP-283 | Closes #168 if gates pass |
+| SP-285 | privacy-safe embedding export | M | SP-280 | Closes #170 |
+| SP-286 | operator notes issues | S | SP-284, SP-285 | Links #168–#172; no #96 flip |
+
+**Source:** Operator-approved **v1.1.0** (2026-09-10, minor profile). Theme: post-1.0 verifier-graded calibration — label provenance floors + hard-gate ship (#168), adversarial labeling harness (#169), privacy-safe embedding export (#170), parent #110 bookkeeping. Supersedes `spine-tasks/_authoring/release-v1.0.1/` (patch naming invalid for enhancement content; retargeted to minor). Composition: 3 enh (#168/#169/#170) + 1 chore + 1 docs + wave-gate bookkeeping; 0 bugs (none open). v1.0 honest-untrained neutralize stays in place unless SP-284 hard gates pass (calibrated ECE ≤ 0.10, ≤ raw, y_knots span ≥ 0.05).
+
+**Status:** Wave 0 (SP-280 manifest scaffold confirmation) in execution; waves 1–5 await operator-scheduled batches. `spine tasks validate` 7/7 PASS; wave plan 6 waves (W0 SP-280 → W1 SP-281∥SP-285 → W2 SP-282 → W3 SP-283 → W4 SP-284 → W5 SP-286).
+
+**Deferred:** #171 (post-train serve-time A/B), #172 (optional baseline, P3), #96 (modernbert_k4 default — **no flip this train**), #167 (Granite encoder), #162/#163 (majors), #157 (ESLint flat config), #95 (shadow dogfood epic), #110 remainder, #1/#25/#26 (hardware).
+
+**Scope ID:** `SP-280,SP-281,SP-282,SP-283,SP-284,SP-285,SP-286`
+
+**Authoring notes:** `spine-tasks/_authoring/release-v1.1.0/manifest.md`
+
 ---
 
 ## Release v0.16.2 (patch)
