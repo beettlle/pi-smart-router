@@ -1,0 +1,105 @@
+scripts/qa/count-labeled-econ.ts
+  s_4143cebd86e01e::t_d302d44c093161 35-41
+  s_4143cebd86e01e::t_30ffb2ae346670 3-9,21-22
+  s_4143cebd86e01e::t_33b1afeb648301 58-61,74-76,86-97,120-126
+  s_4143cebd86e01e::t_b86a51e22e0e5e 140-146
+config/p-success-weights.json
+  s_566daca3507359::t_bff296abf50977 16,19-24,26-27,29
+scripts/qa/dogfood-gather.sh
+  s_ca1c564f07e29c::t_cd511ba9998fb6 168
+  s_4143cebd86e01e::t_8f968ff18363d4 4-16,23-25
+  s_ca1c564f07e29c::t_6d49056c0a4187 285,291
+  s_4143cebd86e01e::t_66de09a073577e 211-284,286-287,289,297-298
+data/calibration/dogfood-20260909-aggregate.jsonl
+  s_566daca3507359::t_a52fb63b6e7bab 1-179
+config/routing-calibration.json
+  s_566daca3507359::t_bff296abf50977 1178-1179,1196,1199-1204,1206-1207,1209
+  s_768c3d107970e2::t_15d0114c989bc5 2827-2839
+scripts/qa/export-dogfood-snapshot.ts
+  s_4143cebd86e01e::t_6f9fa55a0146c7 4-10
+  s_4143cebd86e01e::t_ce67e08fdc7e9b 82-88
+src/infrastructure/persistence/sqlite-store.ts
+  s_ca1c564f07e29c::t_df2fa77be72058 437-439
+  s_ca1c564f07e29c::t_02ed1499f8054d 1068-1075
+  s_ca1c564f07e29c::t_36822cf8b88b2f 490-491
+src/index.ts
+  s_7d332c9e8e6e83::t_d1c42a3c6bb8c5 49-55,57-61,79-85
+README.md
+  s_7d332c9e8e6e83::t_178e9c33ec5ff0 328-330,338,345-347
+  s_7d332c9e8e6e83::t_d37c6e3cb4deaa 266,274-275
+  s_7d332c9e8e6e83::t_39d9ff04c1f779 294-295
+  s_7d332c9e8e6e83::t_aeb13d669214a1 99
+src/infrastructure/gateway/gateway-dispatch.ts
+  s_7d332c9e8e6e83::t_da3c5f2c38a14e 185-189
+src/domain/pipeline/router-pipeline.ts
+  s_768c3d107970e2::t_2cb32124e0cc12 63-64
+  s_768c3d107970e2::t_834e0f630b962c 548,555-556,558-559
+  s_768c3d107970e2::t_3d5948b3ce5054 590,597,599-603,607-608,612,614
+  s_768c3d107970e2::t_463977e7b63aaa 391,393,395-397,400-411,415,417-419,421,430,435,440-444,453,465,494-495,497,505,512
+  s_768c3d107970e2::t_25e3a019205ac1 217-221
+  s_768c3d107970e2::t_0900f678baa74c 243-247
+  s_768c3d107970e2::t_095e62f89184b9 15-17
+  s_768c3d107970e2::t_4cba34e7c7a98b 303,307-311,340,342
+  s_768c3d107970e2::t_ef1a7d59c65e8e 325-329,341
+  s_768c3d107970e2::t_9efdfe6e9f368d 107-112
+src/infrastructure/persistence/memory-store.ts
+  s_ca1c564f07e29c::t_b5e951423ba15c 18
+  s_ca1c564f07e29c::t_08af1829e517a4 87,102
+  s_ca1c564f07e29c::t_1ed1d64ef1331a 124-130
+src/domain/pipeline/pipeline-stage.ts
+  s_768c3d107970e2::t_06f78c7cd928ac 125-164
+  s_768c3d107970e2::t_672ea3517ba861 37,39-41
+  s_768c3d107970e2::t_86c09246ffbac6 124
+docs/migration-v1.md
+  s_7d332c9e8e6e83::t_c7e3330ebf2fe6 85-101
+  s_7d332c9e8e6e83::t_3e145cf9eafe4c 152
+  s_7d332c9e8e6e83::t_7c08a5797b6e5f 75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e06259250443e7bd3411cc507b3437117fb8bc1d",
+  "prompts": {},
+  "sessions": {
+    "s_4143cebd86e01e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-c489ce91-1988-4912-872d-538aa06a371e",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    },
+    "s_566daca3507359": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-0ab3fa1a-f78a-4205-97f1-784bdb0ea4af",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    },
+    "s_768c3d107970e2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-62310896-4f9b-46e6-8f85-1756dc17ded9",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    },
+    "s_7d332c9e8e6e83": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-90dcc062-8dc9-4904-b5af-262c7fcb97fd",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    },
+    "s_ca1c564f07e29c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-c559f6d6-771b-425d-8b8f-47c82818ef21",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
