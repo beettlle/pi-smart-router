@@ -1,0 +1,14 @@
+spine-tasks/SP-280-v101-manifest-scaffold/STATUS.md
+  h_ae151c586ac6c5 38-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "356838370dd65ee2aec0df64939c6ced68fccc8f",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
