@@ -1,0 +1,31 @@
+spine-tasks/SP-282-adversarial-labeling-harness/PROMPT.md
+  s_73aaa01b99b77c::t_3189038728d6e3 50
+spine-tasks/SP-284-hard-gate-ship-bundle/PROMPT.md
+  s_73aaa01b99b77c::t_3189038728d6e3 49
+spine-tasks/SP-285-privacy-safe-embedding-export/PROMPT.md
+  s_73aaa01b99b77c::t_3189038728d6e3 50
+spine-tasks/SP-286-operator-notes-issues/PROMPT.md
+  s_73aaa01b99b77c::t_3189038728d6e3 51
+spine-tasks/SP-281-label-provenance-floors/PROMPT.md
+  s_73aaa01b99b77c::t_3189038728d6e3 50
+spine-tasks/SP-280-v101-manifest-scaffold/PROMPT.md
+  s_73aaa01b99b77c::t_3189038728d6e3 49
+spine-tasks/SP-283-verifier-grade-train/PROMPT.md
+  s_73aaa01b99b77c::t_3189038728d6e3 51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8ca00a7bd73d1e15648cd57e9e63af1e04f5db66",
+  "prompts": {},
+  "sessions": {
+    "s_73aaa01b99b77c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae947e36-a697-4ee4-9394-26f1d7da5e0c",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
