@@ -1,0 +1,14 @@
+spine-tasks/SP-285-privacy-safe-embedding-export/STATUS.md
+  h_ae151c586ac6c5 1-2,48-51,53-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dd33028f54d8ff7d9901beddbd0161435008c786",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
