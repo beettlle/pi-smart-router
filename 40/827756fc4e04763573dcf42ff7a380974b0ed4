@@ -1,0 +1,20 @@
+spine-tasks/SP-284-hard-gate-ship-bundle/PROMPT.md
+  s_73aaa01b99b77c::t_3ca995d4f798c7 41-42,50
+  s_73aaa01b99b77c::t_8b73287169f497 78-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "40827756fc4e04763573dcf42ff7a380974b0ed4",
+  "prompts": {},
+  "sessions": {
+    "s_73aaa01b99b77c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae947e36-a697-4ee4-9394-26f1d7da5e0c",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
