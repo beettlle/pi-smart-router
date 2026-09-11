@@ -1,0 +1,63 @@
+{
+  "campaign": "adversarial-llm-judge",
+  "provenance": "llm_judge",
+  "seed": "sp-282-adversarial-labeling",
+  "holdout_percent": 20,
+  "pass_score": 7,
+  "floors": {
+    "min_negative_fraction": 0.2,
+    "min_distinct_failure_scores": 5
+  },
+  "totals": {
+    "tasks": 12,
+    "generations": 24,
+    "labeled": 22,
+    "disagreements": 2,
+    "negatives": 5,
+    "negative_fraction": 0.2273,
+    "distinct_failure_scores": 5,
+    "fit_rows": 11,
+    "holdout_rows": 11,
+    "warm_start_rows": 0
+  },
+  "per_generator": {
+    "gen-alpha": {
+      "generations": 12,
+      "labeled": 11,
+      "negatives": 3
+    },
+    "gen-beta": {
+      "generations": 12,
+      "labeled": 11,
+      "negatives": 2
+    }
+  },
+  "per_grader": {
+    "grader-one": {
+      "grades": 24
+    },
+    "grader-two": {
+      "grades": 24
+    }
+  },
+  "campaign_valid": true,
+  "violations": [],
+  "disagreements": [
+    {
+      "taskId": "adv-t06",
+      "generatorId": "gen-alpha",
+      "graderScores": {
+        "grader-one": 8,
+        "grader-two": 3
+      }
+    },
+    {
+      "taskId": "adv-t07",
+      "generatorId": "gen-beta",
+      "graderScores": {
+        "grader-one": 2,
+        "grader-two": 9
+      }
+    }
+  ]
+}
