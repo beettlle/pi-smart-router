@@ -1,0 +1,72 @@
+.pi/extensions/smart-router/command-formatters.ts
+  h_ae151c586ac6c5 187,192
+.pi/extensions/smart-router/commands.ts
+  h_ae151c586ac6c5 24,240
+.pi/extensions/smart-router/types.ts
+  h_ae151c586ac6c5 42-48
+README.md
+  h_ae151c586ac6c5 228,443,789,791,796-801
+bin/pi-smart-router.mjs
+  h_ae151c586ac6c5 36,38-40,51,58
+data/contrib/example.json
+  h_ae151c586ac6c5 3-5,15-16
+scripts/calibration-aggregate.ts
+  h_ae151c586ac6c5 61-70,129-131,329-364,440-454
+scripts/lib/contrib-training-samples.ts
+  h_ae151c586ac6c5 26-28,40-43,46-50
+specs/001-build-smart-router/contracts/routing-decision.schema.json
+  h_ae151c586ac6c5 290-296
+specs/001-build-smart-router/contracts/telemetry-contrib.schema.json
+  h_ae151c586ac6c5 5,33-37,70-86
+spine-tasks/SP-285-privacy-safe-embedding-export/STATUS.md
+  h_ae151c586ac6c5 1,20,22-44
+src/cli/smart-router-cli.ts
+  h_ae151c586ac6c5 19-22,71-81,114-116,177-178,191-192,213,217,223,230,240-243,247,315,319-323,327-329,339-343,367-370,421,427,443-445,466,478-484,493-498
+src/domain/matching/hydra-matcher.ts
+  h_ae151c586ac6c5 57-65,81-87,380-389,406-416,532-541,543-547,602
+src/domain/pipeline/router-pipeline.ts
+  h_ae151c586ac6c5 401-404
+src/domain/types/entities.ts
+  h_ae151c586ac6c5 393-400,481-486
+src/domain/types/schemas.ts
+  h_ae151c586ac6c5 330
+src/infra/telemetry.ts
+  h_ae151c586ac6c5 70-83
+src/infrastructure/persistence/sqlite-store.ts
+  h_ae151c586ac6c5 47,51,199-205,817-818,827-828,857-858,932-937,1065,1078-1115,1215
+src/infrastructure/telemetry/dataset-recorder.ts
+  h_ae151c586ac6c5 160-162
+src/infrastructure/telemetry/routing-telemetry.ts
+  h_ae151c586ac6c5 132
+src/infrastructure/telemetry/telemetry-scalar-fields.ts
+  h_ae151c586ac6c5 258-262
+tests/unit/calibration-aggregate.test.ts
+  h_ae151c586ac6c5 8,11,14,174-242
+tests/unit/dataset-limits.test.ts
+  h_ae151c586ac6c5 11-12,43
+tests/unit/hydra-matcher.test.ts
+  h_ae151c586ac6c5 7,10,18,1204-1298
+tests/unit/memory-store.test.ts
+  h_ae151c586ac6c5 5-6,37
+tests/unit/p-success-classifier.test.ts
+  h_ae151c586ac6c5 23-24,57
+tests/unit/smart-router-cli.test.ts
+  h_ae151c586ac6c5 28-31,44,49,108,210,214,218,436-581
+tests/unit/smart-router-pricing.test.ts
+  h_ae151c586ac6c5 34-35,66
+tests/unit/sqlite-store.test.ts
+  h_ae151c586ac6c5 13,19,124,156,167,186,216-237
+tests/unit/train-p-success-weights.test.ts
+  h_ae151c586ac6c5 91-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1a51bfc2a72dd5b95c2a5596bef8f0c8c7a8cf97",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
