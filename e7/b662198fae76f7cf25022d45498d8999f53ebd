@@ -1,0 +1,24 @@
+README.md
+  h_ae151c586ac6c5 728-729
+config/p-success-weights.json
+  h_ae151c586ac6c5 29-33
+config/routing-calibration.json
+  h_ae151c586ac6c5 2802,2804-2815
+docs/migration-v1.md
+  h_ae151c586ac6c5 59-64
+spine-tasks/SP-284-hard-gate-ship-bundle/STATUS.md
+  h_ae151c586ac6c5 21-27,29-33
+spine-tasks/_authoring/release-v1.1.0/hard-gate-ship-note.md
+  h_ae151c586ac6c5 1-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e7b662198fae76f7cf25022d45498d8999f53ebd",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}

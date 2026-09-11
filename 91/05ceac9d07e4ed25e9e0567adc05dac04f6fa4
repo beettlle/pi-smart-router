@@ -1,0 +1,14 @@
+spine-tasks/SP-284-hard-gate-ship-bundle/STATUS.md
+  h_ae151c586ac6c5 1-3,13,15-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9105ceac9d07e4ed25e9e0567adc05dac04f6fa4",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
