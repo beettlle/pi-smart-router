@@ -1,0 +1,19 @@
+spine-tasks/SP-282-adversarial-labeling-harness/.reviews/0-20260911T182936.md
+  s_73aaa01b99b77c::t_03be000461e155 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8c96eee281f6d1bcf491888361ee8e6ae3348ff7",
+  "prompts": {},
+  "sessions": {
+    "s_73aaa01b99b77c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae947e36-a697-4ee4-9394-26f1d7da5e0c",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
