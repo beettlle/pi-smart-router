@@ -24,6 +24,7 @@ import {
   CONTRIB_TAINTED_KEY_ALLOWLIST,
   sanitizeContribRecord,
 } from '../calibration-aggregate.js';
+import { LABEL_PACK_FEATURE_KEY_ALLOWLIST } from '../lib/label-pack-schema.js';
 import type { CampaignDisagreement } from './adversarial-label-campaign.js';
 
 export const HUMAN_FEEDBACK_PROVENANCE = 'human_feedback' as const;
@@ -84,7 +85,12 @@ export function assertNoTaintedPromptKeys(
   context?: string,
 ): void {
   for (const key of Object.keys(record)) {
-    if (CONTRIB_TAINTED_KEY_ALLOWLIST.includes(key)) {
+    // Privacy-safe length/norm scalars (label-pack + contrib allowlists) may
+    // contain "prompt"/"message" substrings without carrying raw text.
+    if (
+      CONTRIB_TAINTED_KEY_ALLOWLIST.includes(key) ||
+      LABEL_PACK_FEATURE_KEY_ALLOWLIST.has(key)
+    ) {
       continue;
     }
     if (
@@ -399,16 +405,33 @@ export function loadDisagreementQueue(
         ...Object.keys(scores).map((id) => `grader:${id}`),
       ],
     };
+    // Attach only contrib-safe scalars. Label-pack norms like prompt_length_norm
+    // stay display-only via featureHints — they would fail contrib taint checks.
     for (const [key, value] of Object.entries(features)) {
-      if (typeof value === 'number' && Number.isFinite(value)) {
-        baseRecord[key] = value;
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        continue;
       }
+      if (
+        !CONTRIB_TAINTED_KEY_ALLOWLIST.includes(key) &&
+        ((CALIBRATION_CONTRIB_REJECT_KEYS as readonly string[]).includes(key) ||
+          CONTRIB_TAINTED_KEY_PATTERN.test(key))
+      ) {
+        continue;
+      }
+      baseRecord[key] = value;
     }
     if (typeof features.prompt_length_chars === 'number') {
       baseRecord.prompt_length_chars = features.prompt_length_chars;
     }
     if (typeof features.message_count === 'number') {
       baseRecord.message_count = features.message_count;
+    }
+    // Approximate chars from pack norm when raw count absent (display training signal).
+    if (
+      baseRecord.prompt_length_chars === undefined &&
+      typeof features.prompt_length_norm === 'number'
+    ) {
+      baseRecord.prompt_length_chars = Math.round(features.prompt_length_norm * 4000);
     }
 
     items.push({

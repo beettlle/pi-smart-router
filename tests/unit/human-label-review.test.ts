@@ -136,13 +136,26 @@ describe('human-label-review (SP-287)', () => {
         },
       ],
     };
-    const items = loadDisagreementQueue(JSON.stringify(report));
+    const tasks = new Map([
+      [
+        't1',
+        {
+          task_id: 't1',
+          session_id: 'sess-1',
+          tier: 'economical-cloud',
+          features: { prompt_length_norm: 0.3, triage_cyclomatic_score: 2 },
+        },
+      ],
+    ]);
+    const items = loadDisagreementQueue(JSON.stringify(report), tasks);
     expect(items).toHaveLength(1);
     expect(items[0]!.source).toBe('campaign_disagreement');
     expect(items[0]!.display.graderScores).toEqual({
       'grader-a': 2,
       'grader-b': 9,
     });
+    expect(items[0]!.baseRecord).not.toHaveProperty('prompt_length_norm');
+    expect(items[0]!.baseRecord.prompt_length_chars).toBe(1200);
     const emitted = emitHumanFeedbackRow(items[0]!, 'good');
     expect(emitted.label_provenance).toBe('human_feedback');
     expect(emitted.outcome_signals).toContain('feedback_good');
