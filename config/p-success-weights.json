@@ -26,5 +26,9 @@
     0,
     0
   ],
-  "trained_sample_count": 0
+  "trained_sample_count": 0,
+  "provenance": {
+    "source": "neutralized_for_v1_honesty",
+    "note": "v1.0 honesty neutralize; serve-time neutral P(success)=0.5 (floors unmet). v1.1.0 update (2026-09-11, SP-283/SP-284): verifier-grade train (32 pack rows, 0/258 legacy contrib ship-eligible) FAILED hard ECE gate (holdout ece_calibrated 0.2738 > 0.10) — honest-untrained remains shipped; see spine-tasks/_authoring/release-v1.1.0/hard-gate-ship-note.md. #168 Partial."
+  }
 }

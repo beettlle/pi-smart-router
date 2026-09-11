@@ -2799,8 +2799,19 @@
     "labeled_samples_triage": 0,
     "labeled_samples_isotonic": 0,
     "hydra_trained_sample_count": 0,
-    "note": "v1.0 honesty neutralize (2026-09-10): hybrid Sept P(success)/July isotonic rejected for ship. Scripted dogfood-gather labels are not #110 evidence. Serve-time p_success/isotonic/triage floors unmet so structural tier hints resume. PAV same-x pooling + null-label skip landed in code. Verifier-graded recalibration tracked post-1.0 (spine SP-280+). TwinRouterBench corpus over-routing ~0.87 is harness adapter artifact (#112), not live pipeline.",
+    "note": "v1.0 honesty neutralize (2026-09-10): hybrid Sept P(success)/July isotonic rejected for ship. Scripted dogfood-gather labels are not #110 evidence. Serve-time p_success/isotonic/triage floors unmet so structural tier hints resume. PAV same-x pooling + null-label skip landed in code. Verifier-graded recalibration tracked post-1.0 (spine SP-280+). TwinRouterBench corpus over-routing ~0.87 is harness adapter artifact (#112), not live pipeline. v1.1.0 update (2026-09-11, SP-283/SP-284): verifier-grade train attempted on 32 llm_judge/human_feedback-grade pack rows (0/258 legacy contrib rows ship-eligible); hard ECE gate FAILED (holdout ece_calibrated 0.2738 > 0.10) so honest-untrained remains shipped — see spine-tasks/_authoring/release-v1.1.0/hard-gate-ship-note.md. #168 Partial.",
     "trained_at": "2026-09-10",
-    "neutralize_reason": "hybrid_harms_sept_distribution_and_scripted_labels"
+    "neutralize_reason": "hybrid_harms_sept_distribution_and_scripted_labels",
+    "post_v1_verifier_grade_attempt": {
+      "task": "SP-283",
+      "gate_report": "data/calibration/verifier-grade-gate-report.json",
+      "labeled_samples": 32,
+      "holdout_ece_raw": 0.369,
+      "holdout_ece_calibrated": 0.2738,
+      "hard_gates_passed": false,
+      "decision": "keep_honest_untrained",
+      "decided_by": "SP-284",
+      "decided_at": "2026-09-11"
+    }
   }
 }

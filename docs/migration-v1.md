@@ -56,6 +56,12 @@ Hard train gates (when a future train claims floors met): `holdout_ece_calibrate
 | `hydra_projection` | ≥100 | 0 | Neutral defaults (privacy-safe exports lack embeddings) |
 | `routing_centroids` | ≥10 (for OATS shift) | — | Bootstrap centroids (verify PASS) |
 
+### Post-1.0 verifier-grade attempt (v1.1.0) — hard gates failed, honest-untrained remains
+
+The v1.1.0 train exercised the verifier-grade ship path end-to-end (SP-283 train → SP-284 ship decision, [#168](https://github.com/beettlle/pi-smart-router/issues/168)) on the best available verifier-grade corpus: 32 `llm_judge`/`human_feedback`-grade label-pack rows (adversarial harness campaign + SWE-Gym/FC-RewardBench CI fixtures) plus 258 legacy dogfood contrib rows, of which **0 were ship-eligible** (untagged legacy provenance — provenance is never invented). The isotonic calibrator trained (pool 32 ≥ 30 floor) but the **hard ECE gate failed**: holdout `ece_calibrated 0.2738 > 0.10` (improvement and y_span gates passed). Per the hard-gate ship rule, **the candidate bundle was not shipped** — it is retained as evidence only under `data/calibration/verifier-grade-*`.
+
+Shipped artifacts therefore remain **honest-untrained**: `provenance.source` is still `neutralized_for_v1_honesty` in `config/routing-calibration.json` (with a `post_v1_verifier_grade_attempt` record of the failed gate run) and `config/p-success-weights.json` stays all-zero with `trained_sample_count: 0`. Serve-time behavior is unchanged from 1.0.0. #168 is **Partial** — the ship precondition is ≥30 *real* verifier-grade labeled rows (e.g. #95 shadow dogfood with SP-282 live graders) re-run through `train-routing-calibration.ts --verifier-grade-only --require-hard-gates` with zero exit + `hard_gates_passed: true`. Full decision record: [`spine-tasks/_authoring/release-v1.1.0/hard-gate-ship-note.md`](../spine-tasks/_authoring/release-v1.1.0/hard-gate-ship-note.md).
+
 ### TwinRouterBench corpus soft-fail
 
 `npm run routing:assert-release-gates:corpus-report` reports `mean_over_routing_rate ≈ 0.87` vs absolute max 0.15 (**report-only**, exit 0). Root cause: harness `downgrade_first_candidate` on missing baselines for `zero-tier` labels — **not** live pipeline over-routing ([#112](https://github.com/beettlle/pi-smart-router/issues/112), [`over-routing-analysis.md`](../spine-tasks/_authoring/release-v0.11.0/over-routing-analysis.md)). Absolute `release:functional-smoke` stays on `tests/eval/fixtures`. Frugality defaults remain; [#95](https://github.com/beettlle/pi-smart-router/issues/95) stays open.
