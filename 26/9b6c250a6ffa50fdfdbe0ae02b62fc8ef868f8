@@ -1,0 +1,27 @@
+scripts/calibration/README.md
+  s_73aaa01b99b77c::t_523140d060a28a 1-93
+scripts/calibration/adversarial-label-campaign.ts
+  s_73aaa01b99b77c::t_15a998ad691c3d 1-1215
+tests/eval/corpus/label-packs/PROVENANCE.md
+  s_73aaa01b99b77c::t_79859c283bde50 259-278
+tests/eval/corpus/label-packs/adversarial-llm-judge/ci-recorded.jsonl
+  s_73aaa01b99b77c::t_34f2e276698a22 1-72
+tests/eval/corpus/label-packs/adversarial-llm-judge/ci-tasks.jsonl
+  s_73aaa01b99b77c::t_f6a632c5aa8ddd 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "269b6c250a6ffa50fdfdbe0ae02b62fc8ef868f8",
+  "prompts": {},
+  "sessions": {
+    "s_73aaa01b99b77c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae947e36-a697-4ee4-9394-26f1d7da5e0c",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
