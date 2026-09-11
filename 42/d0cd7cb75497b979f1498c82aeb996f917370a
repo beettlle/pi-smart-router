@@ -1,0 +1,19 @@
+spine-tasks/SP-281-label-provenance-floors/.reviews/final-20260911T002128.md
+  s_0b540c0204b53f::t_54dda5db7e5312 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "42d0cd7cb75497b979f1498c82aeb996f917370a",
+  "prompts": {},
+  "sessions": {
+    "s_0b540c0204b53f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-24a8eba2-4c8e-444d-b171-1dd3434c572d",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
