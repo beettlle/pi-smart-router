@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "min_training_samples": 30,
+  "feature_names": [
+    "prompt_length_norm",
+    "estimated_input_tokens_norm",
+    "triage_cyclomatic_score",
+    "requirement_reasoning",
+    "requirement_code_gen",
+    "requirement_tool_use",
+    "has_tool_context",
+    "compaction_flag",
+    "routing_latency_norm",
+    "economical_tier"
+  ],
+  "intercept": 2.2502925724562926,
+  "coefficients": [
+    -1.0013373449337937,
+    -0.20226676244280994,
+    -0.5427863587471697,
+    -2.84367790217083,
+    0.8448091259386465,
+    -2.22585530138331,
+    1.6130184318884273,
+    0,
+    1.5418049643969154,
+    -0.4160729524648209
+  ],
+  "trained_sample_count": 32
+}

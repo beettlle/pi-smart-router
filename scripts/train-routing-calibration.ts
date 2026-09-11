@@ -16,6 +16,16 @@
  *
  * Minimum sample sizes: `MINIMUM_TRAINING_SAMPLES` in calibration-aggregate.ts and
  * `config/routing-calibration.json.example`.
+ *
+ * SP-283 (#168) verifier-grade train: `--verifier-grade-only` restricts every
+ * training pool to ship-eligible labels — contrib rows must carry
+ * `label_provenance: human_feedback | llm_judge` (SP-281) and label-pack rows
+ * tagged `exclude_from_holdout_ece` (weak labels, SP-190) never join the pool.
+ * `--packs <jsonl...>` joins privacy-safe label packs (schema:
+ * `scripts/lib/label-pack-schema.ts`) into the P(success)/isotonic pool.
+ * Hard ship gates (ECE calibrated ≤ raw, ECE ≤ 0.10, y_knots span ≥ 0.05) are
+ * evaluated after training and written to `--gate-report`; thresholds mirror
+ * `verify-routing-calibration.ts` (parity covered by unit tests).
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -25,6 +35,7 @@ import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 
 import {
+  isShipEligibleProvenance,
   MINIMUM_TRAINING_SAMPLES,
   parseContribJsonl,
 } from './calibration-aggregate.js';
@@ -44,6 +55,7 @@ import {
   P_SUCCESS_FEATURE_NAMES,
   trainFromLabeledSamples,
   type LabeledTrainingSample,
+  type PSuccessFeatures,
   type PSuccessWeights,
 } from '../src/domain/routing/p-success-classifier.js';
 import {
@@ -59,6 +71,10 @@ import {
   refineRoutingCentroidsWithOats,
   type RefinedRoutingCentroidsArtifact,
 } from './lib/oats-centroid-refinement.js';
+import {
+  loadLabelPackFile,
+  type LabelPackRow,
+} from './lib/label-pack-schema.js';
 
 export const ROUTING_CALIBRATION_BUNDLE_VERSION = 2 as const;
 
@@ -110,6 +126,214 @@ export class RoutingCalibrationError extends Error {
   }
 }
 
+// ---------------------------------------------------------------------------
+// SP-283 (#168) — verifier-grade train support
+// ---------------------------------------------------------------------------
+
+/**
+ * Weak-label outcome signal excluded from verifier-grade ship trains.
+ * Canonical definition: `EXCLUDE_FROM_HOLDOUT_ECE_SIGNAL` in
+ * `verify-routing-calibration.ts` (string parity asserted by unit tests).
+ */
+export const WEAK_LABEL_EXCLUDE_SIGNAL = 'exclude_from_holdout_ece';
+
+/**
+ * Hard ship gates for trained isotonic artifacts (SP-283 / #168). Keep in
+ * parity with `CALIBRATION_HARD_ECE_THRESHOLD` /
+ * `CALIBRATION_MIN_Y_KNOT_SPAN` in `verify-routing-calibration.ts`
+ * (parity asserted by unit tests).
+ */
+export const VERIFIER_TRAIN_HARD_ECE_THRESHOLD = 0.1;
+export const VERIFIER_TRAIN_MIN_Y_KNOT_SPAN = 0.05;
+
+const EMPTY_FAILURE_PROXIES: LabeledTrainingSample['failure_proxies'] = {
+  tool_failure_chain_count: null,
+  stop_reason_invalid: null,
+  reprompt_rate: null,
+  edit_distance_proxy: null,
+};
+
+/** Map pack feature map → P(success) feature vector (missing keys → 0). */
+export function featuresFromLabelPackRow(row: LabelPackRow): PSuccessFeatures {
+  const features = {} as Record<(typeof P_SUCCESS_FEATURE_NAMES)[number], number>;
+  for (const name of P_SUCCESS_FEATURE_NAMES) {
+    const value = row.features[name];
+    features[name] = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  }
+  return features;
+}
+
+/** Convert a validated label-pack row into a training sample (no prompt text). */
+export function labelPackRowToTrainingSample(row: LabelPackRow): LabeledTrainingSample {
+  return {
+    request_id: row.sample_id,
+    features: featuresFromLabelPackRow(row),
+    success: row.success,
+    outcome_signals: [],
+    failure_proxies: EMPTY_FAILURE_PROXIES,
+  };
+}
+
+/** True when a pack row carries weak labels that must never join a ship train. */
+export function isWeakLabelPackRow(row: LabelPackRow): boolean {
+  return (row.outcome_signals ?? []).includes(WEAK_LABEL_EXCLUDE_SIGNAL);
+}
+
+/** Load validated pack JSONL files into rows (fail-closed on taint / schema errors). */
+export function loadLabelPackRowsForTrain(packPaths: readonly string[]): LabelPackRow[] {
+  const rows: LabelPackRow[] = [];
+  for (const packPath of packPaths) {
+    const loaded = loadLabelPackFile(resolve(packPath));
+    rows.push(...loaded.rows);
+  }
+  return rows;
+}
+
+export interface IsotonicHardGateResult {
+  readonly id: string;
+  readonly passed: boolean;
+  readonly message: string;
+}
+
+/**
+ * Evaluate hard ship gates on a trained isotonic artifact. Mirrors
+ * `assertIsotonicTrainingGates` (verify-routing-calibration.ts): honest-
+ * untrained (below floor) reports a single informational pass; trained fits
+ * must improve ECE, stay under the absolute ceiling, and keep non-degenerate
+ * y_knots. Use `isIsotonicTrained` + gate results for ship decisions.
+ */
+export function evaluateIsotonicHardGates(
+  isotonic: IsotonicCalibratorArtifact,
+): IsotonicHardGateResult[] {
+  if (!isIsotonicTrained(isotonic)) {
+    return [
+      {
+        id: 'isotonic_training_gates',
+        passed: true,
+        message: `honest-untrained samples=${isotonic.trained_sample_count}<${isotonic.min_training_samples}`,
+      },
+    ];
+  }
+
+  const results: IsotonicHardGateResult[] = [];
+  const yMin = Math.min(...isotonic.y_knots);
+  const yMax = Math.max(...isotonic.y_knots);
+  const ySpan = yMax - yMin;
+  results.push({
+    id: 'isotonic_y_span',
+    passed: ySpan >= VERIFIER_TRAIN_MIN_Y_KNOT_SPAN,
+    message: `y_span=${ySpan.toFixed(4)} (min ${VERIFIER_TRAIN_MIN_Y_KNOT_SPAN})`,
+  });
+
+  const raw = isotonic.holdout_ece_raw;
+  const calibrated = isotonic.holdout_ece_calibrated;
+  if (raw === null || calibrated === null) {
+    results.push({
+      id: 'isotonic_ece_present',
+      passed: false,
+      message: 'trained isotonic requires holdout_ece_raw and holdout_ece_calibrated',
+    });
+    return results;
+  }
+
+  results.push({
+    id: 'isotonic_ece_improves',
+    passed: calibrated <= raw,
+    message: `ece_calibrated=${calibrated.toFixed(4)} vs ece_raw=${raw.toFixed(4)}`,
+  });
+  results.push({
+    id: 'isotonic_ece_absolute',
+    passed: calibrated <= VERIFIER_TRAIN_HARD_ECE_THRESHOLD,
+    message: `ece_calibrated=${calibrated.toFixed(4)} (max ${VERIFIER_TRAIN_HARD_ECE_THRESHOLD})`,
+  });
+  return results;
+}
+
+/** True when the isotonic artifact meets its sample floor (trained, not neutral). */
+export function isIsotonicTrained(isotonic: IsotonicCalibratorArtifact): boolean {
+  return isotonic.trained_sample_count >= isotonic.min_training_samples;
+}
+
+/** Options for verifier-grade ship trains (SP-283). */
+export interface VerifierGradeTrainOptions {
+  /** Label-pack rows joined into the labeled pool; weak rows are always dropped. */
+  readonly packRows?: readonly LabelPackRow[];
+  /**
+   * When true, contrib rows train only when explicitly tagged with a
+   * ship-eligible provenance (human_feedback | llm_judge, SP-281). Untagged
+   * legacy rows and scripted_intent rows never join a verifier-grade train.
+   */
+  readonly verifierGradeOnly?: boolean;
+}
+
+export interface VerifierGradeGateReport {
+  readonly report_version: 1;
+  readonly task: 'SP-283';
+  readonly generated_at: string;
+  readonly verifier_grade_only: boolean;
+  readonly inputs: {
+    readonly contrib_rows: number;
+    readonly contrib_ship_eligible_rows: number;
+    readonly contrib_dropped_provenance_rows: number;
+    readonly pack_rows: number;
+    readonly pack_rows_excluded_weak: number;
+    readonly labeled_training_samples: number;
+  };
+  readonly trained_sample_counts: {
+    readonly p_success_weights: number;
+    readonly isotonic_calibrator: number;
+    readonly triage_thresholds: number;
+    readonly hydra_projection: number;
+  };
+  readonly isotonic: {
+    readonly trained: boolean;
+    readonly y_knot_span: number | null;
+    readonly holdout_ece_raw: number | null;
+    readonly holdout_ece_calibrated: number | null;
+  };
+  readonly hard_gates: readonly IsotonicHardGateResult[];
+  /**
+   * True only when the isotonic artifact is trained AND every hard gate
+   * passes. Honest-untrained is never a ship pass.
+   */
+  readonly hard_gates_passed: boolean;
+}
+
+/** Build the SP-283 gate report for a trained bundle + input accounting. */
+export function buildVerifierGradeGateReport(
+  bundle: RoutingCalibrationBundle,
+  accounting: VerifierGradeGateReport['inputs'],
+  options?: { readonly verifierGradeOnly?: boolean; readonly generatedAt?: string },
+): VerifierGradeGateReport {
+  const isotonic = bundle.isotonic_calibrator;
+  const trained = isIsotonicTrained(isotonic);
+  const hardGates = evaluateIsotonicHardGates(isotonic);
+  const ySpan = trained
+    ? Math.max(...isotonic.y_knots) - Math.min(...isotonic.y_knots)
+    : null;
+
+  return {
+    report_version: 1,
+    task: 'SP-283',
+    generated_at: options?.generatedAt ?? new Date().toISOString(),
+    verifier_grade_only: options?.verifierGradeOnly ?? false,
+    inputs: accounting,
+    trained_sample_counts: {
+      p_success_weights: bundle.p_success_weights.trained_sample_count,
+      isotonic_calibrator: isotonic.trained_sample_count,
+      triage_thresholds: bundle.triage_thresholds.trained_sample_count,
+      hydra_projection: bundle.hydra_projection.trained_sample_count,
+    },
+    isotonic: {
+      trained,
+      y_knot_span: ySpan,
+      holdout_ece_raw: isotonic.holdout_ece_raw,
+      holdout_ece_calibrated: isotonic.holdout_ece_calibrated,
+    },
+    hard_gates: hardGates,
+    hard_gates_passed: trained && hardGates.every((gate) => gate.passed),
+  };
+}
 
 function logit(p: number): number {
   const clamped = Math.min(0.999, Math.max(0.001, p));
@@ -617,18 +841,37 @@ export interface TrainRoutingCalibrationResult {
   readonly bundle: RoutingCalibrationBundle;
   readonly isotonic_fit_sample_count: number;
   readonly isotonic_holdout_sample_count: number;
+  /** SP-283 input accounting for the verifier-grade gate report. */
+  readonly accounting: VerifierGradeGateReport['inputs'];
 }
 
 /** Train bundle and return isotonic split metadata for logging. */
 export function trainRoutingCalibrationBundleWithMetrics(
   records: readonly Record<string, unknown>[],
+  options?: VerifierGradeTrainOptions,
 ): TrainRoutingCalibrationResult {
-  const hydraRows = records.filter(
+  const verifierGradeOnly = options?.verifierGradeOnly ?? false;
+  // SP-283: verifier-grade trains scope EVERY contrib-derived pool (labeled
+  // samples, triage threshold fit, hydra projection, centroids) to rows with
+  // ship-eligible provenance; untagged legacy rows stay install-local only.
+  const scopedRecords = verifierGradeOnly
+    ? records.filter((record) => isShipEligibleProvenance(record))
+    : [...records];
+  const contribDropped = records.length - scopedRecords.length;
+
+  const packRows = options?.packRows ?? [];
+  // Weak labels (exclude_from_holdout_ece) never join a ship train — they may
+  // warm-start dry-run fits only (SP-201), never trained ship artifacts.
+  const acceptedPackRows = packRows.filter((row) => !isWeakLabelPackRow(row));
+  const packSamples = acceptedPackRows.map((row) => labelPackRowToTrainingSample(row));
+
+  const hydraRows = scopedRecords.filter(
     (record) =>
       record.reason_code === 'hydra_embedding_match' ||
       readRequirementVector(record) !== null,
   );
-  const labeledSamples = collectLabeledSamples(records);
+  const contribSamples = collectLabeledSamples(scopedRecords);
+  const labeledSamples = [...contribSamples, ...packSamples];
   const pSuccessWeights = trainPSuccessWeights(labeledSamples);
   const isotonicFit = fitIsotonicCalibratorFromSamples(labeledSamples, pSuccessWeights);
 
@@ -637,13 +880,21 @@ export function trainRoutingCalibrationBundleWithMetrics(
       version: ROUTING_CALIBRATION_BUNDLE_VERSION,
       minimum_training_samples: MINIMUM_TRAINING_SAMPLES,
       hydra_projection: trainHydraProjection(hydraRows),
-      triage_thresholds: trainTriageThreshold(records),
+      triage_thresholds: trainTriageThreshold(scopedRecords),
       p_success_weights: pSuccessWeights,
       isotonic_calibrator: isotonicFit.artifact,
-      routing_centroids: trainRoutingCentroids(records),
+      routing_centroids: trainRoutingCentroids(scopedRecords),
     },
     isotonic_fit_sample_count: isotonicFit.fit_sample_count,
     isotonic_holdout_sample_count: isotonicFit.holdout_sample_count,
+    accounting: {
+      contrib_rows: records.length,
+      contrib_ship_eligible_rows: scopedRecords.length,
+      contrib_dropped_provenance_rows: contribDropped,
+      pack_rows: packRows.length,
+      pack_rows_excluded_weak: packRows.length - acceptedPackRows.length,
+      labeled_training_samples: labeledSamples.length,
+    },
   };
 }
 
@@ -657,9 +908,17 @@ function usage(): void {
       'Usage: npm run routing:train-calibration -- [options]',
       '',
       'Options:',
-      '  --input <path>     Validated JSONL from routing:calibration-aggregate (default: stdin)',
-      '  --output <path>    Output bundle path (default: config/routing-calibration.json)',
-      '  -h, --help         Show this help',
+      '  --input <path>           Validated JSONL from routing:calibration-aggregate (default: stdin)',
+      '  --output <path>          Output bundle path (default: config/routing-calibration.json)',
+      '  --packs <jsonl...>       Label-pack JSONL files joined into the P(success)/isotonic pool',
+      '  --verifier-grade-only   Train on ship-eligible labels only (SP-283 / #168):',
+      '                          contrib rows need label_provenance human_feedback|llm_judge;',
+      '                          weak pack rows (exclude_from_holdout_ece) never train',
+      '  --p-success-output <p>   Standalone P(success) weights output',
+      '                          (default: config/p-success-weights.json when floor met)',
+      '  --gate-report <path>     Write SP-283 hard-gate JSON report',
+      '  --require-hard-gates     Exit 1 when isotonic hard gates do not pass',
+      '  -h, --help               Show this help',
       '',
       'Trains from feature vectors only — never reads prompt text from contrib rows.',
       `Minimum samples: hydra=${MINIMUM_TRAINING_SAMPLES.hydra_projection},`,
@@ -694,6 +953,11 @@ async function main(): Promise<void> {
 
   let inputPath: string | undefined;
   let outputPath = DEFAULT_ROUTING_CALIBRATION_PATH;
+  let pSuccessOutputPath: string | undefined;
+  let gateReportPath: string | undefined;
+  let verifierGradeOnly = false;
+  let requireHardGates = false;
+  const packPaths: string[] = [];
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
@@ -714,26 +978,79 @@ async function main(): Promise<void> {
       i++;
       continue;
     }
+    if (arg === '--packs') {
+      if (i + 1 >= args.length || args[i + 1]!.startsWith('-')) {
+        throw new RoutingCalibrationError('--packs requires one or more pack JSONL paths');
+      }
+      while (i + 1 < args.length && !args[i + 1]!.startsWith('-')) {
+        i += 1;
+        packPaths.push(args[i]!);
+      }
+      continue;
+    }
+    if (arg === '--verifier-grade-only') {
+      verifierGradeOnly = true;
+      continue;
+    }
+    if (arg === '--p-success-output') {
+      const next = args[i + 1];
+      if (!next) {
+        throw new RoutingCalibrationError('--p-success-output requires a path');
+      }
+      pSuccessOutputPath = resolve(next);
+      i++;
+      continue;
+    }
+    if (arg === '--gate-report') {
+      const next = args[i + 1];
+      if (!next) {
+        throw new RoutingCalibrationError('--gate-report requires a path');
+      }
+      gateReportPath = resolve(next);
+      i++;
+      continue;
+    }
+    if (arg === '--require-hard-gates') {
+      requireHardGates = true;
+      continue;
+    }
     throw new RoutingCalibrationError(`Unknown argument: ${arg}`);
   }
 
   const text = await readInputText(inputPath);
   const records = text.trim().length > 0 ? parseContribJsonl(text, inputPath ?? 'stdin') : [];
-  const trained = trainRoutingCalibrationBundleWithMetrics(records);
+  const packRows = loadLabelPackRowsForTrain(packPaths);
+  const trained = trainRoutingCalibrationBundleWithMetrics(records, {
+    packRows,
+    verifierGradeOnly,
+  });
   const bundle = trained.bundle;
+  const gateReport = buildVerifierGradeGateReport(bundle, trained.accounting, {
+    verifierGradeOnly,
+  });
+
+  if (verifierGradeOnly) {
+    console.error(
+      `train-routing-calibration: verifier-grade-only — contrib ship-eligible`,
+      `${trained.accounting.contrib_ship_eligible_rows}/${trained.accounting.contrib_rows},`,
+      `pack rows ${trained.accounting.pack_rows - trained.accounting.pack_rows_excluded_weak}/${trained.accounting.pack_rows}`,
+      `(${trained.accounting.pack_rows_excluded_weak} weak excluded),`,
+      `labeled pool=${trained.accounting.labeled_training_samples}`,
+    );
+  }
 
   parseRoutingCalibrationBundleJson(serializeRoutingCalibrationBundle(bundle));
   writeFileSync(outputPath, serializeRoutingCalibrationBundle(bundle), 'utf8');
 
   // Also refresh standalone dogfood weights when the P(success) gate is met (SP-175).
-  const pSuccessOut = resolve('config', 'p-success-weights.json');
+  const pSuccessOut = pSuccessOutputPath ?? resolve('config', 'p-success-weights.json');
   if (bundle.p_success_weights.trained_sample_count >= bundle.p_success_weights.min_training_samples) {
     writeFileSync(pSuccessOut, `${JSON.stringify(bundle.p_success_weights, null, 2)}\n`, 'utf8');
     console.error(`train-routing-calibration: also wrote standalone P(success) weights to ${pSuccessOut}`);
   }
 
   console.error(
-    `train-routing-calibration: wrote bundle v${bundle.version} (${records.length} training row(s)) to ${outputPath}`,
+    `train-routing-calibration: wrote bundle v${bundle.version} (${trained.accounting.contrib_ship_eligible_rows} in-scope contrib row(s), ${trained.accounting.labeled_training_samples} labeled sample(s)) to ${outputPath}`,
   );
   console.error(
     `  p_success samples=${bundle.p_success_weights.trained_sample_count},`,
@@ -750,6 +1067,26 @@ async function main(): Promise<void> {
       `fit=${trained.isotonic_fit_sample_count},`,
       `holdout=${trained.isotonic_holdout_sample_count},`,
       `knots=${isotonic.x_knots.length}`,
+    );
+  }
+
+  // SP-283: hard-gate evidence for verifier-grade ship trains.
+  for (const gate of gateReport.hard_gates) {
+    console.error(`  hard-gate ${gate.passed ? 'PASS' : 'FAIL'} ${gate.id}: ${gate.message}`);
+  }
+  console.error(
+    `  hard gates (ship decision): ${gateReport.hard_gates_passed ? 'PASS' : 'FAIL'}` +
+      `${gateReport.isotonic.trained ? '' : ' (honest-untrained — no ship claim)'}`,
+  );
+
+  if (gateReportPath !== undefined) {
+    writeFileSync(gateReportPath, `${JSON.stringify(gateReport, null, 2)}\n`, 'utf8');
+    console.error(`train-routing-calibration: wrote gate report to ${gateReportPath}`);
+  }
+
+  if (requireHardGates && !gateReport.hard_gates_passed) {
+    throw new RoutingCalibrationError(
+      'Hard isotonic gates did not pass — candidate artifacts are evidence only, not ship-grade (SP-283)',
     );
   }
 }
