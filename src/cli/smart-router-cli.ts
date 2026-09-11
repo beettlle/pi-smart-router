@@ -16,7 +16,10 @@ import {
 import { SessionPinner } from '../domain/pinning/session-pinner.js';
 import { DATASET_MAX_ENTRIES } from '../infrastructure/telemetry/dataset-limits.js';
 import { loadOrCreateDatasetPepper } from '../infrastructure/telemetry/dataset-recorder.js';
-import { hashSessionIdForTelemetryExport } from '../infra/telemetry.js';
+import {
+  hashRequestIdForTelemetryExport,
+  hashSessionIdForTelemetryExport,
+} from '../infra/telemetry.js';
 import type { RoutingDatasetRecord, RoutingOutcomeRecord } from '../domain/types/index.js';
 import type { StorePort } from '../domain/types/store-port.js';
 
@@ -61,10 +64,20 @@ export const TELEMETRY_CONTRIB_REJECT_KEYS = [
   'prompt',
   'prompt_fingerprint',
 ] as const;
-
 /** Mirrors SP-116 tainted key pattern for ingest-safe export. */
 export const TELEMETRY_CONTRIB_TAINTED_KEY_PATTERN =
   /(?:^|_)(prompt|message|messages|content|tool_calls?|secret|password|token|api_key)(?:_|$)/i;
+
+/**
+ * Privacy-safe count-only fields that the tainted pattern would otherwise
+ * reject by name (SP-285, #170). These carry integer counts — never content —
+ * so they are explicitly allowed: `prompt_length_chars` feeds the P(success)
+ * prompt_length feature; `message_count` feeds envelope-shape features.
+ */
+export const TELEMETRY_CONTRIB_TAINTED_KEY_ALLOWLIST = [
+  'prompt_length_chars',
+  'message_count',
+] as const;
 
 export class TelemetryContribValidationError extends Error {
   override readonly name = 'TelemetryContribValidationError';
@@ -98,8 +111,9 @@ function collectForbiddenContribKeys(
     const keyPath = path ? `${path}.${key}` : key;
 
     if (
-      (TELEMETRY_CONTRIB_REJECT_KEYS as readonly string[]).includes(key) ||
-      TELEMETRY_CONTRIB_TAINTED_KEY_PATTERN.test(key)
+      !(TELEMETRY_CONTRIB_TAINTED_KEY_ALLOWLIST as readonly string[]).includes(key) &&
+      ((TELEMETRY_CONTRIB_REJECT_KEYS as readonly string[]).includes(key) ||
+        TELEMETRY_CONTRIB_TAINTED_KEY_PATTERN.test(key))
     ) {
       found.push(keyPath);
     }
@@ -160,6 +174,8 @@ export interface ExportTelemetryContribOptions {
   readonly limit?: number;
   readonly cwd?: string;
   readonly writeFile?: boolean;
+  /** Include captured 384-dim embeddings in contrib rows (SP-285, #170). */
+  readonly includeEmbeddings?: boolean;
 }
 
 export interface ExportTelemetryContribResult {
@@ -172,6 +188,8 @@ export interface TelemetryContribExportContext {
   readonly store: StorePort;
   readonly cwd: string;
   readonly limit: number;
+  /** Include captured embeddings (SP-285, #170 --embeddings flag). */
+  readonly includeEmbeddings?: boolean | undefined;
 }
 
 /** Returns true when args invoke `/smart-router unpin`. */
@@ -192,22 +210,24 @@ export function isExportTelemetryContribInvocation(args: string): boolean {
 
 export function parseExportTelemetryContribArgs(args: string): {
   readonly limit: number;
+  readonly includeEmbeddings: boolean;
 } {
   if (!isExportTelemetryContribInvocation(args)) {
     throw new Error(
-      'Usage: export telemetry-contrib [--limit N]',
+      'Usage: export telemetry-contrib [--limit N] [--embeddings]',
     );
   }
 
   const tokens = args.trim().split(/\s+/).filter(Boolean);
   let limit = DEFAULT_TELEMETRY_CONTRIB_EXPORT_LIMIT;
+  let includeEmbeddings = false;
 
   for (let i = 2; i < tokens.length; i++) {
     const token = tokens[i]!;
     if (token === '--limit') {
       const next = tokens[i + 1];
       if (!next) {
-        throw new Error('Usage: export telemetry-contrib [--limit N]');
+        throw new Error('Usage: export telemetry-contrib [--limit N] [--embeddings]');
       }
       limit = parsePositiveLimit(next);
       i++;
@@ -217,10 +237,14 @@ export function parseExportTelemetryContribArgs(args: string): {
       limit = parsePositiveLimit(token.slice('--limit='.length));
       continue;
     }
+    if (token === '--embeddings') {
+      includeEmbeddings = true;
+      continue;
+    }
     throw new Error(`Unknown argument: ${token}`);
   }
 
-  return { limit };
+  return { limit, includeEmbeddings };
 }
 
 function parsePositiveLimit(raw: string): number {
@@ -288,12 +312,21 @@ export function toTelemetryContribRecord(
   record: RoutingDatasetRecord,
   outcomes: readonly RoutingOutcomeRecord[] = [],
   pepper?: Buffer,
+  options?: { readonly includeEmbeddings?: boolean | undefined },
 ): Record<string, unknown> {
   const { success, outcome_signals } = deriveSuccessLabel(outcomes);
+
+  // SP-285 / #170: raw encoder embeddings are larger and more revealing than
+  // scalar features, so community contrib rows omit them unless the operator
+  // passes --embeddings (capture itself is a separate opt-in env var).
+  const includeEmbeddings = options?.includeEmbeddings ?? false;
 
   const contrib: Record<string, unknown> = {
     version: TELEMETRY_CONTRIB_VERSION,
     timestamp: record.timestamp,
+    // SP-285 / #170: stable per-install row id — request_id is stripped below,
+    // row_id keeps aggregate dedup + reproducible training splits possible.
+    row_id: hashRequestIdForTelemetryExport(record.request_id, pepper),
     session_id_hash: resolveSessionIdHash(record, outcomes, pepper),
     turn_type: record.turn_type,
     stage: record.stage,
@@ -303,6 +336,11 @@ export function toTelemetryContribRecord(
     routing_latency_ms: record.routing_latency_ms,
     estimated_cost_usd: record.estimated_cost_usd,
     estimated_input_tokens: record.estimated_input_tokens,
+    // SP-285 / #170: prompt_length_chars + message_count were previously
+    // dropped on this path, starving the P(success) prompt_length feature
+    // (Sept dogfood coefficient → 0) and edit-distance proxies.
+    prompt_length_chars: record.prompt_length_chars,
+    message_count: record.message_count,
     has_tool_context: record.has_tool_context,
     compaction_flag: record.compaction_flag,
     triage_verdict: record.triage_verdict,
@@ -325,6 +363,10 @@ export function toTelemetryContribRecord(
     success_label: success,
     outcome_signals,
   };
+
+  if (includeEmbeddings && record.embedding !== null) {
+    contrib.embedding = record.embedding;
+  }
 
   for (const key of TELEMETRY_CONTRIB_STRIP_KEYS) {
     delete contrib[key];
@@ -376,12 +418,13 @@ export function buildTelemetryContribRecords(
   datasetRecords: readonly RoutingDatasetRecord[],
   outcomeRecords: readonly RoutingOutcomeRecord[] = [],
   pepper?: Buffer,
+  options?: { readonly includeEmbeddings?: boolean | undefined },
 ): Record<string, unknown>[] {
   const outcomesByRequest = indexOutcomesByRequestId(outcomeRecords);
 
   return datasetRecords.map((record) => {
     const linkedOutcomes = outcomesByRequest.get(record.request_id) ?? [];
-    const contrib = toTelemetryContribRecord(record, linkedOutcomes, pepper);
+    const contrib = toTelemetryContribRecord(record, linkedOutcomes, pepper, options);
     validateTelemetryContribRecord(contrib, record.request_id);
     return contrib;
   });
@@ -397,7 +440,9 @@ export async function exportTelemetryContrib(
   // install but never correlatable across installs (SP-249/SP-250). Loaded
   // lazily — no pepper file is created when there is nothing to export.
   const pepper = datasetRecords.length > 0 ? loadOrCreateDatasetPepper(ctx.cwd) : undefined;
-  const records = buildTelemetryContribRecords(datasetRecords, outcomeRecords, pepper);
+  const records = buildTelemetryContribRecords(datasetRecords, outcomeRecords, pepper, {
+    includeEmbeddings: ctx.includeEmbeddings,
+  });
   const json = formatTelemetryContribJson(records);
 
   if (records.length === 0 || options?.writeFile === false) {
@@ -418,6 +463,7 @@ export function datasetExportRowToTelemetryContrib(
   exportRecord: Record<string, unknown>,
   outcomes: readonly RoutingOutcomeRecord[],
   pepper?: Buffer,
+  options?: { readonly includeEmbeddings?: boolean | undefined },
 ): Record<string, unknown> {
   const joined = attachOutcomeLabelsToExport(exportRecord, outcomes);
   const contrib: Record<string, unknown> = {
@@ -429,6 +475,13 @@ export function datasetExportRowToTelemetryContrib(
     delete contrib[key];
   }
 
+  // SP-285 / #170: stable per-install row id (raw request_id stripped above).
+  if (typeof exportRecord.row_id === 'string' && exportRecord.row_id.length > 0) {
+    contrib.row_id = exportRecord.row_id;
+  } else if (typeof exportRecord.request_id === 'string' && exportRecord.request_id.length > 0) {
+    contrib.row_id = hashRequestIdForTelemetryExport(exportRecord.request_id, pepper);
+  }
+
   if (typeof exportRecord.session_id_hash === 'string') {
     contrib.session_id_hash = exportRecord.session_id_hash;
   } else if (typeof exportRecord.session_id === 'string') {
@@ -436,6 +489,12 @@ export function datasetExportRowToTelemetryContrib(
   }
 
   delete contrib.session_id;
+
+  // SP-285 / #170: community contrib rows omit captured embeddings unless the
+  // operator explicitly opts in with --embeddings.
+  if (!(options?.includeEmbeddings ?? false)) {
+    delete contrib.embedding;
+  }
 
   return validateTelemetryContribRecord(contrib);
 }

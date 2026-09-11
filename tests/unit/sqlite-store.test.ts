@@ -10,13 +10,13 @@ import { SqliteStore, SqliteStoreError } from '../../src/infrastructure/persiste
 import {
   DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
   DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
+  DEFAULT_EMBEDDING_DATASET_FIELDS,
   DEFAULT_TIER_SELECTION_DATASET_FIELDS,
   DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
   DEFAULT_BREAKEVEN_TELEMETRY_FIELDS,
   DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS,
   DEFAULT_PIN_ONLY_FALLBACK_TELEMETRY_FIELDS,
-  DEFAULT_SAAR_TELEMETRY_FIELDS,
-} from '../../src/infrastructure/telemetry/routing-telemetry.js';
+  DEFAULT_SAAR_TELEMETRY_FIELDS,} from '../../src/infrastructure/telemetry/routing-telemetry.js';
 
 function baseTelemetryFields(): Pick<
   RoutingTelemetry,
@@ -121,6 +121,7 @@ function makeDatasetRecord(overrides: Partial<RoutingDatasetRecord> = {}): Routi
     prompt_fingerprint: null,
     ...DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
     ...DEFAULT_TIER_SELECTION_DATASET_FIELDS,
+    ...DEFAULT_EMBEDDING_DATASET_FIELDS,
     ...overrides,
   };
 }
@@ -152,7 +153,7 @@ describe('SqliteStore', () => {
       store2.close();
     });
 
-    it('migrates to schema v6 with outcomes table, dataset privacy columns, context_overflow pin_reason, and usage actuals columns (SP-241)', () => {
+    it('migrates to schema v8 with outcomes table, dataset privacy columns, context_overflow pin_reason, usage actuals columns (SP-241), and dataset embedding column (SP-285)', () => {
       const dir = mkdtempSync(join(tmpdir(), 'sqlite-store-'));
       const dbPath = join(dir, 'router.db');
       let store: SqliteStore | undefined;
@@ -163,7 +164,7 @@ describe('SqliteStore', () => {
         db = new Database(dbPath);
 
         const version = db.pragma('user_version', { simple: true });
-        expect(version).toBe(7);
+        expect(version).toBe(8);
 
         const telemetryColumns = db.prepare('PRAGMA table_info(telemetry)').all() as Array<{ name: string }>;
         const telemetryColumnNames = telemetryColumns.map((column) => column.name);
@@ -182,6 +183,7 @@ describe('SqliteStore', () => {
 
         expect(datasetColumnNames).toContain('prompt_length_chars');
         expect(datasetColumnNames).toContain('prompt_fingerprint');
+        expect(datasetColumnNames).toContain('embedding_json');
         expect(datasetColumnNames).not.toContain('prompt_text');
         expect(datasetColumnNames).not.toContain('messages');
         expect(datasetColumnNames).not.toContain('prompt');
@@ -210,6 +212,28 @@ describe('SqliteStore', () => {
 
       const rows = await store.listDatasetRecords({ limit: 1 });
       expect(rows[0]?.prompt_fingerprint).toBe(fingerprint);
+    });
+
+    it('round-trips opt-in 384-dim embeddings on dataset records (SP-285, #170)', async () => {
+      const embedding = Array.from({ length: 384 }, (_, i) => i / 384);
+      store.appendDatasetRecord(makeDatasetRecord({ embedding }));
+      store.appendDatasetRecord(makeDatasetRecord({ request_id: 'req-no-emb' }));
+
+      const rows = await store.listDatasetRecords({ limit: 2 });
+      const withEmbedding = rows.find((row) => row.request_id === 'req-1');
+      const withoutEmbedding = rows.find((row) => row.request_id === 'req-no-emb');
+
+      expect(withEmbedding?.embedding).toEqual(embedding);
+      expect(withoutEmbedding?.embedding).toBeNull();
+    });
+
+    it('fails loud on wrong-length embeddings at flush time (SP-285, #170)', async () => {
+      // Appends are queued (SP-235); the shape error surfaces fail-loud on the
+      // explicit flush inside listDatasetRecords rather than silently dropping.
+      store.appendDatasetRecord(makeDatasetRecord({ embedding: [0.1, 0.2] }));
+      await expect(store.listDatasetRecords({ limit: 1 })).rejects.toThrow(
+        /embedding shape mismatch/i,
+      );
     });
   });
 

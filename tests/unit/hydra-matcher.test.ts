@@ -4,8 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  HYDRA_EMBEDDING_CAPTURE_ENV,
   HydraMatcher,
   HydraProjectionWeightsLoaderError,
+  isHydraEmbeddingCaptureEnabled,
   MissingWeightsFailClosedError,
   createHydraEmbeddingProvider,
   k4CapabilityVectorToRequirements,
@@ -13,6 +15,7 @@ import {
   parseHydraProjectionWeightsJson,
   projectToRequirements,
   resolveHydraProjectionWeights,
+  wrapHydraEmbeddingProvider,
   wrapModernBertHeadsEmbeddingProvider,
   type EmbeddingProvider,
   type HydraProjectionWeights,
@@ -1196,5 +1199,100 @@ describe('fail_closed_on_missing_weights (SP-252)', () => {
       expect(result.selected).not.toBeNull();
       expect(result.requirement_reason_codes).toEqual([HYDRA_WEIGHTS_MISSING_REASON_CODE]);
     }
+  });
+});
+
+// ─── SP-285 / #170: opt-in embedding capture for privacy-safe export ─────────
+
+describe('HydraMatcher embedding capture (SP-285, #170)', () => {
+  const originalEnv = process.env[HYDRA_EMBEDDING_CAPTURE_ENV];
+
+  beforeEach(() => {
+    delete process.env[HYDRA_EMBEDDING_CAPTURE_ENV];
+  });
+
+  afterEach(() => {
+    if (originalEnv === undefined) {
+      delete process.env[HYDRA_EMBEDDING_CAPTURE_ENV];
+    } else {
+      process.env[HYDRA_EMBEDDING_CAPTURE_ENV] = originalEnv;
+    }
+  });
+
+  it('isHydraEmbeddingCaptureEnabled gates on SMART_ROUTER_DATASET_EMBEDDINGS=1', () => {
+    expect(isHydraEmbeddingCaptureEnabled()).toBe(false);
+    process.env[HYDRA_EMBEDDING_CAPTURE_ENV] = '0';
+    expect(isHydraEmbeddingCaptureEnabled()).toBe(false);
+    process.env[HYDRA_EMBEDDING_CAPTURE_ENV] = '1';
+    expect(isHydraEmbeddingCaptureEnabled()).toBe(true);
+  });
+
+  it('captures the 384-dim embedding via single-pass detailed extraction when opted in', async () => {
+    process.env[HYDRA_EMBEDDING_CAPTURE_ENV] = '1';
+
+    const embedding = new Float32Array(EMBEDDING_DIM).fill(0.25);
+    const embedder = {
+      embed: vi.fn(async () => embedding),
+      dispose: vi.fn(async () => {}),
+    };
+    const provider = wrapHydraEmbeddingProvider(embedder);
+    const matcher = new HydraMatcher(provider, DEFAULT_CONFIG);
+
+    const result = await matcher.match(makeRequest(), [makeModel()]);
+
+    // Single embed pass — requirements and embedding come from the same vector.
+    expect(embedder.embed).toHaveBeenCalledTimes(1);
+    expect(result.embedding).toEqual(Array.from(embedding));
+    expect(result.embedding).toHaveLength(EMBEDDING_DIM);
+  });
+
+  it('returns null embedding and never calls detailed extraction when not opted in', async () => {
+    const embedding = new Float32Array(EMBEDDING_DIM).fill(0.25);
+    const embedder = {
+      embed: vi.fn(async () => embedding),
+      dispose: vi.fn(async () => {}),
+    };
+    const provider = wrapHydraEmbeddingProvider(embedder);
+    const detailedSpy = vi.spyOn(provider, 'extractRequirementsDetailed');
+    const matcher = new HydraMatcher(provider, DEFAULT_CONFIG);
+
+    const result = await matcher.match(makeRequest(), [makeModel()]);
+
+    expect(detailedSpy).not.toHaveBeenCalled();
+    expect(result.embedding).toBeNull();
+  });
+
+  it('captures no embedding when the provider lacks detailed extraction', async () => {
+    process.env[HYDRA_EMBEDDING_CAPTURE_ENV] = '1';
+
+    const provider = makeMockProvider({ reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 });
+    const matcher = new HydraMatcher(provider, DEFAULT_CONFIG);
+
+    const result = await matcher.match(makeRequest(), [makeModel()]);
+
+    expect(result.selected).not.toBeNull();
+    expect(result.embedding).toBeNull();
+  });
+
+  it('fails loud on captured embedding shape mismatch', async () => {
+    process.env[HYDRA_EMBEDDING_CAPTURE_ENV] = '1';
+
+    const provider: EmbeddingProvider = {
+      extractRequirements: vi.fn(async () => ({
+        reasoning: 0.5,
+        code_gen: 0.5,
+        tool_use: 0.5,
+      })),
+      extractRequirementsDetailed: vi.fn(async () => ({
+        requirements: { reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 },
+        embedding: [0.1, 0.2],
+      })),
+      dispose: vi.fn(async () => {}),
+    };
+    const matcher = new HydraMatcher(provider, DEFAULT_CONFIG);
+
+    await expect(matcher.match(makeRequest(), [makeModel()])).rejects.toThrow(
+      /embedding shape mismatch/i,
+    );
   });
 });

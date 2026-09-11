@@ -5,10 +5,13 @@ import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 
 import {
+  aggregateContribRecords,
   assertContribRecordSafe,
   collectContribFromDir,
+  countEmbeddingRows,
   enrichContribRecordWithFailureLabels,
   formatContribJsonl,
+  hasEmbeddingVector,
   MINIMUM_TRAINING_SAMPLES,
   parseContribJsonl,
   sanitizeContribRecord,
@@ -166,5 +169,74 @@ describe('calibration aggregate (SP-116)', () => {
     expect(parsed[0]?.success_label).toBe(false);
     expect(parsed[0]?.outcome_signals).toContain('tool_failure_chain');
     expect(parsed[0]).not.toHaveProperty('stop_reason');
+  });
+});
+
+describe('calibration aggregate — SP-285 embedding rows + stable row ids (#170)', () => {
+  it('accepts count-only fields and opt-in embedding rows on ingest', () => {
+    const record = {
+      ...validContribRecord(),
+      row_id: 'b'.repeat(64),
+      prompt_length_chars: 1234,
+      message_count: 3,
+      embedding: Array.from({ length: 384 }, (_, i) => i / 384),
+    };
+
+    expect(() => assertContribRecordSafe(record)).not.toThrow();
+
+    const jsonl = formatContribJsonl([record]);
+    const parsed = parseContribJsonl(jsonl.trimEnd(), 'fixture');
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]?.prompt_length_chars).toBe(1234);
+    expect(parsed[0]?.message_count).toBe(3);
+    expect((parsed[0]?.embedding as number[]).length).toBe(384);
+    expect(parsed[0]?.row_id).toBe('b'.repeat(64));
+  });
+
+  it('still rejects prompt-content keys alongside count fields', () => {
+    expect(() =>
+      assertContribRecordSafe({
+        ...validContribRecord(),
+        prompt_length_chars: 10,
+        prompt_preview: 'never',
+      }),
+    ).toThrow(/prompt_preview/);
+  });
+
+  it('dedupes aggregate rows by stable row_id across overlapping exports', () => {
+    const rowA = { ...validContribRecord(), row_id: 'a'.repeat(64) };
+    const rowB = { ...validContribRecord(), row_id: 'b'.repeat(64) };
+
+    const aggregated = aggregateContribRecords([
+      [rowA, rowB],
+      [rowA, { ...rowB, routing_latency_ms: 99 }],
+    ]);
+
+    expect(aggregated).toHaveLength(2);
+    expect(aggregated.filter((row) => row.row_id === 'a'.repeat(64))).toHaveLength(1);
+    // First occurrence wins — re-exported duplicates are dropped.
+    expect(
+      aggregated.find((row) => row.row_id === 'b'.repeat(64))?.routing_latency_ms,
+    ).toBe(12);
+  });
+
+  it('keeps rows without row_id untouched (never deduped)', () => {
+    const aggregated = aggregateContribRecords([
+      [validContribRecord(), validContribRecord()],
+    ]);
+    expect(aggregated).toHaveLength(2);
+  });
+
+  it('counts embedding rows against the hydra_projection floor', () => {
+    const withEmbedding = {
+      ...validContribRecord(),
+      embedding: new Array<number>(384).fill(0.5),
+    };
+
+    expect(countEmbeddingRows([withEmbedding, validContribRecord()])).toBe(1);
+    expect(countEmbeddingRows([validContribRecord()])).toBe(0);
+    expect(hasEmbeddingVector(withEmbedding)).toBe(true);
+    expect(hasEmbeddingVector({ ...validContribRecord(), embedding: [] })).toBe(false);
+    expect(hasEmbeddingVector(validContribRecord())).toBe(false);
   });
 });

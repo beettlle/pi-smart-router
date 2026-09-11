@@ -20,7 +20,8 @@ import {
   trainFromExportJsonl,
   trainFromLabeledSamples,
 } from '../../src/domain/routing/p-success-classifier.js';
-import { DEFAULT_CONTEXT_FIT_DATASET_FIELDS, DEFAULT_TIER_SELECTION_DATASET_FIELDS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
+import { DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
+  DEFAULT_EMBEDDING_DATASET_FIELDS, DEFAULT_TIER_SELECTION_DATASET_FIELDS} from '../../src/infrastructure/telemetry/routing-telemetry.js';
 
 function makeDatasetRecord(
   overrides: Partial<RoutingDatasetRecord> = {},
@@ -53,6 +54,7 @@ function makeDatasetRecord(
     prompt_fingerprint: null,
     ...DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
     ...DEFAULT_TIER_SELECTION_DATASET_FIELDS,
+    ...DEFAULT_EMBEDDING_DATASET_FIELDS,
     ...overrides,
   };
 }

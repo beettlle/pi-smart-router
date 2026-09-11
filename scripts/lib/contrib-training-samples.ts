@@ -23,9 +23,9 @@ import type { RoutingDatasetRecord } from '../../src/domain/types/index.js';
  * Convert a privacy-safe contrib/aggregate record into a training sample.
  *
  * @param record Contrib row (feature vectors + outcome scalars only).
- * @param fallbackRequestId Deterministic id used when `record.request_id` is
- *   absent (e.g. `aggregate-row-7`); must be stable across runs of the same
- *   input so the isotonic holdout split is reproducible.
+ * @param fallbackRequestId Deterministic id used when neither `record.row_id`
+ *   nor `record.request_id` is present (e.g. `aggregate-row-7`); must be stable
+ *   across runs of the same input so the isotonic holdout split is reproducible.
  * @returns The labeled sample, or `null` when the row carries no label.
  */
 export function labeledSampleFromContribRecord(
@@ -37,11 +37,17 @@ export function labeledSampleFromContribRecord(
     return null;
   }
 
+  // SP-285 / #170: prefer the stable per-install row_id (HMAC of request_id) —
+  // aggregate position shifts as files are added/removed, which would make
+  // index-based ids (and therefore isotonic holdout splits) unstable.
+  const rowId = record.row_id;
   const explicitRequestId = record.request_id;
   const requestId =
-    typeof explicitRequestId === 'string' && explicitRequestId.length > 0
-      ? explicitRequestId
-      : fallbackRequestId;
+    typeof rowId === 'string' && rowId.length > 0
+      ? rowId
+      : typeof explicitRequestId === 'string' && explicitRequestId.length > 0
+        ? explicitRequestId
+        : fallbackRequestId;
 
   return {
     request_id: requestId,

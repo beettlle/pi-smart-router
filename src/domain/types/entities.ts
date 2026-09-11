@@ -390,6 +390,14 @@ export interface RoutingFeatureSidecar {
   readonly route_path?: RoutePath | null;
   /** Confidence (0–1) associated with route_path when a classifier produced one. */
   readonly route_path_confidence?: number | null;
+  /**
+   * Raw 384-dim HyDRA encoder embedding of the routed input (SP-285, #170).
+   * Populated only when SMART_ROUTER_DATASET_EMBEDDINGS=1 so the privacy-safe
+   * export path can carry embeddings for hydra_projection training (floor ≥100).
+   * A derived dense vector — never the prompt text itself; absent on legacy
+   * call paths and non-encoder routes.
+   */
+  readonly embedding?: readonly number[] | null;
   /** Speculative prewarm attempted this turn (SP-217, #117); absent when off. */
   readonly prewarm_attempted?: boolean | null;
   /** Prewarm warm within deadline; null when not attempted (SP-217, #117). */
@@ -470,6 +478,12 @@ export interface RoutingDatasetRecord {
   readonly p_success_cheap: number | null;
   readonly local_eligible_reason: string | null;
   readonly tier_selection_reason_code: string | null;
+  /**
+   * Raw 384-dim encoder embedding captured at hydra_match time (SP-285, #170).
+   * Null unless SMART_ROUTER_DATASET_EMBEDDINGS=1 (opt-in). Derived vector of
+   * the metadata-prefixed routing input — no prompt text is ever stored.
+   */
+  readonly embedding: readonly number[] | null;
 }
 
 // ─── RoutingOutcomeRecord ────────────────────────────────────────────────────

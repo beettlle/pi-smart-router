@@ -184,11 +184,12 @@ export function parseSmartRouterArgs(args: string): ParsedSmartRouterCommand {
   }
 
   if (tokens[0] === 'export' && tokens[1] === 'telemetry-contrib') {
-    const { limit } = parseExportTelemetryContribArgs(tokens.join(' '));
+    const { limit, includeEmbeddings } = parseExportTelemetryContribArgs(tokens.join(' '));
     return {
       command: 'export',
       subcommand: 'telemetry-contrib',
       limit: Math.min(limit, DEFAULT_TELEMETRY_CONTRIB_EXPORT_LIMIT),
+      includeEmbeddings,
     };
   }
 

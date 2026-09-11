@@ -398,6 +398,10 @@ export class RouterPipeline {
           }
         : null,
       requirements: ctx.hydraResult?.requirements ?? null,
+      // SP-285 / #170: opt-in raw embedding capture for privacy-safe export.
+      // Absent (not null) unless capture is enabled so the wire decision stays
+      // byte-identical when the operator has not opted in.
+      ...(ctx.hydraResult?.embedding ? { embedding: ctx.hydraResult.embedding } : {}),
       candidates: this.mergeFeatureCandidates(ctx),
       tier_hint: ctx.tierHint,
       tier_hint_reason_code: ctx.tierHintReasonCode,

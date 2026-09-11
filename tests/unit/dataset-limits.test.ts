@@ -8,7 +8,8 @@ import {
   evictExpiredDatasetEntries,
   makeDatasetRoom,
 } from '../../src/infrastructure/telemetry/dataset-limits.js';
-import { DEFAULT_CONTEXT_FIT_DATASET_FIELDS, DEFAULT_TIER_SELECTION_DATASET_FIELDS } from '../../src/infrastructure/telemetry/routing-telemetry.js';
+import { DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
+  DEFAULT_EMBEDDING_DATASET_FIELDS, DEFAULT_TIER_SELECTION_DATASET_FIELDS} from '../../src/infrastructure/telemetry/routing-telemetry.js';
 
 function makeDatasetRecord(timestamp: string): RoutingDatasetRecord {
   return {
@@ -39,6 +40,7 @@ function makeDatasetRecord(timestamp: string): RoutingDatasetRecord {
     prompt_fingerprint: null,
     ...DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
     ...DEFAULT_TIER_SELECTION_DATASET_FIELDS,
+    ...DEFAULT_EMBEDDING_DATASET_FIELDS,
   };
 }
 

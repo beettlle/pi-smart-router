@@ -67,6 +67,20 @@ export function hashSessionIdForTelemetryExport(
   return createHmac('sha256', pepper).update(sessionId).digest('hex');
 }
 
+/**
+ * Stable privacy-safe row id for contrib/aggregate rows (SP-285, #170):
+ * HMAC-SHA256 of request_id keyed with the install-local dataset pepper and a
+ * `row:` domain-separation prefix (so row ids never collide with session-id
+ * hashes). Stable per install for dedup and reproducible training splits; not
+ * correlatable across installs. The raw request_id itself is never exported.
+ */
+export function hashRequestIdForTelemetryExport(
+  requestId: string,
+  pepper: Buffer = telemetryExportPepper(),
+): string {
+  return createHmac('sha256', pepper).update(`row:${requestId}`).digest('hex');
+}
+
 export interface CommunityTelemetryRecord {
   readonly timestamp: string;
   readonly session_id_hash: string;

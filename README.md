@@ -225,7 +225,7 @@ Cursor models bill against your **Cursor Pro subscription quota**, not per-token
 | `/smart-router mode all` | Route among **all authenticated models** in the registry |
 | `/smart-router pricing refresh` | Manually fetch LiteLLM pricing from `LITELLM_PRICING_URL`, persist to SQLite, and rebuild the fleet with updated rates |
 | `/smart-router export dataset [--limit N]` | Export opt-in routing dataset as JSONL (requires `SMART_ROUTER_DATASET=1`) |
-| `/smart-router export telemetry-contrib [--limit N]` | Export privacy-safe community telemetry JSON for calibration contributions |
+| `/smart-router export telemetry-contrib [--limit N] [--embeddings]` | Export privacy-safe community telemetry JSON for calibration contributions (`--embeddings` opts in to captured 384-dim embedding rows) |
 | `/smart-router feedback good\|bad` | Label the last auto-routed request outcome (requires `SMART_ROUTER_DATASET=1`) |
 | `/smart-router unpin` | Clear the current session pin (in-memory and SQLite) so the next request runs the full routing pipeline |
 | `/smart-router plan [--json]` | **Read-only** local placement report: encoder resident status, local model warm/cold, RAM/disk constraints, cold vs warm TPS, and bottleneck guess. `--json` prints the schema-stable report for automation |
@@ -440,6 +440,7 @@ Cluster IDs are stable reason-code prefixes (`cluster_low_stakes_general`, `clus
 | `SMART_ROUTER_LOG_ROUTING` | (unset) | Set to `1` to log each routing decision to stderr as JSON (debugging dogfood sessions). Canonical payload builder (`buildRoutingDecisionLogPayload`) includes top-level `stage`, `reason_code`, `low_intensity_score`, `tier_hint`, `local_eligible_reason`, and `cluster_id` (plus nested `cluster_summary` / `features`). The pi extension’s live stderr logger is still a slim subset — see [LOG_ROUTING field checklist](#log_routing-field-checklist) |
 | `SMART_ROUTER_DATASET` | (unset) | Set to `1` to opt in to privacy-safe routing dataset capture (metadata and feature fields only; 30-day / 10k-row retention). Prompt text, messages, and tool arguments are never stored. Required for outcome labels and P(success) training export. See [#8](https://github.com/beettlle/pi-smart-router/issues/8). |
 | `SMART_ROUTER_DATASET_FINGERPRINT` | (unset) | Set to `1` (requires `SMART_ROUTER_DATASET=1`) to store an install-local HMAC-SHA256 fingerprint of each normalized prompt for duplicate detection within this install. The install pepper lives in `.pi-smart-router/.dataset-key` (gitignored) and is never exported. **Warning:** short or common prompts are vulnerable to offline rainbow-table guessing; use only when you accept that tradeoff. See [#10](https://github.com/beettlle/pi-smart-router/issues/10). |
+| `SMART_ROUTER_DATASET_EMBEDDINGS` | (unset) | Set to `1` (requires `SMART_ROUTER_DATASET=1`) to capture the raw 384-dim HyDRA encoder embedding on each dataset row (derived dense vector of the metadata-prefixed routing input — never prompt text). Embeddings stay local until you additionally export with `--embeddings`; they exist so the hydra_projection ≥100-row training floor can ever be met. See [#170](https://github.com/beettlle/pi-smart-router/issues/170). |
 | `MODELS_YAML_PATH` | `./config/models.yaml` | Fleet catalog path (library API only) |
 | `SMART_ROUTER_PLANNING_TURN_BUFFER` | `2` | SAAR planning buffer: frontier planning turns allowed before hard-lock ([v0.2.0 Continuity](https://github.com/beettlle/pi-smart-router/issues/72)) |
 | `SMART_ROUTER_PLANNING_DELEGATE_ENABLED` | `true` | Enable cache-preserving planning delegate ([#71](https://github.com/beettlle/pi-smart-router/issues/71)) |
@@ -785,12 +786,18 @@ Library helpers (see `src/domain/routing/p-success-classifier.ts`):
 When `SMART_ROUTER_DATASET=1`, you can export privacy-safe scalar routing features (plus outcome labels) for community calibration training. The export never includes prompt text, messages, raw session identifiers, or install-local pepper fields.
 
 ```bash
-/smart-router export telemetry-contrib [--limit N]
+/smart-router export telemetry-contrib [--limit N] [--embeddings]
 # or from shell (cwd must contain .pi-smart-router/state.db):
-npx pi-smart-router export telemetry-contrib [--limit N]
+npx pi-smart-router export telemetry-contrib [--limit N] [--embeddings]
 ```
 
 This writes schema-valid JSON to `.pi-smart-router/exports/telemetry-contrib-<timestamp>.json`. Each row conforms to [`telemetry-contrib.schema.json`](specs/001-build-smart-router/contracts/telemetry-contrib.schema.json).
+
+**Feature-complete rows (v1.1.0, [#170](https://github.com/beettlle/pi-smart-router/issues/170)).** Contrib rows now carry additive optional fields within format v2:
+
+- `row_id` — stable per-install HMAC-SHA256 of `request_id` (domain-separated `row:` prefix; raw request ids are never exported). Aggregation dedupes overlapping exports by `row_id`, and training splits stay reproducible as files are added or removed.
+- `prompt_length_chars` / `message_count` — count-only envelope fields that feed the P(success) prompt-length feature and edit-distance proxies (previously dropped on this path, starving the feature to zero).
+- `embedding` — **double opt-in**: captured only when `SMART_ROUTER_DATASET_EMBEDDINGS=1` was set at routing time, and exported only when you pass `--embeddings`. This is the raw 384-dim encoder vector HyDRA projection training needs to reach its ≥100-row floor; it is a derived dense vector of the metadata-prefixed routing input, never prompt text. `calibration-aggregate` reports how many aggregated rows carry embeddings and warns while the count is below the hydra_projection floor (honest-untrained defaults remain until the floor is met).
 
 **Export schema v2 — session-hash migration (v0.21.0, [#146](https://github.com/beettlle/pi-smart-router/issues/146)).** The contrib export schema was bumped **v1 → v2** (`TELEMETRY_CONTRIB_VERSION = 2` in `src/cli/smart-router-cli.ts`). In v1, `session_id_hash` was an **unsalted SHA-256** of the raw session id; in v2 it is an **HMAC-SHA256 keyed with an install-local pepper** (`hashSessionIdForTelemetryExport` in `src/infra/telemetry.ts`). The pepper is generated once per install at `.pi-smart-router/.dataset-key` (mode 0600) and is **never** included in export payloads — ingest strips pepper fields before aggregation. Consequences for operators comparing exports:
 
