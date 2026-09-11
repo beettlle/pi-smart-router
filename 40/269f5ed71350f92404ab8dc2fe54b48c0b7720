@@ -1,0 +1,40 @@
+data/contrib/shadow-human-20260911.jsonl
+  s_73aaa01b99b77c::t_cba10ab6837ab1 1-147
+spine-tasks/_authoring/release-v1.1.0/hard-gate-retrain-2026-09-11.md
+  s_73aaa01b99b77c::t_939f06417b0f55 1-30,36-55
+  s_73aaa01b99b77c::t_e1e64663dcd9b9 31-35
+data/calibration/verifier-grade-gate-report.json
+  s_73aaa01b99b77c::t_790075c07d1610 4,7-10,12,15-17,23-24,34-35,39-40
+data/calibration/candidate-routing-calibration.json
+  s_73aaa01b99b77c::t_790075c07d1610 1-2914
+spine-tasks/_authoring/release-v1.1.0/live-sp282-fallback-note.md
+  s_73aaa01b99b77c::t_406b0698d6e5e3 1-9,12-33
+  s_73aaa01b99b77c::t_37622309eaf9c5 10-11
+data/calibration/candidate-p-success-weights.json
+  s_73aaa01b99b77c::t_790075c07d1610 1-30
+spine-tasks/_authoring/release-v1.1.0/corpus-retrospective-2026-09-11.md
+  s_73aaa01b99b77c::t_40ad0e18d49b71 15,18
+  s_73aaa01b99b77c::t_6531b0e6d1d221 1-14,16-17,19-72
+data/calibration/packs/adversarial-live-fit.jsonl
+  s_73aaa01b99b77c::t_9333429a135027 1-11
+data/calibration/packs/adversarial-live-holdout.jsonl
+  s_73aaa01b99b77c::t_97bcff52627c7f 1-11
+data/calibration/packs/adversarial-live-report.json
+  s_73aaa01b99b77c::t_9459e0fe8941ad 1-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "40269f5ed71350f92404ab8dc2fe54b48c0b7720",
+  "prompts": {},
+  "sessions": {
+    "s_73aaa01b99b77c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae947e36-a697-4ee4-9394-26f1d7da5e0c",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
