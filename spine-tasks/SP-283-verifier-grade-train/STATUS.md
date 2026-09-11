@@ -1,8 +1,8 @@
-**Current Step:** Step 2: Testing & Verification
-**Status:** In Progress
+**Current Step:** Complete (all steps done)
+**Status:** Complete
 **Last Updated:** 2026-09-11
 **Review Level:** 1
-**Review Counter:** 1
+**Review Counter:** 2
 **Iteration:** 0
 **Size:** M
 
@@ -32,7 +32,20 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run contract testCommand
-- [ ] Update STATUS with evidence
+- [x] Run contract testCommand
+- [x] Update STATUS with evidence
+
+**Evidence:**
+
+- Contract: `npm run routing:verify-calibration -- --skip-embed`  **exit 0** (2 matched tests pass, 26 skipped by filter; 2026-09-11).
+- Full suite: `npm test`  **138 files / 2242 tests passed** (exit 0).
+- Task suite: `npx vitest run tests/unit/train-routing-calibration.test.ts`  **28/28 pass** (19 pre-existing + 9 new SP-283).
+- Coverage gate: `npm run coverage:check`  **exit 0**.
+- `npm run typecheck` clean; `npx eslint scripts/train-routing-calibration.ts tests/unit/train-routing-calibration.test.ts` clean.
+- CLI smoke: verifier-grade train  contrib ship-eligible 0/258, pack rows 32/32, labeled pool 32; isotonic trained (fit=26, holdout=6); hard gates y_span PASS / ece_improves PASS / **ece_absolute FAIL (0.2738 > 0.10)**  `hard_gates_passed: false` in `data/calibration/verifier-grade-gate-report.json`. Independent `verify-routing-calibration.ts` on the candidate bundle reports the identical FAIL (18/19) — ship path correctly rejects the candidate. `--require-hard-gates`  exit 1; report-only  exit 0; sample-starved  honest-untrained, never a ship pass.
+- Do-NOT guardrails: `config/*.json` untouched (`git status` clean on config/); no scripted_intent row trained (SP-281 skip tests still green); no labels invented (0 untagged rows promoted to ship-eligible); #96 defaults untouched.
+- Reviews: plan review requested at step checkpoints (steps 1, 2); engine skipped in-worker spawn (SP-195) — artifacts in `.reviews/`.
+
+**Outcome:** Mission complete — verifier-grade aggregate+train pipeline delivered and exercised; hard ECE gates **fail** on the available CI-scale verifier-grade corpus, so candidate artifacts are evidence-only and SP-284 keeps honest-untrained (Partial #168, per manifest risk plan). See `spine-tasks/_authoring/release-v1.1.0/verifier-grade-train-note.md`.
