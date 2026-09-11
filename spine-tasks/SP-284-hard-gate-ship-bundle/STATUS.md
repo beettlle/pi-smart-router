@@ -1,5 +1,5 @@
-**Current Step:** Step 1: Implementation
-**Status:** In Progress
+**Current Step:** Complete (all steps done)
+**Status:** Complete
 **Last Updated:** 2026-09-11
 **Review Level:** 1
 **Review Counter:** 0
@@ -34,7 +34,7 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run contract testCommand
-- [ ] Update STATUS with evidence
+- [x] Run contract testCommand — `SMART_ROUTER_SKIP_LIVE_BENCHMARK_REFRESH=1 npm run release:check` exit **0** (2026-09-11; release-gates PASS baseline v0.6.0). Operator-finished after worker exited early while buffering release:check via `tail`.
+- [x] Update STATUS with evidence — honest-untrained kept; Partial #168; no #96/#95 flips.
