@@ -1,0 +1,40 @@
+spine-tasks/dependencies.json
+  s_73aaa01b99b77c::t_761449913fa506 777-780
+spine-tasks/SP-287-human-label-review-cli/PROMPT.md
+  s_73aaa01b99b77c::t_4b875d9339b0c6 1-71
+docs/qa/shadow-dogfood-protocol.md
+  s_73aaa01b99b77c::t_5d1c5b7a6f67b7 213-226
+scripts/calibration/human-label-review.ts
+  s_73aaa01b99b77c::t_f901ba3b26e68d 1-846
+scripts/calibration/adversarial-label-campaign.ts
+  s_73aaa01b99b77c::t_3e75c85e2dbc5a 185-189
+  s_73aaa01b99b77c::t_f3c42f55586e04 639
+spine-tasks/CONTEXT.md
+  s_73aaa01b99b77c::t_30bca78b514702 917-926
+  s_73aaa01b99b77c::t_a39e9a58d34e4c 5,8
+tests/unit/adversarial-label-campaign.test.ts
+  s_73aaa01b99b77c::t_c4740f523dbcec 439
+scripts/calibration/README.md
+  s_73aaa01b99b77c::t_c00c43b43f45dc 94-126
+tests/unit/human-label-review.test.ts
+  s_73aaa01b99b77c::t_67da7c9d669672 1-156
+spine-tasks/SP-287-human-label-review-cli/STATUS.md
+  s_73aaa01b99b77c::t_6a48af0aef26a3 3,5,9-14
+  s_73aaa01b99b77c::t_d85511bfd3302e 1-2,4,6-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "439da2a0092683d046a3bda941979a9a67246826",
+  "prompts": {},
+  "sessions": {
+    "s_73aaa01b99b77c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae947e36-a697-4ee4-9394-26f1d7da5e0c",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
