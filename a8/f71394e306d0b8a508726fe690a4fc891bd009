@@ -1,0 +1,16 @@
+spine-tasks/SP-283-verifier-grade-train/.reviews/0-20260911T201217.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-283-verifier-grade-train/.reviews/final-20260911T201238.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a8f71394e306d0b8a508726fe690a4fc891bd009",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
