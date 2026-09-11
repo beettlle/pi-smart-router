@@ -1,0 +1,72 @@
+{"kind":"generation","task_id":"adv-t01","client_id":"gen-alpha","response_text":"Synthetic candidate response for adv-t01 from generator gen-alpha."}
+{"kind":"grade","task_id":"adv-t01","client_id":"grader-one","generator_id":"gen-alpha","score":1}
+{"kind":"grade","task_id":"adv-t01","client_id":"grader-two","generator_id":"gen-alpha","score":2}
+{"kind":"generation","task_id":"adv-t01","client_id":"gen-beta","response_text":"Synthetic candidate response for adv-t01 from generator gen-beta."}
+{"kind":"grade","task_id":"adv-t01","client_id":"grader-one","generator_id":"gen-beta","score":8}
+{"kind":"grade","task_id":"adv-t01","client_id":"grader-two","generator_id":"gen-beta","score":9}
+{"kind":"generation","task_id":"adv-t02","client_id":"gen-alpha","response_text":"Synthetic candidate response for adv-t02 from generator gen-alpha."}
+{"kind":"grade","task_id":"adv-t02","client_id":"grader-one","generator_id":"gen-alpha","score":2}
+{"kind":"grade","task_id":"adv-t02","client_id":"grader-two","generator_id":"gen-alpha","score":3}
+{"kind":"generation","task_id":"adv-t02","client_id":"gen-beta","response_text":"Synthetic candidate response for adv-t02 from generator gen-beta."}
+{"kind":"grade","task_id":"adv-t02","client_id":"grader-one","generator_id":"gen-beta","score":9}
+{"kind":"grade","task_id":"adv-t02","client_id":"grader-two","generator_id":"gen-beta","score":8}
+{"kind":"generation","task_id":"adv-t03","client_id":"gen-alpha","response_text":"Synthetic candidate response for adv-t03 from generator gen-alpha."}
+{"kind":"grade","task_id":"adv-t03","client_id":"grader-one","generator_id":"gen-alpha","score":9}
+{"kind":"grade","task_id":"adv-t03","client_id":"grader-two","generator_id":"gen-alpha","score":8}
+{"kind":"generation","task_id":"adv-t03","client_id":"gen-beta","response_text":"Synthetic candidate response for adv-t03 from generator gen-beta."}
+{"kind":"grade","task_id":"adv-t03","client_id":"grader-one","generator_id":"gen-beta","score":3}
+{"kind":"grade","task_id":"adv-t03","client_id":"grader-two","generator_id":"gen-beta","score":3}
+{"kind":"generation","task_id":"adv-t04","client_id":"gen-alpha","response_text":"Synthetic candidate response for adv-t04 from generator gen-alpha."}
+{"kind":"grade","task_id":"adv-t04","client_id":"grader-one","generator_id":"gen-alpha","score":4}
+{"kind":"grade","task_id":"adv-t04","client_id":"grader-two","generator_id":"gen-alpha","score":5}
+{"kind":"generation","task_id":"adv-t04","client_id":"gen-beta","response_text":"Synthetic candidate response for adv-t04 from generator gen-beta."}
+{"kind":"grade","task_id":"adv-t04","client_id":"grader-one","generator_id":"gen-beta","score":9}
+{"kind":"grade","task_id":"adv-t04","client_id":"grader-two","generator_id":"gen-beta","score":8}
+{"kind":"generation","task_id":"adv-t05","client_id":"gen-alpha","response_text":"Synthetic candidate response for adv-t05 from generator gen-alpha."}
+{"kind":"grade","task_id":"adv-t05","client_id":"grader-one","generator_id":"gen-alpha","score":9}
+{"kind":"grade","task_id":"adv-t05","client_id":"grader-two","generator_id":"gen-alpha","score":8}
+{"kind":"generation","task_id":"adv-t05","client_id":"gen-beta","response_text":"Synthetic candidate response for adv-t05 from generator gen-beta."}
+{"kind":"grade","task_id":"adv-t05","client_id":"grader-one","generator_id":"gen-beta","score":5}
+{"kind":"grade","task_id":"adv-t05","client_id":"grader-two","generator_id":"gen-beta","score":5}
+{"kind":"generation","task_id":"adv-t06","client_id":"gen-alpha","response_text":"Synthetic candidate response for adv-t06 from generator gen-alpha."}
+{"kind":"grade","task_id":"adv-t06","client_id":"grader-one","generator_id":"gen-alpha","score":8}
+{"kind":"grade","task_id":"adv-t06","client_id":"grader-two","generator_id":"gen-alpha","score":3}
+{"kind":"generation","task_id":"adv-t06","client_id":"gen-beta","response_text":"Synthetic candidate response for adv-t06 from generator gen-beta."}
+{"kind":"grade","task_id":"adv-t06","client_id":"grader-one","generator_id":"gen-beta","score":9}
+{"kind":"grade","task_id":"adv-t06","client_id":"grader-two","generator_id":"gen-beta","score":8}
+{"kind":"generation","task_id":"adv-t07","client_id":"gen-alpha","response_text":"Synthetic candidate response for adv-t07 from generator gen-alpha."}
+{"kind":"grade","task_id":"adv-t07","client_id":"grader-one","generator_id":"gen-alpha","score":9}
+{"kind":"grade","task_id":"adv-t07","client_id":"grader-two","generator_id":"gen-alpha","score":8}
+{"kind":"generation","task_id":"adv-t07","client_id":"gen-beta","response_text":"Synthetic candidate response for adv-t07 from generator gen-beta."}
+{"kind":"grade","task_id":"adv-t07","client_id":"grader-one","generator_id":"gen-beta","score":2}
+{"kind":"grade","task_id":"adv-t07","client_id":"grader-two","generator_id":"gen-beta","score":9}
+{"kind":"generation","task_id":"adv-t08","client_id":"gen-alpha","response_text":"Synthetic candidate response for adv-t08 from generator gen-alpha."}
+{"kind":"grade","task_id":"adv-t08","client_id":"grader-one","generator_id":"gen-alpha","score":8}
+{"kind":"grade","task_id":"adv-t08","client_id":"grader-two","generator_id":"gen-alpha","score":9}
+{"kind":"generation","task_id":"adv-t08","client_id":"gen-beta","response_text":"Synthetic candidate response for adv-t08 from generator gen-beta."}
+{"kind":"grade","task_id":"adv-t08","client_id":"grader-one","generator_id":"gen-beta","score":9}
+{"kind":"grade","task_id":"adv-t08","client_id":"grader-two","generator_id":"gen-beta","score":8}
+{"kind":"generation","task_id":"adv-t09","client_id":"gen-alpha","response_text":"Synthetic candidate response for adv-t09 from generator gen-alpha."}
+{"kind":"grade","task_id":"adv-t09","client_id":"grader-one","generator_id":"gen-alpha","score":9}
+{"kind":"grade","task_id":"adv-t09","client_id":"grader-two","generator_id":"gen-alpha","score":8}
+{"kind":"generation","task_id":"adv-t09","client_id":"gen-beta","response_text":"Synthetic candidate response for adv-t09 from generator gen-beta."}
+{"kind":"grade","task_id":"adv-t09","client_id":"grader-one","generator_id":"gen-beta","score":8}
+{"kind":"grade","task_id":"adv-t09","client_id":"grader-two","generator_id":"gen-beta","score":9}
+{"kind":"generation","task_id":"adv-t10","client_id":"gen-alpha","response_text":"Synthetic candidate response for adv-t10 from generator gen-alpha."}
+{"kind":"grade","task_id":"adv-t10","client_id":"grader-one","generator_id":"gen-alpha","score":8}
+{"kind":"grade","task_id":"adv-t10","client_id":"grader-two","generator_id":"gen-alpha","score":9}
+{"kind":"generation","task_id":"adv-t10","client_id":"gen-beta","response_text":"Synthetic candidate response for adv-t10 from generator gen-beta."}
+{"kind":"grade","task_id":"adv-t10","client_id":"grader-one","generator_id":"gen-beta","score":9}
+{"kind":"grade","task_id":"adv-t10","client_id":"grader-two","generator_id":"gen-beta","score":8}
+{"kind":"generation","task_id":"adv-t11","client_id":"gen-alpha","response_text":"Synthetic candidate response for adv-t11 from generator gen-alpha."}
+{"kind":"grade","task_id":"adv-t11","client_id":"grader-one","generator_id":"gen-alpha","score":9}
+{"kind":"grade","task_id":"adv-t11","client_id":"grader-two","generator_id":"gen-alpha","score":8}
+{"kind":"generation","task_id":"adv-t11","client_id":"gen-beta","response_text":"Synthetic candidate response for adv-t11 from generator gen-beta."}
+{"kind":"grade","task_id":"adv-t11","client_id":"grader-one","generator_id":"gen-beta","score":8}
+{"kind":"grade","task_id":"adv-t11","client_id":"grader-two","generator_id":"gen-beta","score":9}
+{"kind":"generation","task_id":"adv-t12","client_id":"gen-alpha","response_text":"Synthetic candidate response for adv-t12 from generator gen-alpha."}
+{"kind":"grade","task_id":"adv-t12","client_id":"grader-one","generator_id":"gen-alpha","score":8}
+{"kind":"grade","task_id":"adv-t12","client_id":"grader-two","generator_id":"gen-alpha","score":9}
+{"kind":"generation","task_id":"adv-t12","client_id":"gen-beta","response_text":"Synthetic candidate response for adv-t12 from generator gen-beta."}
+{"kind":"grade","task_id":"adv-t12","client_id":"grader-one","generator_id":"gen-beta","score":9}
+{"kind":"grade","task_id":"adv-t12","client_id":"grader-two","generator_id":"gen-beta","score":8}

@@ -256,3 +256,23 @@ npm run routing:calibration-dry-run -- \
 | Privacy | Dry-run loads via `loadLabelPackFile` / ingest converters; tainted keys fail closed |
 
 Implementation: `scripts/verify-routing-calibration.ts` (`runCalibrationDryRunFromRows`, `--dry-run-packs`, `--include-excluded-in-fit`).
+
+---
+
+## Adversarial LLM-judge campaign fixture (SP-282 / #169)
+
+Synthetic campaign input + recorded replay for
+`scripts/calibration/adversarial-label-campaign.ts` (see
+`scripts/calibration/README.md`).
+
+| Field | Value |
+|-------|-------|
+| Path | `tests/eval/corpus/label-packs/adversarial-llm-judge/` |
+| Files | `ci-tasks.jsonl` (12 synthetic tasks, 4 sessions), `ci-recorded.jsonl` (24 generations + 48 grades) |
+| Content | Fully synthetic — no upstream corpus, no real prompts or responses |
+| Campaign shape | 2 generators × 12 tasks; 2 blinded graders; 2 disagreements excluded; 22 labeled rows |
+| Floors | 5/22 negatives (22.7% ≥ 20%); 5 distinct failure scores (1.5, 2.5, 3.0, 4.5, 5.0) |
+
+These are campaign **inputs/replay** — never pack rows. Harness output is
+schema-valid label-pack JSONL with `llm_judge` provenance signals, validated
+in `tests/unit/adversarial-label-campaign.test.ts`.
