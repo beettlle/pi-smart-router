@@ -1,5 +1,5 @@
-**Current Step:** Step 2: Testing & Verification
-**Status:** In progress
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-09-11
 **Review Level:** 1
 **Review Counter:** 0
@@ -45,7 +45,25 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run contract testCommand
-- [ ] Update STATUS with evidence
+- [x] Run contract testCommand — `npm run typecheck` PASS (tsc --noEmit, exit 0)
+- [x] Update STATUS with evidence
+
+**Evidence (2026-09-11):**
+- `npm run typecheck` — PASS.
+- `npm test` — 137 files, **2197/2197 PASS** (includes new SP-285 suites: CLI export
+  7 tests, aggregate ingest/dedup 5 tests, SQLite v8 roundtrip + fail-loud 2 tests,
+  matcher capture 5 tests, row_id training-split stability 1 test).
+- `npm run lint` — PASS (eslint + models.yaml.example check).
+- `npm run coverage:check` — PASS, exit 0, All files 91.49% lines (≥77% policy met;
+  changed modules: sqlite-store 96.3%, dataset-recorder 100%, routing-telemetry 97.2%).
+- Note: one transient timing flake (`excludes legacy-prefix embedding rows`, 61s
+  timeout under coverage instrumentation) on first coverage run; passes in isolation
+  (2.5s), full `npm test`, and coverage re-run — known #161-class flake, unrelated to
+  this task's diff.
+- Review Level 1: `spine_review_step --step 1 --type plan` → skipped by runtime
+  (nested reviewer spawn blocked; engine runs reviews post-.DONE per SP-195).
+- GitNexus MCP unavailable this session (process exited on every call); impact and
+  change-scope verified manually via grep caller analysis + `git diff` — all edits
+  confined to SP-285 export/embedding path, tests, and README.
