@@ -1,0 +1,16 @@
+spine-tasks/SP-285-privacy-safe-embedding-export/.reviews/0-20260911T020237.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-285-privacy-safe-embedding-export/.reviews/final-20260911T020527.md
+  h_ae151c586ac6c5 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "13bf321172c029496dbda04e3340639862b8f784",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
