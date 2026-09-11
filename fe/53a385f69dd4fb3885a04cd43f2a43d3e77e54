@@ -1,0 +1,18 @@
+README.md
+  h_ae151c586ac6c5 728
+spine-tasks/SP-286-operator-notes-issues/STATUS.md
+  h_ae151c586ac6c5 1-3,13,15-16,20-24,26-29
+spine-tasks/_authoring/release-v1.1.0/operator-notes-issues.md
+  h_ae151c586ac6c5 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fe53a385f69dd4fb3885a04cd43f2a43d3e77e54",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
