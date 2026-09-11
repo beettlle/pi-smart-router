@@ -7,24 +7,36 @@ import { describe, expect, it } from 'vitest';
 import { MINIMUM_TRAINING_SAMPLES } from '../../scripts/calibration-aggregate.js';
 import {
   assertCompatibleHydraProjectionArtifact,
+  buildVerifierGradeGateReport,
   createDefaultRoutingCalibrationBundle,
+  evaluateIsotonicHardGates,
   flattenHydraProjectionWeights,
   HYDRA_PREFIX_SCHEMA_VERSION,
   HYDRA_PROJECTION_ARTIFACT_VERSION,
   isSevenFlagHydraProjectionSample,
+  isWeakLabelPackRow,
+  labelPackRowToTrainingSample,
   parseRoutingCalibrationBundleJson,
   readHydraPrefixSchemaVersion,
   resolveRoutingCalibrationBundle,
   ROUTING_CALIBRATION_BUNDLE_VERSION,
   serializeRoutingCalibrationBundle,
   trainRoutingCalibrationBundle,
+  trainRoutingCalibrationBundleWithMetrics,
   unflattenHydraProjectionWeights,
+  VERIFIER_TRAIN_HARD_ECE_THRESHOLD,
+  VERIFIER_TRAIN_MIN_Y_KNOT_SPAN,
+  WEAK_LABEL_EXCLUDE_SIGNAL,
   type RoutingCalibrationBundle,
 } from '../../scripts/train-routing-calibration.js';
+import type { LabelPackRow } from '../../scripts/lib/label-pack-schema.js';
 import {
   assertBenchmark,
   CALIBRATION_BENCHMARKS,
+  CALIBRATION_HARD_ECE_THRESHOLD,
+  CALIBRATION_MIN_Y_KNOT_SPAN,
   evaluateTriageWithBundleThreshold,
+  EXCLUDE_FROM_HOLDOUT_ECE_SIGNAL,
   verifyArtifactShapes,
   verifyRoutingCalibration,
 } from '../../scripts/verify-routing-calibration.js';
@@ -404,5 +416,187 @@ describe('OATS centroid refinement (SP-146)', () => {
     expect(bundle.routing_centroids.oats_refinement?.positive_sample_count).toBe(10);
     expect(bundle.routing_centroids.oats_refinement?.negative_sample_count).toBe(4);
     parseRoutingCalibrationBundleJson(serializeRoutingCalibrationBundle(bundle));
+  });
+});
+
+function makePackRow(overrides: Partial<LabelPackRow> = {}): LabelPackRow {
+  return {
+    schema_version: 1,
+    sample_id: 'pack-sample-0',
+    source: 'swe-gym',
+    features: {
+      prompt_length_norm: 0.3,
+      estimated_input_tokens_norm: 0.2,
+      triage_cyclomatic_score: 0.4,
+      requirement_reasoning: 0.5,
+      requirement_code_gen: 0.6,
+      requirement_tool_use: 0.2,
+      has_tool_context: 0,
+      compaction_flag: 0,
+      routing_latency_norm: 0.1,
+      economical_tier: 1,
+    },
+    success: true,
+    ...overrides,
+  };
+}
+
+describe('verifier-grade train (SP-283 / #168)', () => {
+  it('keeps hard-gate constants in parity with verify-routing-calibration', () => {
+    expect(VERIFIER_TRAIN_HARD_ECE_THRESHOLD).toBe(CALIBRATION_HARD_ECE_THRESHOLD);
+    expect(VERIFIER_TRAIN_MIN_Y_KNOT_SPAN).toBe(CALIBRATION_MIN_Y_KNOT_SPAN);
+    expect(WEAK_LABEL_EXCLUDE_SIGNAL).toBe(EXCLUDE_FROM_HOLDOUT_ECE_SIGNAL);
+  });
+
+  it('maps pack rows to training samples with missing features zeroed', () => {
+    const row = makePackRow({
+      sample_id: 'pack-1',
+      features: { requirement_reasoning: 0.7 },
+      success: false,
+    });
+    const sample = labelPackRowToTrainingSample(row);
+    expect(sample.request_id).toBe('pack-1');
+    expect(sample.success).toBe(false);
+    expect(sample.features.requirement_reasoning).toBe(0.7);
+    expect(sample.features.prompt_length_norm).toBe(0);
+  });
+
+  it('flags weak pack rows via the exclude_from_holdout_ece signal', () => {
+    expect(isWeakLabelPackRow(makePackRow())).toBe(false);
+    expect(
+      isWeakLabelPackRow(makePackRow({ outcome_signals: [EXCLUDE_FROM_HOLDOUT_ECE_SIGNAL] })),
+    ).toBe(true);
+  });
+
+  it('verifier-grade-only drops untagged and scripted contrib rows, keeps ship-eligible', () => {
+    const records = [
+      makeTrainingRecord({ request_id: 'ship-1', label_provenance: 'human_feedback' }),
+      makeTrainingRecord({ request_id: 'ship-2', label_provenance: 'llm_judge' }),
+      makeTrainingRecord({ request_id: 'legacy-1' }),
+      makeTrainingRecord({ request_id: 'scripted-1', label_provenance: 'scripted_intent' }),
+    ];
+
+    const result = trainRoutingCalibrationBundleWithMetrics(records, {
+      verifierGradeOnly: true,
+    });
+    expect(result.accounting.contrib_rows).toBe(4);
+    expect(result.accounting.contrib_ship_eligible_rows).toBe(2);
+    expect(result.accounting.contrib_dropped_provenance_rows).toBe(2);
+    expect(result.accounting.labeled_training_samples).toBe(2);
+
+    // Untagged rows still train in the default (install-local) mode; scripted never do.
+    const local = trainRoutingCalibrationBundleWithMetrics(records);
+    expect(local.accounting.contrib_ship_eligible_rows).toBe(4);
+    expect(local.accounting.labeled_training_samples).toBe(3);
+  });
+
+  it('joins pack rows into the labeled pool and never trains weak labels', () => {
+    const packRows = [
+      ...Array.from({ length: 31 }, (_, index) =>
+        makePackRow({ sample_id: `strong-${index}`, success: index % 3 !== 0 }),
+      ),
+      makePackRow({
+        sample_id: 'weak-1',
+        outcome_signals: [EXCLUDE_FROM_HOLDOUT_ECE_SIGNAL],
+      }),
+    ];
+
+    const result = trainRoutingCalibrationBundleWithMetrics([], {
+      packRows,
+      verifierGradeOnly: true,
+    });
+    expect(result.accounting.pack_rows).toBe(32);
+    expect(result.accounting.pack_rows_excluded_weak).toBe(1);
+    expect(result.accounting.labeled_training_samples).toBe(31);
+    expect(result.bundle.p_success_weights.trained_sample_count).toBe(31);
+    expect(result.bundle.isotonic_calibrator.trained_sample_count).toBe(31);
+  });
+
+  it('verifier-grade-only leaves triage honest-untrained without ship-eligible rows', () => {
+    const records = Array.from({ length: 60 }, (_, index) =>
+      makeTrainingRecord({
+        request_id: `legacy-${index}`,
+        triage_verdict: index % 2 === 0 ? 'complex' : 'trivial',
+        triage_cyclomatic_score: index % 2 === 0 ? 18 : 3,
+      }),
+    );
+
+    const result = trainRoutingCalibrationBundleWithMetrics(records, {
+      verifierGradeOnly: true,
+    });
+    expect(result.bundle.triage_thresholds.trained_sample_count).toBe(0);
+    expect(result.bundle.triage_thresholds.cyclomatic_threshold).toBe(CYCLOMATIC_THRESHOLD);
+  });
+
+  it('evaluateIsotonicHardGates passes honest-untrained and fails trained fits over the ECE ceiling', () => {
+    const untrained = evaluateIsotonicHardGates({
+      version: 1,
+      min_training_samples: 30,
+      x_knots: [0, 1],
+      y_knots: [0, 1],
+      trained_sample_count: 0,
+      holdout_ece_raw: null,
+      holdout_ece_calibrated: null,
+    });
+    expect(untrained).toHaveLength(1);
+    expect(untrained[0]!.passed).toBe(true);
+    expect(untrained[0]!.message).toContain('honest-untrained');
+
+    const trainedFailing = evaluateIsotonicHardGates({
+      version: 1,
+      min_training_samples: 30,
+      x_knots: [0, 1],
+      y_knots: [0, 1],
+      trained_sample_count: 32,
+      holdout_ece_raw: 0.369,
+      holdout_ece_calibrated: 0.2738,
+    });
+    const byId = new Map(trainedFailing.map((gate) => [gate.id, gate.passed]));
+    expect(byId.get('isotonic_y_span')).toBe(true);
+    expect(byId.get('isotonic_ece_improves')).toBe(true);
+    expect(byId.get('isotonic_ece_absolute')).toBe(false);
+  });
+
+  it('gate report never marks honest-untrained as a ship pass', () => {
+    const result = trainRoutingCalibrationBundleWithMetrics([], {
+      packRows: [makePackRow()],
+      verifierGradeOnly: true,
+    });
+    const report = buildVerifierGradeGateReport(result.bundle, result.accounting, {
+      verifierGradeOnly: true,
+      generatedAt: '2026-09-11T00:00:00.000Z',
+    });
+    expect(report.isotonic.trained).toBe(false);
+    expect(report.hard_gates.every((gate) => gate.passed)).toBe(true);
+    expect(report.hard_gates_passed).toBe(false);
+    expect(report.task).toBe('SP-283');
+    expect(report.generated_at).toBe('2026-09-11T00:00:00.000Z');
+  });
+
+  it('gate report marks a trained bundle PASS only when every hard gate passes', () => {
+    const base = createDefaultRoutingCalibrationBundle();
+    const passingBundle: RoutingCalibrationBundle = {
+      ...base,
+      isotonic_calibrator: {
+        version: 1,
+        min_training_samples: 30,
+        x_knots: [0, 0.5, 1],
+        y_knots: [0.1, 0.5, 0.9],
+        trained_sample_count: 40,
+        holdout_ece_raw: 0.09,
+        holdout_ece_calibrated: 0.05,
+      },
+    };
+    const report = buildVerifierGradeGateReport(passingBundle, {
+      contrib_rows: 0,
+      contrib_ship_eligible_rows: 0,
+      contrib_dropped_provenance_rows: 0,
+      pack_rows: 40,
+      pack_rows_excluded_weak: 0,
+      labeled_training_samples: 40,
+    });
+    expect(report.isotonic.trained).toBe(true);
+    expect(report.isotonic.y_knot_span).toBeCloseTo(0.8, 5);
+    expect(report.hard_gates_passed).toBe(true);
   });
 });
