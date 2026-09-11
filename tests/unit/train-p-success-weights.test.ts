@@ -88,4 +88,77 @@ describe('train-p-success-weights (SP-175)', () => {
     );
     expect(unlabeled).toBeNull();
   });
+
+  it('skips scripted_intent rows — quarantined labels never train (SP-281 / #168)', () => {
+    const scriptedGood = labeledSampleFromContribRecord(
+      {
+        tier: 'economical-cloud',
+        success_label: true,
+        outcome_signals: ['feedback_good'],
+        label_provenance: 'scripted_intent',
+      },
+      aggregateRowRequestId(0),
+    );
+    expect(scriptedGood).toBeNull();
+
+    const humanGood = labeledSampleFromContribRecord(
+      {
+        tier: 'economical-cloud',
+        success_label: true,
+        outcome_signals: ['feedback_good'],
+        label_provenance: 'human_feedback',
+      },
+      aggregateRowRequestId(1),
+    );
+    expect(humanGood?.success).toBe(true);
+
+    const judgeBad = labeledSampleFromContribRecord(
+      {
+        tier: 'economical-cloud',
+        success_label: false,
+        outcome_signals: ['feedback_bad'],
+        label_provenance: 'llm_judge',
+      },
+      aggregateRowRequestId(2),
+    );
+    expect(judgeBad?.success).toBe(false);
+
+    // Untagged legacy rows still train install-local (synthetic fixture path).
+    const untagged = labeledSampleFromContribRecord(
+      {
+        tier: 'economical-cloud',
+        success_label: true,
+        outcome_signals: ['feedback_good'],
+      },
+      aggregateRowRequestId(3),
+    );
+    expect(untagged?.success).toBe(true);
+  });
+
+  it('parseLabeledJsonl drops scripted_intent rows while keeping ship-grade ones', () => {
+    const jsonl = [
+      JSON.stringify({
+        tier: 'economical-cloud',
+        success_label: true,
+        outcome_signals: ['feedback_good'],
+        label_provenance: 'human_feedback',
+      }),
+      JSON.stringify({
+        tier: 'economical-cloud',
+        success_label: true,
+        outcome_signals: ['feedback_good'],
+        label_provenance: 'scripted_intent',
+      }),
+      JSON.stringify({
+        tier: 'economical-cloud',
+        success_label: true,
+        outcome_signals: ['feedback_good'],
+        // untagged legacy row
+      }),
+    ].join('\n');
+
+    const samples = parseLabeledJsonl(jsonl);
+    expect(samples).toHaveLength(2); // scripted row skipped, never coerced
+    expect(samples.every((sample) => sample.success)).toBe(true);
+  });
 });

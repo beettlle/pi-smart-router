@@ -10,6 +10,11 @@
  *
  * Rows whose derived label is `null` (no boolean `success_label`, no outcome
  * signals) are skipped entirely — labels are never invented (#110 rule).
+ *
+ * SP-281 (#168): rows tagged `label_provenance: "scripted_intent"` (dogfood
+ * gather) are skipped entirely — scripted labels never train, install-local or
+ * ship. Untagged rows remain eligible for install-local training only; ship
+ * floors additionally require human_feedback | llm_judge provenance.
  */
 
 import {
@@ -17,6 +22,7 @@ import {
   extractPSuccessFeatures,
   type LabeledTrainingSample,
 } from '../../src/domain/routing/p-success-classifier.js';
+import { getLabelProvenance } from '../calibration-aggregate.js';
 import type { RoutingDatasetRecord } from '../../src/domain/types/index.js';
 
 /**
@@ -32,6 +38,11 @@ export function labeledSampleFromContribRecord(
   record: Record<string, unknown>,
   fallbackRequestId: string,
 ): LabeledTrainingSample | null {
+  if (getLabelProvenance(record) === 'scripted_intent') {
+    // Quarantined provenance (SP-281): scripted labels never train (#168).
+    return null;
+  }
+
   const labeled = deriveSuccessLabelFromExportRow(record);
   if (labeled.success === null) {
     return null;

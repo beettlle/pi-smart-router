@@ -7,8 +7,13 @@ import { describe, expect, it } from 'vitest';
 import {
   assertContribRecordSafe,
   collectContribFromDir,
+  countLabelProvenance,
   enrichContribRecordWithFailureLabels,
+  filterShipEligibleRecords,
   formatContribJsonl,
+  getLabelProvenance,
+  isShipEligibleProvenance,
+  LABEL_PROVENANCE_VALUES,
   MINIMUM_TRAINING_SAMPLES,
   parseContribJsonl,
   sanitizeContribRecord,
@@ -166,5 +171,105 @@ describe('calibration aggregate (SP-116)', () => {
     expect(parsed[0]?.success_label).toBe(false);
     expect(parsed[0]?.outcome_signals).toContain('tool_failure_chain');
     expect(parsed[0]).not.toHaveProperty('stop_reason');
+  });
+});
+
+describe('label provenance floors (SP-281 / #168)', () => {
+  it('documents the provenance vocabulary and ship-eligible grades', () => {
+    expect(LABEL_PROVENANCE_VALUES).toEqual([
+      'human_feedback',
+      'llm_judge',
+      'scripted_intent',
+    ]);
+    for (const grade of ['human_feedback', 'llm_judge'] as const) {
+      expect(isShipEligibleProvenance({ label_provenance: grade })).toBe(true);
+    }
+    expect(isShipEligibleProvenance({ label_provenance: 'scripted_intent' })).toBe(false);
+    // Untagged (legacy/unknown) rows are never ship-eligible — floors require
+    // explicit verifier-grade provenance; it is never invented.
+    expect(isShipEligibleProvenance(validContribRecord())).toBe(false);
+    expect(getLabelProvenance(validContribRecord())).toBeNull();
+    expect(getLabelProvenance({ label_provenance: null })).toBeNull();
+  });
+
+  it('preserves label_provenance through parse and enrichment', () => {
+    const jsonl = formatContribJsonl([
+      { ...validContribRecord(), label_provenance: 'human_feedback' },
+      { ...validContribRecord(), label_provenance: 'scripted_intent' },
+    ]);
+
+    const parsed = parseContribJsonl(jsonl.trimEnd(), 'fixture');
+    expect(parsed).toHaveLength(2);
+    expect(parsed[0]?.label_provenance).toBe('human_feedback');
+    expect(parsed[1]?.label_provenance).toBe('scripted_intent');
+  });
+
+  it('rejects unknown label_provenance values instead of guessing a grade', () => {
+    expect(() =>
+      assertContribRecordSafe({ ...validContribRecord(), label_provenance: 'banana' }),
+    ).toThrow(/Invalid label_provenance rejected.*banana/);
+
+    expect(() =>
+      parseContribJsonl(
+        `${JSON.stringify({ ...validContribRecord(), label_provenance: 42 })}\n`,
+        'fixture',
+      ),
+    ).toThrow(/Invalid label_provenance rejected.*42/);
+
+    // Absent and explicit null stay allowed (legacy rows are untagged, not invalid).
+    expect(() => assertContribRecordSafe(validContribRecord())).not.toThrow();
+    expect(() =>
+      assertContribRecordSafe({ ...validContribRecord(), label_provenance: null }),
+    ).not.toThrow();
+  });
+
+  it('counts ship-eligible floors ignoring scripted_intent and untagged rows', () => {
+    const records = [
+      { ...validContribRecord(), label_provenance: 'human_feedback' },
+      { ...validContribRecord(), label_provenance: 'llm_judge' },
+      { ...validContribRecord(), label_provenance: 'llm_judge' },
+      // Quarantined gather rows — must never count toward ship floors.
+      { ...validContribRecord(), label_provenance: 'scripted_intent' },
+      { ...validContribRecord(), label_provenance: 'scripted_intent' },
+      { ...validContribRecord(), label_provenance: 'scripted_intent' },
+      // Legacy untagged rows — not ship-eligible either.
+      validContribRecord(),
+    ];
+
+    const counts = countLabelProvenance(records);
+    expect(counts).toEqual({
+      human_feedback: 1,
+      llm_judge: 2,
+      scripted_intent: 3,
+      untagged: 1,
+      total: 7,
+      ship_eligible: 3,
+    });
+
+    // 40 scripted rows + 0 ship-grade → floors still unmet (never padded).
+    const scriptedOnly = Array.from({ length: 40 }, () => ({
+      ...validContribRecord(),
+      label_provenance: 'scripted_intent',
+    }));
+    expect(countLabelProvenance(scriptedOnly).ship_eligible).toBe(0);
+    expect(countLabelProvenance(scriptedOnly).ship_eligible).toBeLessThan(
+      MINIMUM_TRAINING_SAMPLES.p_success_weights,
+    );
+  });
+
+  it('filters ship-grade rows for verifier-grade trains (--ship-grade-only)', () => {
+    const records = [
+      { ...validContribRecord(), label_provenance: 'human_feedback' },
+      { ...validContribRecord(), label_provenance: 'llm_judge' },
+      { ...validContribRecord(), label_provenance: 'scripted_intent' },
+      validContribRecord(), // untagged
+    ];
+
+    const filtered = filterShipEligibleRecords(records);
+    expect(filtered).toHaveLength(2);
+    expect(filtered.map((row) => row.label_provenance)).toEqual([
+      'human_feedback',
+      'llm_judge',
+    ]);
   });
 });
