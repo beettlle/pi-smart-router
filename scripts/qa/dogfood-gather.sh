@@ -8,7 +8,8 @@
 # Verifier-graded / human_feedback / llm_judge labels are required for ship.
 #
 # Runs matrix packs via `pi -p`, records pack-intent feedback_good/bad into
-# state.db, then exports dataset + telemetry-contrib and prints labeled_econ +
+# state.db, then exports dataset + telemetry-contrib (tagging every exported row
+# label_provenance=scripted_intent, SP-281) and prints labeled_econ +
 # triage-trainable counts. Suitable for smoke / harness exercise only.
 #
 # Packs:
@@ -76,6 +77,64 @@ record_feedback() {
   fi
 
   npx --yes tsx "$ROOT/scripts/qa/record-feedback.ts" "$request_id" "$rating" ${model_id:+"$model_id"}
+}
+
+# Tag every row of this run's export outputs label_provenance=scripted_intent
+# (SP-281 / #168). All labels in a scripted gather are pack-intent scripted —
+# including this tag at the export boundary makes the quarantine machine-
+# readable: aggregate ship floors and trainers skip scripted_intent rows.
+tag_scripted_intent() {
+  local summary_file="$1" # export-dogfood-snapshot.ts stdout (summary JSON)
+
+  node -e '
+    const fs = require("fs");
+    const summaryPath = process.argv[1];
+    const raw = fs.readFileSync(summaryPath, "utf8");
+    function extractSummaryJson(text) {
+      try {
+        return JSON.parse(text);
+      } catch {
+        // Tolerate surrounding stderr noise (npx/tsx): slice the first bare "{" line
+        // through the last bare "}" line — the pretty-printed summary block.
+        const lines = text.split("\n");
+        const start = lines.findIndex((l) => l.trim() === "{");
+        const end = lines.length - 1 - lines.slice().reverse().findIndex((l) => l.trim() === "}");
+        if (start === -1 || end <= start) return null;
+        try {
+          return JSON.parse(lines.slice(start, end + 1).join("\n"));
+        } catch {
+          return null;
+        }
+      }
+    }
+    const summary = extractSummaryJson(raw);
+    if (summary === null || typeof summary !== "object") {
+      console.error(`tag_scripted_intent: no export summary JSON in ${summaryPath} — nothing tagged (see log above)`);
+      process.exit(0);
+    }
+    let taggedTotal = 0;
+    for (const key of ["dataset_path", "telemetry_contrib_path"]) {
+      const path = summary[key];
+      if (!path || !fs.existsSync(path)) {
+        console.error(`tag_scripted_intent: missing ${key} in ${summaryPath}`);
+        process.exit(1);
+      }
+      const lines = fs.readFileSync(path, "utf8").split("\n").filter((l) => l.trim().length > 0);
+      if (lines.length === 0) {
+        console.log(`  ${path}: 0 row(s) — skipped`);
+        continue;
+      }
+      const tagged = lines.map((line) => {
+        const row = JSON.parse(line);
+        row.label_provenance = "scripted_intent";
+        return JSON.stringify(row);
+      });
+      fs.writeFileSync(path, tagged.join("\n") + "\n", "utf8");
+      taggedTotal += tagged.length;
+      console.log(`  tagged ${tagged.length} row(s) label_provenance=scripted_intent — ${path}`);
+    }
+    console.log(`tag_scripted_intent: ${taggedTotal} row(s) quarantined (SP-281; not ship-grade)`);
+  ' "$summary_file"
 }
 
 run_turn() {
@@ -180,6 +239,7 @@ echo
 echo "==> Mid-count after Packs A+B (DB outcomes + re-export probe)"
 npx --yes tsx "$ROOT/scripts/qa/export-dogfood-snapshot.ts" --limit 10000 --tag mid-ab >"$LOG_DIR/mid-ab-export.txt" 2>&1 || true
 cat "$LOG_DIR/mid-ab-export.txt" || true
+tag_scripted_intent "$LOG_DIR/mid-ab-export.txt"
 
 # --- Pack C: planning ---
 C_PROMPTS=(
@@ -297,6 +357,7 @@ echo
 echo "==> Mid-count after Packs T+X (triage trainable probe)"
 npx --yes tsx "$ROOT/scripts/qa/export-dogfood-snapshot.ts" --limit 10000 --tag mid-tx >"$LOG_DIR/mid-tx-export.txt" 2>&1 || true
 cat "$LOG_DIR/mid-tx-export.txt" || true
+tag_scripted_intent "$LOG_DIR/mid-tx-export.txt"
 
 echo
 echo "==> Final export + labeled_econ + triage counts"
@@ -304,6 +365,7 @@ set +e
 npx --yes tsx "$ROOT/scripts/qa/export-dogfood-snapshot.ts" --limit 10000 --tag final | tee "$LOG_DIR/final-export.txt"
 EXPORT_EC=${PIPESTATUS[0]}
 set -e
+tag_scripted_intent "$LOG_DIR/final-export.txt"
 
 echo
 echo "Gather logs: $LOG_DIR"

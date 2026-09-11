@@ -5,6 +5,9 @@
  * Collects privacy-safe JSONL contributions from `data/contrib/` (or stdin),
  * rejects tainted payloads (prompt text, messages, secrets), strips install-local
  * pepper fields, and emits validated JSONL for offline training (SP-117).
+ * Rows may carry `label_provenance` (human_feedback | llm_judge | scripted_intent,
+ * SP-281): only human_feedback / llm_judge count toward ship-claim sample floors;
+ * scripted_intent rows are quarantined and skipped by trainers (#168).
  *
  * Minimum sample sizes for training are documented in
  * `specs/001-build-smart-router/contracts/routing-calibration.schema.json`
@@ -64,6 +67,123 @@ export class CalibrationContribError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
   }
+}
+
+/**
+ * Label provenance vocabulary for ship-claim sample floors (SP-281 / #168).
+ *
+ * Every labeled contrib row may carry `label_provenance` describing how its
+ * outcome label was produced:
+ * - `human_feedback` — a human rated the routed turn (shadow dogfood, #95)
+ * - `llm_judge` — adversarial harness graders produced the label (SP-282, #169)
+ * - `scripted_intent` — scripted from pack intent / exit heuristics
+ *   (`scripts/qa/dogfood-gather.sh`) — quarantined, never ship-grade
+ *
+ * Only `human_feedback` / `llm_judge` rows count toward ship-claim floors.
+ * Untagged rows are legacy/unknown: kept for install-local analysis but never
+ * ship-eligible. Provenance is never invented — absent stays absent.
+ */
+export const LABEL_PROVENANCE_VALUES = [
+  'human_feedback',
+  'llm_judge',
+  'scripted_intent',
+] as const;
+
+export type LabelProvenance = (typeof LABEL_PROVENANCE_VALUES)[number];
+
+/** Provenance grades that count toward ship-claim sample floors (#168). */
+export const SHIP_ELIGIBLE_LABEL_PROVENANCE: readonly LabelProvenance[] = [
+  'human_feedback',
+  'llm_judge',
+];
+
+/** Read a row's `label_provenance`; null when absent or explicitly null. */
+export function getLabelProvenance(
+  record: Record<string, unknown>,
+): LabelProvenance | null {
+  const value = record.label_provenance;
+  if (value === undefined || value === null) {
+    return null;
+  }
+  return value as LabelProvenance;
+}
+
+/** Fail closed when `label_provenance` is present but not a known grade. */
+export function validateLabelProvenance(
+  record: Record<string, unknown>,
+  context?: string,
+): void {
+  const value = record.label_provenance;
+  if (value === undefined || value === null) {
+    return;
+  }
+
+  if (
+    typeof value !== 'string' ||
+    !(LABEL_PROVENANCE_VALUES as readonly string[]).includes(value)
+  ) {
+    const suffix = context ? ` (${context})` : '';
+    throw new CalibrationContribError(
+      `Invalid label_provenance rejected${suffix}: ${JSON.stringify(value)} — ` +
+        `expected one of ${LABEL_PROVENANCE_VALUES.join(' | ')} (SP-281)`,
+    );
+  }
+}
+
+/** True only for rows explicitly tagged with a ship-eligible provenance grade. */
+export function isShipEligibleProvenance(record: Record<string, unknown>): boolean {
+  const provenance = getLabelProvenance(record);
+  return (
+    provenance !== null &&
+    (SHIP_ELIGIBLE_LABEL_PROVENANCE as readonly string[]).includes(provenance)
+  );
+}
+
+export interface LabelProvenanceCounts {
+  readonly human_feedback: number;
+  readonly llm_judge: number;
+  readonly scripted_intent: number;
+  readonly untagged: number;
+  readonly total: number;
+  /** Rows eligible for ship-claim floors (human_feedback + llm_judge only). */
+  readonly ship_eligible: number;
+}
+
+/** Count rows per provenance grade; scripted_intent never counts as ship-eligible. */
+export function countLabelProvenance(
+  records: readonly Record<string, unknown>[],
+): LabelProvenanceCounts {
+  const counts: Record<string, number> = {
+    human_feedback: 0,
+    llm_judge: 0,
+    scripted_intent: 0,
+    untagged: 0,
+  };
+
+  for (const record of records) {
+    const provenance = getLabelProvenance(record);
+    if (provenance === null) {
+      counts.untagged!++;
+    } else {
+      counts[provenance]!++;
+    }
+  }
+
+  return {
+    human_feedback: counts.human_feedback!,
+    llm_judge: counts.llm_judge!,
+    scripted_intent: counts.scripted_intent!,
+    untagged: counts.untagged!,
+    total: records.length,
+    ship_eligible: counts.human_feedback! + counts.llm_judge!,
+  };
+}
+
+/** Drop quarantined/untagged rows, keeping only ship-eligible provenance (#168). */
+export function filterShipEligibleRecords(
+  records: readonly Record<string, unknown>[],
+): Record<string, unknown>[] {
+  return records.filter((record) => isShipEligibleProvenance(record));
 }
 
 export interface CalibrationAggregateResult {
@@ -145,6 +265,8 @@ export function assertContribRecordSafe(
       `Tainted contrib record rejected${suffix}: forbidden keys ${forbidden.join(', ')}`,
     );
   }
+
+  validateLabelProvenance(record, context);
 }
 
 /** Strip install-local pepper fields from a validated contrib row. */
@@ -333,11 +455,15 @@ function usage(): void {
       'Options:',
       '  --contrib-dir <path>  Directory with .json/.jsonl contrib files (default: data/contrib)',
       '  --stdin               Also read JSONL from stdin (merged with directory files)',
+      '  --ship-grade-only     Emit only human_feedback | llm_judge rows (drop',
+      '                       scripted_intent + untagged) for verifier-grade trains',
       '  --quiet               Suppress summary on stderr',
       '  -h, --help            Show this help',
       '',
       'Writes validated JSONL to stdout. Rejects records containing prompt text,',
-      'messages, or install-local pepper fields.',
+      'messages, or install-local pepper fields. `label_provenance` (SP-281) may be',
+      'human_feedback | llm_judge | scripted_intent — only the first two count toward',
+      'ship-claim sample floors; scripted_intent rows are quarantined (#168).',
     ].join('\n'),
   );
 }
@@ -352,6 +478,7 @@ async function main(): Promise<void> {
   let contribDir = resolve(DEFAULT_CONTRIB_DIR);
   let includeStdin = false;
   let quiet = false;
+  let shipGradeOnly = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
@@ -368,6 +495,10 @@ async function main(): Promise<void> {
       includeStdin = true;
       continue;
     }
+    if (arg === '--ship-grade-only') {
+      shipGradeOnly = true;
+      continue;
+    }
     if (arg === '--quiet') {
       quiet = true;
       continue;
@@ -381,7 +512,9 @@ async function main(): Promise<void> {
     : [];
 
   const records = aggregateContribRecords([dirResult.records, stdinRecords]);
-  process.stdout.write(formatContribJsonl(records));
+  const provenanceCounts = countLabelProvenance(records);
+  const outputRecords = shipGradeOnly ? filterShipEligibleRecords(records) : records;
+  process.stdout.write(formatContribJsonl(outputRecords));
 
   if (!quiet) {
     const sources = [...dirResult.source_files];
@@ -391,9 +524,23 @@ async function main(): Promise<void> {
     console.error(
       `calibration-aggregate: accepted ${records.length} record(s) from ${sources.length} source(s)`,
     );
-    if (records.length < MINIMUM_TRAINING_SAMPLES.p_success_weights) {
+    if (shipGradeOnly) {
       console.error(
-        `calibration-aggregate: warning — fewer than ${MINIMUM_TRAINING_SAMPLES.p_success_weights} rows; P(success) training will use neutral fallback`,
+        `calibration-aggregate: --ship-grade-only emitted ${outputRecords.length} of ${records.length} record(s)`,
+      );
+    }
+    console.error(
+      `calibration-aggregate: label provenance — human_feedback=${provenanceCounts.human_feedback},` +
+        ` llm_judge=${provenanceCounts.llm_judge},` +
+        ` scripted_intent=${provenanceCounts.scripted_intent} (quarantined),` +
+        ` untagged=${provenanceCounts.untagged}`,
+    );
+    if (provenanceCounts.ship_eligible < MINIMUM_TRAINING_SAMPLES.p_success_weights) {
+      console.error(
+        `calibration-aggregate: warning — fewer than ${MINIMUM_TRAINING_SAMPLES.p_success_weights}` +
+          ` ship-eligible rows (${provenanceCounts.ship_eligible} of ${records.length};` +
+          ` scripted_intent/untagged never count, #168);` +
+          ` P(success) training will use neutral fallback`,
       );
     }
   }
