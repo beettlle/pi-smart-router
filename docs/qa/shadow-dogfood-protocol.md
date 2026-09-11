@@ -210,6 +210,20 @@ Recommend changing absolute release gates: no / yes (requires separate approval)
 Recommend relaxing frugality / flipping encoder defaults: no / yes (requires #96 / calibration issues)
 ```
 
+## Human label review (SP-287 / close #168)
+
+After export, promote decisive feedback turns to ship-grade `human_feedback`
+via the review CLI (do **not** invent provenance on untagged rows):
+
+```bash
+npx tsx scripts/calibration/human-label-review.ts \
+  --contrib .pi-smart-router/exports/telemetry-contrib-….json \
+  --labeled-only \
+  --output data/contrib/shadow-human-YYYYMMDD.jsonl
+```
+
+Operator section: [`scripts/calibration/README.md`](../../scripts/calibration/README.md) (Human label review).
+
 ## Related issues
 
 | Issue | Role |

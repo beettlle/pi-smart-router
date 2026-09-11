@@ -436,6 +436,7 @@ describe('adversarial-label-campaign (SP-282 / #169)', () => {
       expect(report.totals.warm_start_rows).toBe(3);
       expect(report.totals.fit_rows).toBe(1);
       expect(report.provenance).toBe('llm_judge');
+      expect(report.disagreements).toEqual([]);
     });
   });
 

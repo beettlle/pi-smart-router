@@ -91,3 +91,36 @@ CI fixture: `tests/eval/corpus/label-packs/adversarial-llm-judge/`
 - Do not keyword-stuff tasks solely to hit triage floors.
 - Do not ship campaign output into `config/` here — SP-283 trains,
   SP-284 hard-gates the ship bundle.
+
+## Human label review (SP-287 / close #168)
+
+`/smart-router feedback good|bad` sets outcome signals but does **not** set
+`label_provenance: human_feedback`. SP-282 judge disagreements are excluded
+from packs with no human queue. Use this CLI before ship-grade aggregate:
+
+```bash
+# Interactive (TTY): confirm/adjust shadow exports one item at a time
+npx tsx scripts/calibration/human-label-review.ts \
+  --contrib .pi-smart-router/exports/telemetry-contrib-….json \
+  --labeled-only \
+  --output data/contrib/shadow-human-YYYYMMDD.jsonl
+
+# Non-interactive: reaffirm prior feedback_good/feedback_bad only (unlabeled → skip)
+npx tsx scripts/calibration/human-label-review.ts \
+  --contrib path/to/telemetry-contrib.json \
+  --labeled-only \
+  --from-existing-feedback \
+  --output data/contrib/shadow-human-YYYYMMDD.jsonl
+
+# Adjudicate SP-282 disagreements (report must embed disagreements[])
+npx tsx scripts/calibration/human-label-review.ts \
+  --report data/calibration/packs/adversarial-live-report.json \
+  --tasks path/to/tasks.jsonl \
+  --output data/contrib/adversarial-human-YYYYMMDD.jsonl
+```
+
+Answers: `good` | `bad` | `skip` | `quit`. Skip/quit never invents labels.
+Untagged legacy rows are never auto-promoted — only explicit good/bad emit
+`label_provenance: human_feedback` contrib rows for `--ship-grade-only`.
+
+See also [`docs/qa/shadow-dogfood-protocol.md`](../../docs/qa/shadow-dogfood-protocol.md).

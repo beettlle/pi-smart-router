@@ -182,6 +182,11 @@ export interface CampaignReport {
   readonly per_grader: Record<string, { readonly grades: number }>;
   readonly campaign_valid: boolean;
   readonly violations: readonly string[];
+  /**
+   * Judge disagreements excluded from pack labels (SP-287 human review queue).
+   * Embedded so operators can adjudicate without a separate sidecar.
+   */
+  readonly disagreements: readonly CampaignDisagreement[];
 }
 
 // ---------------------------------------------------------------------------
@@ -631,6 +636,7 @@ export function buildCampaignReport(
     per_grader: perGrader,
     campaign_valid: violations.length === 0,
     violations,
+    disagreements: run.disagreements,
   };
 }
 

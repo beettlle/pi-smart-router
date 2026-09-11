@@ -2,10 +2,10 @@
 
 **Last Updated:** 2026-09-10
 **Status:** Active
-**Next Task ID:** SP-287
+**Next Task ID:** SP-288
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v1.0.0** package version bumped locally (honest-untrained calibration; publish remains operator). Prior: **v0.22.0** on npm (2026-09-05). **v1.0.0 train** SP-263–SP-279 complete. **Post-1.0 calibration train:** SP-280–SP-286 retargeted to `spine-tasks/_authoring/release-v1.1.0/manifest.md` (v1.1.0 minor; GitHub #168/#169/#170, parent #110). Deferred: #171/#172/#96/#167/#162/#163/#157/#95, hardware.
+**Released:** **v1.0.0** package version bumped locally (honest-untrained calibration; publish remains operator). Prior: **v0.22.0** on npm (2026-09-05). **v1.0.0 train** SP-263–SP-279 complete. **Post-1.0 calibration train:** SP-280–SP-286 retargeted to `spine-tasks/_authoring/release-v1.1.0/manifest.md` (v1.1.0 minor; GitHub #168/#169/#170, parent #110). **Close #168 follow-on:** SP-287 human-label review CLI. Deferred: #171/#172/#96/#167/#162/#163/#157/#95, hardware.
 
 ---
 
@@ -913,6 +913,16 @@
 **Scope ID:** `SP-280,SP-281,SP-282,SP-283,SP-284,SP-285,SP-286`
 
 **Authoring notes:** `spine-tasks/_authoring/release-v1.1.0/manifest.md`
+
+### Phase 58 — Close #168 human review tooling (SP-287)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-287 | human label review CLI | M | SP-281, SP-282 | Partial #168 |
+
+**Source:** Operator plan — hold v1.1.0 publish until hard gates pass; review CLI before shadow + live SP-282 label collection.
+
+**Scope ID:** `SP-287`
 
 ---
 
