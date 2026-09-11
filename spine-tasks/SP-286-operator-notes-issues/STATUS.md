@@ -1,9 +1,9 @@
-**Current Step:** Step 1: Implementation
-**Status:** In Progress
+**Current Step:** Complete (all steps done)
+**Status:** Complete
 **Last Updated:** 2026-09-11
 **Review Level:** 1
-**Review Counter:** 0
-**Iteration:** 0
+**Review Counter:** 1
+**Iteration:** 1
 **Size:** S
 
 ---
@@ -30,7 +30,13 @@
 
 ## Step 2: Testing & Verification
 
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run contract testCommand
-- [ ] Update STATUS with evidence
+- [x] Run contract testCommand
+- [x] Update STATUS with evidence
+
+**Evidence:**
+
+- Contract testCommand: `npm run typecheck` (tsc --noEmit) → PASS, exit 0 (2026-09-11). Docs-only task; no runtime code changed.
+- Review Level 1: `spine_review_step --step 1 --type plan` → skipped by runtime (nested reviewer spawn blocked; engine runs reviews post-.DONE per SP-195); artifact `.reviews/1-20260911T215407.md`.
+- Completion criteria: mission outcomes met without inventing labels or flipping #96 defaults — `config/operator-config.json.example` untouched, shipped calibration remains `neutralized_for_v1_honesty` / `trained_sample_count: 0`, all linked issues left OPEN.
