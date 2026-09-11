@@ -1,0 +1,36 @@
+data/calibration/packs/adversarial-llm-judge-fit.jsonl
+  h_ae151c586ac6c5 1-11
+data/calibration/packs/adversarial-llm-judge-holdout.jsonl
+  h_ae151c586ac6c5 1-11
+data/calibration/packs/adversarial-llm-judge-report.json
+  h_ae151c586ac6c5 1-45
+data/calibration/packs/fc-rewardbench-ci.jsonl
+  h_ae151c586ac6c5 1-6
+data/calibration/packs/swe-gym-ci.jsonl
+  h_ae151c586ac6c5 1-4
+data/calibration/verifier-grade-gate-report.json
+  h_ae151c586ac6c5 1-44
+data/calibration/verifier-grade-p-success-weights.json
+  h_ae151c586ac6c5 1-30
+data/calibration/verifier-grade-routing-calibration.json
+  h_ae151c586ac6c5 1-2816
+scripts/train-routing-calibration.ts
+  h_ae151c586ac6c5 19-28,38,58,74-77,129-336,844-845,851,853-868,873-874,883,886,890-897,911-921,956-960,981-1016,1022-1026,1028-1040,1046,1053,1072-1091
+spine-tasks/SP-283-verifier-grade-train/STATUS.md
+  h_ae151c586ac6c5 1-3,5,13,15-16,20-24,26-31
+spine-tasks/_authoring/release-v1.1.0/verifier-grade-train-note.md
+  h_ae151c586ac6c5 1-100
+tests/unit/train-routing-calibration.test.ts
+  h_ae151c586ac6c5 10,12,17-18,25,27-29,32,36-37,39,421-602
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0f435dd5d106b3a1efacad9d569266f9b8e933b7",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
