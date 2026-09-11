@@ -327,6 +327,7 @@ export const RoutingFeatureSidecarSchema = z
     local_eligible_reason: z.string().nullable(),
     route_path: RoutePathSchema.nullable().optional(),
     route_path_confidence: z.number().nullable().optional(),
+    embedding: z.array(z.number()).length(384).optional(),
     prewarm_attempted: z.boolean().nullable().optional(),
     prewarm_accepted: z.boolean().nullable().optional(),
     prewarm_disabled_reason: z.string().nullable().optional(),

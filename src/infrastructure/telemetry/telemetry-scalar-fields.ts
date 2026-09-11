@@ -255,6 +255,11 @@ export const DEFAULT_CONTEXT_FIT_DATASET_FIELDS = {
   | 'context_fit_reason_code'
 >;
 
+/** Default embedding field for tests and legacy store reads (SP-285, #170). */
+export const DEFAULT_EMBEDDING_DATASET_FIELDS = {
+  embedding: null,
+} as const satisfies Pick<RoutingDatasetRecord, 'embedding'>;
+
 /** Default tier-selection dataset scalars for tests and legacy store reads. */
 export const DEFAULT_TIER_SELECTION_DATASET_FIELDS = {
   cluster_id: null,

@@ -44,10 +44,11 @@ import {
   OUTCOME_MAX_ENTRIES,
   OUTCOME_WINDOW_MS,
 } from '../telemetry/outcome-limits.js';
+import { EMBEDDING_DIM } from '../../domain/matching/embedding-provider.js';
 
 // ─── Schema version & migrations ────────────────────────────────────────────
 
-const CURRENT_SCHEMA_VERSION = 7;
+const CURRENT_SCHEMA_VERSION = 8;
 
 const MIGRATION_V1 = `
   CREATE TABLE IF NOT EXISTS pins (
@@ -193,6 +194,13 @@ const MIGRATION_V7 = `
   ALTER TABLE telemetry ADD COLUMN reasoning_level_requested TEXT;
   ALTER TABLE telemetry ADD COLUMN reasoning_level_applied TEXT;
   ALTER TABLE telemetry ADD COLUMN reasoning_reason_code TEXT;
+`;
+
+// SP-285 / #170: opt-in raw 384-dim encoder embedding for privacy-safe export
+// (hydra_projection training floor ≥100). JSON-encoded number array; null when
+// SMART_ROUTER_DATASET_EMBEDDINGS is unset at capture time.
+const MIGRATION_V8 = `
+  ALTER TABLE dataset ADD COLUMN embedding_json TEXT;
 `;
 
 // ─── Token bucket result ────────────────────────────────────────────────────
@@ -806,7 +814,8 @@ export class SqliteStore implements StorePort {
           triage_verdict, triage_reason_code, triage_cyclomatic_score,
           triage_trivial_hits, triage_complex_hits, triage_sanitized_length_delta,
           requirement_reasoning, requirement_code_gen, requirement_tool_use,
-          routing_latency_ms, estimated_cost_usd, prompt_fingerprint
+          routing_latency_ms, estimated_cost_usd, prompt_fingerprint,
+          embedding_json
         ) VALUES (
           @request_id, @timestamp, @turn_type, @stage, @reason_code,
           @selected_model_id, @tier, @candidates_json,
@@ -815,7 +824,8 @@ export class SqliteStore implements StorePort {
           @triage_verdict, @triage_reason_code, @triage_cyclomatic_score,
           @triage_trivial_hits, @triage_complex_hits, @triage_sanitized_length_delta,
           @requirement_reasoning, @requirement_code_gen, @requirement_tool_use,
-          @routing_latency_ms, @estimated_cost_usd, @prompt_fingerprint
+          @routing_latency_ms, @estimated_cost_usd, @prompt_fingerprint,
+          @embedding_json
         )`,
       )
       .run({
@@ -844,6 +854,8 @@ export class SqliteStore implements StorePort {
         routing_latency_ms: entry.routing_latency_ms,
         estimated_cost_usd: entry.estimated_cost_usd,
         prompt_fingerprint: entry.prompt_fingerprint,
+        embedding_json:
+          entry.embedding === null ? null : serializeDatasetEmbedding(entry.embedding),
       });
   }
 
@@ -917,6 +929,12 @@ export class SqliteStore implements StorePort {
     if (version < 7) {
       this.db.exec(MIGRATION_V7);
       version = 7;
+      this.db.pragma(`user_version = ${version}`);
+    }
+
+    if (version < 8) {
+      this.db.exec(MIGRATION_V8);
+      version = 8;
       this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`);
     }
   }
@@ -1044,6 +1062,7 @@ interface DatasetRow {
   routing_latency_ms: number;
   estimated_cost_usd: number | null;
   prompt_fingerprint: string | null;
+  embedding_json: string | null;
 }
 
 interface OutcomeRow {
@@ -1056,6 +1075,44 @@ interface OutcomeRow {
   override_model_id: string | null;
 }
 
+// ─── Row mappers ──────────────────────────────────────────────────────
+
+/** Serialize a captured embedding vector for the dataset table (SP-285, #170). */
+function serializeDatasetEmbedding(embedding: readonly number[]): string {
+  if (embedding.length !== EMBEDDING_DIM) {
+    throw new Error(
+      `Dataset embedding shape mismatch: expected ${EMBEDDING_DIM}, got ${embedding.length}`,
+    );
+  }
+  return JSON.stringify(embedding);
+}
+
+/**
+ * Parse a stored embedding vector. Fail loud on corrupt cells — the column is
+ * only ever written by serializeDatasetEmbedding, so a malformed value means
+ * local corruption the operator must see, not silently dropped training data.
+ */
+function parseDatasetEmbedding(raw: string): readonly number[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Corrupt dataset embedding_json cell (not valid JSON): ${message}`,
+    );
+  }
+  if (
+    !Array.isArray(parsed) ||
+    parsed.length !== EMBEDDING_DIM ||
+    !parsed.every((value) => typeof value === 'number' && Number.isFinite(value))
+  ) {
+    throw new Error(
+      `Corrupt dataset embedding_json cell: expected ${EMBEDDING_DIM} finite numbers`,
+    );
+  }
+  return parsed as readonly number[];
+}
 // ─── Row mappers ──────────────────────────────────────────────────────────
 
 function clampHistoryLimit(limit: number | undefined): number {
@@ -1155,6 +1212,7 @@ function datasetRowToEntity(row: DatasetRow): RoutingDatasetRecord {
     p_success_cheap: null,
     local_eligible_reason: null,
     tier_selection_reason_code: null,
+    embedding: row.embedding_json === null ? null : parseDatasetEmbedding(row.embedding_json),
   };
 }
 

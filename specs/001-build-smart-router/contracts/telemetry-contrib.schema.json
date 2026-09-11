@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://pi-smart-router.dev/contracts/telemetry-contrib.schema.json",
   "title": "TelemetryContribRecord",
-  "description": "Privacy-safe community telemetry contribution row (GitHub #67). Scalar routing features and outcome labels only — never prompt text, messages, request_id, or install-local pepper fields.",
+  "description": "Privacy-safe community telemetry contribution row (GitHub #67). Scalar routing features and outcome labels only — never prompt text, messages, request_id, or install-local pepper fields. SP-285 / #170 adds additive optional fields: row_id, prompt_length_chars, message_count, and opt-in embedding vectors (format version stays 2 — additive within-major).",
   "type": "object",
   "required": [
     "version",
@@ -29,6 +29,11 @@
       "type": "string",
       "pattern": "^[a-f0-9]{64}$",
       "description": "One-way HMAC-SHA256 hash of session_id keyed with the install-local dataset pepper — stable per install, not correlatable across installs; raw session_id is never exported."
+    },
+    "row_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Stable privacy-safe row id (SP-285 / #170): HMAC-SHA256 of request_id keyed with the install-local dataset pepper and a 'row:' domain-separation prefix. Stable per install for aggregate dedup and reproducible training splits; not correlatable across installs. The raw request_id itself is never exported."
     },
     "turn_type": {
       "type": "string",
@@ -61,6 +66,23 @@
     "estimated_input_tokens": {
       "type": ["integer", "null"],
       "minimum": 0
+    },
+    "prompt_length_chars": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Character length of the routed prompt (count only, SP-285 / #170) — feeds the P(success) prompt_length feature and edit-distance proxies; previously dropped on this path, starving the feature to zero."
+    },
+    "message_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of messages in the routing envelope (count only, SP-285 / #170)."
+    },
+    "embedding": {
+      "type": ["array", "null"],
+      "items": { "type": "number" },
+      "minItems": 384,
+      "maxItems": 384,
+      "description": "Opt-in raw 384-dim encoder embedding of the metadata-prefixed routing input (SP-285 / #170) for hydra_projection training (floor >=100). Derived dense vector, never prompt text. Present only when SMART_ROUTER_DATASET_EMBEDDINGS=1 at capture time and the operator exported with --embeddings; absent otherwise."
     },
     "has_tool_context": {
       "type": "boolean"

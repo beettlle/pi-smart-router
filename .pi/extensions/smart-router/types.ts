@@ -39,7 +39,13 @@ export type SmartRouterCommand =
   | { command: 'mode'; mode: FleetMode }
   | { command: 'pricing'; subcommand: 'refresh' }
   | { command: 'export'; subcommand: 'dataset'; limit: number }
-  | { command: 'export'; subcommand: 'telemetry-contrib'; limit: number }
+  | {
+      command: 'export';
+      subcommand: 'telemetry-contrib';
+      limit: number;
+      /** Include captured 384-dim embeddings in contrib rows (SP-285, #170). */
+      includeEmbeddings?: boolean;
+    }
   | { command: 'feedback'; rating: 'good' | 'bad' }
   | { command: 'unpin' };
 

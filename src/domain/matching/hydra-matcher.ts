@@ -55,6 +55,15 @@ export interface RequirementVector {
 export interface EmbeddingProvider {
   extractRequirements(text: string): Promise<RequirementVector>;
   /**
+   * Optional single-pass extraction that also returns the raw 384-dim encoder
+   * embedding (SP-285, #170) for privacy-safe dataset capture. Providers that
+   * project through a non-shared embedding surface (e.g. ModernBERT K=4 heads)
+   * simply omit it; the matcher then captures no embedding for those routes.
+   */
+  extractRequirementsDetailed?(
+    text: string,
+  ): Promise<{ requirements: RequirementVector; embedding: readonly number[] | null }>;
+  /**
    * Reason codes describing degraded requirement extraction (SP-251, #148) —
    * e.g. `k4_heads_placeholder` when learned K=4 head weights are missing.
    * Absent/empty when learned weights are active.
@@ -69,6 +78,13 @@ export interface MatchResult {
   readonly selected: CandidateScore | null;
   readonly candidates: readonly CandidateScore[];
   readonly requirements: RequirementVector;
+  /**
+   * Raw 384-dim encoder embedding of the metadata-prefixed routing input
+   * (SP-285, #170). Present only when SMART_ROUTER_DATASET_EMBEDDINGS=1 and
+   * the provider supports single-pass detailed extraction; otherwise null.
+   * Derived vector — never the prompt text.
+   */
+  readonly embedding?: readonly number[] | null;
   /**
    * Decision metadata reason codes for degraded requirement extraction
    * (SP-251, #148): `hydra_weights_missing` when the learned projection
@@ -361,6 +377,16 @@ export function k4CapabilityVectorToRequirements(
   };
 }
 
+// ─── Optional embedding capture for privacy-safe export (SP-285, #170) ───────
+
+/** Env var enabling opt-in capture of raw 384-dim embeddings into dataset rows. */
+export const HYDRA_EMBEDDING_CAPTURE_ENV = 'SMART_ROUTER_DATASET_EMBEDDINGS';
+
+/** True when the operator opted into privacy-safe embedding capture. */
+export function isHydraEmbeddingCaptureEnabled(): boolean {
+  return process.env[HYDRA_EMBEDDING_CAPTURE_ENV] === '1';
+}
+
 // ─── HyDRA embedding adapter ─────────────────────────────────────────────────
 
 /**
@@ -375,6 +401,17 @@ export function wrapHydraEmbeddingProvider(
     async extractRequirements(text: string): Promise<RequirementVector> {
       const embedding = await embedder.embed(text);
       return projectToRequirements(embedding, projectionWeights);
+    },
+
+    async extractRequirementsDetailed(text: string): Promise<{
+      requirements: RequirementVector;
+      embedding: readonly number[] | null;
+    }> {
+      // Single embed pass — requirements and captured embedding come from the
+      // same vector so exported rows match serve-time projection inputs.
+      const embedding = await embedder.embed(text);
+      const requirements = projectToRequirements(embedding, projectionWeights);
+      return { requirements, embedding: Array.from(embedding) };
     },
 
     async dispose(): Promise<void> {
@@ -492,10 +529,22 @@ export class HydraMatcher {
       throw new MissingWeightsFailClosedError(this.requirementReasonCodes);
     }
 
-    const requirements = await this.provider.extractRequirements(
-      buildHydraInput(request),
-    );
+    const hydraInput = buildHydraInput(request);
+    // SP-285 / #170: single-pass detailed extraction only when embedding
+    // capture is opted in — plain path stays byte-identical (no extra copies).
+    const detailed =
+      isHydraEmbeddingCaptureEnabled() && this.provider.extractRequirementsDetailed
+        ? await this.provider.extractRequirementsDetailed(hydraInput)
+        : null;
+    const requirements = detailed
+      ? detailed.requirements
+      : await this.provider.extractRequirements(hydraInput);
     this.validateRequirements(requirements);
+    if (detailed?.embedding && detailed.embedding.length !== EMBEDDING_DIM) {
+      throw new Error(
+        `Captured embedding shape mismatch: expected ${EMBEDDING_DIM}, got ${detailed.embedding.length}`,
+      );
+    }
 
     const healthyFleet = fleet.filter((m) => m.healthy !== false);
     const candidates: CandidateScore[] = [];
@@ -550,6 +599,7 @@ export class HydraMatcher {
       selected,
       candidates: rankedCandidates,
       requirements,
+      embedding: detailed ? detailed.embedding : null,
       requirement_reason_codes: this.requirementReasonCodes,
       elapsedMs,
       budgetExceeded: elapsedMs > this.budgetMs,

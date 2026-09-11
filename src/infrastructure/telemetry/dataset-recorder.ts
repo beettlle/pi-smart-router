@@ -157,6 +157,9 @@ export function buildDatasetRecord(
     p_success_cheap: tierSelection?.p_success_cheap ?? null,
     local_eligible_reason: tierSelection?.local_eligible_reason ?? null,
     tier_selection_reason_code: tierSelection?.tier_selection_reason_code ?? null,
+    // SP-285 / #170: captured at hydra_match when
+    // SMART_ROUTER_DATASET_EMBEDDINGS=1; null on every other path.
+    embedding: decision.features?.embedding ?? null,
   };
 }
 

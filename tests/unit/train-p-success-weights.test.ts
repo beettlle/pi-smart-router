@@ -161,4 +161,32 @@ describe('train-p-success-weights (SP-175)', () => {
     expect(samples).toHaveLength(2); // scripted row skipped, never coerced
     expect(samples.every((sample) => sample.success)).toBe(true);
   });
+
+  it('labeledSampleFromContribRecord prefers stable row_id over index fallbacks (SP-285, #170)', () => {
+    const withRowId = labeledSampleFromContribRecord(
+      {
+        row_id: 'a'.repeat(64),
+        request_id: 'req-raw',
+        tier: 'zero-tier',
+        success_label: true,
+        outcome_signals: [],
+      },
+      aggregateRowRequestId(7),
+    );
+    // row_id wins over both raw request_id and the aggregate position —
+    // position shifts as files are added/removed, which would otherwise make
+    // isotonic holdout splits unstable.
+    expect(withRowId?.request_id).toBe('a'.repeat(64));
+
+    const withoutRowId = labeledSampleFromContribRecord(
+      {
+        request_id: 'req-raw',
+        tier: 'zero-tier',
+        success_label: true,
+        outcome_signals: [],
+      },
+      aggregateRowRequestId(7),
+    );
+    expect(withoutRowId?.request_id).toBe('req-raw');
+  });
 });

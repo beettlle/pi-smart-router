@@ -287,6 +287,13 @@
           "enum": ["neural", "learned", "heuristic", "safe_default", null]
         },
         "route_path_confidence": { "type": ["number", "null"] },
+        "embedding": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 384,
+          "maxItems": 384,
+          "description": "Opt-in raw 384-dim HyDRA encoder embedding (SP-285 / #170) — present only when SMART_ROUTER_DATASET_EMBEDDINGS=1; derived dense vector, never prompt text."
+        },
         "prewarm_attempted": { "type": ["boolean", "null"] },
         "prewarm_accepted": { "type": ["boolean", "null"] },
         "prewarm_disabled_reason": { "type": ["string", "null"] }

@@ -61,6 +61,16 @@ export const CALIBRATION_CONTRIB_STRIP_KEYS: readonly string[] = [
 export const CONTRIB_TAINTED_KEY_PATTERN =
   /(?:^|_)(prompt|message|messages|content|tool_calls?|secret|password|token|api_key)(?:_|$)/i;
 
+/**
+ * Privacy-safe count-only fields that the tainted pattern would otherwise
+ * reject by name (SP-285, #170). Integer counts only — never content.
+ * Mirrors `TELEMETRY_CONTRIB_TAINTED_KEY_ALLOWLIST` on the export side.
+ */
+export const CONTRIB_TAINTED_KEY_ALLOWLIST: readonly string[] = [
+  'prompt_length_chars',
+  'message_count',
+];
+
 export class CalibrationContribError extends Error {
   override readonly name = 'CalibrationContribError';
 
@@ -236,8 +246,9 @@ function collectForbiddenKeys(
     const keyPath = path ? `${path}.${key}` : key;
 
     if (
-      (CALIBRATION_CONTRIB_REJECT_KEYS as readonly string[]).includes(key) ||
-      CONTRIB_TAINTED_KEY_PATTERN.test(key)
+      !CONTRIB_TAINTED_KEY_ALLOWLIST.includes(key) &&
+      ((CALIBRATION_CONTRIB_REJECT_KEYS as readonly string[]).includes(key) ||
+        CONTRIB_TAINTED_KEY_PATTERN.test(key))
     ) {
       found.push(keyPath);
     }
@@ -437,7 +448,42 @@ export async function readContribFromStdin(): Promise<Record<string, unknown>[]>
 export function aggregateContribRecords(
   batches: ReadonlyArray<readonly Record<string, unknown>[]>,
 ): Record<string, unknown>[] {
-  return batches.flatMap((batch) => [...batch]);
+  // SP-285 / #170: stable per-install row_id makes overlapping exports
+  // idempotent — duplicated rows (re-exports of the same window) would
+  // otherwise double-count toward training floors. Rows without a row_id are
+  // always kept; they are never deduped against each other.
+  const seenRowIds = new Set<string>();
+  const records: Record<string, unknown>[] = [];
+
+  for (const batch of batches) {
+    for (const record of batch) {
+      const rowId = record.row_id;
+      if (typeof rowId === 'string' && rowId.length > 0) {
+        if (seenRowIds.has(rowId)) {
+          continue;
+        }
+        seenRowIds.add(rowId);
+      }
+      records.push(record);
+    }
+  }
+
+  return records;
+}
+
+/** True when the row carries a 384-dim embedding vector (SP-285, #170). */
+export function hasEmbeddingVector(record: Record<string, unknown>): boolean {
+  return Array.isArray(record.embedding) && record.embedding.length > 0;
+}
+
+/** Count rows eligible for hydra_projection training (SP-285, #170). */
+export function countEmbeddingRows(
+  records: readonly Record<string, unknown>[],
+): number {
+  return records.reduce(
+    (count, record) => (hasEmbeddingVector(record) ? count + 1 : count),
+    0,
+  );
 }
 
 export function formatContribJsonl(records: readonly Record<string, unknown>[]): string {
@@ -524,6 +570,21 @@ async function main(): Promise<void> {
     console.error(
       `calibration-aggregate: accepted ${records.length} record(s) from ${sources.length} source(s)`,
     );
+    // SP-285 / #170: make the hydra_projection floor visible at aggregate
+    // time so operators know whether embedding capture can ever meet ≥100.
+    const embeddingRows = countEmbeddingRows(records);
+    console.error(
+      `calibration-aggregate: ${embeddingRows} row(s) carry embeddings ` +
+        `(hydra_projection floor ${MINIMUM_TRAINING_SAMPLES.hydra_projection})`,
+    );
+    if (
+      embeddingRows > 0 &&
+      embeddingRows < MINIMUM_TRAINING_SAMPLES.hydra_projection
+    ) {
+      console.error(
+        `calibration-aggregate: warning — hydra_projection stays untrained below its floor; honest-untrained defaults remain`,
+      );
+    }
     if (shipGradeOnly) {
       console.error(
         `calibration-aggregate: --ship-grade-only emitted ${outputRecords.length} of ${records.length} record(s)`,

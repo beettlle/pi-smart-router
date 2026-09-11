@@ -25,7 +25,10 @@ import {
   EXPORT_TELEMETRY_CONTRIB_COMMAND,
   UNPIN_SUBCOMMAND,
 } from '../../src/cli/smart-router-cli.js';
-import { hashSessionIdForTelemetryExport } from '../../src/infra/telemetry.js';
+import {
+  hashRequestIdForTelemetryExport,
+  hashSessionIdForTelemetryExport,
+} from '../../src/infra/telemetry.js';
 import { getDatasetPepperPath } from '../../src/infrastructure/telemetry/dataset-recorder.js';
 import {
   formatHistoryMessage,
@@ -38,12 +41,12 @@ import {
   DEFAULT_BREAKEVEN_TELEMETRY_FIELDS,
   DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
   DEFAULT_CONTEXT_FIT_TELEMETRY_FIELDS,
+  DEFAULT_EMBEDDING_DATASET_FIELDS,
   DEFAULT_PIN_ONLY_FALLBACK_TELEMETRY_FIELDS,
   DEFAULT_PLANNING_DELEGATE_TELEMETRY_FIELDS,
   DEFAULT_SAAR_TELEMETRY_FIELDS,
   DEFAULT_TIER_SELECTION_DATASET_FIELDS,
-  DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,
-} from '../../src/infrastructure/telemetry/routing-telemetry.js';
+  DEFAULT_TIER_SELECTION_TELEMETRY_FIELDS,} from '../../src/infrastructure/telemetry/routing-telemetry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '../..');
@@ -102,6 +105,7 @@ function makeDatasetRecord(
     prompt_fingerprint: 'deadbeef'.repeat(8),
     ...DEFAULT_CONTEXT_FIT_DATASET_FIELDS,
     ...DEFAULT_TIER_SELECTION_DATASET_FIELDS,
+    ...DEFAULT_EMBEDDING_DATASET_FIELDS,
     ...overrides,
   };
 }
@@ -203,12 +207,15 @@ describe('export telemetry-contrib (SP-118)', () => {
   it('parses export telemetry-contrib limit flag', () => {
     expect(parseExportTelemetryContribArgs('export telemetry-contrib')).toEqual({
       limit: 10_000,
+      includeEmbeddings: false,
     });
     expect(parseExportTelemetryContribArgs('export telemetry-contrib --limit 25')).toEqual({
       limit: 25,
+      includeEmbeddings: false,
     });
     expect(parseExportTelemetryContribArgs('export telemetry-contrib --limit=50')).toEqual({
       limit: 50,
+      includeEmbeddings: false,
     });
     expect(() => parseExportTelemetryContribArgs('export telemetry-contrib --limit 0')).toThrow(
       'Usage:',
@@ -423,6 +430,152 @@ describe('export telemetry-contrib (SP-118)', () => {
       hashSessionIdForTelemetryExport('sess-secret', TEST_PEPPER),
     );
     expect(JSON.stringify(contrib)).not.toContain('sess-secret');
+  });
+});
+
+describe('privacy-safe embedding export (SP-285, #170)', () => {
+  let validateSchema: ValidateFn;
+
+  beforeAll(async () => {
+    validateSchema = await compileTelemetryContribValidator();
+  });
+
+  it('parses the --embeddings opt-in flag', () => {
+    expect(parseExportTelemetryContribArgs('export telemetry-contrib --embeddings')).toEqual({
+      limit: 10_000,
+      includeEmbeddings: true,
+    });
+    expect(
+      parseExportTelemetryContribArgs('export telemetry-contrib --limit 5 --embeddings'),
+    ).toEqual({ limit: 5, includeEmbeddings: true });
+    expect(parseExportTelemetryContribArgs('export telemetry-contrib')).toEqual({
+      limit: 10_000,
+      includeEmbeddings: false,
+    });
+  });
+
+  it('adds a stable privacy-safe row_id while stripping raw request_id', () => {
+    const record = makeDatasetRecord();
+    const exported = toTelemetryContribRecord(record, [makeOutcome()], TEST_PEPPER);
+
+    expect(exported).not.toHaveProperty('request_id');
+    expect(exported.row_id).toBe(
+      hashRequestIdForTelemetryExport('req-contrib-1', TEST_PEPPER),
+    );
+    expect(exported.row_id).toMatch(/^[a-f0-9]{64}$/);
+
+    // Stable per install; not correlatable across installs or with session hashes.
+    const again = toTelemetryContribRecord(record, [makeOutcome()], TEST_PEPPER);
+    expect(again.row_id).toBe(exported.row_id);
+
+    const otherInstall = toTelemetryContribRecord(record, [makeOutcome()], OTHER_PEPPER);
+    expect(otherInstall.row_id).not.toBe(exported.row_id);
+
+    // Domain separation: row ids never collide with session-id hashes.
+    expect(exported.row_id).not.toBe(exported.session_id_hash);
+    expect(JSON.stringify(exported)).not.toContain('req-contrib-1');
+  });
+
+  it('carries prompt_length_chars and message_count counts (no content)', () => {
+    const record = makeDatasetRecord({
+      prompt_length_chars: 1234,
+      message_count: 3,
+    });
+    const exported = toTelemetryContribRecord(record, [makeOutcome()], TEST_PEPPER);
+
+    expect(exported.prompt_length_chars).toBe(1234);
+    expect(exported.message_count).toBe(3);
+    expect(validateSchema(exported)).toBe(true);
+    assertTelemetryContribRecordSafe(exported);
+  });
+
+  it('omits captured embeddings by default even when present on the record', () => {
+    const record = makeDatasetRecord({
+      embedding: new Array<number>(384).fill(0.5),
+    });
+    const exported = toTelemetryContribRecord(record, [makeOutcome()], TEST_PEPPER);
+
+    expect(exported).not.toHaveProperty('embedding');
+    expect(validateSchema(exported)).toBe(true);
+  });
+
+  it('includes 384-dim embeddings only with the --embeddings opt-in', () => {
+    const embedding = Array.from({ length: 384 }, (_, i) => i / 384);
+    const record = makeDatasetRecord({ embedding });
+
+    const exported = toTelemetryContribRecord(record, [makeOutcome()], TEST_PEPPER, {
+      includeEmbeddings: true,
+    });
+
+    expect(exported.embedding).toEqual(embedding);
+    expect((exported.embedding as number[]).length).toBe(384);
+    expect(validateSchema(exported)).toBe(true);
+    // Still no raw prompt content anywhere in the row.
+    expect(exported).not.toHaveProperty('prompt_text');
+    expect(exported).not.toHaveProperty('prompt_fingerprint');
+  });
+
+  it('passes the opt-in through buildTelemetryContribRecords and exportTelemetryContrib', async () => {
+    const embedding = new Array<number>(384).fill(0.25);
+    const record = makeDatasetRecord({ embedding });
+
+    const withoutOptIn = buildTelemetryContribRecords([record], [makeOutcome()], TEST_PEPPER);
+    expect(withoutOptIn[0]).not.toHaveProperty('embedding');
+
+    const withOptIn = buildTelemetryContribRecords([record], [makeOutcome()], TEST_PEPPER, {
+      includeEmbeddings: true,
+    });
+    expect(withOptIn[0]!.embedding).toEqual(embedding);
+
+    const cwd = mkdtempSync(join(tmpdir(), 'sp285-export-'));
+    try {
+      const store = new MemoryStore([]);
+      store.appendDatasetRecord(record);
+      store.appendOutcomeRecord(makeOutcome());
+
+      const result = await exportTelemetryContrib(
+        { store, cwd, limit: 10, includeEmbeddings: true },
+        { writeFile: false },
+      );
+      const parsed = JSON.parse(result.json) as Record<string, unknown>[];
+      expect(parsed[0]!.embedding).toEqual(embedding);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('datasetExportRowToTelemetryContrib hashes row_id and gates embeddings on opt-in', () => {
+    const exportRow = {
+      request_id: 'req-secret',
+      session_id_hash: hashSessionIdForTelemetryExport('sess-secret', TEST_PEPPER),
+      timestamp: '2026-07-07T12:00:00.000Z',
+      turn_type: 'main_loop',
+      reason_code: 'hydra_embedding_match',
+      selected_model_id: 'gpt-4o-mini',
+      routing_latency_ms: 12,
+      embedding: new Array<number>(384).fill(0.1),
+    };
+
+    const stripped = datasetExportRowToTelemetryContrib(exportRow, [makeOutcome()], TEST_PEPPER);
+    expect(stripped.row_id).toBe(hashRequestIdForTelemetryExport('req-secret', TEST_PEPPER));
+    expect(stripped).not.toHaveProperty('request_id');
+    expect(stripped).not.toHaveProperty('embedding');
+
+    const withEmbeddings = datasetExportRowToTelemetryContrib(
+      exportRow,
+      [makeOutcome()],
+      TEST_PEPPER,
+      { includeEmbeddings: true },
+    );
+    expect(withEmbeddings.embedding).toEqual(exportRow.embedding);
+
+    // A pre-hashed row_id is passed through untouched.
+    const prehashed = datasetExportRowToTelemetryContrib(
+      { ...exportRow, row_id: 'f'.repeat(64) },
+      [makeOutcome()],
+      TEST_PEPPER,
+    );
+    expect(prehashed.row_id).toBe('f'.repeat(64));
   });
 });
 

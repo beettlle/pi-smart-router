@@ -21,7 +21,7 @@ import { FLEET_MODE_ENTRY_TYPE } from './session-lifecycle.js';
 import type { SmartRouterRuntime } from './types.js';
 
 export const SMART_ROUTER_USAGE =
-  '/smart-router [status] | history [limit] | stats [limit] | mode scoped|all | pricing refresh | export dataset [--limit N] | export telemetry-contrib [--limit N] | feedback good|bad | unpin | plan [--json] | doctor';
+  '/smart-router [status] | history [limit] | stats [limit] | mode scoped|all | pricing refresh | export dataset [--limit N] | export telemetry-contrib [--limit N] [--embeddings] | feedback good|bad | unpin | plan [--json] | doctor';
 
 type CompletionItem = { value: string; label: string };
 
@@ -237,6 +237,7 @@ export function registerSmartRouterCommand(
             store: runtime.store,
             cwd: ctx.cwd,
             limit: parsed.limit,
+            includeEmbeddings: parsed.includeEmbeddings,
           });
           if (!result.path) {
             ctx.ui.notify(

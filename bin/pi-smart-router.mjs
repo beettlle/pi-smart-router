@@ -33,9 +33,11 @@ function getRouterStateDbPath(cwd) {
 
 function printUsage() {
   console.error(`Usage:
-  pi-smart-router export telemetry-contrib [--limit N]
+  pi-smart-router export telemetry-contrib [--limit N] [--embeddings]
 
-Run from a directory with pi routing state (default: ./.pi-smart-router/state.db).`);
+Run from a directory with pi routing state (default: ./.pi-smart-router/state.db).
+--embeddings includes captured 384-dim encoder embeddings (opt-in; rows only carry
+embeddings when SMART_ROUTER_DATASET_EMBEDDINGS=1 was set at routing time).`);
 }
 
 async function main() {
@@ -46,14 +48,14 @@ async function main() {
   const sqlite = await loadDist('dist/infrastructure/persistence/sqlite-store.js');
 
   if (cli.isExportTelemetryContribInvocation(args)) {
-    const { limit } = cli.parseExportTelemetryContribArgs(args);
+    const { limit, includeEmbeddings } = cli.parseExportTelemetryContribArgs(args);
     const cwd = process.cwd();
     const { store } = sqlite.createResilientStore({
       dbPath: getRouterStateDbPath(cwd),
       models: [],
     });
 
-    const result = await cli.exportTelemetryContrib({ store, cwd, limit });
+    const result = await cli.exportTelemetryContrib({ store, cwd, limit, includeEmbeddings });
     if (result.path) {
       console.log(`Exported ${result.recordCount} telemetry-contrib record(s) to ${result.path}`);
       return;
