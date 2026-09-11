@@ -1,0 +1,19 @@
+README.md
+  s_707c67852967db::t_03342359c32e6a 723-725,740
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "881d2a33017cd07689002780953f4ae2be100f35",
+  "prompts": {},
+  "sessions": {
+    "s_707c67852967db": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "62ed67c6-15a3-49e7-bd65-f529ffb91e39",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
