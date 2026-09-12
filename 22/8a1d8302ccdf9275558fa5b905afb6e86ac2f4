@@ -1,0 +1,24 @@
+tests/unit/adjudicate-disagreements.test.ts
+  s_73aaa01b99b77c::t_08c198c3454132 1-327
+scripts/calibration/README.md
+  s_73aaa01b99b77c::t_c17eda7a9b1467 133-154,159-160
+scripts/calibration/adjudicate-disagreements.ts
+  s_73aaa01b99b77c::t_1017a9305d52dd 1-463,465-473,475-493,498-853
+  s_73aaa01b99b77c::t_f3f0bc806a1e55 464,474,494-497
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "228a1d8302ccdf9275558fa5b905afb6e86ac2f4",
+  "prompts": {},
+  "sessions": {
+    "s_73aaa01b99b77c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae947e36-a697-4ee4-9394-26f1d7da5e0c",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
