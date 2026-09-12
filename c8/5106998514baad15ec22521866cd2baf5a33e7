@@ -1,0 +1,27 @@
+scripts/calibration/compose-live-task-corpus.ts
+  s_73aaa01b99b77c::t_ab693166724326 109,118,144,153,162,171,178,199,208,216,225,234,242
+  s_73aaa01b99b77c::t_c3803eacba2ae0 1-108,110-117,119-143,145-152,154-161,163-170,172-177,179-198,200-207,209-215,217-224,226-233,235-241,243-423
+scripts/calibration/README.md
+  s_73aaa01b99b77c::t_ebf6deac8c3b37 100,110
+  s_73aaa01b99b77c::t_6638e2a720fa41 101-109
+.gitignore
+  s_73aaa01b99b77c::t_39d7ac920df627 16-18
+scripts/calibration/mine-pi-session-tasks.ts
+  s_73aaa01b99b77c::t_414a60c5a02c0a 1-373
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c85106998514baad15ec22521866cd2baf5a33e7",
+  "prompts": {},
+  "sessions": {
+    "s_73aaa01b99b77c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae947e36-a697-4ee4-9394-26f1d7da5e0c",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
