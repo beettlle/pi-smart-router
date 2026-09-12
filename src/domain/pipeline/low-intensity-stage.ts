@@ -16,6 +16,7 @@
  */
 
 import { triage as triageClassify } from '../triage/triage-engine.js';
+import { resolveTriageCyclomaticThreshold } from '../triage/triage-thresholds.js';
 import type { ClusterMatchResult } from '../matching/cluster-matcher.js';
 import { clusterReasonCode } from '../../config/routing-clusters-loader.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
@@ -199,6 +200,8 @@ export function createLowIntensityStage(): PipelineStage {
   let cachedPSuccessWeights: PSuccessWeights | null = null;
   let isotonicCalibratorLoaded = false;
   let cachedIsotonicCalibrator: IsotonicCalibratorArtifact | null = null;
+  let cyclomaticThresholdLoaded = false;
+  let cachedCyclomaticThreshold: number | undefined;
 
   const resolveWeights = (context: RoutingContext): PSuccessWeights => {
     if (context.options.pSuccessWeights) {
@@ -234,6 +237,21 @@ export function createLowIntensityStage(): PipelineStage {
     return cachedIsotonicCalibrator;
   };
 
+  const resolveCyclomaticThreshold = (context: RoutingContext): number => {
+    if (context.options.cyclomaticThreshold !== undefined) {
+      return context.options.cyclomaticThreshold;
+    }
+    if (!cyclomaticThresholdLoaded) {
+      cachedCyclomaticThreshold = resolveTriageCyclomaticThreshold({
+        ...(context.options.routingCalibrationPath !== undefined
+          ? { filePath: context.options.routingCalibrationPath }
+          : {}),
+      });
+      cyclomaticThresholdLoaded = true;
+    }
+    return cachedCyclomaticThreshold!;
+  };
+
   return {
     name: 'low_intensity',
     async run(context: RoutingContext): Promise<StageResult> {
@@ -247,7 +265,8 @@ export function createLowIntensityStage(): PipelineStage {
       const alpha = config.p_success_alpha;
       context.pSuccessAlpha = alpha;
 
-      const triageResult = triageClassify(request.prompt_text);
+      const cyclomaticThreshold = resolveCyclomaticThreshold(context);
+      const triageResult = triageClassify(request.prompt_text, { cyclomaticThreshold });
       let clusterMatch: ClusterMatchResult | undefined;
 
       const matcher = context.options.clusterMatcher;
@@ -262,7 +281,7 @@ export function createLowIntensityStage(): PipelineStage {
       }
 
       const tierFeatures = buildTierFeatures(request, triageResult, undefined, clusterMatch);
-      const score = scoreLowIntensity(tierFeatures, config.weights);
+      const score = scoreLowIntensity(tierFeatures, config.weights, { cyclomaticThreshold });
       context.lowIntensityScore = score;
 
       const weights = resolveWeights(context);

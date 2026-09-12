@@ -225,12 +225,14 @@ export function buildTierFeatures(
 export function scoreLowIntensity(
   features: TierFeatureVector,
   weights: LowIntensityWeights = DEFAULT_LOW_INTENSITY_WEIGHTS,
+  options?: { readonly cyclomaticThreshold?: number },
 ): number {
+  const cyclomaticThreshold = options?.cyclomaticThreshold ?? CYCLOMATIC_THRESHOLD;
   const promptShortness = 1 - clamp01(features.prompt_length_chars / PROMPT_LENGTH_NORM);
   const tokenShortness =
     1 - clamp01(features.estimated_input_tokens / TOKEN_NORM);
   const cyclomaticLow =
-    1 - clamp01(features.cyclomatic_score / CYCLOMATIC_THRESHOLD);
+    1 - clamp01(features.cyclomatic_score / cyclomaticThreshold);
   const trivialSignal = clamp01(features.trivial_hits / MAX_KEYWORD_HITS);
   const complexInverse = 1 - clamp01(features.complex_hits / MAX_KEYWORD_HITS);
   const triageVerdictSignal = TRIAGE_VERDICT_LOW_INTENSITY[features.triage_verdict];

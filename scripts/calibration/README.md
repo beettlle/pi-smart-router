@@ -6,8 +6,8 @@ labeling (~94.5% positives → Sept isotonic collapse) with multi-model
 generation + blinded LLM judges and hard campaign floors.
 
 **Not shipped in the production bundle** — `scripts/` is outside
-`package.json` `files`. This packet changes no `config/` artifacts; v1.0
-honest-untrained neutralize stays in place until SP-284.
+`package.json` `files`. Campaign harness feeds SP-283 trains; SP-284 hard-gates
+the ship bundle (`config/` promoted only on `hard_gates_passed: true`).
 
 ## Campaign contract (issue #169)
 
@@ -134,11 +134,13 @@ CI fixture: `tests/eval/corpus/label-packs/adversarial-llm-judge/`
 
 SP-282 excludes in-campaign judge disagreements from packs (never majority-coerced).
 After a VALID live campaign, re-adjudicate residuals with a stronger pi-CLI panel
-(GLM / Kimi / Gemini Pro). Responses are **regenerated** (campaign reports do not
-store `response_text`); generations land under gitignored
-`data/calibration/adjudication/`.
+(GLM / Kimi / Gemini Pro). Prefer **re-grading stored generations** via
+`--generations-in` when a prior `--generations-out` sidecar exists; otherwise
+responses are regenerated (campaign reports do not store `response_text`).
+Generations land under gitignored `data/calibration/adjudication/`.
 
 ```bash
+# First run (or missing sidecar): regenerate + write generations-out
 npx tsx scripts/calibration/adjudicate-disagreements.ts \
   --report data/calibration/packs/adversarial-live-report.json \
   --tasks data/calibration/tasks/live-tasks-20260912.jsonl \
@@ -146,6 +148,18 @@ npx tsx scripts/calibration/adjudicate-disagreements.ts \
   --holdout data/calibration/packs/adversarial-live-holdout.jsonl \
   --generations-out data/calibration/adjudication/live-20260912-generations.jsonl \
   --adjudication-report data/calibration/packs/adversarial-live-adjudication.json \
+  --pi-timeout-ms 300000
+
+# Re-adjudicate the same responses (no regenerate on hit)
+npx tsx scripts/calibration/adjudicate-disagreements.ts \
+  --report data/calibration/packs/adversarial-live-report.json \
+  --tasks data/calibration/tasks/live-tasks-20260912.jsonl \
+  --fit data/calibration/packs/adversarial-live-fit.jsonl \
+  --holdout data/calibration/packs/adversarial-live-holdout.jsonl \
+  --generations-in data/calibration/adjudication/live-20260912-generations.jsonl \
+  --generations-out data/calibration/adjudication/live-20260912-generations.jsonl \
+  --adjudication-report data/calibration/packs/adversarial-live-adjudication.json \
+  --require-stored-generations \
   --pi-timeout-ms 300000
 ```
 

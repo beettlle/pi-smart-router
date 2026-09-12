@@ -134,6 +134,23 @@ describe('pi-cli-adversarial-clients (SP-288)', () => {
     ]);
   });
 
+  it('grader argv pins --thinking off', async () => {
+    const ref = parsePiCliClientSpec('judge-0=zai/glm-5.3');
+    let capturedArgs: string[] = [];
+    const spawnFn: PiSpawnFn = async (args) => {
+      capturedArgs = [...args];
+      return { stdout: '8\n', stderr: '', code: 0 };
+    };
+    const grader = createPiCliGrader(ref, { spawnFn });
+    await grader.grade(
+      { prompt_text: 'p', response_text: 'r' },
+      { taskId: 't1', generatorId: 'gen-0' },
+    );
+    expect(capturedArgs).toContain('--thinking');
+    expect(capturedArgs[capturedArgs.indexOf('--thinking') + 1]).toBe('off');
+    expect(grader.providerModel).toBe('zai/glm-5.3');
+  });
+
   it('generator returns pi stdout; empty stdout never invents', async () => {
     const ref = parsePiCliClientSpec('gen-0=google/gemini-flash-latest');
     const okSpawn: PiSpawnFn = async () => ({

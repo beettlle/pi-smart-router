@@ -34,33 +34,37 @@ No database migrations, no config-file format changes, no session-state changes.
 
 > **Auxiliary CI follow-up:** three non-release workflows (`benchmark-profile-refresh.yml`, `twinrouterbench-full-nightly.yml`, `npm-deprecate.yml`) still resolve Node `'22'` (latest 22.x, which satisfies the floor in practice). They were out of the original packet's file scope; hard-pinning them is a tracked follow-up, not a migration requirement.
 
-## Behavioral calibration artifacts (#110)
+## Behavioral calibration artifacts (#110 / #168)
 
-`1.0.0` ships **honest-untrained** calibration defaults. Scripted Sept dogfood gather and the interim hybrid bundle are **not** shipped as trained quality claims. Verifier-graded recalibration remains tracked on [#110](https://github.com/beettlle/pi-smart-router/issues/110).
+`1.0.0` shipped **honest-untrained** calibration defaults. **`v1.1.0` ships verifier-graded trained P(success) + isotonic** after hard gates PASSED on a real `human_feedback` + live `llm_judge` corpus (2026-09-12). Scripted Sept dogfood gather remains quarantined (`scripted_intent`) and is never used for ship trains.
 
-### What ships
+### What ships (v1.1.0)
 
 | Artifact | Contents | Provenance |
 |----------|----------|------------|
-| `config/p-success-weights.json` | Logistic P(success) weights, `trained_sample_count: 0` | `neutralized_for_v1_honesty` — structural hints / `P=0.5` at serve time |
-| `config/routing-calibration.json` (bundle v2) | Neutral P(success) + identity isotonic + triage threshold **15** (untrained) + bootstrap centroids | Same neutralize provenance; HyDRA `0/<100` |
+| `config/p-success-weights.json` | Logistic P(success) weights, `trained_sample_count: 243` | `verifier_grade_train_2026-09-12` — expected-cost tier hints active at serve time |
+| `config/routing-calibration.json` (bundle v2) | Trained P(success) + isotonic + triage threshold **5** (57 samples, serve-active) + bootstrap centroids | Same provenance; HyDRA still `0/<100` (honest-untrained projection) |
 
-Hard train gates (when a future train claims floors met): `holdout_ece_calibrated ≤ holdout_ece_raw`, absolute calibrated ECE ≤ **0.10**, `y_knots` span ≥ **0.05**. Soft dry-run advisory ECE 0.25 remains separate.
+Hard train gates (ship claims): `holdout_ece_calibrated ≤ holdout_ece_raw`, absolute calibrated ECE ≤ **0.10**, `y_knots` span ≥ **0.05**. Soft dry-run advisory ECE 0.25 remains separate.
 
-### What did *not* train (honest floors)
+### Floors (v1.1.0 ship)
 
 | Bundle component | Floor | Samples | Shipped state |
 |------------------|-------|---------|---------------|
-| `p_success_weights` / `isotonic_calibrator` | ≥30 | 0 | **Honest-untrained** |
-| `triage_thresholds` | ≥50 | 0 | Live engine uses hardcoded **15**; bundle matches |
-| `hydra_projection` | ≥100 | 0 | Neutral defaults (privacy-safe exports lack embeddings) |
+| `p_success_weights` / `isotonic_calibrator` | ≥30 | **243** | **Trained** (ECE cal 0.0645 ≤ raw 0.1142; absolute ≤ 0.10) |
+| `triage_thresholds` | ≥50 | **57** | Trained threshold **5**; serve-time loader reads it (#171) |
+| `hydra_projection` | ≥100 | **0** | Neutral defaults (embeddings still opt-in / under floor) |
 | `routing_centroids` | ≥10 (for OATS shift) | — | Bootstrap centroids (verify PASS) |
 
-### Post-1.0 verifier-grade attempt (v1.1.0) — hard gates failed, honest-untrained remains
+### Post-1.0 verifier-grade ship (v1.1.0) — hard gates PASSED
 
-The v1.1.0 train exercised the verifier-grade ship path end-to-end (SP-283 train → SP-284 ship decision, [#168](https://github.com/beettlle/pi-smart-router/issues/168)) on the best available verifier-grade corpus: 32 `llm_judge`/`human_feedback`-grade label-pack rows (adversarial harness campaign + SWE-Gym/FC-RewardBench CI fixtures) plus 258 legacy dogfood contrib rows, of which **0 were ship-eligible** (untagged legacy provenance — provenance is never invented). The isotonic calibrator trained (pool 32 ≥ 30 floor) but the **hard ECE gate failed**: holdout `ece_calibrated 0.2738 > 0.10` (improvement and y_span gates passed). Per the hard-gate ship rule, **the candidate bundle was not shipped** — it is retained as evidence only under `data/calibration/verifier-grade-*`.
+Timeline:
 
-Shipped artifacts therefore remain **honest-untrained**: `provenance.source` is still `neutralized_for_v1_honesty` in `config/routing-calibration.json` (with a `post_v1_verifier_grade_attempt` record of the failed gate run) and `config/p-success-weights.json` stays all-zero with `trained_sample_count: 0`. Serve-time behavior is unchanged from 1.0.0. #168 is **Partial** — the ship precondition is ≥30 *real* verifier-grade labeled rows (e.g. #95 shadow dogfood with SP-282 live graders) re-run through `train-routing-calibration.ts --verifier-grade-only --require-hard-gates` with zero exit + `hard_gates_passed: true`. Full decision record: [`spine-tasks/_authoring/release-v1.1.0/hard-gate-ship-note.md`](../spine-tasks/_authoring/release-v1.1.0/hard-gate-ship-note.md).
+1. **2026-09-11** — CI-scale / early corpora failed absolute ECE or improve-gate; ship correctly refused. Historical notes: [`hard-gate-ship-note.md`](../spine-tasks/_authoring/release-v1.1.0/hard-gate-ship-note.md), [`hard-gate-retrain-2026-09-11.md`](../spine-tasks/_authoring/release-v1.1.0/hard-gate-retrain-2026-09-11.md).
+2. **2026-09-12** — Live SP-282 packs (96 `llm_judge` rows, incl. 10 panel-adjudicated) + 147 `human_feedback` contrib rows → pool 243. Hash-split isotonic ECE **PASS** (cal 0.0645). Promoted into `config/*`. Record: [`hard-gate-pass-2026-09-12.md`](../spine-tasks/_authoring/release-v1.1.0/hard-gate-pass-2026-09-12.md).
+3. **Session-holdout ECE (code path, not shipped)** — Preferring campaign `session_holdout` for ECE yields cal **0.1005 > 0.10** (FAIL by ~5e-4). Shipped artifacts stay on the Sep 12 hash-split PASS. See [`session-holdout-retrain-2026-09-12.md`](../spine-tasks/_authoring/release-v1.1.0/session-holdout-retrain-2026-09-12.md). Future trains will use session holdout when pack signals exist; promote only on exit 0.
+
+**Known limits (honest):** HyDRA projection still untrained; panel adjudication may regenerate responses when no `--generations-in` sidecar exists; session-holdout ECE is implemented but not yet ship-cleared.
 
 ### TwinRouterBench corpus soft-fail
 
@@ -68,8 +72,8 @@ Shipped artifacts therefore remain **honest-untrained**: `provenance.source` is 
 
 ### Operator impact
 
-- **Default installs:** nothing to do. Neutral P(success) and structural tier hints match pre-trained-weight behavior.
-- **Below floors / missing bundle:** the pipeline uses the identity calibrator and neutral `P_success_cheap = 0.5` — routing never fails on calibration state.
+- **Default installs (v1.1+):** trained P(success) + isotonic change low-intensity expected-cost tier hints vs 1.0.0 neutral `P=0.5`.
+- **Below floors / missing bundle:** the pipeline still falls back to identity calibrator and neutral `P_success_cheap = 0.5` — routing never fails on calibration state.
 - **Retrain with your own data:** see [Shadow dogfood → calibration behavioral path](#shadow-dogfood--calibration-behavioral-path) below. Never invent labels; never feed `dogfood-gather.sh` scripted_intent into ship trains.
 
 ## Pipeline architecture notes (#143 / #155)
@@ -109,7 +113,7 @@ This is intentional documentation of the composition split from the #143 ports i
 
 ## Shadow dogfood → calibration behavioral path
 
-The shadow dogfood protocol and the behavioral calibration pipeline are two ends of one loop: dogfood sessions produce privacy-safe outcome-labeled rows; those rows can train calibration artifacts that ship back into routing. `1.0.0` ships the **pipeline, hard ECE gates, and honest-untrained defaults** — verifier-graded trained artifacts remain post-1.0 ([#168](https://github.com/beettlle/pi-smart-router/issues/168) / #110).
+The shadow dogfood protocol and the behavioral calibration pipeline are two ends of one loop: dogfood sessions produce privacy-safe outcome-labeled rows; those rows can train calibration artifacts that ship back into routing. `1.0.0` shipped the **pipeline, hard ECE gates, and honest-untrained defaults**. `v1.1.0` ships **verifier-graded trained P(success) + isotonic** ([#168](https://github.com/beettlle/pi-smart-router/issues/168)); HyDRA + further dogfood remain on [#110](https://github.com/beettlle/pi-smart-router/issues/110) / [#95](https://github.com/beettlle/pi-smart-router/issues/95).
 
 ```text
 SMART_ROUTER_DATASET=1 dogfood sessions (/model smart-router/auto)

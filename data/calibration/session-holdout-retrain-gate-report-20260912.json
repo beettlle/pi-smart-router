@@ -1,0 +1,44 @@
+{
+  "report_version": 1,
+  "task": "SP-283",
+  "generated_at": "2026-09-12T22:00:22.456Z",
+  "verifier_grade_only": true,
+  "inputs": {
+    "contrib_rows": 147,
+    "contrib_ship_eligible_rows": 147,
+    "contrib_dropped_provenance_rows": 0,
+    "pack_rows": 96,
+    "pack_rows_excluded_weak": 0,
+    "labeled_training_samples": 243
+  },
+  "trained_sample_counts": {
+    "p_success_weights": 243,
+    "isotonic_calibrator": 243,
+    "triage_thresholds": 57,
+    "hydra_projection": 0
+  },
+  "isotonic": {
+    "trained": true,
+    "y_knot_span": 0.75,
+    "holdout_ece_raw": 0.11419571076993272,
+    "holdout_ece_calibrated": 0.10045584045584051
+  },
+  "hard_gates": [
+    {
+      "id": "isotonic_y_span",
+      "passed": true,
+      "message": "y_span=0.7500 (min 0.05)"
+    },
+    {
+      "id": "isotonic_ece_improves",
+      "passed": true,
+      "message": "ece_calibrated=0.1005 vs ece_raw=0.1142"
+    },
+    {
+      "id": "isotonic_ece_absolute",
+      "passed": false,
+      "message": "ece_calibrated=0.1005 (max 0.1)"
+    }
+  ],
+  "hard_gates_passed": false
+}

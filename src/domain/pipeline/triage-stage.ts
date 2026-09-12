@@ -8,6 +8,7 @@
  */
 
 import { triage as triageClassify } from '../triage/triage-engine.js';
+import { resolveTriageCyclomaticThreshold } from '../triage/triage-thresholds.js';
 import type { PipelineStage, RoutingContext } from './pipeline-stage.js';
 import type { StageResult } from './router-pipeline.js';
 
@@ -16,13 +17,34 @@ import type { StageResult } from './router-pipeline.js';
  *
  * Records the triage result on the shared context for downstream stages
  * (local_zero eligibility, feature sidecar) regardless of the verdict.
+ * Cyclomatic threshold loads from routing-calibration when trained (#171).
  */
 export function createTriageStage(): PipelineStage {
+  let thresholdLoaded = false;
+  let cachedThreshold: number | undefined;
+
+  const resolveThreshold = (context: RoutingContext): number => {
+    if (context.options.cyclomaticThreshold !== undefined) {
+      return context.options.cyclomaticThreshold;
+    }
+    if (!thresholdLoaded) {
+      cachedThreshold = resolveTriageCyclomaticThreshold({
+        ...(context.options.routingCalibrationPath !== undefined
+          ? { filePath: context.options.routingCalibrationPath }
+          : {}),
+      });
+      thresholdLoaded = true;
+    }
+    return cachedThreshold!;
+  };
+
   return {
     name: 'triage',
     async run(context: RoutingContext): Promise<StageResult> {
       const request = context.request;
-      const result = triageClassify(request.prompt_text);
+      const result = triageClassify(request.prompt_text, {
+        cyclomaticThreshold: resolveThreshold(context),
+      });
       context.triageResult = result;
 
       if (result.verdict === 'ambiguous') {

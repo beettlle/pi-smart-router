@@ -69,9 +69,9 @@ export function redactPromptText(raw: string): string {
   text = text.replace(/\/Users\/[^/\s]+/g, '$HOME');
   text = text.replace(/\/home\/[^/\s]+/g, '$HOME');
   // Bearer / API key-ish tokens
-  text = text.replace(/\bBearer\s+[A-Za-z0-9._\-]+/gi, 'Bearer [REDACTED]');
+  text = text.replace(/\bBearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [REDACTED]');
   text = text.replace(
-    /\b(sk|sk-proj|or|ghp|github_pat|xox[baprs])-[A-Za-z0-9_\-]{8,}\b/g,
+    /\b(sk|sk-proj|or|ghp|github_pat|xox[baprs])-[A-Za-z0-9_-]{8,}\b/g,
     '[REDACTED_TOKEN]',
   );
   text = text.replace(

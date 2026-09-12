@@ -31,7 +31,29 @@ export interface TriageResult {
 
 // ─── Thresholds ───────────────────────────────────────────────────────────────
 
+/** Honest-untrained default; trained bundles may ship 5–30 (#171). */
 export const CYCLOMATIC_THRESHOLD = 15;
+export const CYCLOMATIC_THRESHOLD_MIN = 5;
+export const CYCLOMATIC_THRESHOLD_MAX = 30;
+
+export interface TriageOptions {
+  /** Override cyclomatic gate; defaults to {@link CYCLOMATIC_THRESHOLD}. */
+  readonly cyclomaticThreshold?: number;
+}
+
+/** Clamp to the verify/train search range (5–30). */
+export function clampCyclomaticThreshold(value: number): number {
+  if (!Number.isFinite(value)) {
+    return CYCLOMATIC_THRESHOLD;
+  }
+  if (value < CYCLOMATIC_THRESHOLD_MIN) {
+    return CYCLOMATIC_THRESHOLD_MIN;
+  }
+  if (value > CYCLOMATIC_THRESHOLD_MAX) {
+    return CYCLOMATIC_THRESHOLD_MAX;
+  }
+  return Math.round(value);
+}
 
 // ─── Adversarial Sanitization (T026, FR-004) ──────────────────────────────────
 
@@ -350,7 +372,11 @@ export function cyclomaticScan(text: string): number {
  * - Skips enforcement on short prompts and tails below MIN_TAIL_TOKENS
  * - Prefix comparison preserves classification when entire prompt is uniformly high-entropy (e.g. code)
  */
-export function triage(promptText: string): TriageResult {
+export function triage(promptText: string, options?: TriageOptions): TriageResult {
+  const cyclomaticThreshold = clampCyclomaticThreshold(
+    options?.cyclomaticThreshold ?? CYCLOMATIC_THRESHOLD,
+  );
+
   if (!promptText || promptText.trim().length === 0) {
     return {
       verdict: 'ambiguous',
@@ -390,7 +416,7 @@ export function triage(promptText: string): TriageResult {
   let verdict: TriageVerdict;
   let reason: string;
 
-  if (cyclomatic >= CYCLOMATIC_THRESHOLD) {
+  if (cyclomatic >= cyclomaticThreshold) {
     verdict = 'complex';
     reason = 'cyclomatic_high';
   } else if (complexHits > 0 && trivialHits === 0) {

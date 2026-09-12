@@ -168,9 +168,30 @@ describe('RouterPipeline', () => {
       expect(decision.features?.tier_hint_reason_code).toBeNull();
     });
 
-    it('loads shipped honest-untrained weights and stays at neutral P(success)', async () => {
+    it('loads shipped trained weights and produces non-neutral P(success)', async () => {
       const pipeline = new RouterPipeline(fleet, {
         pSuccessWeightsPath: 'config/p-success-weights.json',
+        routingCalibrationPath: 'config/routing-calibration.json',
+        lowIntensityConfig: {
+          ...DEFAULT_OPERATOR_CONFIG.low_intensity,
+          high_threshold: 0.9,
+          low_threshold: 0.1,
+          p_success_alpha: 0.5,
+        },
+      });
+
+      const decision = await pipeline.route(
+        makeRequest({ prompt_text: 'Hello, how are you today?' }),
+      );
+
+      expect(decision.features?.p_success_raw).not.toBe(0.5);
+      expect(decision.features?.p_success_calibrated).not.toBeNull();
+      expect(decision.features?.p_success_cheap).not.toBe(0.5);
+    });
+
+    it('stays at neutral P(success) when weights path is missing', async () => {
+      const pipeline = new RouterPipeline(fleet, {
+        pSuccessWeightsPath: '/nonexistent/p-success-weights.json',
         routingCalibrationPath: '/nonexistent/routing-calibration.json',
         lowIntensityConfig: {
           ...DEFAULT_OPERATOR_CONFIG.low_intensity,

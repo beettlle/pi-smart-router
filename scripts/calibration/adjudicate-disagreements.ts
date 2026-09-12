@@ -137,12 +137,77 @@ export interface AdjudicateRunOptions {
   readonly seed?: string;
   readonly holdoutPercent?: number;
   readonly passScore?: number;
+  /**
+   * Stored generations keyed by `task_id|client_id`. When present, skip
+   * regenerate for hits (v1.1 A3). Missing keys regenerate unless
+   * `requireStoredGenerations` is true.
+   */
+  readonly storedGenerations?: ReadonlyMap<string, AdjudicationGenerationRecord>;
+  /** Fail loud when a stored generation is missing (default: regenerate). */
+  readonly requireStoredGenerations?: boolean;
 }
 
 export interface AdjudicateRunResult {
   readonly resolved: readonly ResolvedAdjudication[];
   readonly residual: readonly ResidualAdjudication[];
   readonly generations: readonly AdjudicationGenerationRecord[];
+}
+
+export function generationLookupKey(taskId: string, clientId: string): string {
+  return `${taskId}|${clientId}`;
+}
+
+/** Parse generations JSONL into a lookup map (last write wins). */
+export function loadGenerationsJsonl(
+  text: string,
+  sourceLabel = 'generations',
+): Map<string, AdjudicationGenerationRecord> {
+  const map = new Map<string, AdjudicationGenerationRecord>();
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!.trim();
+    if (line.length === 0) {
+      continue;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(line);
+    } catch (error) {
+      throw new AdjudicationError(
+        `Invalid JSON in ${sourceLabel} line ${i + 1}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    if (!isPlainObject(parsed) || parsed.kind !== 'generation') {
+      throw new AdjudicationError(
+        `${sourceLabel} line ${i + 1}: expected kind "generation" object`,
+      );
+    }
+    const taskId = parsed.task_id;
+    const clientId = parsed.client_id;
+    const responseText = parsed.response_text;
+    const providerModel = parsed.provider_model;
+    if (
+      typeof taskId !== 'string' ||
+      typeof clientId !== 'string' ||
+      typeof responseText !== 'string' ||
+      typeof providerModel !== 'string'
+    ) {
+      throw new AdjudicationError(
+        `${sourceLabel} line ${i + 1}: missing task_id/client_id/response_text/provider_model`,
+      );
+    }
+    const record: AdjudicationGenerationRecord = {
+      kind: 'generation',
+      task_id: taskId,
+      client_id: clientId,
+      response_text: responseText,
+      provider_model: providerModel,
+    };
+    map.set(generationLookupKey(taskId, clientId), record);
+  }
+  return map;
 }
 
 function sha256Hex(value: string): string {
@@ -406,35 +471,56 @@ export async function runAdjudication(
     }
 
     let responseText: string;
-    try {
-      responseText = await generator.generate(task);
-    } catch (error) {
+    const storedKey = generationLookupKey(disagreement.taskId, disagreement.generatorId);
+    const stored = options.storedGenerations?.get(storedKey);
+    if (stored !== undefined && stored.response_text.trim().length > 0) {
+      responseText = stored.response_text;
+      generations.push({
+        kind: 'generation',
+        task_id: task.taskId,
+        client_id: disagreement.generatorId,
+        response_text: responseText,
+        provider_model: generatorProviderModel,
+      });
+    } else if (options.requireStoredGenerations === true) {
       residual.push({
         taskId: disagreement.taskId,
         generatorId: disagreement.generatorId,
-        reason: `generation failed: ${error instanceof Error ? error.message : String(error)}`,
+        reason: `stored generation missing for ${storedKey} (--require-stored-generations)`,
         originalGraderScores: disagreement.graderScores,
       });
       continue;
-    }
+    } else {
+      try {
+        responseText = await generator.generate(task);
+      } catch (error) {
+        residual.push({
+          taskId: disagreement.taskId,
+          generatorId: disagreement.generatorId,
+          reason: `generation failed: ${error instanceof Error ? error.message : String(error)}`,
+          originalGraderScores: disagreement.graderScores,
+        });
+        continue;
+      }
 
-    if (typeof responseText !== 'string' || responseText.trim().length === 0) {
-      residual.push({
-        taskId: disagreement.taskId,
-        generatorId: disagreement.generatorId,
-        reason: 'empty regenerated response — never invent labels',
-        originalGraderScores: disagreement.graderScores,
+      if (typeof responseText !== 'string' || responseText.trim().length === 0) {
+        residual.push({
+          taskId: disagreement.taskId,
+          generatorId: disagreement.generatorId,
+          reason: 'empty regenerated response — never invent labels',
+          originalGraderScores: disagreement.graderScores,
+        });
+        continue;
+      }
+
+      generations.push({
+        kind: 'generation',
+        task_id: task.taskId,
+        client_id: disagreement.generatorId,
+        response_text: responseText,
+        provider_model: generatorProviderModel,
       });
-      continue;
     }
-
-    generations.push({
-      kind: 'generation',
-      task_id: task.taskId,
-      client_id: disagreement.generatorId,
-      response_text: responseText,
-      provider_model: generatorProviderModel,
-    });
 
     let panelRefs: PiModelRef[];
     try {
@@ -597,6 +683,8 @@ export interface AdjudicateCliArgs {
   readonly fit?: string;
   readonly holdout?: string;
   readonly generationsOut?: string;
+  readonly generationsIn?: string;
+  readonly requireStoredGenerations: boolean;
   readonly adjudicationReport?: string;
   readonly piTimeoutMs?: number;
   readonly generatorSpecs: string[];
@@ -608,8 +696,8 @@ export interface AdjudicateCliArgs {
 const USAGE = `Usage: tsx scripts/calibration/adjudicate-disagreements.ts [options]
 
 Panel-adjudicate SP-282 campaign disagreements (GLM / Kimi / Gemini Pro).
-Regenerates disagreement responses, majority-labels (≥2/3), appends packs.
-Residuals stay for human-label-review — never invent labels.
+Reuses stored generations when --generations-in is set; otherwise regenerates.
+Majority-labels (≥2/3), appends packs. Residuals stay for human-label-review.
 
 Required:
   --report <campaign-report.json>
@@ -620,6 +708,8 @@ Required:
   --adjudication-report <report.json>
 
 Options:
+  --generations-in <generations.jsonl>  Re-grade stored responses (skip regenerate on hit)
+  --require-stored-generations          Fail when --generations-in misses a key
   --generator <id=provider/model>   Override generator map (repeatable)
   --panel <id=provider/model>       Override panel pool (repeatable)
   --panel-fill <id=provider/model>  Override fill pool (repeatable)
@@ -644,6 +734,8 @@ export function parseAdjudicateArgs(argv: readonly string[]): AdjudicateCliArgs 
   let fit: string | undefined;
   let holdout: string | undefined;
   let generationsOut: string | undefined;
+  let generationsIn: string | undefined;
+  let requireStoredGenerations = false;
   let adjudicationReport: string | undefined;
   let piTimeoutMs: number | undefined;
   let help = false;
@@ -667,6 +759,11 @@ export function parseAdjudicateArgs(argv: readonly string[]): AdjudicateCliArgs 
     } else if (arg === '--generations-out') {
       generationsOut = takeValue(argv, i, 'generations-out');
       i += 1;
+    } else if (arg === '--generations-in') {
+      generationsIn = takeValue(argv, i, 'generations-in');
+      i += 1;
+    } else if (arg === '--require-stored-generations') {
+      requireStoredGenerations = true;
     } else if (arg === '--adjudication-report') {
       adjudicationReport = takeValue(argv, i, 'adjudication-report');
       i += 1;
@@ -700,6 +797,8 @@ export function parseAdjudicateArgs(argv: readonly string[]): AdjudicateCliArgs 
     ...(fit !== undefined ? { fit } : {}),
     ...(holdout !== undefined ? { holdout } : {}),
     ...(generationsOut !== undefined ? { generationsOut } : {}),
+    ...(generationsIn !== undefined ? { generationsIn } : {}),
+    requireStoredGenerations,
     ...(adjudicationReport !== undefined ? { adjudicationReport } : {}),
     ...(piTimeoutMs !== undefined ? { piTimeoutMs } : {}),
     generatorSpecs,
@@ -736,6 +835,11 @@ export async function runAdjudicateCli(argv: readonly string[]): Promise<number>
   }
   if (missing.length > 0) {
     console.error(`Missing required arguments: ${missing.join(', ')}\n\n${USAGE}`);
+    return 1;
+  }
+
+  if (args.requireStoredGenerations && args.generationsIn === undefined) {
+    console.error('--require-stored-generations requires --generations-in\n\n' + USAGE);
     return 1;
   }
 
@@ -794,6 +898,15 @@ export async function runAdjudicateCli(argv: readonly string[]): Promise<number>
     seed: loaded.seed,
     holdoutPercent: loaded.holdoutPercent,
     passScore: loaded.passScore,
+    ...(args.generationsIn !== undefined
+      ? {
+          storedGenerations: loadGenerationsJsonl(
+            readFileSync(resolve(args.generationsIn), 'utf8'),
+            args.generationsIn,
+          ),
+        }
+      : {}),
+    requireStoredGenerations: args.requireStoredGenerations,
   });
 
   const existingFit = existsSync(fitPath) ? loadLabelPackFile(fitPath).rows : [];

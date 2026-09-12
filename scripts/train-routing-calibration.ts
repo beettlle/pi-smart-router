@@ -169,8 +169,58 @@ export function labelPackRowToTrainingSample(row: LabelPackRow): LabeledTraining
     request_id: row.sample_id,
     features: featuresFromLabelPackRow(row),
     success: row.success,
+    // Partition signals (session_fit / session_holdout) are not TrainingOutcomeSignal
+    // values; partition is applied from the pack row before conversion (A2).
     outcome_signals: [],
     failure_proxies: EMPTY_FAILURE_PROXIES,
+  };
+}
+
+export const SESSION_FIT_SIGNAL = 'session_fit' as const;
+export const SESSION_HOLDOUT_SIGNAL = 'session_holdout' as const;
+
+/** True when a pack row is tagged for campaign session holdout ECE. */
+export function isSessionHoldoutPackRow(row: LabelPackRow): boolean {
+  return (row.outcome_signals ?? []).includes(SESSION_HOLDOUT_SIGNAL);
+}
+
+/** True when a pack row is tagged for campaign session fit. */
+export function isSessionFitPackRow(row: LabelPackRow): boolean {
+  return (row.outcome_signals ?? []).includes(SESSION_FIT_SIGNAL);
+}
+
+/**
+ * Split pack rows by campaign session partition signals.
+ * Rows with neither signal join `unpartitioned` (hash-split path / fit fallback).
+ */
+export function partitionPackRowsBySession(
+  rows: readonly LabelPackRow[],
+): {
+  readonly fit: readonly LabelPackRow[];
+  readonly holdout: readonly LabelPackRow[];
+  readonly unpartitioned: readonly LabelPackRow[];
+  readonly hasSessionPartition: boolean;
+} {
+  const fit: LabelPackRow[] = [];
+  const holdout: LabelPackRow[] = [];
+  const unpartitioned: LabelPackRow[] = [];
+  for (const row of rows) {
+    const signals = row.outcome_signals ?? [];
+    const isHoldout = signals.includes(SESSION_HOLDOUT_SIGNAL);
+    const isFit = signals.includes(SESSION_FIT_SIGNAL);
+    if (isHoldout) {
+      holdout.push(row);
+    } else if (isFit) {
+      fit.push(row);
+    } else {
+      unpartitioned.push(row);
+    }
+  }
+  return {
+    fit,
+    holdout,
+    unpartitioned,
+    hasSessionPartition: fit.length > 0 || holdout.length > 0,
   };
 }
 
@@ -863,6 +913,7 @@ export function trainRoutingCalibrationBundleWithMetrics(
   // Weak labels (exclude_from_holdout_ece) never join a ship train — they may
   // warm-start dry-run fits only (SP-201), never trained ship artifacts.
   const acceptedPackRows = packRows.filter((row) => !isWeakLabelPackRow(row));
+  const packPartition = partitionPackRowsBySession(acceptedPackRows);
   const packSamples = acceptedPackRows.map((row) => labelPackRowToTrainingSample(row));
 
   const hydraRows = scopedRecords.filter(
@@ -873,7 +924,21 @@ export function trainRoutingCalibrationBundleWithMetrics(
   const contribSamples = collectLabeledSamples(scopedRecords);
   const labeledSamples = [...contribSamples, ...packSamples];
   const pSuccessWeights = trainPSuccessWeights(labeledSamples);
-  const isotonicFit = fitIsotonicCalibratorFromSamples(labeledSamples, pSuccessWeights);
+
+  // When campaign packs carry session_fit / session_holdout, use that split for
+  // isotonic ECE instead of re-hashing the merged pool (v1.1 A2).
+  const isotonicFit = packPartition.hasSessionPartition
+    ? fitIsotonicCalibratorFromSamples(labeledSamples, pSuccessWeights, {
+        preSplit: {
+          fit: [
+            ...contribSamples,
+            ...packPartition.fit.map(labelPackRowToTrainingSample),
+            ...packPartition.unpartitioned.map(labelPackRowToTrainingSample),
+          ],
+          holdout: packPartition.holdout.map(labelPackRowToTrainingSample),
+        },
+      })
+    : fitIsotonicCalibratorFromSamples(labeledSamples, pSuccessWeights);
 
   return {
     bundle: {

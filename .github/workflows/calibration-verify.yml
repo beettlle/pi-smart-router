@@ -38,4 +38,29 @@ jobs:
         run: npm run build
 
       - name: Verify routing calibration bundle
-        run: npm run routing:verify-calibration -- config/routing-calibration.json.example
+        run: npm run routing:verify-calibration -- config/routing-calibration.json
+
+      - name: Assert trained ship provenance when floors met
+        run: |
+          node --input-type=module -e "
+          import { readFileSync } from 'node:fs';
+          const bundle = JSON.parse(readFileSync('config/routing-calibration.json', 'utf8'));
+          const weights = JSON.parse(readFileSync('config/p-success-weights.json', 'utf8'));
+          const isotonic = bundle.isotonic_calibrator;
+          const minP = bundle.minimum_training_samples?.p_success_weights ?? 30;
+          if (isotonic.trained_sample_count >= minP) {
+            if (bundle.provenance?.hard_gates_passed !== true) {
+              throw new Error('trained isotonic ship requires provenance.hard_gates_passed === true');
+            }
+            if (weights.trained_sample_count < minP) {
+              throw new Error('p-success-weights trained_sample_count below floor while isotonic is trained');
+            }
+            console.log('trained ship provenance OK', {
+              source: bundle.provenance?.source,
+              isotonic: isotonic.trained_sample_count,
+              p_success: weights.trained_sample_count,
+            });
+          } else {
+            console.log('honest-untrained ship (isotonic below floor); skip hard_gates_passed assert');
+          }
+          "

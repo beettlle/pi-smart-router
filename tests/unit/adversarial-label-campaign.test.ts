@@ -176,6 +176,47 @@ describe('adversarial-label-campaign (SP-282 / #169)', () => {
       ).rejects.toThrow(/fewer than 2 graders/);
     });
 
+    it('excludes graders that share providerModel with the generator (different ids)', async () => {
+      const gradedBy = new Map<string, string[]>();
+      const record = (graderId: string, generatorId: string): void => {
+        const list = gradedBy.get(generatorId) ?? [];
+        list.push(graderId);
+        gradedBy.set(generatorId, list);
+      };
+      const genA: GeneratorClient = {
+        id: 'gen-a',
+        providerModel: 'google/gemini-pro',
+        generate: async () => 'response-a',
+      };
+      const genB: GeneratorClient = {
+        id: 'gen-b',
+        providerModel: 'kimi-coding/k3',
+        generate: async () => 'response-b',
+      };
+      const makeGrader = (id: string, providerModel: string): GraderClient => ({
+        id,
+        providerModel,
+        grade: async (_input, context) => {
+          record(id, context.generatorId);
+          return 8;
+        },
+      });
+
+      await runAdversarialLabelingCampaign(
+        [task('t1', 's1')],
+        [genA, genB],
+        [
+          makeGrader('grader-clone', 'google/gemini-pro'),
+          makeGrader('grader-indep', 'zai/glm-5.3'),
+          makeGrader('grader-other', 'openai/gpt-test'),
+        ],
+        { seed: 'test-seed', holdoutPercent: 0 },
+      );
+
+      expect(gradedBy.get('gen-a')).toEqual(['grader-indep', 'grader-other']);
+      expect(gradedBy.get('gen-a')).not.toContain('grader-clone');
+    });
+
     it('sends graders a blinded payload: exactly prompt_text + response_text', async () => {
       const captured: CapturedGrade[] = [];
       const blindedTask: AdversarialTask = {

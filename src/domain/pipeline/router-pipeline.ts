@@ -178,6 +178,11 @@ export interface PipelineOptions {
   /** Preloaded isotonic calibrator for tests; lazy-loads bundle when omitted (SP-133). */
   readonly isotonicCalibrator?: IsotonicCalibratorArtifact | null;
   readonly routingCalibrationPath?: string;
+  /**
+   * Override cyclomatic triage threshold (#171). When omitted, loads from
+   * routing-calibration `triage_thresholds` if trained; else default 15.
+   */
+  readonly cyclomaticThreshold?: number;
   /** SAAR pin policy (SP-123). Must match sessionPinner.saarConfig when enabled. */
   readonly saarConfig?: SaarConfig;
   /** Planning delegate operator knobs (SP-143, #71). Defaults to operator config. */

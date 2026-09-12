@@ -271,20 +271,20 @@ export function assertPiCliGraderAllowed(ref: PiModelRef): void {
 export function buildPiCliArgs(
   ref: PiModelRef,
   userMessage: string,
+  options?: { readonly thinking?: string },
 ): string[] {
-  return [
+  const args = [
     '-p',
     '--no-tools',
     '--no-extensions',
     '--no-context-files',
     '--no-approve',
-    '--provider',
-    ref.provider,
-    '--model',
-    ref.model,
-    '--',
-    userMessage,
   ];
+  if (options?.thinking !== undefined) {
+    args.push('--thinking', options.thinking);
+  }
+  args.push('--provider', ref.provider, '--model', ref.model, '--', userMessage);
+  return args;
 }
 
 export function createDefaultPiSpawnFn(piBinary = 'pi'): PiSpawnFn {
@@ -350,8 +350,9 @@ async function runPiCompletion(
   context: string,
   spawnFn: PiSpawnFn,
   timeoutMs: number,
+  cliOptions?: { readonly thinking?: string },
 ): Promise<string> {
-  const args = buildPiCliArgs(ref, userMessage);
+  const args = buildPiCliArgs(ref, userMessage, cliOptions);
   const result = await spawnFn(args, { timeoutMs });
   if (result.code !== 0) {
     throw new PiCliClientError(
@@ -386,6 +387,7 @@ export function createPiCliGenerator(
   const timeoutMs = options?.timeoutMs ?? DEFAULT_PI_CLI_TIMEOUT_MS;
   return {
     id: ref.id,
+    providerModel: ref.providerModel,
     async generate(task: AdversarialTask): Promise<string> {
       return runPiCompletion(
         ref,
@@ -407,6 +409,7 @@ export function createPiCliGrader(
   const timeoutMs = options?.timeoutMs ?? DEFAULT_PI_CLI_TIMEOUT_MS;
   return {
     id: ref.id,
+    providerModel: ref.providerModel,
     async grade(input: BlindedGraderInput, context: GradingContext): Promise<number> {
       assertGeneratorBlinded(input, context.generatorId);
       const userMessage =
@@ -423,6 +426,7 @@ export function createPiCliGrader(
             (attempt > 1 ? ` retry ${attempt}` : ''),
           spawnFn,
           timeoutMs,
+          { thinking: 'off' },
         );
         lastContent = content;
         const match = content.match(/[0-9]/);

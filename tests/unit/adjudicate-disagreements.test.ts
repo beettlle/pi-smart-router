@@ -9,10 +9,8 @@ import {
   DEFAULT_SEED,
   assignSessionHoldout,
   type AdversarialTask,
-  type BlindedGraderInput,
   type GeneratorClient,
   type GraderClient,
-  type GradingContext,
 } from '../../scripts/calibration/adversarial-label-campaign.js';
 import {
   PANEL_ADJUDICATION_SIGNAL,
@@ -65,7 +63,7 @@ function fakeGenerator(id: string, response: string): GeneratorClient {
 function fakeGrader(id: string, score: number | (() => number)): GraderClient {
   return {
     id,
-    async grade(_input: BlindedGraderInput, _ctx: GradingContext): Promise<number> {
+    async grade(): Promise<number> {
       return typeof score === 'function' ? score() : score;
     },
   };
@@ -215,6 +213,84 @@ describe('adjudicate-disagreements', () => {
     });
     expect(result.resolved).toHaveLength(0);
     expect(result.residual[0]!.reason).toMatch(/all panelists failed/);
+  });
+
+  it('reuses stored generations instead of regenerating', async () => {
+    const t = task();
+    let generateCalls = 0;
+    const generator: GeneratorClient = {
+      id: 'gen-0',
+      generate: async () => {
+        generateCalls += 1;
+        return 'should-not-run';
+      },
+    };
+    const stored = new Map([
+      [
+        'task-1|gen-0',
+        {
+          kind: 'generation' as const,
+          task_id: 'task-1',
+          client_id: 'gen-0',
+          response_text: 'stored response text',
+          provider_model: 'google/gemini-3.1-pro-preview',
+        },
+      ],
+    ]);
+    const result = await runAdjudication({
+      disagreements: [
+        {
+          taskId: t.taskId,
+          generatorId: 'gen-0',
+          graderScores: { 'grader-0': 9, 'grader-1': 2 },
+        },
+      ],
+      tasksById: new Map([[t.taskId, t]]),
+      generators: new Map([['gen-0', generator]]),
+      generatorModels: new Map([['gen-0', 'google/gemini-3.1-pro-preview']]),
+      panelPool: PANEL_POOL,
+      panelFill: PANEL_FILL,
+      panelGraders: new Map([
+        ['panel-glm', fakeGrader('panel-glm', 9)],
+        ['panel-kimi', fakeGrader('panel-kimi', 8)],
+        ['panel-pro', fakeGrader('panel-pro', 0)],
+        ['panel-fill-0', fakeGrader('panel-fill-0', 1)],
+        ['panel-fill-1', fakeGrader('panel-fill-1', 1)],
+      ]),
+      storedGenerations: stored,
+    });
+    expect(generateCalls).toBe(0);
+    expect(result.resolved).toHaveLength(1);
+    expect(result.generations[0]!.response_text).toBe('stored response text');
+  });
+
+  it('requireStoredGenerations residuals when key missing', async () => {
+    const t = task();
+    const result = await runAdjudication({
+      disagreements: [
+        {
+          taskId: t.taskId,
+          generatorId: 'gen-0',
+          graderScores: { a: 1, b: 9 },
+        },
+      ],
+      tasksById: new Map([[t.taskId, t]]),
+      generators: new Map([['gen-0', fakeGenerator('gen-0', 'new')]]),
+      generatorModels: new Map([['gen-0', 'google/gemini-3.1-pro-preview']]),
+      panelPool: PANEL_POOL,
+      panelFill: PANEL_FILL,
+      panelGraders: new Map([
+        ['panel-glm', fakeGrader('panel-glm', 9)],
+        ['panel-kimi', fakeGrader('panel-kimi', 8)],
+        ['panel-pro', fakeGrader('panel-pro', 0)],
+        ['panel-fill-0', fakeGrader('panel-fill-0', 1)],
+        ['panel-fill-1', fakeGrader('panel-fill-1', 1)],
+      ]),
+      storedGenerations: new Map(),
+      requireStoredGenerations: true,
+    });
+    expect(result.resolved).toHaveLength(0);
+    expect(result.residual[0]!.reason).toMatch(/stored generation missing/);
   });
 
   it('appendPackRowsDeduped skips existing sample_ids on re-run', () => {

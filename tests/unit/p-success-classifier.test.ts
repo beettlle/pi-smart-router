@@ -468,11 +468,11 @@ describe('predictPSuccessCheapTimed (SP-105)', () => {
   });
 });
 
-describe('shipped dogfood P(success) weights (v1.0 honesty)', () => {
-  it('loads config/p-success-weights.json as honest-untrained with neutral scores', () => {
+describe('shipped dogfood P(success) weights (v1.1 trained ship)', () => {
+  it('loads config/p-success-weights.json as trained with non-neutral scores', () => {
     const weights = loadPSuccessWeights();
     expect(weights).not.toBeNull();
-    expect(weights!.trained_sample_count).toBeLessThan(MIN_TRAINING_SAMPLES);
+    expect(weights!.trained_sample_count).toBeGreaterThanOrEqual(MIN_TRAINING_SAMPLES);
     expect(weights!.min_training_samples).toBe(MIN_TRAINING_SAMPLES);
 
     const easy = extractPSuccessFeatures(
@@ -491,7 +491,22 @@ describe('shipped dogfood P(success) weights (v1.0 honesty)', () => {
       }),
     );
 
-    expect(predictPSuccessCheap(easy, weights!)).toBe(NEUTRAL_P_SUCCESS);
-    expect(predictPSuccessCheap(hard, weights!)).toBe(NEUTRAL_P_SUCCESS);
+    expect(predictPSuccessCheap(easy, weights!)).not.toBe(NEUTRAL_P_SUCCESS);
+    expect(predictPSuccessCheap(hard, weights!)).not.toBe(NEUTRAL_P_SUCCESS);
+  });
+
+  it('falls back to neutral when weights path is missing', () => {
+    const weights = resolvePSuccessWeights({
+      filePath: '/nonexistent/p-success-weights.json',
+    });
+    expect(weights.trained_sample_count).toBeLessThan(MIN_TRAINING_SAMPLES);
+    const easy = extractPSuccessFeatures(
+      makeDatasetRecord({
+        prompt_length_chars: 120,
+        triage_cyclomatic_score: 0.1,
+        requirement_reasoning: 0.15,
+      }),
+    );
+    expect(predictPSuccessCheap(easy, weights)).toBe(NEUTRAL_P_SUCCESS);
   });
 });

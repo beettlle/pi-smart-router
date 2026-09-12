@@ -112,12 +112,38 @@ export interface GradingContext {
 
 export interface GeneratorClient {
   readonly id: string;
+  /** When set, graders with the same provider/model are excluded (v1.1 A4). */
+  readonly providerModel?: string;
   generate(task: AdversarialTask): Promise<string>;
 }
 
 export interface GraderClient {
   readonly id: string;
+  /** When set, excluded from grading a generator with the same provider/model. */
+  readonly providerModel?: string;
   grade(input: BlindedGraderInput, context: GradingContext): Promise<number>;
+}
+
+/** True when a grader must not score this generator (id or shared provider/model). */
+export function isGraderExcludedForGenerator(
+  grader: GraderClient,
+  generator: GeneratorClient,
+): boolean {
+  if (grader.id === generator.id) {
+    return true;
+  }
+  const graderModel = grader.providerModel;
+  const generatorModel = generator.providerModel;
+  if (
+    typeof graderModel === 'string' &&
+    graderModel.length > 0 &&
+    typeof generatorModel === 'string' &&
+    generatorModel.length > 0 &&
+    graderModel === generatorModel
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export interface CampaignLabeledRow {
@@ -444,12 +470,18 @@ export async function runAdversarialLabelingCampaign(
       }
       generations += 1;
 
-      // Generator exclusion: the model that produced this response never grades it.
-      const eligible = graders.filter((grader) => grader.id !== generator.id);
+      // Generator exclusion: same client id or same provider/model never grades it.
+      const eligible = graders.filter(
+        (grader) => !isGraderExcludedForGenerator(grader, generator),
+      );
       if (eligible.length < MIN_GRADERS) {
         throw new AdversarialLabelingError(
           `Generator exclusion leaves fewer than ${MIN_GRADERS} graders for task ${task.taskId} ` +
-            `(generator ${generator.id}); add an independent grader`,
+            `(generator ${generator.id}` +
+            (generator.providerModel !== undefined
+              ? ` model ${generator.providerModel}`
+              : '') +
+            `); add an independent grader`,
         );
       }
       const used = eligible.slice(0, maxGraders);
@@ -853,6 +885,7 @@ export function createOpenAiCompatibleGenerator(
   assertClientId(config.id, 'live generator');
   return {
     id: config.id,
+    providerModel: config.model,
     async generate(task) {
       return postChatCompletion(
         config,
@@ -868,6 +901,7 @@ export function createOpenAiCompatibleGrader(config: LiveClientConfig): GraderCl
   assertClientId(config.id, 'live grader');
   return {
     id: config.id,
+    providerModel: config.model,
     async grade(input, context) {
       // Blinding: payload contains only prompt + response text. No generator
       // identity, no task metadata — context is harness-side routing only.

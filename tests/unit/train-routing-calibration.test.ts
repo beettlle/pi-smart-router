@@ -16,6 +16,7 @@ import {
   isSevenFlagHydraProjectionSample,
   isWeakLabelPackRow,
   labelPackRowToTrainingSample,
+  partitionPackRowsBySession,
   parseRoutingCalibrationBundleJson,
   readHydraPrefixSchemaVersion,
   resolveRoutingCalibrationBundle,
@@ -466,6 +467,43 @@ describe('verifier-grade train (SP-283 / #168)', () => {
     expect(
       isWeakLabelPackRow(makePackRow({ outcome_signals: [EXCLUDE_FROM_HOLDOUT_ECE_SIGNAL] })),
     ).toBe(true);
+  });
+
+  it('uses campaign session_holdout for isotonic ECE when pack partitions exist', () => {
+    const records = Array.from({ length: 40 }, (_, i) =>
+      makeTrainingRecord({
+        request_id: `hf-${i}`,
+        label_provenance: 'human_feedback',
+        success_label: i % 3 !== 0,
+      }),
+    );
+    const fitPacks = Array.from({ length: 10 }, (_, i) =>
+      makePackRow({
+        sample_id: `fit-${i}`,
+        success: i % 2 === 0,
+        outcome_signals: ['llm_judge', 'session_fit'],
+      }),
+    );
+    const holdoutPacks = Array.from({ length: 8 }, (_, i) =>
+      makePackRow({
+        sample_id: `hold-${i}`,
+        success: i % 2 === 0,
+        outcome_signals: ['llm_judge', 'session_holdout'],
+      }),
+    );
+
+    const partitioned = partitionPackRowsBySession([...fitPacks, ...holdoutPacks]);
+    expect(partitioned.hasSessionPartition).toBe(true);
+    expect(partitioned.fit).toHaveLength(10);
+    expect(partitioned.holdout).toHaveLength(8);
+
+    const result = trainRoutingCalibrationBundleWithMetrics(records, {
+      verifierGradeOnly: true,
+      packRows: [...fitPacks, ...holdoutPacks],
+    });
+    expect(result.isotonic_holdout_sample_count).toBe(8);
+    expect(result.isotonic_fit_sample_count).toBe(40 + 10);
+    expect(result.bundle.isotonic_calibrator.trained_sample_count).toBe(58);
   });
 
   it('verifier-grade-only drops untagged and scripted contrib rows, keeps ship-eligible', () => {

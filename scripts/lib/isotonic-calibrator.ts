@@ -324,24 +324,52 @@ export function fitIsotonicCalibratorFromSamples(
     readonly holdoutFraction?: number;
     readonly minTrainingSamples?: number;
     readonly eceBins?: number;
+    /**
+     * When set, use this fit/holdout split instead of hash split.
+     * Used for campaign `session_fit` / `session_holdout` partitions (v1.1 A2).
+     */
+    readonly preSplit?: {
+      readonly fit: readonly LabeledTrainingSample[];
+      readonly holdout: readonly LabeledTrainingSample[];
+    };
   },
 ): IsotonicFitResult {
   const minTrainingSamples = options?.minTrainingSamples ?? MIN_TRAINING_SAMPLES;
   const holdoutFraction = options?.holdoutFraction ?? DEFAULT_ISOTONIC_HOLDOUT_FRACTION;
   const eceBins = options?.eceBins ?? DEFAULT_ISOTONIC_ECE_BINS;
 
-  if (samples.length < minTrainingSamples) {
+  const poolSize =
+    options?.preSplit !== undefined
+      ? options.preSplit.fit.length + options.preSplit.holdout.length
+      : samples.length;
+
+  if (poolSize < minTrainingSamples) {
     return {
       artifact: {
         ...createDefaultIsotonicCalibratorArtifact(),
-        trained_sample_count: samples.length,
+        trained_sample_count: poolSize,
       },
       fit_sample_count: 0,
       holdout_sample_count: 0,
     };
   }
 
-  const { fit, holdout } = splitLabeledSamplesForIsotonic(samples, holdoutFraction);
+  const { fit, holdout } =
+    options?.preSplit !== undefined
+      ? options.preSplit
+      : splitLabeledSamplesForIsotonic(samples, holdoutFraction);
+
+  if (fit.length === 0) {
+    return {
+      artifact: {
+        ...createDefaultIsotonicCalibratorArtifact(),
+        trained_sample_count: poolSize,
+      },
+      fit_sample_count: 0,
+      holdout_sample_count: holdout.length,
+    };
+  }
+
   const fitScored = scoreLabeledSamples(fit, weights);
   const holdoutScored = scoreLabeledSamples(holdout, weights);
 
@@ -367,7 +395,7 @@ export function fitIsotonicCalibratorFromSamples(
       min_training_samples: minTrainingSamples,
       x_knots,
       y_knots,
-      trained_sample_count: samples.length,
+      trained_sample_count: poolSize,
       holdout_ece_raw,
       holdout_ece_calibrated,
     },
