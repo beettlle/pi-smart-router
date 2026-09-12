@@ -9,54 +9,118 @@
     "min_distinct_failure_scores": 5
   },
   "totals": {
-    "tasks": 12,
-    "generations": 24,
-    "labeled": 22,
-    "disagreements": 2,
-    "negatives": 5,
-    "negative_fraction": 0.2273,
-    "distinct_failure_scores": 5,
-    "fit_rows": 11,
-    "holdout_rows": 11,
+    "tasks": 48,
+    "generations": 96,
+    "labeled": 86,
+    "disagreements": 10,
+    "negatives": 24,
+    "negative_fraction": 0.2791,
+    "distinct_failure_scores": 6,
+    "fit_rows": 57,
+    "holdout_rows": 29,
     "warm_start_rows": 0
   },
   "per_generator": {
-    "gen-alpha": {
-      "generations": 12,
-      "labeled": 11,
-      "negatives": 3
+    "gen-0": {
+      "generations": 48,
+      "labeled": 42,
+      "negatives": 14
     },
-    "gen-beta": {
-      "generations": 12,
-      "labeled": 11,
-      "negatives": 2
+    "gen-1": {
+      "generations": 48,
+      "labeled": 44,
+      "negatives": 10
     }
   },
   "per_grader": {
-    "grader-one": {
-      "grades": 24
+    "grader-0": {
+      "grades": 96
     },
-    "grader-two": {
-      "grades": 24
+    "grader-1": {
+      "grades": 96
     }
   },
   "campaign_valid": true,
   "violations": [],
   "disagreements": [
     {
-      "taskId": "adv-t06",
-      "generatorId": "gen-alpha",
+      "taskId": "mine-61591a7918fb0014",
+      "generatorId": "gen-1",
       "graderScores": {
-        "grader-one": 8,
-        "grader-two": 3
+        "grader-0": 9,
+        "grader-1": 2
       }
     },
     {
-      "taskId": "adv-t07",
-      "generatorId": "gen-beta",
+      "taskId": "mine-444be8c585539967",
+      "generatorId": "gen-0",
       "graderScores": {
-        "grader-one": 2,
-        "grader-two": 9
+        "grader-0": 2,
+        "grader-1": 9
+      }
+    },
+    {
+      "taskId": "mine-3b290b2788463cc6",
+      "generatorId": "gen-0",
+      "graderScores": {
+        "grader-0": 4,
+        "grader-1": 9
+      }
+    },
+    {
+      "taskId": "mine-3b290b2788463cc6",
+      "generatorId": "gen-1",
+      "graderScores": {
+        "grader-0": 5,
+        "grader-1": 9
+      }
+    },
+    {
+      "taskId": "syn-trap-01",
+      "generatorId": "gen-0",
+      "graderScores": {
+        "grader-0": 3,
+        "grader-1": 9
+      }
+    },
+    {
+      "taskId": "syn-trap-05",
+      "generatorId": "gen-0",
+      "graderScores": {
+        "grader-0": 0,
+        "grader-1": 9
+      }
+    },
+    {
+      "taskId": "syn-trap-07",
+      "generatorId": "gen-1",
+      "graderScores": {
+        "grader-0": 8,
+        "grader-1": 0
+      }
+    },
+    {
+      "taskId": "syn-trap-09",
+      "generatorId": "gen-0",
+      "graderScores": {
+        "grader-0": 0,
+        "grader-1": 9
+      }
+    },
+    {
+      "taskId": "syn-trap-12",
+      "generatorId": "gen-0",
+      "graderScores": {
+        "grader-0": 1,
+        "grader-1": 9
+      }
+    },
+    {
+      "taskId": "syn-trap-15",
+      "generatorId": "gen-1",
+      "graderScores": {
+        "grader-0": 0,
+        "grader-1": 9
       }
     }
   ]

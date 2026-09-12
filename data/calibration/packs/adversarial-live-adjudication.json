@@ -1,0 +1,514 @@
+{
+  "campaign": "panel-adjudication",
+  "seed": "sp-282-adversarial-labeling",
+  "holdout_percent": 20,
+  "pass_score": 7,
+  "generator_models": {
+    "gen-0": "google/gemini-3.1-pro-preview",
+    "gen-1": "kimi-coding/k3"
+  },
+  "panel_models": {
+    "panel-glm": "zai/glm-5.3",
+    "panel-kimi": "kimi-coding/k3",
+    "panel-pro": "google/gemini-3.1-pro-preview",
+    "panel-fill-0": "google/gemini-flash-lite-latest",
+    "panel-fill-1": "zai/glm-5.3-flash"
+  },
+  "totals": {
+    "disagreements": 10,
+    "resolved": 10,
+    "residual": 0,
+    "fit_appended": 9,
+    "holdout_appended": 1
+  },
+  "resolved": [
+    {
+      "taskId": "mine-61591a7918fb0014",
+      "generatorId": "gen-1",
+      "generatorProviderModel": "kimi-coding/k3",
+      "panelistScores": {
+        "panel-glm": 4,
+        "panel-pro": 9,
+        "panel-fill-0": 9
+      },
+      "panelistModels": {
+        "panel-glm": "zai/glm-5.3",
+        "panel-pro": "google/gemini-3.1-pro-preview",
+        "panel-fill-0": "google/gemini-flash-lite-latest"
+      },
+      "success": true,
+      "judgeScore": 7.3,
+      "partition": "fit",
+      "row": {
+        "schema_version": 1,
+        "sample_id": "adversarial-llm-judge:a5f101277bbffcba",
+        "source": "adversarial-llm-judge",
+        "features": {
+          "prompt_length_norm": 0.0315,
+          "estimated_input_tokens_norm": 0.007875,
+          "triage_cyclomatic_score": 0.2,
+          "requirement_reasoning": 0.29000000000000004,
+          "requirement_code_gen": 0.2,
+          "requirement_tool_use": 0,
+          "has_tool_context": 0,
+          "compaction_flag": 0,
+          "routing_latency_norm": 0.1,
+          "economical_tier": 1
+        },
+        "success": true,
+        "tier": "economical-cloud",
+        "outcome_signals": [
+          "llm_judge",
+          "panel_adjudication",
+          "panel_majority",
+          "generator:gen-1",
+          "grader:panel-glm",
+          "grader:panel-pro",
+          "grader:panel-fill-0",
+          "judge_score:7.3",
+          "session_fit"
+        ]
+      }
+    },
+    {
+      "taskId": "mine-444be8c585539967",
+      "generatorId": "gen-0",
+      "generatorProviderModel": "google/gemini-3.1-pro-preview",
+      "panelistScores": {
+        "panel-glm": 1,
+        "panel-kimi": 2,
+        "panel-fill-0": 6
+      },
+      "panelistModels": {
+        "panel-glm": "zai/glm-5.3",
+        "panel-kimi": "kimi-coding/k3",
+        "panel-fill-0": "google/gemini-flash-lite-latest"
+      },
+      "success": false,
+      "judgeScore": 3,
+      "partition": "fit",
+      "row": {
+        "schema_version": 1,
+        "sample_id": "adversarial-llm-judge:326ce789e4ca8dd1",
+        "source": "adversarial-llm-judge",
+        "features": {
+          "prompt_length_norm": 0.0275,
+          "estimated_input_tokens_norm": 0.006875,
+          "triage_cyclomatic_score": 0.15,
+          "requirement_reasoning": 0.28,
+          "requirement_code_gen": 0.2,
+          "requirement_tool_use": 0,
+          "has_tool_context": 0,
+          "compaction_flag": 0,
+          "routing_latency_norm": 0.1,
+          "economical_tier": 1
+        },
+        "success": false,
+        "tier": "economical-cloud",
+        "outcome_signals": [
+          "llm_judge",
+          "panel_adjudication",
+          "panel_majority",
+          "generator:gen-0",
+          "grader:panel-glm",
+          "grader:panel-kimi",
+          "grader:panel-fill-0",
+          "judge_score:3",
+          "failure_score:3",
+          "session_fit"
+        ]
+      }
+    },
+    {
+      "taskId": "mine-3b290b2788463cc6",
+      "generatorId": "gen-0",
+      "generatorProviderModel": "google/gemini-3.1-pro-preview",
+      "panelistScores": {
+        "panel-glm": 4,
+        "panel-kimi": 5,
+        "panel-fill-0": 8
+      },
+      "panelistModels": {
+        "panel-glm": "zai/glm-5.3",
+        "panel-kimi": "kimi-coding/k3",
+        "panel-fill-0": "google/gemini-flash-lite-latest"
+      },
+      "success": false,
+      "judgeScore": 5.7,
+      "partition": "fit",
+      "row": {
+        "schema_version": 1,
+        "sample_id": "adversarial-llm-judge:1ce750fc27577243",
+        "source": "adversarial-llm-judge",
+        "features": {
+          "prompt_length_norm": 0.0375,
+          "estimated_input_tokens_norm": 0.009375,
+          "triage_cyclomatic_score": 0.2,
+          "requirement_reasoning": 0.29000000000000004,
+          "requirement_code_gen": 0.2,
+          "requirement_tool_use": 0,
+          "has_tool_context": 0,
+          "compaction_flag": 0,
+          "routing_latency_norm": 0.1,
+          "economical_tier": 1
+        },
+        "success": false,
+        "tier": "economical-cloud",
+        "outcome_signals": [
+          "llm_judge",
+          "panel_adjudication",
+          "panel_majority",
+          "generator:gen-0",
+          "grader:panel-glm",
+          "grader:panel-kimi",
+          "grader:panel-fill-0",
+          "judge_score:5.7",
+          "failure_score:5.7",
+          "session_fit"
+        ]
+      }
+    },
+    {
+      "taskId": "mine-3b290b2788463cc6",
+      "generatorId": "gen-1",
+      "generatorProviderModel": "kimi-coding/k3",
+      "panelistScores": {
+        "panel-glm": 1,
+        "panel-pro": 0,
+        "panel-fill-0": 0
+      },
+      "panelistModels": {
+        "panel-glm": "zai/glm-5.3",
+        "panel-pro": "google/gemini-3.1-pro-preview",
+        "panel-fill-0": "google/gemini-flash-lite-latest"
+      },
+      "success": false,
+      "judgeScore": 0.3,
+      "partition": "fit",
+      "row": {
+        "schema_version": 1,
+        "sample_id": "adversarial-llm-judge:14e1f94bb568abff",
+        "source": "adversarial-llm-judge",
+        "features": {
+          "prompt_length_norm": 0.0375,
+          "estimated_input_tokens_norm": 0.009375,
+          "triage_cyclomatic_score": 0.2,
+          "requirement_reasoning": 0.29000000000000004,
+          "requirement_code_gen": 0.2,
+          "requirement_tool_use": 0,
+          "has_tool_context": 0,
+          "compaction_flag": 0,
+          "routing_latency_norm": 0.1,
+          "economical_tier": 1
+        },
+        "success": false,
+        "tier": "economical-cloud",
+        "outcome_signals": [
+          "llm_judge",
+          "panel_adjudication",
+          "panel_majority",
+          "generator:gen-1",
+          "grader:panel-glm",
+          "grader:panel-pro",
+          "grader:panel-fill-0",
+          "judge_score:0.3",
+          "failure_score:0.3",
+          "session_fit"
+        ]
+      }
+    },
+    {
+      "taskId": "syn-trap-01",
+      "generatorId": "gen-0",
+      "generatorProviderModel": "google/gemini-3.1-pro-preview",
+      "panelistScores": {
+        "panel-glm": 6,
+        "panel-kimi": 4,
+        "panel-fill-0": 9
+      },
+      "panelistModels": {
+        "panel-glm": "zai/glm-5.3",
+        "panel-kimi": "kimi-coding/k3",
+        "panel-fill-0": "google/gemini-flash-lite-latest"
+      },
+      "success": false,
+      "judgeScore": 6.3,
+      "partition": "holdout",
+      "row": {
+        "schema_version": 1,
+        "sample_id": "adversarial-llm-judge:fda7d4fd170f48f0",
+        "source": "adversarial-llm-judge",
+        "features": {
+          "prompt_length_norm": 0.03625,
+          "estimated_input_tokens_norm": 0.0090625,
+          "triage_cyclomatic_score": 0.30000000000000004,
+          "requirement_reasoning": 0.31,
+          "requirement_code_gen": 0.30000000000000004,
+          "requirement_tool_use": 0.7,
+          "has_tool_context": 1,
+          "compaction_flag": 0,
+          "routing_latency_norm": 0.1,
+          "economical_tier": 1
+        },
+        "success": false,
+        "tier": "economical-cloud",
+        "outcome_signals": [
+          "llm_judge",
+          "panel_adjudication",
+          "panel_majority",
+          "generator:gen-0",
+          "grader:panel-glm",
+          "grader:panel-kimi",
+          "grader:panel-fill-0",
+          "judge_score:6.3",
+          "failure_score:6.3",
+          "session_holdout"
+        ]
+      }
+    },
+    {
+      "taskId": "syn-trap-05",
+      "generatorId": "gen-0",
+      "generatorProviderModel": "google/gemini-3.1-pro-preview",
+      "panelistScores": {
+        "panel-glm": 8,
+        "panel-kimi": 4,
+        "panel-fill-0": 0
+      },
+      "panelistModels": {
+        "panel-glm": "zai/glm-5.3",
+        "panel-kimi": "kimi-coding/k3",
+        "panel-fill-0": "google/gemini-flash-lite-latest"
+      },
+      "success": false,
+      "judgeScore": 4,
+      "partition": "fit",
+      "row": {
+        "schema_version": 1,
+        "sample_id": "adversarial-llm-judge:f587dd8540660fe8",
+        "source": "adversarial-llm-judge",
+        "features": {
+          "prompt_length_norm": 0.03,
+          "estimated_input_tokens_norm": 0.0075,
+          "triage_cyclomatic_score": 0.2,
+          "requirement_reasoning": 0.29000000000000004,
+          "requirement_code_gen": 0.2,
+          "requirement_tool_use": 0,
+          "has_tool_context": 0,
+          "compaction_flag": 0,
+          "routing_latency_norm": 0.1,
+          "economical_tier": 0
+        },
+        "success": false,
+        "tier": "frontier-cloud",
+        "outcome_signals": [
+          "llm_judge",
+          "panel_adjudication",
+          "panel_majority",
+          "generator:gen-0",
+          "grader:panel-glm",
+          "grader:panel-kimi",
+          "grader:panel-fill-0",
+          "judge_score:4",
+          "failure_score:4",
+          "session_fit"
+        ]
+      }
+    },
+    {
+      "taskId": "syn-trap-07",
+      "generatorId": "gen-1",
+      "generatorProviderModel": "kimi-coding/k3",
+      "panelistScores": {
+        "panel-glm": 4,
+        "panel-pro": 9,
+        "panel-fill-0": 2
+      },
+      "panelistModels": {
+        "panel-glm": "zai/glm-5.3",
+        "panel-pro": "google/gemini-3.1-pro-preview",
+        "panel-fill-0": "google/gemini-flash-lite-latest"
+      },
+      "success": false,
+      "judgeScore": 5,
+      "partition": "fit",
+      "row": {
+        "schema_version": 1,
+        "sample_id": "adversarial-llm-judge:b546f545f8f36e22",
+        "source": "adversarial-llm-judge",
+        "features": {
+          "prompt_length_norm": 0.029,
+          "estimated_input_tokens_norm": 0.00725,
+          "triage_cyclomatic_score": 0.15,
+          "requirement_reasoning": 0.28,
+          "requirement_code_gen": 0.30000000000000004,
+          "requirement_tool_use": 0.7,
+          "has_tool_context": 1,
+          "compaction_flag": 0,
+          "routing_latency_norm": 0.1,
+          "economical_tier": 1
+        },
+        "success": false,
+        "tier": "economical-cloud",
+        "outcome_signals": [
+          "llm_judge",
+          "panel_adjudication",
+          "panel_majority",
+          "generator:gen-1",
+          "grader:panel-glm",
+          "grader:panel-pro",
+          "grader:panel-fill-0",
+          "judge_score:5",
+          "failure_score:5",
+          "session_fit"
+        ]
+      }
+    },
+    {
+      "taskId": "syn-trap-09",
+      "generatorId": "gen-0",
+      "generatorProviderModel": "google/gemini-3.1-pro-preview",
+      "panelistScores": {
+        "panel-glm": 9,
+        "panel-kimi": 9,
+        "panel-fill-0": 9
+      },
+      "panelistModels": {
+        "panel-glm": "zai/glm-5.3",
+        "panel-kimi": "kimi-coding/k3",
+        "panel-fill-0": "google/gemini-flash-lite-latest"
+      },
+      "success": true,
+      "judgeScore": 9,
+      "partition": "fit",
+      "row": {
+        "schema_version": 1,
+        "sample_id": "adversarial-llm-judge:5c2b22f857ac14c2",
+        "source": "adversarial-llm-judge",
+        "features": {
+          "prompt_length_norm": 0.02675,
+          "estimated_input_tokens_norm": 0.0066875,
+          "triage_cyclomatic_score": 0.2,
+          "requirement_reasoning": 0.29000000000000004,
+          "requirement_code_gen": 0.2,
+          "requirement_tool_use": 0,
+          "has_tool_context": 0,
+          "compaction_flag": 0,
+          "routing_latency_norm": 0.1,
+          "economical_tier": 1
+        },
+        "success": true,
+        "tier": "economical-cloud",
+        "outcome_signals": [
+          "llm_judge",
+          "panel_adjudication",
+          "panel_majority",
+          "generator:gen-0",
+          "grader:panel-glm",
+          "grader:panel-kimi",
+          "grader:panel-fill-0",
+          "judge_score:9",
+          "session_fit"
+        ]
+      }
+    },
+    {
+      "taskId": "syn-trap-12",
+      "generatorId": "gen-0",
+      "generatorProviderModel": "google/gemini-3.1-pro-preview",
+      "panelistScores": {
+        "panel-glm": 0,
+        "panel-kimi": 0,
+        "panel-fill-0": 0
+      },
+      "panelistModels": {
+        "panel-glm": "zai/glm-5.3",
+        "panel-kimi": "kimi-coding/k3",
+        "panel-fill-0": "google/gemini-flash-lite-latest"
+      },
+      "success": false,
+      "judgeScore": 0,
+      "partition": "fit",
+      "row": {
+        "schema_version": 1,
+        "sample_id": "adversarial-llm-judge:0d1aafe9755a7a7d",
+        "source": "adversarial-llm-judge",
+        "features": {
+          "prompt_length_norm": 0.02625,
+          "estimated_input_tokens_norm": 0.0065625,
+          "triage_cyclomatic_score": 0.2,
+          "requirement_reasoning": 0.29000000000000004,
+          "requirement_code_gen": 0.2,
+          "requirement_tool_use": 0,
+          "has_tool_context": 0,
+          "compaction_flag": 0,
+          "routing_latency_norm": 0.1,
+          "economical_tier": 1
+        },
+        "success": false,
+        "tier": "economical-cloud",
+        "outcome_signals": [
+          "llm_judge",
+          "panel_adjudication",
+          "panel_majority",
+          "generator:gen-0",
+          "grader:panel-glm",
+          "grader:panel-kimi",
+          "grader:panel-fill-0",
+          "judge_score:0",
+          "failure_score:0",
+          "session_fit"
+        ]
+      }
+    },
+    {
+      "taskId": "syn-trap-15",
+      "generatorId": "gen-1",
+      "generatorProviderModel": "kimi-coding/k3",
+      "panelistScores": {
+        "panel-glm": 2,
+        "panel-pro": 9,
+        "panel-fill-0": 9
+      },
+      "panelistModels": {
+        "panel-glm": "zai/glm-5.3",
+        "panel-pro": "google/gemini-3.1-pro-preview",
+        "panel-fill-0": "google/gemini-flash-lite-latest"
+      },
+      "success": true,
+      "judgeScore": 6.7,
+      "partition": "fit",
+      "row": {
+        "schema_version": 1,
+        "sample_id": "adversarial-llm-judge:a53cf5ce42b389e8",
+        "source": "adversarial-llm-judge",
+        "features": {
+          "prompt_length_norm": 0.026,
+          "estimated_input_tokens_norm": 0.0065,
+          "triage_cyclomatic_score": 0.2,
+          "requirement_reasoning": 0.29000000000000004,
+          "requirement_code_gen": 0.2,
+          "requirement_tool_use": 0,
+          "has_tool_context": 0,
+          "compaction_flag": 0,
+          "routing_latency_norm": 0.1,
+          "economical_tier": 1
+        },
+        "success": true,
+        "tier": "economical-cloud",
+        "outcome_signals": [
+          "llm_judge",
+          "panel_adjudication",
+          "panel_majority",
+          "generator:gen-1",
+          "grader:panel-glm",
+          "grader:panel-pro",
+          "grader:panel-fill-0",
+          "judge_score:6.7",
+          "session_fit"
+        ]
+      }
+    }
+  ],
+  "residual": []
+}
