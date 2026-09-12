@@ -1,11 +1,11 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-09-10
+**Last Updated:** 2026-09-12
 **Status:** Active
 **Next Task ID:** SP-289
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v1.0.0** package version bumped locally (honest-untrained calibration; publish remains operator). Prior: **v0.22.0** on npm (2026-09-05). **v1.0.0 train** SP-263–SP-279 complete. **Post-1.0 calibration train:** SP-280–SP-286 retargeted to `spine-tasks/_authoring/release-v1.1.0/manifest.md` (v1.1.0 minor; GitHub #168/#169/#170, parent #110). **Close #168 follow-on:** SP-287 human-label review CLI; **SP-288** pi-CLI adversarial clients. Deferred: #171/#172/#96/#167/#162/#163/#157/#95, hardware.
+**Released:** **v1.1.0** on npm (`latest`, tag `v1.1.0`, 2026-09-12). Shipped provenance `verifier_grade_train_2026-09-12` (trained_sample_count 243; isotonic ECE cal 0.0645; hard gates PASS). Closed issues: #168/#169/#170/#171. Left open: #110 (Partial — HyDRA ≥100, session-holdout ECE ship, #95 volume), #95, #96 (not flipped), #172 (P3). Prior: **v1.0.0** honest-untrained. Train SP-280–SP-288 `.DONE`. Next-train slate: #95, #110 remainder, #167, #162, #163, session-holdout ECE ship (drop #171).
 
 ---
 
@@ -906,9 +906,9 @@
 
 **Source:** Operator-approved **v1.1.0** (2026-09-10, minor profile). Theme: post-1.0 verifier-graded calibration — label provenance floors + hard-gate ship (#168), adversarial labeling harness (#169), privacy-safe embedding export (#170), parent #110 bookkeeping. Supersedes `spine-tasks/_authoring/release-v1.0.1/` (patch naming invalid for enhancement content; retargeted to minor). Composition: 3 enh (#168/#169/#170) + 1 chore + 1 docs + wave-gate bookkeeping; 0 bugs (none open). v1.0 honest-untrained neutralize stays in place unless SP-284 hard gates pass (calibrated ECE ≤ 0.10, ≤ raw, y_knots span ≥ 0.05).
 
-**Status:** Wave 0 (SP-280 manifest scaffold confirmation) in execution; waves 1–5 await operator-scheduled batches. `spine tasks validate` 7/7 PASS; wave plan 6 waves (W0 SP-280 → W1 SP-281∥SP-285 → W2 SP-282 → W3 SP-283 → W4 SP-284 → W5 SP-286).
+**Status:** **Shipped in v1.1.0** (2026-09-12). SP-280–SP-286 + follow-ons SP-287/SP-288 complete. Hard-gate promote `f0e1517`; quality gaps `0209c54`; publish bump `c8d7718` / tag `v1.1.0`. Release workflow: https://github.com/beettlle/pi-smart-router/actions/runs/34724693897.
 
-**Deferred:** #171 (post-train serve-time A/B), #172 (optional baseline, P3), #96 (modernbert_k4 default — **no flip this train**), #167 (Granite encoder), #162/#163 (majors), #157 (ESLint flat config), #95 (shadow dogfood epic), #110 remainder, #1/#25/#26 (hardware).
+**Deferred (next-train slate):** #95 (shadow dogfood), #110 remainder (HyDRA ≥100 + session-holdout ECE ship), #167 (Granite encoder), #162/#163 (majors), #172 (optional baseline, P3), #96 (modernbert_k4 — **not flipped**), #157 (ESLint flat config), #1/#25/#26 (hardware). **Dropped from slate:** #171 (serve-time cyclomatic loader shipped in v1.1.0).
 
 **Scope ID:** `SP-280,SP-281,SP-282,SP-283,SP-284,SP-285,SP-286`
 
