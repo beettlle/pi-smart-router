@@ -130,11 +130,34 @@ CI fixture: `tests/eval/corpus/label-packs/adversarial-llm-judge/`
 - Do not ship campaign output into `config/` here — SP-283 trains,
   SP-284 hard-gates the ship bundle.
 
+## Panel adjudication (disagreements / close #168)
+
+SP-282 excludes in-campaign judge disagreements from packs (never majority-coerced).
+After a VALID live campaign, re-adjudicate residuals with a stronger pi-CLI panel
+(GLM / Kimi / Gemini Pro). Responses are **regenerated** (campaign reports do not
+store `response_text`); generations land under gitignored
+`data/calibration/adjudication/`.
+
+```bash
+npx tsx scripts/calibration/adjudicate-disagreements.ts \
+  --report data/calibration/packs/adversarial-live-report.json \
+  --tasks data/calibration/tasks/live-tasks-20260912.jsonl \
+  --fit data/calibration/packs/adversarial-live-fit.jsonl \
+  --holdout data/calibration/packs/adversarial-live-holdout.jsonl \
+  --generations-out data/calibration/adjudication/live-20260912-generations.jsonl \
+  --adjudication-report data/calibration/packs/adversarial-live-adjudication.json \
+  --pi-timeout-ms 300000
+```
+
+Majority (≥2/3 pass/fail) appends `llm_judge` rows with `panel_adjudication` /
+`panel_majority` signals. Residuals stay for SP-287 human review below.
+
 ## Human label review (SP-287 / close #168)
 
 `/smart-router feedback good|bad` sets outcome signals but does **not** set
 `label_provenance: human_feedback`. SP-282 judge disagreements are excluded
-from packs with no human queue. Use this CLI before ship-grade aggregate:
+from packs with no human queue. Use this CLI before ship-grade aggregate
+(and for any panel-adjudication residuals):
 
 ```bash
 # Interactive (TTY): confirm/adjust shadow exports one item at a time
