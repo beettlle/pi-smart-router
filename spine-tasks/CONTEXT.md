@@ -2,10 +2,10 @@
 
 **Last Updated:** 2026-09-10
 **Status:** Active
-**Next Task ID:** SP-288
+**Next Task ID:** SP-289
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v1.0.0** package version bumped locally (honest-untrained calibration; publish remains operator). Prior: **v0.22.0** on npm (2026-09-05). **v1.0.0 train** SP-263–SP-279 complete. **Post-1.0 calibration train:** SP-280–SP-286 retargeted to `spine-tasks/_authoring/release-v1.1.0/manifest.md` (v1.1.0 minor; GitHub #168/#169/#170, parent #110). **Close #168 follow-on:** SP-287 human-label review CLI. Deferred: #171/#172/#96/#167/#162/#163/#157/#95, hardware.
+**Released:** **v1.0.0** package version bumped locally (honest-untrained calibration; publish remains operator). Prior: **v0.22.0** on npm (2026-09-05). **v1.0.0 train** SP-263–SP-279 complete. **Post-1.0 calibration train:** SP-280–SP-286 retargeted to `spine-tasks/_authoring/release-v1.1.0/manifest.md` (v1.1.0 minor; GitHub #168/#169/#170, parent #110). **Close #168 follow-on:** SP-287 human-label review CLI; **SP-288** pi-CLI adversarial clients. Deferred: #171/#172/#96/#167/#162/#163/#157/#95, hardware.
 
 ---
 
@@ -923,6 +923,16 @@
 **Source:** Operator plan — hold v1.1.0 publish until hard gates pass; review CLI before shadow + live SP-282 label collection.
 
 **Scope ID:** `SP-287`
+
+### Phase 59 — Pi-CLI adversarial live clients (SP-288)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-288 | pi-CLI adversarial clients | M | SP-282 | #169 (unblocks live for #168/#110) |
+
+**Source:** Operator plan — live SP-282 via scoped pi models without OpenAI-compat API key.
+
+**Scope ID:** `SP-288`
 
 ---
 

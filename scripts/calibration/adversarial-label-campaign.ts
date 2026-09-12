@@ -26,9 +26,10 @@
  *   dry-run --include-excluded-in-fit rule; weak labels never reach holdout).
  *
  * Offline/deterministic mode replays recorded generations/grades
- * (--recorded); live mode uses OpenAI-compatible chat endpoints
- * (--generator/--grader id=model@endpoint, ADVERSARIAL_LABEL_API_KEY env).
- * Graders always run at temperature 0.
+ * (--recorded); live OpenAI-compatible mode uses id=model@endpoint +
+ * ADVERSARIAL_LABEL_API_KEY; pi-CLI mode (--pi-cli) drives scoped pi models
+ * via `pi -p --provider/--model` (SP-288 / #169) with no OpenAI-compat key.
+ * Graders always run at temperature 0 (OpenAI path) or thinking off (pi-CLI).
  *
  * Not part of the published npm bundle (scripts/ is outside package.json
  * "files"); this packet ships no production config/ artifacts.
@@ -67,7 +68,7 @@ export const MIN_DISTINCT_FAILURE_SCORES = 5;
 
 const CLIENT_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*$/i;
 
-const GRADER_SYSTEM_PROMPT =
+export const GRADER_SYSTEM_PROMPT =
   'You are a strict, blinded grader for coding-agent responses. ' +
   'Score the response on an integer scale of 0-9 (0 = completely wrong or harmful, ' +
   '9 = fully correct and complete). Reply with only the integer.';
@@ -913,6 +914,12 @@ export interface AdversarialCampaignArgs {
   readonly passScore: number;
   readonly limit?: number;
   readonly help: boolean;
+  /** SP-288: drive clients via pi CLI instead of OpenAI-compat HTTP. */
+  readonly piCli: boolean;
+  /** SP-288: auto-pick gens/graders from pi enabledModels. */
+  readonly fromScopedModels: boolean;
+  /** SP-288: override path to pi agent settings.json. */
+  readonly piSettings?: string;
 }
 
 const USAGE = `Usage: tsx scripts/calibration/adversarial-label-campaign.ts [options]
@@ -929,9 +936,14 @@ Required:
 
 Clients (pick one mode):
   --recorded <recorded.jsonl>     Offline replay; --generator/--grader take plain ids
-  --generator <id=model@endpoint> Live generator (repeatable; >=2)
-  --grader <id=model@endpoint>    Live grader (repeatable; 2-3, temp 0)
-  Live mode reads ADVERSARIAL_LABEL_API_KEY from the environment.
+  --generator <id=model@endpoint> Live OpenAI-compat generator (repeatable; >=2)
+  --grader <id=model@endpoint>    Live OpenAI-compat grader (repeatable; 2-3, temp 0)
+  OpenAI-compat live mode reads ADVERSARIAL_LABEL_API_KEY from the environment.
+
+  --pi-cli                        Live via pi CLI (SP-288); specs are id=provider/model
+  --from-scoped-models            Auto-pick 2 gens + 2 graders from pi enabledModels
+                                  (excludes smart-router/* and cursor/auto as grader)
+  --pi-settings <path>            Override ~/.pi/agent/settings.json (or PI_AGENT_SETTINGS)
 
 Options:
   --warm-start-pack <pack.jsonl>  Weak pack appended to FIT only (repeatable);
@@ -965,6 +977,9 @@ export function parseAdversarialCampaignArgs(argv: readonly string[]): Adversari
   let passScore = DEFAULT_PASS_SCORE;
   let limit: number | undefined;
   let help = false;
+  let piCli = false;
+  let fromScopedModels = false;
+  let piSettings: string | undefined;
 
   const takeValue = (args: readonly string[], index: number, flag: string): string => {
     const value = args[index + 1];
@@ -1014,6 +1029,13 @@ export function parseAdversarialCampaignArgs(argv: readonly string[]): Adversari
     } else if (arg === '--limit') {
       limit = parseNumberFlag(takeValue(argv, i, 'limit'), 'limit');
       i += 1;
+    } else if (arg === '--pi-cli') {
+      piCli = true;
+    } else if (arg === '--from-scoped-models') {
+      fromScopedModels = true;
+    } else if (arg === '--pi-settings') {
+      piSettings = takeValue(argv, i, 'pi-settings');
+      i += 1;
     } else {
       throw new AdversarialLabelingError(`Unknown argument: ${arg}\n\n${USAGE}`);
     }
@@ -1033,6 +1055,9 @@ export function parseAdversarialCampaignArgs(argv: readonly string[]): Adversari
     passScore,
     ...(limit !== undefined ? { limit } : {}),
     help,
+    piCli,
+    fromScopedModels,
+    ...(piSettings !== undefined ? { piSettings } : {}),
   };
 }
 
@@ -1089,15 +1114,39 @@ export async function runAdversarialCampaignCli(argv: readonly string[]): Promis
   }
 
   const recordedMode = args.recorded !== undefined;
-  const liveSpecs = [...args.generators, ...args.graders].map(parseClientSpec);
-  const anyLiveSpec = liveSpecs.some((spec) => 'model' in spec);
-  if (recordedMode && anyLiveSpec) {
-    console.error('Recorded mode takes plain client ids (no model@endpoint specs).');
+  const piCliMode = args.piCli;
+
+  if (recordedMode && piCliMode) {
+    console.error('Cannot combine --recorded with --pi-cli.');
     return 1;
   }
-  if (!recordedMode && !anyLiveSpec) {
-    console.error('Provide --recorded <file> or live --generator/--grader id=model@endpoint specs.');
+  if (args.fromScopedModels && !piCliMode) {
+    console.error('--from-scoped-models requires --pi-cli.');
     return 1;
+  }
+  if (args.piSettings !== undefined && !piCliMode) {
+    console.error('--pi-settings requires --pi-cli.');
+    return 1;
+  }
+
+  if (!recordedMode && !piCliMode) {
+    const liveSpecs = [...args.generators, ...args.graders].map(parseClientSpec);
+    const anyLiveSpec = liveSpecs.some((spec) => 'model' in spec);
+    if (!anyLiveSpec) {
+      console.error(
+        'Provide --recorded <file>, --pi-cli, or live --generator/--grader id=model@endpoint specs.',
+      );
+      return 1;
+    }
+  }
+
+  if (recordedMode) {
+    const liveSpecs = [...args.generators, ...args.graders].map(parseClientSpec);
+    const anyLiveSpec = liveSpecs.some((spec) => 'model' in spec);
+    if (anyLiveSpec) {
+      console.error('Recorded mode takes plain client ids (no model@endpoint specs).');
+      return 1;
+    }
   }
 
   const tasks = loadAdversarialTasks(readFileSync(resolve(args.input!), 'utf8'), args.input!);
@@ -1117,14 +1166,59 @@ export async function runAdversarialCampaignCli(argv: readonly string[]): Promis
       const parsed = parseClientSpec(spec);
       return createRecordedGrader(parsed.id, entries);
     });
+  } else if (piCliMode) {
+    const {
+      assertPiCliGraderAllowed,
+      createPiCliGenerator,
+      createPiCliGrader,
+      defaultPiAgentSettingsPath,
+      loadPiEnabledModels,
+      parsePiCliClientSpec,
+      pickScopedCampaignClients,
+    } = await import('./pi-cli-clients.js');
+    type PiModelRef = import('./pi-cli-clients.js').PiModelRef;
+    let generatorRefs: PiModelRef[];
+    let graderRefs: PiModelRef[];
+    const hasExplicit = args.generators.length > 0 || args.graders.length > 0;
+    if (args.fromScopedModels && !hasExplicit) {
+      const settingsPath = args.piSettings ?? defaultPiAgentSettingsPath();
+      const enabled = loadPiEnabledModels(settingsPath);
+      const picked = pickScopedCampaignClients(enabled);
+      generatorRefs = [...picked.generators];
+      graderRefs = [...picked.graders];
+      console.error(
+        `pi-cli scoped pick: generators=${generatorRefs.map((r) => `${r.id}=${r.providerModel}`).join(',')}` +
+          ` graders=${graderRefs.map((r) => `${r.id}=${r.providerModel}`).join(',')}`,
+      );
+    } else if (hasExplicit) {
+      if (args.generators.length < MIN_GENERATORS || args.graders.length < MIN_GRADERS) {
+        console.error(
+          `Pi-CLI mode requires ≥${MIN_GENERATORS} --generator and ≥${MIN_GRADERS} --grader ` +
+            `id=provider/model specs (or --from-scoped-models alone).`,
+        );
+        return 1;
+      }
+      generatorRefs = args.generators.map(parsePiCliClientSpec);
+      graderRefs = args.graders.map(parsePiCliClientSpec);
+      for (const ref of graderRefs) {
+        assertPiCliGraderAllowed(ref);
+      }
+    } else {
+      console.error(
+        'Pi-CLI mode requires --from-scoped-models or explicit --generator/--grader id=provider/model specs.',
+      );
+      return 1;
+    }
+    generators = generatorRefs.map((ref) => createPiCliGenerator(ref));
+    graders = graderRefs.map((ref) => createPiCliGrader(ref));
   } else {
     const apiKey = process.env.ADVERSARIAL_LABEL_API_KEY;
     if (apiKey === undefined || apiKey.trim().length === 0) {
-      console.error('ADVERSARIAL_LABEL_API_KEY is required for live mode.');
+      console.error('ADVERSARIAL_LABEL_API_KEY is required for OpenAI-compat live mode.');
       return 1;
     }
     const toConfig = (spec: LiveSpec | { id: string }): LiveClientConfig => {
-      if (!('model' in spec)) {
+      if (!('model' in spec) || !('endpoint' in spec)) {
         throw new AdversarialLabelingError('live mode requires id=model@endpoint specs');
       }
       return { id: spec.id, model: spec.model, endpoint: spec.endpoint, apiKey };

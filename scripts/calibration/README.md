@@ -61,6 +61,33 @@ npx tsx scripts/calibration/adversarial-label-campaign.ts \
   --warm-start-pack /tmp/trb-weak-from-ci-subset.jsonl
 ```
 
+Live via pi CLI (SP-288 / #169) — uses scoped `enabledModels` from
+`~/.pi/agent/settings.json` (or `PI_AGENT_SETTINGS` / `--pi-settings`).
+No `ADVERSARIAL_LABEL_API_KEY`. `cursor/auto` is never a grader;
+`smart-router/*` is never a client. Requires pi auth for the picked providers.
+
+```bash
+npx tsx scripts/calibration/adversarial-label-campaign.ts \
+  --pi-cli --from-scoped-models \
+  --input data/calibration/tasks/live-tasks.jsonl \
+  --output data/calibration/packs/adversarial-live-fit.jsonl \
+  --holdout-output data/calibration/packs/adversarial-live-holdout.jsonl \
+  --report data/calibration/packs/adversarial-live-report.json
+```
+
+Explicit pi models (`id=provider/model`, no `@endpoint`):
+
+```bash
+npx tsx scripts/calibration/adversarial-label-campaign.ts \
+  --pi-cli \
+  --generator gen-a=google/gemini-flash-latest \
+  --generator gen-b=kimi-coding/k3 \
+  --grader judge-1=zai/glm-5.3 \
+  --grader judge-2=google/gemini-3.1-pro-preview \
+  --input tasks.jsonl \
+  --output fit.jsonl --holdout-output holdout.jsonl --report report.json
+```
+
 ### Task input (`--input`, operator-local, never committed with real prompts)
 
 ```json
