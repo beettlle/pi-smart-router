@@ -29,7 +29,8 @@
  * (--recorded); live OpenAI-compatible mode uses id=model@endpoint +
  * ADVERSARIAL_LABEL_API_KEY; pi-CLI mode (--pi-cli) drives scoped pi models
  * via `pi -p --provider/--model` (SP-288 / #169) with no OpenAI-compat key.
- * Graders always run at temperature 0 (OpenAI path) or thinking off (pi-CLI).
+ * Graders always run at temperature 0 (OpenAI path). Pi-CLI omits --thinking
+ * so Google models that reject MINIMAL/off still work (SP-288).
  *
  * Not part of the published npm bundle (scripts/ is outside package.json
  * "files"); this packet ships no production config/ artifacts.
@@ -429,8 +430,11 @@ export async function runAdversarialLabelingCampaign(
   const labeled: CampaignLabeledRow[] = [];
   const disagreements: CampaignDisagreement[] = [];
   let generations = 0;
+  let taskIndex = 0;
 
   for (const task of selected) {
+    taskIndex += 1;
+    console.error(`[campaign] task ${taskIndex}/${selected.length} ${task.taskId}`);
     for (const generator of generators) {
       const responseText = await generator.generate(task);
       if (typeof responseText !== 'string' || responseText.trim().length === 0) {
@@ -920,6 +924,8 @@ export interface AdversarialCampaignArgs {
   readonly fromScopedModels: boolean;
   /** SP-288: override path to pi agent settings.json. */
   readonly piSettings?: string;
+  /** SP-288: per-call pi CLI timeout in ms (default from pi-cli-clients). */
+  readonly piTimeoutMs?: number;
 }
 
 const USAGE = `Usage: tsx scripts/calibration/adversarial-label-campaign.ts [options]
@@ -944,6 +950,7 @@ Clients (pick one mode):
   --from-scoped-models            Auto-pick 2 gens + 2 graders from pi enabledModels
                                   (excludes smart-router/* and cursor/auto as grader)
   --pi-settings <path>            Override ~/.pi/agent/settings.json (or PI_AGENT_SETTINGS)
+  --pi-timeout-ms <n>             Per-call pi CLI timeout (default 300000)
 
 Options:
   --warm-start-pack <pack.jsonl>  Weak pack appended to FIT only (repeatable);
@@ -980,6 +987,7 @@ export function parseAdversarialCampaignArgs(argv: readonly string[]): Adversari
   let piCli = false;
   let fromScopedModels = false;
   let piSettings: string | undefined;
+  let piTimeoutMs: number | undefined;
 
   const takeValue = (args: readonly string[], index: number, flag: string): string => {
     const value = args[index + 1];
@@ -1036,8 +1044,19 @@ export function parseAdversarialCampaignArgs(argv: readonly string[]): Adversari
     } else if (arg === '--pi-settings') {
       piSettings = takeValue(argv, i, 'pi-settings');
       i += 1;
+    } else if (arg === '--pi-timeout-ms') {
+      piTimeoutMs = parseNumberFlag(takeValue(argv, i, 'pi-timeout-ms'), 'pi-timeout-ms');
+      i += 1;
     } else {
       throw new AdversarialLabelingError(`Unknown argument: ${arg}\n\n${USAGE}`);
+    }
+  }
+
+  if (piTimeoutMs !== undefined) {
+    if (!Number.isInteger(piTimeoutMs) || piTimeoutMs < 1_000) {
+      throw new AdversarialLabelingError(
+        `--pi-timeout-ms must be an integer >= 1000; got ${String(piTimeoutMs)}`,
+      );
     }
   }
 
@@ -1058,6 +1077,7 @@ export function parseAdversarialCampaignArgs(argv: readonly string[]): Adversari
     piCli,
     fromScopedModels,
     ...(piSettings !== undefined ? { piSettings } : {}),
+    ...(piTimeoutMs !== undefined ? { piTimeoutMs } : {}),
   };
 }
 
@@ -1209,8 +1229,10 @@ export async function runAdversarialCampaignCli(argv: readonly string[]): Promis
       );
       return 1;
     }
-    generators = generatorRefs.map((ref) => createPiCliGenerator(ref));
-    graders = graderRefs.map((ref) => createPiCliGrader(ref));
+    const piClientOpts =
+      args.piTimeoutMs !== undefined ? { timeoutMs: args.piTimeoutMs } : undefined;
+    generators = generatorRefs.map((ref) => createPiCliGenerator(ref, piClientOpts));
+    graders = graderRefs.map((ref) => createPiCliGrader(ref, piClientOpts));
   } else {
     const apiKey = process.env.ADVERSARIAL_LABEL_API_KEY;
     if (apiKey === undefined || apiKey.trim().length === 0) {

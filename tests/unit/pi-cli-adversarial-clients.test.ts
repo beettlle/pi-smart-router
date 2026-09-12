@@ -46,30 +46,37 @@ describe('pi-cli-adversarial-clients (SP-288)', () => {
   it('excludes smart-router and forbids cursor/auto as grader', () => {
     expect(isExcludedFromCampaign('smart-router/auto')).toBe(true);
     expect(isExcludedFromCampaign('google/gemini-flash-latest')).toBe(false);
+    expect(isExcludedFromCampaign('google/gemini-3.1-pro-preview-customtools')).toBe(true);
     expect(isForbiddenGrader('cursor/auto')).toBe(true);
     expect(isForbiddenGrader('kimi-coding/k3')).toBe(false);
   });
 
-  it('picks first 2 gens and next 2 graders from sorted eligible models', () => {
+  it('picks flash/lite graders and other models as generators', () => {
     const enabled = [
       'smart-router/auto',
       'cursor/auto',
       'zai/glm-5.3',
       'google/gemini-flash-latest',
+      'google/gemini-3.1-pro-preview-customtools',
       'kimi-coding/k3',
       'google/gemini-flash-lite-latest',
       'zai/glm-5.3-flash',
     ];
     const picked = pickScopedCampaignClients(enabled);
-    expect(picked.generators.map((r) => r.providerModel)).toEqual([
+    expect(picked.graders.map((r) => r.providerModel)).toEqual([
       'google/gemini-flash-latest',
       'google/gemini-flash-lite-latest',
     ]);
-    expect(picked.graders.map((r) => r.providerModel)).toEqual([
+    expect(picked.generators.map((r) => r.providerModel)).toEqual([
       'kimi-coding/k3',
       'zai/glm-5.3',
     ]);
     expect(picked.graders.every((r) => r.providerModel !== 'cursor/auto')).toBe(true);
+    expect(
+      [...picked.generators, ...picked.graders].every(
+        (r) => !r.providerModel.includes('customtools'),
+      ),
+    ).toBe(true);
   });
 
   it('fails when fewer than 4 eligible models after exclusions', () => {
@@ -118,8 +125,6 @@ describe('pi-cli-adversarial-clients (SP-288)', () => {
       '--no-extensions',
       '--no-context-files',
       '--no-approve',
-      '--thinking',
-      'off',
       '--provider',
       'google',
       '--model',
@@ -197,6 +202,8 @@ describe('pi-cli-adversarial-clients (SP-288)', () => {
       '--from-scoped-models',
       '--pi-settings',
       '/tmp/settings.json',
+      '--pi-timeout-ms',
+      '300000',
       '--input',
       't.jsonl',
       '--output',
@@ -209,6 +216,7 @@ describe('pi-cli-adversarial-clients (SP-288)', () => {
     expect(args.piCli).toBe(true);
     expect(args.fromScopedModels).toBe(true);
     expect(args.piSettings).toBe('/tmp/settings.json');
+    expect(args.piTimeoutMs).toBe(300_000);
   });
 
   it('CLI rejects combining --recorded with --pi-cli', async () => {

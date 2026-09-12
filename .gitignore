@@ -16,6 +16,9 @@
 # Operator-local live campaign prompts (may contain session-derived text)
 data/calibration/tasks/
 
+# Panel adjudication sidecars (regenerated prompt/response text)
+data/calibration/adjudication/
+
 #SpecKit
 .specify/
 

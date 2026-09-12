@@ -25,7 +25,8 @@ import {
   type GradingContext,
 } from './adversarial-label-campaign.js';
 
-export const DEFAULT_PI_CLI_TIMEOUT_MS = 120_000;
+/** Live pi completions can exceed 2m on large prompts; 5m avoids mid-campaign aborts. */
+export const DEFAULT_PI_CLI_TIMEOUT_MS = 300_000;
 export const FORBIDDEN_GRADER_MODEL = 'cursor/auto' as const;
 export const MIN_SCOPED_ELIGIBLE_MODELS = 4;
 
@@ -71,7 +72,14 @@ export function defaultPiAgentSettingsPath(): string {
 
 /** True for smart-router/* — never a campaign generator or grader. */
 export function isExcludedFromCampaign(providerModel: string): boolean {
-  return providerModel === 'smart-router/auto' || providerModel.startsWith('smart-router/');
+  if (providerModel === 'smart-router/auto' || providerModel.startsWith('smart-router/')) {
+    return true;
+  }
+  // Tool-specialized variants reject plain --no-tools completions (MALFORMED_FUNCTION_CALL).
+  if (providerModel.includes('customtools')) {
+    return true;
+  }
+  return false;
 }
 
 /** True for cursor/auto — forbidden as a grader (judge). */
@@ -138,8 +146,11 @@ export function loadPiEnabledModels(settingsPath: string): string[] {
 }
 
 /**
- * After exclusions, sort remaining ids; first 2 → generators, next 2 → graders.
- * Requires ≥4 grader-safe eligible models (no smart-router/*, no cursor/auto).
+ * After exclusions, sort remaining ids.
+ * Graders prefer `flash`/`lite` models (fast, score-format reliable);
+ * generators take the first two remaining ids not used as graders.
+ * Requires ≥4 grader-safe eligible models (no smart-router/*, no cursor/auto,
+ * no *customtools*).
  */
 export function pickScopedCampaignClients(enabled: readonly string[]): {
   readonly generators: PiModelRef[];
@@ -153,7 +164,7 @@ export function pickScopedCampaignClients(enabled: readonly string[]): {
   if (eligible.length < MIN_SCOPED_ELIGIBLE_MODELS) {
     throw new PiCliClientError(
       `Need ≥${MIN_SCOPED_ELIGIBLE_MODELS} scoped models after excluding ` +
-        `smart-router/* and cursor/auto; got ${eligible.length}: [${eligible.join(', ')}]`,
+        `smart-router/*, cursor/auto, and *customtools*; got ${eligible.length}: [${eligible.join(', ')}]`,
     );
   }
 
@@ -162,20 +173,58 @@ export function pickScopedCampaignClients(enabled: readonly string[]): {
     return { id: clientId, provider, model, providerModel };
   };
 
-  const generators = [
-    toRef('gen-0', eligible[0]!),
-    toRef('gen-1', eligible[1]!),
-  ];
-  const graders = [
-    toRef('grader-0', eligible[2]!),
-    toRef('grader-1', eligible[3]!),
-  ];
+  const isPreferredGrader = (id: string): boolean =>
+    /^google\//i.test(id) && /flash|lite/i.test(id);
+  const preferredGraders = eligible.filter(isPreferredGrader);
+  const graderModels: string[] = [];
+  for (const id of preferredGraders) {
+    if (graderModels.length >= MIN_GRADERS) {
+      break;
+    }
+    graderModels.push(id);
+  }
+  for (const id of eligible) {
+    if (graderModels.length >= MIN_GRADERS) {
+      break;
+    }
+    if (!graderModels.includes(id)) {
+      graderModels.push(id);
+    }
+  }
 
-  if (generators.length < MIN_GENERATORS || graders.length < MIN_GRADERS) {
+  const generatorModels: string[] = [];
+  for (const id of eligible) {
+    if (generatorModels.length >= MIN_GENERATORS) {
+      break;
+    }
+    if (!graderModels.includes(id)) {
+      generatorModels.push(id);
+    }
+  }
+  // If preferred graders consumed too many early ids, fill gens from leftovers.
+  for (const id of eligible) {
+    if (generatorModels.length >= MIN_GENERATORS) {
+      break;
+    }
+    if (!generatorModels.includes(id)) {
+      generatorModels.push(id);
+    }
+  }
+
+  if (generatorModels.length < MIN_GENERATORS || graderModels.length < MIN_GRADERS) {
     throw new PiCliClientError('Internal pick error: insufficient generators/graders');
   }
 
-  return { generators, graders };
+  return {
+    generators: [
+      toRef('gen-0', generatorModels[0]!),
+      toRef('gen-1', generatorModels[1]!),
+    ],
+    graders: [
+      toRef('grader-0', graderModels[0]!),
+      toRef('grader-1', graderModels[1]!),
+    ],
+  };
 }
 
 /** Parse `id=provider/model` for --pi-cli mode (no @endpoint). */
@@ -229,8 +278,6 @@ export function buildPiCliArgs(
     '--no-extensions',
     '--no-context-files',
     '--no-approve',
-    '--thinking',
-    'off',
     '--provider',
     ref.provider,
     '--model',
@@ -366,22 +413,30 @@ export function createPiCliGrader(
         `${GRADER_SYSTEM_PROMPT}\n\n` +
         `## Task\n${input.prompt_text}\n\n## Response\n${input.response_text}\n\n` +
         'Score (integer 0-9):';
-      const content = await runPiCompletion(
-        ref,
-        userMessage,
-        `grader ${ref.id} task ${context.taskId}`,
-        spawnFn,
-        timeoutMs,
-      );
-      const match = content.match(/[0-9]/);
-      if (match === null) {
-        throw new AdversarialLabelingError(
-          `Grader ${ref.id} returned an unparseable score for task ${context.taskId} — never invent labels`,
+      const maxAttempts = 2;
+      let lastContent = '';
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        const content = await runPiCompletion(
+          ref,
+          userMessage,
+          `grader ${ref.id} task ${context.taskId}` +
+            (attempt > 1 ? ` retry ${attempt}` : ''),
+          spawnFn,
+          timeoutMs,
         );
+        lastContent = content;
+        const match = content.match(/[0-9]/);
+        if (match !== null) {
+          return normalizeGraderScore(
+            Number.parseInt(match[0], 10),
+            `grader ${ref.id} task ${context.taskId}`,
+          );
+        }
       }
-      return normalizeGraderScore(
-        Number.parseInt(match[0], 10),
-        `grader ${ref.id} task ${context.taskId}`,
+      throw new AdversarialLabelingError(
+        `Grader ${ref.id} returned an unparseable score for task ${context.taskId} ` +
+          `after ${maxAttempts} attempts — never invent labels ` +
+          `(stdout snippet: ${JSON.stringify(lastContent.slice(0, 160))})`,
       );
     },
   };
