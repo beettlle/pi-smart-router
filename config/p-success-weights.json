@@ -13,22 +13,25 @@
     "routing_latency_norm",
     "economical_tier"
   ],
-  "intercept": 0,
+  "intercept": -0.5222003136513049,
   "coefficients": [
+    -0.2956545771757284,
+    7.784841874649057,
+    3.5433520874221505,
+    4.8383314206088155,
+    0.38566078028982864,
+    7.26315059735526,
+    -4.790294638202887,
     0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
+    -1.6830999767157413,
+    -1.3270549117026749
   ],
-  "trained_sample_count": 0,
+  "trained_sample_count": 243,
   "provenance": {
-    "source": "neutralized_for_v1_honesty",
-    "note": "v1.0 honesty neutralize; serve-time neutral P(success)=0.5 (floors unmet). v1.1.0 update (2026-09-11, SP-283/SP-284): verifier-grade train (32 pack rows, 0/258 legacy contrib ship-eligible) FAILED hard ECE gate (holdout ece_calibrated 0.2738 > 0.10) — honest-untrained remains shipped; see spine-tasks/_authoring/release-v1.1.0/hard-gate-ship-note.md. #168 Partial."
+    "source": "verifier_grade_train_2026-09-12",
+    "note": "v1.1.0 verifier-grade ship (2026-09-12): train on 147 human_feedback contrib + 96 llm_judge live packs (SP-282 campaign + panel adjudication). All isotonic hard gates PASS (ece_cal=0.0645, ece_raw=0.1142). See spine-tasks/_authoring/release-v1.1.0/hard-gate-pass-2026-09-12.md. Closes #168 ship precondition.",
+    "trained_at": "2026-09-12",
+    "hard_gates_passed": true,
+    "trained_sample_count": 243
   }
 }
