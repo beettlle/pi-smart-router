@@ -1,0 +1,39 @@
+tests/unit/pi-cli-adversarial-clients.test.ts
+  s_73aaa01b99b77c::t_039807b8e996ab 60,75-79
+  s_73aaa01b99b77c::t_b0e551d0dda1b0 205-206,219
+  s_73aaa01b99b77c::t_b6da4c1f8090f3 49
+  s_73aaa01b99b77c::t_0cb08a7cb2e987 54,66,70
+scripts/calibration/pi-cli-clients.ts
+  s_73aaa01b99b77c::t_b8b34453c9c60f 75-82
+  s_73aaa01b99b77c::t_6a594a0edd8dde 416-425,427-434,436-439
+  s_73aaa01b99b77c::t_127541dee91f51 176-177
+  s_73aaa01b99b77c::t_50f79d8750be73 152-153,167
+  s_73aaa01b99b77c::t_c7783b5f099f33 28-29
+  s_73aaa01b99b77c::t_6b2370472fa61a 149-151,178-193,195-214,218-227
+scripts/calibration/adversarial-label-campaign.ts
+  s_73aaa01b99b77c::t_4d0077562e1b7c 990
+  s_73aaa01b99b77c::t_a62b1ce3511473 32-33
+  s_73aaa01b99b77c::t_dd20ebe7a1dfc8 1047-1049,1055-1062,1080
+  s_73aaa01b99b77c::t_0b90974827e481 433,436-437
+  s_73aaa01b99b77c::t_a65e1d28f7980a 927-928
+  s_73aaa01b99b77c::t_3e528feeeb170c 1232-1235
+  s_73aaa01b99b77c::t_b883731588524c 953
+.gitignore
+  s_73aaa01b99b77c::t_d90dcfe165b965 19-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "81d991a8e0b84c133b07b570bd26fb8be7ea6afd",
+  "prompts": {},
+  "sessions": {
+    "s_73aaa01b99b77c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae947e36-a697-4ee4-9394-26f1d7da5e0c",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
