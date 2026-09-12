@@ -1,0 +1,25 @@
+data/calibration/packs/adversarial-live-adjudication.json
+  s_73aaa01b99b77c::t_a264438f6c56e5 1-514
+data/calibration/packs/adversarial-live-fit.jsonl
+  s_73aaa01b99b77c::t_ffc79f9b9acf95 1-66
+data/calibration/packs/adversarial-live-holdout.jsonl
+  s_73aaa01b99b77c::t_b8e1ce18aac6c4 1-30
+data/calibration/packs/adversarial-live-report.json
+  s_73aaa01b99b77c::t_781a070059e165 12-20,24-32,36-37,39-40,47-112,114-115,119-120,122-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "92b67687af4755dc3b067cabc0046a71d6d44d99",
+  "prompts": {},
+  "sessions": {
+    "s_73aaa01b99b77c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae947e36-a697-4ee4-9394-26f1d7da5e0c",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
