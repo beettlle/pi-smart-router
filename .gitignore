@@ -13,6 +13,9 @@
 .pi-smart-router/
 .pi-smart-router/.dataset-key
 
+# Operator-local live campaign prompts (may contain session-derived text)
+data/calibration/tasks/
+
 #SpecKit
 .specify/
 

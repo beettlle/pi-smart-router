@@ -97,6 +97,17 @@ npx tsx scripts/calibration/adversarial-label-campaign.ts \
 `prompt_text` is used for generation/grading only — it never appears in
 pack output (schema taint scan + serialization leak check).
 
+**Operator-local live tasks** live under `data/calibration/tasks/` (gitignored).
+Mine sessions and compose the hybrid corpus:
+
+```bash
+npx tsx scripts/calibration/compose-live-task-corpus.ts
+# → data/calibration/tasks/live-tasks-YYYYMMDD.jsonl (+ prompt-free .manifest.json)
+```
+
+Or mine only: `npx tsx scripts/calibration/mine-pi-session-tasks.ts`.
+Never commit `data/calibration/tasks/` — prompts may come from real sessions.
+
 ### Recorded replay (`--recorded`)
 
 ```json
