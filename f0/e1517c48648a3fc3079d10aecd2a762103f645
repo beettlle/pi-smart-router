@@ -1,0 +1,31 @@
+data/calibration/ship-grade-agg-20260912.jsonl
+  s_73aaa01b99b77c::t_e6f47e14e04dd1 1-147
+spine-tasks/_authoring/release-v1.1.0/hard-gate-pass-2026-09-12.md
+  s_73aaa01b99b77c::t_45894303ee04c2 1-78
+config/routing-calibration.json
+  s_73aaa01b99b77c::t_d3de9bc8686bd4 1178-1179,1196,1198-1207,1209,1216-1279,1284-1347,1350-1352,2925-2928,2930-2937
+data/calibration/verifier-grade-gate-report.json
+  s_73aaa01b99b77c::t_7a360b50aa3761 4,7-8,10,12,15-17,23-24,34-35,40,43
+data/calibration/candidate-p-success-weights.json
+  s_73aaa01b99b77c::t_7a360b50aa3761 16,18-24,26-27,29
+data/calibration/candidate-routing-calibration.json
+  s_73aaa01b99b77c::t_7a360b50aa3761 1179,1196,1198-1207,1209,1216-1279,1285-1296,1350-1352
+config/p-success-weights.json
+  s_73aaa01b99b77c::t_d3de9bc8686bd4 16,18-27,29,31-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f0e1517c48648a3fc3079d10aecd2a762103f645",
+  "prompts": {},
+  "sessions": {
+    "s_73aaa01b99b77c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae947e36-a697-4ee4-9394-26f1d7da5e0c",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
