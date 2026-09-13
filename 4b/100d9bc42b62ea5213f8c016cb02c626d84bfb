@@ -1,0 +1,14 @@
+spine-tasks/SP-294-cascade-docs-eval-report/STATUS.md
+  h_ae151c586ac6c5 3-4,38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4b100d9bc42b62ea5213f8c016cb02c626d84bfb",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
