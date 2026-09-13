@@ -1,0 +1,25 @@
+spine-tasks/SP-291-encoder-cascade-config-gate/PROMPT.md
+  s_b65ed0ee5d2c65::t_e7e3b9c4df227f 74-75
+  s_b65ed0ee5d2c65::t_f24e80c5dca497 46,51-53
+  s_b65ed0ee5d2c65::t_18b962ad0af152 54
+spine-tasks/SP-290-gha-node24-runtimes/PROMPT.md
+  s_b65ed0ee5d2c65::t_feb6ee37b7bade 72,74
+  s_b65ed0ee5d2c65::t_055e222a808f70 48,53-56
+  s_b65ed0ee5d2c65::t_d0b31a8e0625d4 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "03d087474232bf28acc69de86c2604896d845a89",
+  "prompts": {},
+  "sessions": {
+    "s_b65ed0ee5d2c65": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-dd023773-bd60-4b8a-8afb-cdb040e4d43b",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
