@@ -404,6 +404,21 @@ export interface RoutingFeatureSidecar {
   readonly prewarm_accepted?: boolean | null;
   /** Telemetry-visible reason the acceptance guard disabled prewarm (SP-217, #117). */
   readonly prewarm_disabled_reason?: string | null;
+  /**
+   * Encoder selected for HyDRA embedding (SP-292, #173). Present only when
+   * the encoder cascade is enabled and the hydra_match stage ran.
+   * Union mirrors `Encoder` in schemas.ts (entities.ts is import-free).
+   */
+  readonly encoder_selected?: 'minilm' | 'granite' | null;
+  /** Gate token estimate used for cascade selection (SP-292, #173). */
+  readonly token_estimate?: number | null;
+  /** Configured cascade token threshold in effect (SP-292, #173). */
+  readonly cascade_threshold?: number | null;
+  /**
+   * Fallback reason when an over-threshold prompt degraded to the primary
+   * encoder (degrade, never mix; SP-292, #173). Null when no fallback fired.
+   */
+  readonly cascade_fallback_reason?: string | null;
 }
 
 export interface RoutingDecision {

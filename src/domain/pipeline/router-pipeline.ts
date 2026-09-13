@@ -407,6 +407,19 @@ export class RouterPipeline {
       // Absent (not null) unless capture is enabled so the wire decision stays
       // byte-identical when the operator has not opted in.
       ...(ctx.hydraResult?.embedding ? { embedding: ctx.hydraResult.embedding } : {}),
+      // SP-292 / #173: encoder cascade decision telemetry (encoder_selected,
+      // token_estimate, cascade_threshold, cascade_fallback_reason). Present
+      // only when the cascade is enabled and hydra_match ran; absent on the
+      // single-encoder path so the wire decision stays byte-identical.
+      ...(ctx.hydraResult?.cascade_telemetry
+        ? {
+            encoder_selected: ctx.hydraResult.cascade_telemetry.encoder_selected,
+            token_estimate: ctx.hydraResult.cascade_telemetry.token_estimate,
+            cascade_threshold: ctx.hydraResult.cascade_telemetry.cascade_threshold,
+            cascade_fallback_reason:
+              ctx.hydraResult.cascade_telemetry.cascade_fallback_reason,
+          }
+        : {}),
       candidates: this.mergeFeatureCandidates(ctx),
       tier_hint: ctx.tierHint,
       tier_hint_reason_code: ctx.tierHintReasonCode,

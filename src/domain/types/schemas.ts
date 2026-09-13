@@ -303,6 +303,14 @@ export const PlanningDelegateObservabilitySchema = z
   })
   .strict();
 
+/** HyDRA text encoder selection (SP-156, #80). Hoisted above the feature
+ * sidecar schema: cascade telemetry (SP-292) embeds EncoderSchema there. */
+export const EncoderSchema = z.enum(['minilm', 'granite']);
+
+export type Encoder = z.infer<typeof EncoderSchema>;
+
+export const DEFAULT_ENCODER: Encoder = 'minilm';
+
 /**
  * Privacy-safe routing feature sidecar attached to live decisions (SP-057).
  * Mirrors {@link RoutingFeatureSidecar} in entities.ts.
@@ -331,6 +339,12 @@ export const RoutingFeatureSidecarSchema = z
     prewarm_attempted: z.boolean().nullable().optional(),
     prewarm_accepted: z.boolean().nullable().optional(),
     prewarm_disabled_reason: z.string().nullable().optional(),
+    // Encoder cascade decision telemetry (SP-292, #173); present only on
+    // cascade-enabled hydra_match decisions.
+    encoder_selected: EncoderSchema.nullable().optional(),
+    token_estimate: z.number().nullable().optional(),
+    cascade_threshold: z.number().nullable().optional(),
+    cascade_fallback_reason: z.string().nullable().optional(),
   })
   .strict();
 
@@ -436,13 +450,6 @@ export const DEFAULT_LOCAL_ZERO_CONFIG: Readonly<LocalZeroConfig> = {
   enabled: true,
   max_tool_use_requirement: 0.25,
 } as const;
-
-/** HyDRA text encoder selection (SP-156, #80). */
-export const EncoderSchema = z.enum(['minilm', 'granite']);
-
-export type Encoder = z.infer<typeof EncoderSchema>;
-
-export const DEFAULT_ENCODER: Encoder = 'minilm';
 
 /** HyDRA requirement head mode (SP-158, #81). */
 export const HydraHeadsSchema = z.enum(['learned_projection', 'modernbert_k4']);

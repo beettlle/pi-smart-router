@@ -10,8 +10,12 @@ import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-import type { Encoder } from '../types/schemas.js';
+import type { Encoder, EncoderCascadeConfig } from '../types/schemas.js';
 import { DEFAULT_ENCODER } from '../types/schemas.js';
+import {
+  selectEncoderForPrompt,
+  type EncoderGateReasonCode,
+} from './encoder-gate.js';
 
 export const EMBEDDING_DIM = 384;
 
@@ -359,4 +363,204 @@ export async function createTextEmbedder(
       throw new Error(`Unsupported encoder: ${String(_exhaustive)}`);
     }
   }
+}
+
+// ─── Cascading embedder (SP-292, #173 part 2) ────────────────────────────────
+
+/**
+ * Decision telemetry for the most recent cascade embed. Mirrors the routing
+ * feature-sidecar fields from #173 so the pipeline can copy them onto live
+ * decisions without reshaping (SP-292).
+ */
+export interface CascadeEmbedderTelemetry {
+  /** Encoder that produced the embedding (never mixed across spaces). */
+  readonly encoder_selected: Encoder;
+  /** Gate token estimate for the embedded prompt. */
+  readonly token_estimate: number;
+  /** Configured cascade threshold in effect for the decision. */
+  readonly cascade_threshold: number;
+  /** SP-291 gate reason code (`under_threshold` / `over_threshold` / `granite_fallback`). */
+  readonly reason_code: EncoderGateReasonCode;
+  /**
+   * Present when an over-threshold prompt degraded to the primary encoder
+   * because the long-context session was unavailable (degrade, never mix).
+   */
+  readonly cascade_fallback_reason: EncoderGateReasonCode | null;
+}
+
+export interface CascadingTextEmbedder extends TextEmbedder {
+  /**
+   * Telemetry from the most recently completed embed(); null before the
+   * first embed. Concurrent embeds race on this snapshot — callers on the
+   * routing hot path embed sequentially per request.
+   */
+  lastTelemetry(): CascadeEmbedderTelemetry | null;
+}
+
+/** Type guard: does this embedder carry cascade decision telemetry? */
+export function isCascadingTextEmbedder(
+  embedder: TextEmbedder,
+): embedder is CascadingTextEmbedder {
+  return (
+    typeof (embedder as Partial<CascadingTextEmbedder>).lastTelemetry ===
+    'function'
+  );
+}
+
+export interface CreateCascadingTextEmbedderOptions {
+  readonly pinOptions?: OnnxPinOptions;
+  /**
+   * Primary encoder for under-threshold / fallback embeds.
+   * Default: DEFAULT_ENCODER ('minilm'), matching `hydra.encoder` defaults.
+   */
+  readonly primaryEncoder?: Encoder;
+  /**
+   * Session factory override for tests. Default: createTextEmbedder bound to
+   * the cascade artifact cache path and pin options.
+   */
+  readonly sessionFactory?: (encoder: Encoder) => Promise<TextEmbedder>;
+}
+
+/**
+ * Lazy dual-session cascading embedder (SP-292, #173 part 2).
+ *
+ * Owns at most one ONNX session per encoder: the primary session loads on the
+ * first embed, the long-context (Granite) session loads only on the first
+ * over-threshold prompt — memory is paid only when the path fires. Selection
+ * is the SP-291 pure gate; token estimates default to prompt length (the
+ * turn-envelope-parity estimator).
+ *
+ * Failure behavior: degrade, never mix. If the long-context session fails to
+ * load or embed, the request is served by the primary encoder with reason
+ * code `granite_fallback` and the long-context encoder is marked unavailable
+ * for subsequent prompts. Never silently compares cross-encoder vectors.
+ *
+ * dispose() closes every session that was actually loaded (idempotent);
+ * embed() after dispose fails closed (SP-260 precedent).
+ */
+export function createCascadingTextEmbedder(
+  config: EncoderCascadeConfig,
+  artifactCachePath: string,
+  options?: CreateCascadingTextEmbedderOptions,
+): CascadingTextEmbedder {
+  const primaryEncoder = options?.primaryEncoder ?? DEFAULT_ENCODER;
+  const longContextEncoder = config.long_context_encoder;
+  const factory =
+    options?.sessionFactory ??
+    ((encoder: Encoder) =>
+      createTextEmbedder(encoder, artifactCachePath, options?.pinOptions));
+
+  const sessions = new Map<Encoder, Promise<TextEmbedder>>();
+  let longContextAvailable = true;
+  let disposed = false;
+  let last: CascadeEmbedderTelemetry | null = null;
+
+  function sessionFor(encoder: Encoder): Promise<TextEmbedder> {
+    let pending = sessions.get(encoder);
+    if (pending === undefined) {
+      pending = factory(encoder);
+      sessions.set(encoder, pending);
+      // A rejected session promise must not be cached forever — drop it so a
+      // later retry observes a fresh load attempt.
+      pending.catch(() => sessions.delete(encoder));
+    }
+    return pending;
+  }
+
+  function telemetry(
+    decision: {
+      readonly encoder: Encoder;
+      readonly reason_code: EncoderGateReasonCode;
+      readonly token_estimate: number;
+    },
+    fallbackReason: EncoderGateReasonCode | null,
+  ): CascadeEmbedderTelemetry {
+    return {
+      encoder_selected: decision.encoder,
+      token_estimate: decision.token_estimate,
+      cascade_threshold: config.token_threshold,
+      reason_code: fallbackReason ?? decision.reason_code,
+      cascade_fallback_reason: fallbackReason,
+    };
+  }
+
+  return {
+    async embed(text: string): Promise<Float32Array> {
+      if (disposed) {
+        throw new Error(
+          'CascadingTextEmbedder has been disposed; embed() fails closed. ' +
+            'Create a new embedder via createCascadingTextEmbedder to continue.',
+        );
+      }
+
+      const decision = selectEncoderForPrompt(text, config, {
+        primaryEncoder,
+        longContextAvailable,
+      });
+
+      if (decision.encoder === longContextEncoder && longContextAvailable) {
+        try {
+          const session = await sessionFor(longContextEncoder);
+          const vector = await session.embed(text);
+          last = telemetry(decision, null);
+          return vector;
+        } catch (error) {
+          // Degrade, never mix (#173): Granite session/artifacts unavailable →
+          // serve with the primary encoder and make the fallback explicit.
+          longContextAvailable = false;
+          sessions.delete(longContextEncoder);
+          console.warn(
+            'Encoder cascade: long-context encoder unavailable; degrading to primary encoder (granite_fallback)',
+            {
+              long_context_encoder: longContextEncoder,
+              primary_encoder: primaryEncoder,
+              token_estimate: decision.token_estimate,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          );
+          const session = await sessionFor(primaryEncoder);
+          const vector = await session.embed(text);
+          last = telemetry(
+            { ...decision, encoder: primaryEncoder },
+            'granite_fallback',
+          );
+          return vector;
+        }
+      }
+
+      const session = await sessionFor(primaryEncoder);
+      const vector = await session.embed(text);
+      last = telemetry(
+        { ...decision, encoder: primaryEncoder },
+        decision.reason_code === 'granite_fallback' ? 'granite_fallback' : null,
+      );
+      return vector;
+    },
+
+    lastTelemetry(): CascadeEmbedderTelemetry | null {
+      return last;
+    },
+
+    async dispose(): Promise<void> {
+      if (disposed) return; // idempotent: safe for shared-factory callers
+      disposed = true;
+      const pending = [...sessions.values()];
+      sessions.clear();
+      const failures: string[] = [];
+      for (const sessionPromise of pending) {
+        try {
+          const session = await sessionPromise;
+          await session.dispose();
+        } catch (error) {
+          failures.push(error instanceof Error ? error.message : String(error));
+        }
+      }
+      // Fail loud: partially released cascade sessions must not pass silently.
+      if (failures.length > 0) {
+        throw new Error(
+          `CascadingTextEmbedder dispose failed for ${failures.length} session(s): ${failures.join('; ')}`,
+        );
+      }
+    },
+  };
 }
