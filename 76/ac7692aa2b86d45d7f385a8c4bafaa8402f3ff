@@ -1,0 +1,25 @@
+spine-tasks/SP-293-per-encoder-centroids-verify/PROMPT.md
+  s_dcdfa027efd3d7::t_81b3da1cea056a 46,51
+  s_dcdfa027efd3d7::t_02ad537291c20d 71
+  s_dcdfa027efd3d7::t_94557bd826bb52 52
+spine-tasks/SP-292-cascading-embedder-telemetry/PROMPT.md
+  s_dcdfa027efd3d7::t_e508998e2d9bfa 74
+  s_dcdfa027efd3d7::t_1d4d720a18d562 46-47,51
+  s_dcdfa027efd3d7::t_a9b88c2491f5db 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "76ac7692aa2b86d45d7f385a8c4bafaa8402f3ff",
+  "prompts": {},
+  "sessions": {
+    "s_dcdfa027efd3d7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-544204c8-eed1-4e77-ba2e-1dac06867f0a",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
