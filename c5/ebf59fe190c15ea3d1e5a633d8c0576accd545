@@ -1,0 +1,16 @@
+src/domain/matching/encoder-gate.ts
+  h_ae151c586ac6c5 1-121
+tests/unit/encoder-gate.test.ts
+  h_ae151c586ac6c5 1-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c5ebf59fe190c15ea3d1e5a633d8c0576accd545",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
