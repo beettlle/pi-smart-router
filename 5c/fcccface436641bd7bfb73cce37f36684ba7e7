@@ -1,0 +1,22 @@
+scripts/verify-routing-calibration.ts
+  h_ae151c586ac6c5 15-20,23,28,81-83,601-747,761
+spine-tasks/SP-293-per-encoder-centroids-verify/STATUS.md
+  h_ae151c586ac6c5 3,41-44,46
+tests/unit/bootstrap-routing-centroids.test.ts
+  h_ae151c586ac6c5 1-73
+tests/unit/train-routing-calibration.test.ts
+  h_ae151c586ac6c5 36,642-718
+tests/unit/verify-routing-calibration.test.ts
+  h_ae151c586ac6c5 23-24,357-513
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5cfcccface436641bd7bfb73cce37f36684ba7e7",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
