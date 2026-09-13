@@ -1,0 +1,20 @@
+Contract testCommand failure log
+Command: npm run verify:ci
+Exit code: 1
+Attempt: 2 of 2
+Timestamp: 2026-09-13T04:25:28.432Z
+Buffer overflow: no
+---
+
+> pi-smart-router@1.1.0 verify:ci
+> npm run build && npm run typecheck && npm run lint && npm run coverage:check
+
+
+> pi-smart-router@1.1.0 build
+> tsc --project tsconfig.build.json
+
+
+> pi-smart-router@1.1.0 typecheck
+> tsc --noEmit
+
+
