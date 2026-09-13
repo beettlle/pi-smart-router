@@ -1,0 +1,31 @@
+spine-tasks/SP-292-cascading-embedder-telemetry/STATUS.md
+  s_dcdfa027efd3d7::t_890e627654a4c6 3-5,14,16-19,24-27,29,34-37,39,44-57,59-61
+src/domain/matching/embedding-provider.ts
+  s_dcdfa027efd3d7::t_b42ba8f1c651b6 13,15-18,367-566
+src/domain/matching/hydra-matcher.ts
+  s_dcdfa027efd3d7::t_ecb75605e76ab8 22,24,26,35-40,80-85,111-117,438-441,623-626,633-636,668-675,693-699,737,745-747
+src/domain/pipeline/router-pipeline.ts
+  s_dcdfa027efd3d7::t_8eaa7fc1e947a3 410-422
+src/domain/types/entities.ts
+  s_dcdfa027efd3d7::t_b8d93ea847f78a 407-421
+src/domain/types/schemas.ts
+  s_dcdfa027efd3d7::t_73df7f4d9b73be 306-313,342-347
+tests/unit/embedding-provider.test.ts
+  s_dcdfa027efd3d7::t_49b359fe941e6e 14,16,22-23,26-31,595-1106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f5fb3f17785b0d599bff6fbf6c97aa90f0c65870",
+  "prompts": {},
+  "sessions": {
+    "s_dcdfa027efd3d7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-544204c8-eed1-4e77-ba2e-1dac06867f0a",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
