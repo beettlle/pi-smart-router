@@ -1,0 +1,20 @@
+spine-tasks/SP-294-cascade-docs-eval-report/PROMPT.md
+  s_72e85e412aae6b::t_5e5efd9a688f6c 39-40,48,52-57
+  s_72e85e412aae6b::t_9b1ad6a72e569b 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "57473b02faa7dd279600c74a469d24f5d395bad0",
+  "prompts": {},
+  "sessions": {
+    "s_72e85e412aae6b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-3e4d084b-a74a-470a-bc3a-b61f1969fbf8",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
