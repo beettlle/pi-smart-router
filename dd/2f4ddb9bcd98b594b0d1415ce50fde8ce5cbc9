@@ -1,0 +1,16 @@
+spine-tasks/SP-293-per-encoder-centroids-verify/.reviews/0-20260913T164235.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-293-per-encoder-centroids-verify/.reviews/final-20260913T164254.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dd2f4ddb9bcd98b594b0d1415ce50fde8ce5cbc9",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
