@@ -1,0 +1,16 @@
+spine-tasks/SP-291-encoder-cascade-config-gate/.reviews/0-20260913T012519.md
+  h_ae151c586ac6c5 1-11
+spine-tasks/SP-291-encoder-cascade-config-gate/.reviews/final-20260913T012551.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bf371ef1ae6d84ba9ec00989e282c8958bfa4bc6",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
