@@ -1,0 +1,23 @@
+spine-tasks/SP-290-gha-node24-runtimes/.reviews/0-20260913T005326.md
+  s_b65ed0ee5d2c65::t_4759d3f5c4348c 1-11
+spine-tasks/SP-290-gha-node24-runtimes/.reviews/contract-fail-2026-09-13T01-03-39-422Z.log
+  s_b65ed0ee5d2c65::t_cce9c8321acac7 1-856
+spine-tasks/SP-290-gha-node24-runtimes/.reviews/contract-fail-2026-09-13T01-13-44-551Z.log
+  s_b65ed0ee5d2c65::t_abec13a1c5547e 1-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "756f43ff871268e5560cd8d6de8e9290a844923c",
+  "prompts": {},
+  "sessions": {
+    "s_b65ed0ee5d2c65": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-dd023773-bd60-4b8a-8afb-cdb040e4d43b",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
