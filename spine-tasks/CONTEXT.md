@@ -2,10 +2,10 @@
 
 **Last Updated:** 2026-09-12
 **Status:** Active
-**Next Task ID:** SP-289
+**Next Task ID:** SP-296
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v1.1.0** on npm (`latest`, tag `v1.1.0`, 2026-09-12). Shipped provenance `verifier_grade_train_2026-09-12` (trained_sample_count 243; isotonic ECE cal 0.0645; hard gates PASS). Closed issues: #168/#169/#170/#171. Left open: #110 (Partial — HyDRA ≥100, session-holdout ECE ship, #95 volume), #95, #96 (not flipped), #172 (P3). Prior: **v1.0.0** honest-untrained. Train SP-280–SP-288 `.DONE`. Next-train slate: #95, #110 remainder, #167, #162, #163, session-holdout ECE ship (drop #171).
+**Released:** **v1.1.0** on npm (`latest`, tag `v1.1.0`, 2026-09-12). Shipped provenance `verifier_grade_train_2026-09-12` (trained_sample_count 243; isotonic ECE cal 0.0645; hard gates PASS). Closed issues: #168/#169/#170/#171. Left open: #110 (Partial — HyDRA ≥100, session-holdout ECE ship, #95 volume), #95, #96 (not flipped), #172 (P3). Prior: **v1.0.0** honest-untrained. Train SP-280–SP-288 `.DONE`. **In authoring:** v1.2.0 (SP-289–SP-295) — long-context encoder path (#173/#167) + non-quota #174. Deferred from v1.2: #110 (no embeddings; session-holdout ECE not shippable).
 
 ---
 
@@ -933,6 +933,28 @@
 **Source:** Operator plan — live SP-282 via scoped pi models without OpenAI-compat API key.
 
 **Scope ID:** `SP-288`
+
+### Phase 60 — Release v1.2.0 Long-Context Encoder Path (SP-289–SP-295)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-289 | v1.2.0 manifest scaffold | S | — | Bookkeeping |
+| SP-290 | bump GHA to Node-24 runtimes | S | SP-289 | Closes #174 (non-quota ops) |
+| SP-291 | encoder cascade config + gate | M | SP-289 | Partial #173 |
+| SP-292 | cascading embedder + telemetry | M | SP-291 | Partial #173 |
+| SP-293 | per-encoder centroids + cal verify | M | SP-292 | Partial #173 |
+| SP-294 | cascade docs + eval report | S | SP-291–293 | Closes #173 |
+| SP-295 | Granite opt-in dogfood runbook | S | SP-289 | Closes/Partial #167 |
+
+**Source:** Operator-approved **v1.2.0** (2026-09-12, minor profile). Theme: long-context encoder path — eval-first Granite gated cascade (#173) + opt-in Granite dogfood runbook (#167). Non-quota ops: #174 Actions Node-24. Composition: 2 enh + 1 docs + 1 chore + 1 ops; 0 bugs. **Deferred #110** — HyDRA ≥100 blocked (embeddings=0); session-holdout ECE FAIL (0.1005 on n=30).
+
+**Status:** Packets authored; awaiting Phase 4 batch execution.
+
+**Deferred (next-train slate):** #110 (after embedding capture + holdout growth), #95 (shadow dogfood), #162/#163 (majors), #157 (ESLint flat), #96 (not flipped), #172 (P3), #1/#25/#26 (hardware).
+
+**Scope ID:** `SP-289,SP-290,SP-291,SP-292,SP-293,SP-294,SP-295`
+
+**Authoring notes:** `spine-tasks/_authoring/release-v1.2.0/manifest.md`
 
 ---
 
