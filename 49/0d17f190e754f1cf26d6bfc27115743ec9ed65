@@ -1,0 +1,14 @@
+spine-tasks/SP-295-granite-optin-dogfood-runbook/STATUS.md
+  h_ae151c586ac6c5 3-4,30-37,39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "490d17f190e754f1cf26d6bfc27115743ec9ed65",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
