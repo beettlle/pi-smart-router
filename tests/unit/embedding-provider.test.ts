@@ -11,14 +11,24 @@ import {
   MINILM_ONNX_MODEL,
   ONNX_PIN_FILE_ENV,
   ONNX_PIN_MODE_ENV,
+  createCascadingTextEmbedder,
   verifyOnnxArtifactPins,
+  type CascadeEmbedderTelemetry,
   type TextEmbedder,
 } from '../../src/domain/matching/embedding-provider.js';
 import {
   wrapHydraEmbeddingProvider,
   projectToRequirements,
+  HydraMatcher,
+  type EmbeddingProvider,
   type HydraProjectionWeights,
 } from '../../src/domain/matching/hydra-matcher.js';
+import {
+  DEFAULT_ENCODER_CASCADE_CONFIG,
+  RoutingFeatureSidecarSchema,
+  type Encoder,
+  type EncoderCascadeConfig,
+} from '../../src/domain/types/schemas.js';
 
 // ─── Test helpers ────────────────────────────────────────────────────────────
 
@@ -578,6 +588,518 @@ describe('createHydraMatcherFromHydraConfig encoder swap', () => {
 
     expect(result.requirements.reasoning).toBeGreaterThanOrEqual(0);
     expect(result.requirements.reasoning).toBeLessThanOrEqual(1);
+
+    await matcher.dispose();
+  });
+});
+
+// ─── Cascading embedder (SP-292, #173 part 2) ────────────────────────────────
+
+const CASCADE_ENABLED: EncoderCascadeConfig = {
+  ...DEFAULT_ENCODER_CASCADE_CONFIG,
+  enabled: true,
+};
+
+const SHORT_PROMPT = 'short prompt';
+const LONG_PROMPT = 'x'.repeat(512); // at threshold → long-context encoder
+
+interface CascadeSessionHarness {
+  readonly factory: (encoder: Encoder) => Promise<TextEmbedder>;
+  readonly calls: Encoder[];
+  readonly sessions: Map<Encoder, TextEmbedder>;
+  failLoadFor?: Encoder;
+  failEmbedFor?: Encoder;
+  failDisposeFor?: Encoder;
+}
+
+/** Deterministic session factory — no ONNX, records load attempts per encoder. */
+function makeCascadeSessionHarness(): CascadeSessionHarness {
+  const harness: CascadeSessionHarness = {
+    calls: [],
+    sessions: new Map(),
+    factory: async (encoder: Encoder): Promise<TextEmbedder> => {
+      harness.calls.push(encoder); // attempts, including failures
+      if (harness.failLoadFor === encoder) {
+        throw new Error(`simulated ${encoder} artifact load failure`);
+      }
+      const marker = encoder === 'granite' ? 0.9 : 0.1;
+      const session: TextEmbedder = {
+        embed: vi.fn(async () => {
+          if (harness.failEmbedFor === encoder) {
+            throw new Error(`simulated ${encoder} embed failure`);
+          }
+          return makeEmbedding(marker);
+        }),
+        dispose: vi.fn(async () => {
+          if (harness.failDisposeFor === encoder) {
+            throw new Error(`simulated ${encoder} dispose failure`);
+          }
+        }),
+      };
+      harness.sessions.set(encoder, session);
+      return session;
+    },
+  };
+  return harness;
+}
+
+function makeCascade(
+  harness: CascadeSessionHarness,
+  config: EncoderCascadeConfig = CASCADE_ENABLED,
+) {
+  return createCascadingTextEmbedder(config, '.cache/models', {
+    sessionFactory: harness.factory,
+  });
+}
+
+describe('createCascadingTextEmbedder', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('selection', () => {
+    it('routes under-threshold prompts to the primary encoder', async () => {
+      const harness = makeCascadeSessionHarness();
+      const embedder = makeCascade(harness);
+
+      const vector = await embedder.embed(SHORT_PROMPT);
+
+      expect(harness.calls).toEqual(['minilm']);
+      expect(vector[0]).toBeCloseTo(0.1, 5);
+      expect(embedder.lastTelemetry()).toEqual({
+        encoder_selected: 'minilm',
+        token_estimate: SHORT_PROMPT.length,
+        cascade_threshold: 512,
+        reason_code: 'under_threshold',
+        cascade_fallback_reason: null,
+      } satisfies CascadeEmbedderTelemetry);
+    });
+
+    it('routes at/over-threshold prompts to the long-context encoder', async () => {
+      const harness = makeCascadeSessionHarness();
+      const embedder = makeCascade(harness);
+
+      const vector = await embedder.embed(LONG_PROMPT);
+
+      expect(harness.calls).toEqual(['granite']);
+      expect(vector[0]).toBeCloseTo(0.9, 5);
+      expect(embedder.lastTelemetry()).toEqual({
+        encoder_selected: 'granite',
+        token_estimate: LONG_PROMPT.length,
+        cascade_threshold: 512,
+        reason_code: 'over_threshold',
+        cascade_fallback_reason: null,
+      } satisfies CascadeEmbedderTelemetry);
+    });
+
+    it('never mixes spaces: each embed returns exactly one encoder session vector', async () => {
+      const harness = makeCascadeSessionHarness();
+      const embedder = makeCascade(harness);
+
+      const shortVector = await embedder.embed(SHORT_PROMPT);
+      const longVector = await embedder.embed(LONG_PROMPT);
+
+      const minilmSession = harness.sessions.get('minilm')!;
+      const graniteSession = harness.sessions.get('granite')!;
+      expect(minilmSession.embed).toHaveBeenCalledTimes(1);
+      expect(graniteSession.embed).toHaveBeenCalledTimes(1);
+      expect(minilmSession.embed).toHaveBeenCalledWith(SHORT_PROMPT);
+      expect(graniteSession.embed).toHaveBeenCalledWith(LONG_PROMPT);
+      expect(shortVector).not.toBe(longVector);
+    });
+
+    it('keeps the primary encoder for every prompt when the cascade is disabled', async () => {
+      const harness = makeCascadeSessionHarness();
+      const embedder = makeCascade(harness, DEFAULT_ENCODER_CASCADE_CONFIG);
+
+      const vector = await embedder.embed(LONG_PROMPT);
+
+      expect(harness.calls).toEqual(['minilm']);
+      expect(vector[0]).toBeCloseTo(0.1, 5);
+      expect(embedder.lastTelemetry()?.reason_code).toBe('cascade_disabled');
+      expect(embedder.lastTelemetry()?.encoder_selected).toBe('minilm');
+    });
+  });
+
+  describe('lazy load', () => {
+    it('loads no session until the first embed', async () => {
+      const harness = makeCascadeSessionHarness();
+      const embedder = makeCascade(harness);
+
+      expect(harness.calls).toEqual([]);
+      expect(embedder.lastTelemetry()).toBeNull();
+    });
+
+    it('does not load the Granite session for short prompts', async () => {
+      const harness = makeCascadeSessionHarness();
+      const embedder = makeCascade(harness);
+
+      await embedder.embed(SHORT_PROMPT);
+      await embedder.embed(SHORT_PROMPT);
+
+      expect(harness.calls).toEqual(['minilm']);
+      expect(harness.sessions.has('granite')).toBe(false);
+    });
+
+    it('reuses each encoder session across prompts (one session per encoder)', async () => {
+      const harness = makeCascadeSessionHarness();
+      const embedder = makeCascade(harness);
+
+      await embedder.embed(SHORT_PROMPT);
+      await embedder.embed(LONG_PROMPT);
+      await embedder.embed(SHORT_PROMPT);
+      await embedder.embed(LONG_PROMPT);
+
+      expect(harness.calls).toEqual(['minilm', 'granite']);
+    });
+  });
+
+  describe('fallback (degrade, never mix)', () => {
+    it('serves with MiniLM + explicit reason when the Granite session fails to load', async () => {
+      const harness = makeCascadeSessionHarness();
+      harness.failLoadFor = 'granite';
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const embedder = makeCascade(harness);
+
+      const vector = await embedder.embed(LONG_PROMPT);
+
+      expect(vector[0]).toBeCloseTo(0.1, 5); // MiniLM vector, not Granite
+      expect(harness.calls).toEqual(['granite', 'minilm']); // tried Granite, degraded
+      expect(embedder.lastTelemetry()).toEqual({
+        encoder_selected: 'minilm',
+        token_estimate: LONG_PROMPT.length,
+        cascade_threshold: 512,
+        reason_code: 'granite_fallback',
+        cascade_fallback_reason: 'granite_fallback',
+      } satisfies CascadeEmbedderTelemetry);
+      expect(warn).toHaveBeenCalledOnce();
+      warn.mockRestore();
+    });
+
+    it('latches the fallback: later long prompts go straight to MiniLM without retrying Granite', async () => {
+      const harness = makeCascadeSessionHarness();
+      harness.failLoadFor = 'granite';
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const embedder = makeCascade(harness);
+
+      await embedder.embed(LONG_PROMPT);
+      await embedder.embed(LONG_PROMPT);
+
+      // Granite attempted exactly once: the failure latches longContextAvailable
+      // off, so the second long prompt reuses the already-loaded MiniLM session
+      // (no Granite retry, no new session load).
+      expect(harness.calls).toEqual(['granite', 'minilm']);
+      expect(embedder.lastTelemetry()?.reason_code).toBe('granite_fallback');
+      vi.restoreAllMocks();
+    });
+
+    it('falls back when the Granite session loads but embed() fails', async () => {
+      const harness = makeCascadeSessionHarness();
+      harness.failEmbedFor = 'granite';
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const embedder = makeCascade(harness);
+
+      const vector = await embedder.embed(LONG_PROMPT);
+
+      expect(vector[0]).toBeCloseTo(0.1, 5);
+      expect(embedder.lastTelemetry()?.cascade_fallback_reason).toBe(
+        'granite_fallback',
+      );
+      vi.restoreAllMocks();
+    });
+
+    it('propagates primary-encoder embed failures (fail loud, no silent swallow)', async () => {
+      const harness = makeCascadeSessionHarness();
+      harness.failEmbedFor = 'minilm';
+      const embedder = makeCascade(harness);
+
+      await expect(embedder.embed(SHORT_PROMPT)).rejects.toThrow(
+        'simulated minilm embed failure',
+      );
+    });
+  });
+
+  describe('dispose', () => {
+    it('closes every session that was loaded', async () => {
+      const harness = makeCascadeSessionHarness();
+      const embedder = makeCascade(harness);
+
+      await embedder.embed(SHORT_PROMPT);
+      await embedder.embed(LONG_PROMPT);
+      await embedder.dispose();
+
+      expect(harness.sessions.get('minilm')!.dispose).toHaveBeenCalledOnce();
+      expect(harness.sessions.get('granite')!.dispose).toHaveBeenCalledOnce();
+    });
+
+    it('is idempotent and safe when no session was ever loaded', async () => {
+      const harness = makeCascadeSessionHarness();
+      const embedder = makeCascade(harness);
+
+      await embedder.dispose();
+      await embedder.embed(SHORT_PROMPT).catch(() => {}); // fails closed, loads nothing new
+      await embedder.dispose();
+
+      expect(harness.sessions.size).toBe(0);
+    });
+
+    it('fails closed on embed() after dispose', async () => {
+      const harness = makeCascadeSessionHarness();
+      const embedder = makeCascade(harness);
+
+      await embedder.embed(SHORT_PROMPT);
+      await embedder.dispose();
+
+      await expect(embedder.embed(SHORT_PROMPT)).rejects.toThrow(
+        'disposed; embed() fails closed',
+      );
+      expect(harness.sessions.get('minilm')!.embed).toHaveBeenCalledTimes(1);
+    });
+
+    it('fails loud when a session dispose fails', async () => {
+      const harness = makeCascadeSessionHarness();
+      const embedder = makeCascade(harness);
+
+      await embedder.embed(LONG_PROMPT);
+      harness.failDisposeFor = 'granite';
+
+      await expect(embedder.dispose()).rejects.toThrow(
+        'CascadingTextEmbedder dispose failed',
+      );
+    });
+  });
+});
+
+// ─── Cascade telemetry wiring (SP-292, #173) ─────────────────────────────────
+
+describe('cascade telemetry wiring', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('wrapHydraEmbeddingProvider exposes cascadeTelemetry for cascading embedders', async () => {
+    const harness = makeCascadeSessionHarness();
+    const embedder = makeCascade(harness);
+    const provider = wrapHydraEmbeddingProvider(embedder);
+
+    expect(provider.cascadeTelemetry?.()).toBeNull(); // before first embed
+
+    await provider.extractRequirements(SHORT_PROMPT);
+
+    expect(provider.cascadeTelemetry?.()).toEqual({
+      encoder_selected: 'minilm',
+      token_estimate: SHORT_PROMPT.length,
+      cascade_threshold: 512,
+      reason_code: 'under_threshold',
+      cascade_fallback_reason: null,
+    } satisfies CascadeEmbedderTelemetry);
+  });
+
+  it('wrapHydraEmbeddingProvider omits cascadeTelemetry for single-encoder embedders', () => {
+    const provider = wrapHydraEmbeddingProvider(makeMockEmbedder());
+
+    expect(provider.cascadeTelemetry).toBeUndefined();
+  });
+
+  it('HydraMatcher.match carries cascade_telemetry on the match result', async () => {
+    const telemetry: CascadeEmbedderTelemetry = {
+      encoder_selected: 'granite',
+      token_estimate: 700,
+      cascade_threshold: 512,
+      reason_code: 'over_threshold',
+      cascade_fallback_reason: null,
+    };
+    const provider: EmbeddingProvider = {
+      extractRequirements: vi.fn(async () => ({
+        reasoning: 0.5,
+        code_gen: 0.5,
+        tool_use: 0.5,
+      })),
+      cascadeTelemetry: () => telemetry,
+      dispose: vi.fn(async () => {}),
+    };
+    const matcher = new HydraMatcher(provider, {
+      artifactCachePath: '.cache/models',
+    });
+
+    const result = await matcher.match(
+      {
+        request_id: '00000000-0000-4000-8000-0000000000c1',
+        session_id: 'sess-1',
+        prompt_text: LONG_PROMPT,
+      },
+      [
+        {
+          id: 'model-a',
+          tier: 'economical-cloud',
+          provider: 'openai',
+          capabilities: { reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 },
+          pricing: { fallback_cost_per_1m: 1 },
+        },
+      ],
+    );
+
+    expect(result.cascade_telemetry).toEqual(telemetry);
+  });
+
+  it('HydraMatcher.match omits cascade_telemetry on single-encoder providers', async () => {
+    const provider: EmbeddingProvider = {
+      extractRequirements: vi.fn(async () => ({
+        reasoning: 0.5,
+        code_gen: 0.5,
+        tool_use: 0.5,
+      })),
+      dispose: vi.fn(async () => {}),
+    };
+    const matcher = new HydraMatcher(provider, {
+      artifactCachePath: '.cache/models',
+    });
+
+    const result = await matcher.match(
+      {
+        request_id: '00000000-0000-4000-8000-0000000000c2',
+        session_id: 'sess-1',
+        prompt_text: SHORT_PROMPT,
+      },
+      [
+        {
+          id: 'model-a',
+          tier: 'economical-cloud',
+          provider: 'openai',
+          capabilities: { reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 },
+          pricing: { fallback_cost_per_1m: 1 },
+        },
+      ],
+    );
+
+    expect(result.cascade_telemetry).toBeUndefined();
+  });
+
+  it('feature sidecar schema accepts the cascade telemetry fields', () => {
+    const parsed = RoutingFeatureSidecarSchema.parse({
+      triage: null,
+      requirements: null,
+      candidates: null,
+      tier_hint: null,
+      tier_hint_reason_code: null,
+      low_intensity_score: null,
+      p_success_cheap: null,
+      p_success_raw: null,
+      p_success_calibrated: null,
+      p_success_alpha: null,
+      local_eligible_reason: null,
+      encoder_selected: 'granite',
+      token_estimate: 700,
+      cascade_threshold: 512,
+      cascade_fallback_reason: 'granite_fallback',
+    });
+
+    expect(parsed.encoder_selected).toBe('granite');
+    expect(parsed.token_estimate).toBe(700);
+    expect(parsed.cascade_threshold).toBe(512);
+    expect(parsed.cascade_fallback_reason).toBe('granite_fallback');
+  });
+});
+
+// ─── HyDRA integration: cascade path via createHydraMatcherFromHydraConfig ───
+
+describe('createHydraMatcherFromHydraConfig encoder cascade', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockExtractor.mockResolvedValue({ data: makeEmbedding(0.3) });
+  });
+
+  const FLEET = [
+    {
+      id: 'model-a',
+      tier: 'economical-cloud' as const,
+      provider: 'openai',
+      capabilities: { reasoning: 0.5, code_gen: 0.5, tool_use: 0.5 },
+      pricing: { fallback_cost_per_1m: 1 },
+    },
+  ];
+
+  it('keeps the single-encoder path when the cascade is disabled (default)', async () => {
+    const { createHydraMatcherFromHydraConfig } = await import(
+      '../../src/domain/matching/hydra-matcher.js'
+    );
+
+    const matcher = await createHydraMatcherFromHydraConfig({
+      artifact_cache_path: '.cache/models',
+      encoder: 'minilm',
+      encoder_cascade: DEFAULT_ENCODER_CASCADE_CONFIG,
+    });
+
+    await matcher.match(
+      {
+        request_id: '00000000-0000-4000-8000-0000000000d1',
+        session_id: 'sess-1',
+        prompt_text: LONG_PROMPT,
+      },
+      FLEET,
+    );
+
+    const models = mockPipeline.mock.calls.map(
+      (call) => (call as unknown[])[1],
+    );
+    expect(models).toEqual([MINILM_ONNX_MODEL]);
+    expect(models).not.toContain(GRANITE_ONNX_MODEL);
+
+    await matcher.dispose();
+  });
+
+  it('routes over-threshold prompts to Granite and exposes telemetry when enabled', async () => {
+    const { createHydraMatcherFromHydraConfig } = await import(
+      '../../src/domain/matching/hydra-matcher.js'
+    );
+
+    const matcher = await createHydraMatcherFromHydraConfig({
+      artifact_cache_path: '.cache/models',
+      encoder: 'minilm',
+      encoder_cascade: CASCADE_ENABLED,
+    });
+
+    // Short prompt: no Granite session is loaded (lazy).
+    await matcher.match(
+      {
+        request_id: '00000000-0000-4000-8000-0000000000d2',
+        session_id: 'sess-1',
+        prompt_text: SHORT_PROMPT,
+      },
+      FLEET,
+    );
+    expect(
+      mockPipeline.mock.calls.map((call) => (call as unknown[])[1]),
+    ).toEqual([
+      MINILM_ONNX_MODEL,
+    ]);
+
+    // Long prompt: Granite session loads on first over-threshold hit.
+    const result = await matcher.match(
+      {
+        request_id: '00000000-0000-4000-8000-0000000000d3',
+        session_id: 'sess-1',
+        prompt_text: LONG_PROMPT,
+      },
+      FLEET,
+    );
+    expect(
+      mockPipeline.mock.calls.map((call) => (call as unknown[])[1]),
+    ).toEqual([
+      MINILM_ONNX_MODEL,
+      GRANITE_ONNX_MODEL,
+    ]);
+    // The gate estimates tokens over the metadata-prefixed HyDRA input — the
+    // exact text the encoder embeds (and would truncate), so >= threshold.
+    expect(result.cascade_telemetry).toMatchObject({
+      encoder_selected: 'granite',
+      cascade_threshold: 512,
+      reason_code: 'over_threshold',
+      cascade_fallback_reason: null,
+    });
+    expect(result.cascade_telemetry?.token_estimate).toBeGreaterThanOrEqual(
+      LONG_PROMPT.length,
+    );
 
     await matcher.dispose();
   });
