@@ -1,0 +1,24 @@
+spine-tasks/SP-292-cascading-embedder-telemetry/STATUS.md
+  h_ae151c586ac6c5 3-5,14,16-19,24-27,29,34,36-39,44,50-57
+src/domain/matching/embedding-provider.ts
+  h_ae151c586ac6c5 13,15-18,367-566
+src/domain/matching/hydra-matcher.ts
+  h_ae151c586ac6c5 22,24,26,35-40,80-85,111-117,438-441,623-626,633-636,668-675,693-699,737,745-747
+src/domain/pipeline/router-pipeline.ts
+  h_ae151c586ac6c5 410-422
+src/domain/types/entities.ts
+  h_ae151c586ac6c5 407-421
+src/domain/types/schemas.ts
+  h_ae151c586ac6c5 306-313,342-347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2b024561d54c56f83c2354572d2e6e06cd500b01",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
