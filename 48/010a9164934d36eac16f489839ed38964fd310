@@ -1,0 +1,16 @@
+scripts/bootstrap-routing-centroids.ts
+  h_ae151c586ac6c5 5-16,21,25,29,31-109,113,118,120,125,128,132,134,141-147
+spine-tasks/SP-293-per-encoder-centroids-verify/STATUS.md
+  h_ae151c586ac6c5 3-5,14-22,24-26,31-34,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "48010a9164934d36eac16f489839ed38964fd310",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
