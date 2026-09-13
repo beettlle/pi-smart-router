@@ -1,7 +1,7 @@
 # SP-294: cascade docs + eval report — Status
 
-**Current Step:** 2
-**Status:** 🟡 In Progress
+**Current Step:** Done
+**Status:** 🟢 Complete
 **Last Updated:** 2026-09-13
 **Review Level:** 1
 **Review Counter:** 0
@@ -35,7 +35,7 @@
 ---
 
 ### Step 2: Testing & Verification
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 
 - [x] Run npm run typecheck
   - Clean (tsc --noEmit, exit 0) on 2026-09-13 lane run.
