@@ -1,0 +1,23 @@
+spine-tasks/CONTEXT.md
+  s_b65ed0ee5d2c65::t_208712680d1097 3,949-950
+spine-tasks/SP-289-v120-manifest-scaffold/STATUS.md
+  s_b65ed0ee5d2c65::t_b0e2c645deb246 3-5,14,16-17,22,24-27,32,34-36
+spine-tasks/_authoring/release-v1.2.0/manifest.md
+  s_b65ed0ee5d2c65::t_a346a2cfbae59e 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b434e503cd0ed16e8dee49596ec053fe194561f6",
+  "prompts": {},
+  "sessions": {
+    "s_b65ed0ee5d2c65": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-dd023773-bd60-4b8a-8afb-cdb040e4d43b",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
