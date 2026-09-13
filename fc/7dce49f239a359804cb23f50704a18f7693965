@@ -1,0 +1,27 @@
+scripts/bootstrap-routing-centroids.ts
+  s_dcdfa027efd3d7::t_e139234c83ebef 5-16,21,25,29,31-109,113,118,120,125,128,132,134,141-147
+scripts/verify-routing-calibration.ts
+  s_dcdfa027efd3d7::t_87293630b55f4e 15-20,23,28,81-83,601-747,761
+spine-tasks/SP-293-per-encoder-centroids-verify/STATUS.md
+  s_dcdfa027efd3d7::t_d35249a5ae741e 3-5,14,16-26,31-34,36,41,43-46,51-59,61
+tests/unit/train-routing-calibration.test.ts
+  s_dcdfa027efd3d7::t_657ba98cf49b1e 36,642-718
+tests/unit/verify-routing-calibration.test.ts
+  s_dcdfa027efd3d7::t_50dab815594e09 23-24,357-513
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fc7dce49f239a359804cb23f50704a18f7693965",
+  "prompts": {},
+  "sessions": {
+    "s_dcdfa027efd3d7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-544204c8-eed1-4e77-ba2e-1dac06867f0a",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
