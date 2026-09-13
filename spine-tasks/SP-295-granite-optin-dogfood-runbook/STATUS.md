@@ -1,7 +1,7 @@
 # SP-295: Granite opt-in dogfood runbook — Status
 
-**Current Step:** Step 2: Testing & Verification
-**Status:** 🟡 In Progress
+**Current Step:** Complete
+**Status:** 🟢 Complete
 **Last Updated:** 2026-09-13
 **Review Level:** 1
 **Review Counter:** 0
@@ -27,9 +27,16 @@
 ---
 
 ### Step 2: Testing & Verification
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run npm run typecheck
-- [ ] STATUS Close vs Partial for #167
+- [x] Run npm run typecheck — PASS (`tsc --noEmit`, clean)
+- [x] STATUS Close vs Partial for #167 — **Partial.** Autonomous AC (operator runbook: fetch/switch/verify/measure/archive + post-switch follow-ups) fully landed in README + config comment + release note. Human dogfood AC remaining: operator config switch on a dogfood install, Granite ONNX first-run download (cache absent here — MiniLM only), benchmark archive from dogfood hardware, smoke check, evidence comment on #167, cross-link on #96. See `spine-tasks/_authoring/release-v1.2.0/granite-dogfood-runbook-note.md`.
+
+---
+
+## Issue disposition
+
+**#167: Partial** — runbook complete; human dogfood remaining. Do **not** close #167 until operator evidence is posted.
+**Defaults honesty:** `src/config/defaults.ts` untouched; `DEFAULT_ENCODER` stays `minilm`; `modernbert_k4` not enabled; `config/release-gates.json` untouched.
 
 ---
