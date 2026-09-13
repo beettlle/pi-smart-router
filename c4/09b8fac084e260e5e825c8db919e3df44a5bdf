@@ -1,0 +1,55 @@
+spine-tasks/dependencies.json
+  s_7540c8d8c1fc56::t_4a8521a908aeaa 784-804
+spine-tasks/CONTEXT.md
+  s_7540c8d8c1fc56::t_1f223443cf6980 5,8
+  s_7540c8d8c1fc56::t_fab547091749d0 937-958
+spine-tasks/SP-291-encoder-cascade-config-gate/PROMPT.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-80
+spine-tasks/SP-289-v120-manifest-scaffold/PROMPT.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-76
+spine-tasks/SP-295-granite-optin-dogfood-runbook/STATUS.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-35
+spine-tasks/SP-289-v120-manifest-scaffold/STATUS.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-35
+spine-tasks/SP-292-cascading-embedder-telemetry/STATUS.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-43
+spine-tasks/SP-291-encoder-cascade-config-gate/STATUS.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-42
+spine-tasks/_authoring/release-v1.2.0/manifest.md
+  s_7540c8d8c1fc56::t_de51e9862fb185 8,13-14,21,24-25,49-61,77,79,86-89,152-153,167-168,181-184
+  s_7540c8d8c1fc56::t_499b48e50b58cb 9
+  s_7540c8d8c1fc56::t_3aa07f7f293a06 1-7,10-12,15-20,22-23,26-48,62-76,78,80-85,90-122,142,145-151,154-166,169-180,185-201
+  s_7540c8d8c1fc56::t_ee45464cbbb953 123-141,143-144
+spine-tasks/SP-293-per-encoder-centroids-verify/STATUS.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-40
+spine-tasks/SP-292-cascading-embedder-telemetry/PROMPT.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-82
+spine-tasks/SP-290-gha-node24-runtimes/PROMPT.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-78
+spine-tasks/SP-290-gha-node24-runtimes/STATUS.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-35
+spine-tasks/SP-294-cascade-docs-eval-report/STATUS.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-35
+spine-tasks/SP-294-cascade-docs-eval-report/PROMPT.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-76
+spine-tasks/SP-295-granite-optin-dogfood-runbook/PROMPT.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-77
+spine-tasks/SP-293-per-encoder-centroids-verify/PROMPT.md
+  s_7540c8d8c1fc56::t_02590109f2bf73 1-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c409b8fac084e260e5e825c8db919e3df44a5bdf",
+  "prompts": {},
+  "sessions": {
+    "s_7540c8d8c1fc56": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-3f36a448-1b92-48ff-85cf-3d4760f80485",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
