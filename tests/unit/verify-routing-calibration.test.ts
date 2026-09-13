@@ -20,6 +20,8 @@ import {
 } from '../../scripts/train-routing-calibration.js';
 import {
   assertClusterBenchmark,
+  assertEncoderFlavorConsistency,
+  assertEncoderFlavorConsistencyFromFile,
   CALIBRATION_DRY_RUN_SOFT_ECE_THRESHOLD,
   CLUSTER_CALIBRATION_BENCHMARKS,
   formatCalibrationDryRunReport,
@@ -350,5 +352,162 @@ describe('assertIsotonicTrainingGates (v1.0 hard ECE)', () => {
       true,
     );
     expect(CALIBRATION_HARD_ECE_THRESHOLD).toBe(0.1);
+  });
+});
+
+/** Raw bundle JSON with optional encoder flavor stamps (SP-293 fixtures). */
+function makeRawBundleWithEncoders(
+  overrides: {
+    readonly hydraEncoder?: string;
+    readonly centroidsEncoder?: string;
+    readonly hydraTrainedSampleCount?: number;
+  } = {},
+): Record<string, unknown> {
+  const raw = JSON.parse(
+    serializeRoutingCalibrationBundle(createDefaultRoutingCalibrationBundle()),
+  ) as Record<string, unknown>;
+  const hydra = raw.hydra_projection as Record<string, unknown>;
+  const centroids = raw.routing_centroids as Record<string, unknown>;
+  if (overrides.hydraEncoder !== undefined) {
+    hydra.encoder = overrides.hydraEncoder;
+  }
+  if (overrides.centroidsEncoder !== undefined) {
+    centroids.encoder = overrides.centroidsEncoder;
+  }
+  if (overrides.hydraTrainedSampleCount !== undefined) {
+    hydra.trained_sample_count = overrides.hydraTrainedSampleCount;
+  }
+  return raw;
+}
+
+describe('encoder flavor consistency (SP-293 / #173 part 3)', () => {
+  it('passes when both artifacts omit encoder (implicit minilm default)', () => {
+    const results = assertEncoderFlavorConsistency(makeRawBundleWithEncoders());
+    expect(results.every((entry) => entry.passed)).toBe(true);
+    expect(results[0]!.id).toBe('encoder_flavor_consistency');
+    expect(results[0]!.message).toContain('minilm');
+  });
+
+  it('passes explicit minilm and honest-untrained granite bundles', () => {
+    const minilm = assertEncoderFlavorConsistency(
+      makeRawBundleWithEncoders({ hydraEncoder: 'minilm', centroidsEncoder: 'minilm' }),
+    );
+    expect(minilm.every((entry) => entry.passed)).toBe(true);
+    expect(minilm.some((entry) => entry.id === 'encoder_flavor_honest_untrained')).toBe(false);
+
+    const granite = assertEncoderFlavorConsistency(
+      makeRawBundleWithEncoders({ hydraEncoder: 'granite', centroidsEncoder: 'granite' }),
+    );
+    expect(granite.every((entry) => entry.passed)).toBe(true);
+    expect(
+      granite.some((entry) => entry.id === 'encoder_flavor_honest_untrained' && entry.passed),
+    ).toBe(true);
+  });
+
+  it('rejects mixed-encoder bundles in both directions', () => {
+    const graniteCentroids = assertEncoderFlavorConsistency(
+      makeRawBundleWithEncoders({ centroidsEncoder: 'granite' }),
+    );
+    expect(graniteCentroids).toHaveLength(1);
+    expect(graniteCentroids[0]!.passed).toBe(false);
+    expect(graniteCentroids[0]!.message).toContain('mixed encoder flavors');
+    expect(graniteCentroids[0]!.message).toContain('granite');
+
+    const graniteHydra = assertEncoderFlavorConsistency(
+      makeRawBundleWithEncoders({ hydraEncoder: 'granite' }),
+    );
+    expect(graniteHydra).toHaveLength(1);
+    expect(graniteHydra[0]!.passed).toBe(false);
+    expect(graniteHydra[0]!.message).toContain('mixed encoder flavors');
+  });
+
+  it('rejects unknown encoder flavors fail-closed', () => {
+    const results = assertEncoderFlavorConsistency(
+      makeRawBundleWithEncoders({ hydraEncoder: 'bert', centroidsEncoder: 'bert' }),
+    );
+    expect(results[0]!.passed).toBe(false);
+    expect(results[0]!.message).toContain('unknown encoder flavor');
+  });
+
+  it('rejects granite bundles claiming a trained learned projection', () => {
+    const results = assertEncoderFlavorConsistency(
+      makeRawBundleWithEncoders({
+        hydraEncoder: 'granite',
+        centroidsEncoder: 'granite',
+        hydraTrainedSampleCount: 100,
+      }),
+    );
+    const gate = results.find((entry) => entry.id === 'encoder_flavor_honest_untrained');
+    expect(gate?.passed).toBe(false);
+    expect(gate?.message).toContain('trained_sample_count=0');
+  });
+
+  it('rejects non-object bundles fail-closed', () => {
+    const results = assertEncoderFlavorConsistency('not-a-bundle');
+    expect(results[0]!.passed).toBe(false);
+  });
+
+  it('verifyRoutingCalibration rejects a mixed-encoder bundle file end-to-end', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sp293-verify-'));
+    try {
+      const bundlePath = join(dir, 'routing-calibration.json');
+      writeFileSync(
+        bundlePath,
+        JSON.stringify(makeRawBundleWithEncoders({ centroidsEncoder: 'granite' }), null, 2),
+      );
+      const result = verifyRoutingCalibration(bundlePath);
+      expect(result.failed).toBeGreaterThan(0);
+      const gate = result.assertions.find((entry) => entry.id === 'encoder_flavor_consistency');
+      expect(gate?.passed).toBe(false);
+      expect(gate?.message).toContain('granite');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('verifyRoutingCalibration passes an honest granite bundle file', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sp293-verify-'));
+    try {
+      const bundlePath = join(dir, 'routing-calibration.json');
+      writeFileSync(
+        bundlePath,
+        JSON.stringify(
+          makeRawBundleWithEncoders({ hydraEncoder: 'granite', centroidsEncoder: 'granite' }),
+          null,
+          2,
+        ),
+      );
+      const result = verifyRoutingCalibration(bundlePath);
+      const failed = result.assertions.filter((entry) => !entry.passed);
+      expect(failed, JSON.stringify(failed)).toHaveLength(0);
+      expect(
+        result.assertions.some(
+          (entry) => entry.id === 'encoder_flavor_honest_untrained' && entry.passed,
+        ),
+      ).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed when the bundle file is unparseable', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sp293-verify-'));
+    try {
+      const bundlePath = join(dir, 'routing-calibration.json');
+      writeFileSync(bundlePath, '{not json');
+      const results = assertEncoderFlavorConsistencyFromFile(bundlePath);
+      expect(results[0]!.passed).toBe(false);
+      expect(results[0]!.message).toContain('unparseable');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('treats a missing bundle file as implicit minilm defaults', () => {
+    const results = assertEncoderFlavorConsistencyFromFile(
+      join(tmpdir(), 'sp293-definitely-missing-bundle.json'),
+    );
+    expect(results[0]!.passed).toBe(true);
+    expect(results[0]!.message).toContain('implicit minilm');
   });
 });
