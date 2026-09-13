@@ -36,8 +36,8 @@ Update README encoder table + `docs/migration-v1.md` composition/config notes fo
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `README.md`, `docs/migration-v1.md`, `docs/qa/` (cascade replay report) |
-| May change | `spine-tasks/_authoring/release-v1.2.0/` notes |
+| Must change | `docs/migration-v1.md`, `docs/qa/` (new cascade replay report; e.g. `docs/qa/encoder-cascade-replay-v1.2.0.md`) |
+| May change | `README.md` (additive cascade notes only — Granite #167 runbook already landed by SP-295), `spine-tasks/_authoring/release-v1.2.0/` notes |
 | Must NOT change | `src/config/defaults.ts` encoder default, cascade enabled default |
 
 ## Contract
@@ -45,9 +45,16 @@ Update README encoder table + `docs/migration-v1.md` composition/config notes fo
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck` |
-| fileScopeMustChange | `README.md`, `docs/migration-v1.md`, `docs/qa/` |
+| fileScopeMustChange | `docs/migration-v1.md`, `docs/qa/` |
 | fileScopeMustNotChange | `src/config/defaults.ts` |
 | completionCriteria | Docs + qa report present; #173 AC checklist in STATUS; no default flips |
+
+## Amendments
+
+### Amendment 1 — 2026-09-13
+
+**Issue:** Preflight `prelanded-file-scope` — `README.md` already changed on `main` by SP-295 (#167 Granite runbook).
+**Resolution:** Redirect `fileScopeMustChange` to cascade-specific delivery artifacts (`docs/migration-v1.md` + new `docs/qa/` report). README remains May-change for additive cascade notes only.
 
 ## Steps
 
