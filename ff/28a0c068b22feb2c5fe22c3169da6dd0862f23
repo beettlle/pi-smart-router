@@ -1,0 +1,21 @@
+package-lock.json
+  s_dcdfa027efd3d7::t_84bac60c4d8eb8 3,9
+package.json
+  s_dcdfa027efd3d7::t_fbb36d7ac5ea91 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ff28a0c068b22feb2c5fe22c3169da6dd0862f23",
+  "prompts": {},
+  "sessions": {
+    "s_dcdfa027efd3d7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-544204c8-eed1-4e77-ba2e-1dac06867f0a",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
