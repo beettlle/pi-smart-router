@@ -1,6 +1,6 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-09-12
+**Last Updated:** 2026-09-13
 **Status:** Active
 **Next Task ID:** SP-296
 **Feature:** `001-build-smart-router`
@@ -945,6 +945,8 @@
 | SP-293 | per-encoder centroids + cal verify | M | SP-292 | Partial #173 |
 | SP-294 | cascade docs + eval report | S | SP-291–293 | Closes #173 |
 | SP-295 | Granite opt-in dogfood runbook | S | SP-289 | Closes/Partial #167 |
+
+**Confirmed (SP-289, 2026-09-13):** Phase 60 table + `Next Task ID: SP-296` + `dependencies.json` edges verified against packet PROMPTs; manifest Release scope ID matches SP-289–SP-295 packets.
 
 **Source:** Operator-approved **v1.2.0** (2026-09-12, minor profile). Theme: long-context encoder path — eval-first Granite gated cascade (#173) + opt-in Granite dogfood runbook (#167). Non-quota ops: #174 Actions Node-24. Composition: 2 enh + 1 docs + 1 chore + 1 ops; 0 bugs. **Deferred #110** — HyDRA ≥100 blocked (embeddings=0); session-holdout ECE FAIL (0.1005 on n=30).
 

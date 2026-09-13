@@ -98,7 +98,7 @@ test "${PIPESTATUS[0]}" -eq 0
 
 **Operator gates:**
 
-1. Approve this manifest (operator sign-off on scope + theme) — **awaiting**
+1. Approve this manifest (operator sign-off on scope + theme) — **approved 2026-09-12** (see header)
 2. `spine gate approve` per integrate wave
 3. Publish approval before exactly one `npm version minor`
 
