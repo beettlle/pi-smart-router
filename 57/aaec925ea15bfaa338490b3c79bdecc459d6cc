@@ -1,0 +1,16 @@
+spine-tasks/SP-294-cascade-docs-eval-report/.reviews/0-20260913T165358.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-294-cascade-docs-eval-report/.reviews/final-20260913T165420.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "57aaec925ea15bfaa338490b3c79bdecc459d6cc",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
