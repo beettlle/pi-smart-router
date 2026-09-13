@@ -1,0 +1,19 @@
+spine-tasks/SP-293-per-encoder-centroids-verify/PROMPT.md
+  s_dcdfa027efd3d7::t_98673c07e605c1 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "50c633664501c38b2ab0aa5ec05711f9329ff8af",
+  "prompts": {},
+  "sessions": {
+    "s_dcdfa027efd3d7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-544204c8-eed1-4e77-ba2e-1dac06867f0a",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
