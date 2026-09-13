@@ -1,8 +1,8 @@
 # SP-289: v1.2.0 manifest scaffold — Status
 
-**Current Step:** Not Started
-**Status:** 🔵 Ready for Execution
-**Last Updated:** 2026-09-12
+**Current Step:** Step 1: Implementation
+**Status:** 🟡 In Progress
+**Last Updated:** 2026-09-13
 **Review Level:** 1
 **Review Counter:** 0
 **Iteration:** 0
@@ -11,15 +11,15 @@
 ---
 
 ### Step 0: Preflight
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Read CONTEXT + v1.2.0 manifest
-- [ ] Confirm operator approved scope on manifest
+- [x] Read CONTEXT + v1.2.0 manifest
+- [x] Confirm operator approved scope on manifest (header records approval 2026-09-12; gate #1 line was stale)
 
 ---
 
 ### Step 1: Implementation
-**Status:** ⬜ Not Started
+**Status:** 🔄 In Progress
 
 - [ ] Align CONTEXT Phase 60 + Next Task ID
 - [ ] Confirm dependencies.json edges
