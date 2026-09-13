@@ -1000,6 +1000,62 @@ npm run benchmark:encoder
 
 The script reports p50/p95 latency for each encoder and asserts Granite p50/p95 stay within the 120 ms budget ceiling. Requires `@huggingface/transformers` and a one-time ONNX artifact download.
 
+#### Granite opt-in dogfood runbook ([#167](https://github.com/beettlle/pi-smart-router/issues/167))
+
+Operator enablement for the Granite 97M long-context encoder on dogfood installs. **MiniLM remains the shipped default** — this runbook never flips `encoder` defaults; promotion is decided only through [#96](https://github.com/beettlle/pi-smart-router/issues/96) with dogfood evidence. The code path already shipped in [#80](https://github.com/beettlle/pi-smart-router/issues/80); do not reimplement it.
+
+**1. Fetch the model.** No manual download step is required — the ONNX artifact fetches on demand:
+
+| Item | Value |
+|------|-------|
+| Runtime HF ONNX id | `onnx-community/granite-embedding-97m-multilingual-r2-ONNX` (`GRANITE_ONNX_MODEL` in `src/domain/matching/embedding-provider.ts`) |
+| Upstream weights | `ibm-granite/granite-embedding-97m-multilingual-r2` (384-dim, long context) |
+| Cache dir | `hydra.artifact_cache_path` (default `.pi-smart-router/models/` — gitignored) |
+| Fetch trigger | First HyDRA embed with `encoder: granite`, **or** `npm run benchmark:encoder` (downloads on demand) |
+| Offline | One-time Hugging Face download; fully offline after cache warm (see Supply-chain below for pin modes) |
+
+Expected cache layout after fetch:
+
+```text
+.pi-smart-router/models/onnx-community/granite-embedding-97m-multilingual-r2-ONNX/
+```
+
+**2. Switch config (operator).** Edit `config/operator-config.json` on the dogfood host:
+
+```json
+{
+  "hydra": {
+    "artifact_cache_path": ".pi-smart-router/models/",
+    "encoder": "granite",
+    "hydra_heads": "learned_projection"
+  }
+}
+```
+
+Keep `hydra_heads: learned_projection` — Granite stays 384-dim compatible with the SP-115 projection (`config/hydra-projection-weights.json`). Do **not** enable `modernbert_k4` (still blocked on trained `config/modernbert-k4-heads.json`; tracked by #96).
+
+**3. Verify resident.** After a routed request, run `/smart-router plan` or `/smart-router doctor` to confirm the Granite encoder model and cache path are loaded. Smoke-check that routing still selects tiers and that there is **no silent MiniLM fallback** — if the encoder errors or exceeds budget, the neural stage fails open by design (#119 / #148) and telemetry/`reason_code` surfaces it; a crash or silent downgrade is a bug, not expected behavior.
+
+**4. Measure and archive.** Run the encoder benchmark and archive output for the issue trail:
+
+```bash
+mkdir -p .pi-smart-router/measurements/
+npm run benchmark:encoder | tee .pi-smart-router/measurements/benchmark-encoder-$(date +%Y%m%d).txt
+# optional: --fixtures path --cache .pi-smart-router/models/
+```
+
+Expectation: Granite p50/p95 within the ≤120 ms HyDRA embedding-stage budget (SP-204 go/no-go measured ~17 ms p50 for both encoders; [artifact](spine-tasks/_authoring/release-v0.11.0/encoder-gonogo-artifact.md)). `.pi-smart-router/measurements/` is gitignored — post a short summary comment on #167 with the numbers.
+
+**5. Post-switch follow-ups (feed #96 — evidence only, no default flip).** Track after Granite is live on the dogfood host:
+
+- **Latency regression watch** — HyDRA stage stays within ~80–120 ms on dogfood hardware vs SP-204 baselines; re-run `npm run benchmark:encoder` after fleet/catalog changes.
+- **Centroid / cluster space** — centroids were bootstrapped with MiniLM (`npm run routing:bootstrap-centroids`). Same 384-dim space, but embedding geometry differs; dry-run compare cluster match quality under Granite and document whether `config/routing-centroids.json` / the calibration bundle need refresh **before** any default flip.
+- **Projection / calibration** — SP-115 weights were trained on MiniLM embeddings. Run `npm run routing:calibration-dry-run` under Granite; if holdout ECE worsens, retrain the projection **or** keep MiniLM as the shipped default.
+- **Truncation / quality signal** — confirm long agent turns no longer hit MiniLM's 512-token wall (the primary motivation); note any residual encoder truncation surfaced in explain/telemetry.
+- **Degraded / fail-open path** — with Granite ONNX missing or slow, confirm neural failover still fails open (#119 / #148) rather than crashing the host agent.
+- **Feed #96** — after dogfood evidence, comment on #96 with *promote Granite as default?* yes/no + evidence. Only then open a separate issue/PR to flip defaults — never from dogfood alone (see `docs/qa/shadow-dogfood-protocol.md`).
+- **Do not conflate with ModernBERT** — K=4 stays blocked on trained `config/modernbert-k4-heads.json` (SP-218/219); out of scope here.
+
 #### Supply-chain: artifact pins, offline cache, and audit posture
 
 **Digest pinning (SP-259, [#147](https://github.com/beettlle/pi-smart-router/issues/147)).** The embedder verifies cached ONNX artifacts against SHA-256 pins before they are used. Pins live in [`config/onnx-artifact-pins.json`](config/onnx-artifact-pins.json) (`pins[modelId][cacheRelativePath] = sha256`; digests are the HuggingFace LFS oids for the default quantized artifacts). Pin mode is controlled by `SMART_ROUTER_ONNX_PIN_MODE`:

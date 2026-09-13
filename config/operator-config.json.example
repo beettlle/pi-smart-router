@@ -21,6 +21,7 @@
   "hydra": {
     "artifact_cache_path": ".pi-smart-router/models/",
     "encoder": "minilm",
+    "_encoder_documentation": "Encoder switch — minilm (shipped default) | granite (opt-in trial, #80/#167). Granite: ibm-granite/granite-embedding-97m-multilingual-r2 ONNX, 384-dim long-context drop-in; fetches on first use into artifact_cache_path. See README 'HyDRA model cache → Granite opt-in dogfood runbook (#167)' for fetch/switch/measure/follow-ups. Do NOT flip the shipped default here — promotion is decided only via #96.",
     "encoder_cascade": {
       "enabled": false,
       "long_context_encoder": "granite",
