@@ -1,0 +1,29 @@
+config/operator-config.json.example
+  s_b65ed0ee5d2c65::t_5a0d992703feb8 24
+spine-tasks/SP-295-granite-optin-dogfood-runbook/.reviews/0-20260913T011358.md
+  s_b65ed0ee5d2c65::t_6ea65940da4a5f 1-8
+spine-tasks/SP-295-granite-optin-dogfood-runbook/.reviews/final-20260913T011747.md
+  s_b65ed0ee5d2c65::t_6ea65940da4a5f 1-8
+README.md
+  s_b65ed0ee5d2c65::t_6ea65940da4a5f 1003-1058
+spine-tasks/SP-295-granite-optin-dogfood-runbook/STATUS.md
+  s_b65ed0ee5d2c65::t_6ea65940da4a5f 3-5,14,16-17,22,24-25,30,32-40
+spine-tasks/_authoring/release-v1.2.0/granite-dogfood-runbook-note.md
+  s_b65ed0ee5d2c65::t_6ea65940da4a5f 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9811a1165be7918b524befdac6bfba55fc5d90d9",
+  "prompts": {},
+  "sessions": {
+    "s_b65ed0ee5d2c65": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-dd023773-bd60-4b8a-8afb-cdb040e4d43b",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
