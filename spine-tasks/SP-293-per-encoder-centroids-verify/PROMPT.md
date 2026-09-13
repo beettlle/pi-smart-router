@@ -43,7 +43,7 @@ Extend centroid bootstrap with `--encoder granite` (namespaced artifact). Granit
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run typecheck && npx vitest run tests/unit/train-routing-calibration.test.ts -t "verifyRoutingCalibration|OATS|rejects"` |
+| testCommand | `npm run typecheck && npx vitest run tests/unit/train-routing-calibration.test.ts` |
 | fileScopeMustChange | `scripts/bootstrap-routing-centroids.ts`, `scripts/verify-routing-calibration.ts` |
 | fileScopeMustNotChange | `.github/` |
 | completionCriteria | `--encoder granite` emits flavored artifact; verify rejects cross-encoder mixes; Granite projection honest-untrained |
