@@ -1,7 +1,7 @@
 # SP-290: bump GHA to Node-24 runtimes — Status
 
-**Current Step:** 2
-**Status:** 🔵 In Progress
+**Current Step:** Done
+**Status:** ✅ Complete
 **Last Updated:** 2026-09-13
 **Review Level:** 1
 **Review Counter:** 0
@@ -34,9 +34,11 @@
 ---
 
 ### Step 2: Testing & Verification
-**Status:** 🔵 In Progress
+**Status:** ✅ Complete
 
-- [ ] Run npm run release:check
-- [ ] Record versions in STATUS
+- [x] Run npm run release:check
+  - `npm run release:check` exit 0 — release-gates: PASS; `npm test` exit 0 (142 files, 2282 tests passed)
+- [x] Record versions in STATUS
+  - Chosen Node-24-native majors: `actions/checkout@v7`, `actions/setup-node@v7`, `actions/github-script@v9`, `actions/upload-artifact@v7`
 
 ---
