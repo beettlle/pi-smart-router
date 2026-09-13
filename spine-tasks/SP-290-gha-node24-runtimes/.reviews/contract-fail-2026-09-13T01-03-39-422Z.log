@@ -1,0 +1,856 @@
+Contract testCommand failure log
+Command: npm run release:check
+Exit code: 1
+Attempt: 1 of 2
+Timestamp: 2026-09-13T01:03:39.423Z
+Buffer overflow: no
+---
+
+> pi-smart-router@1.1.0 release:check
+> bash -c 'export VITEST_MAX_WORKERS="${VITEST_MAX_WORKERS:-2}"; npm run verify:script-artifacts && npm run release:refresh-benchmarks && npm run verify:ci && npm run release:consumer-pack && npm run release:functional-smoke'
+
+
+> pi-smart-router@1.1.0 verify:script-artifacts
+> bash scripts/assert-no-script-artifacts.sh
+
+scripts/: no tracked compiled artifacts
+
+> pi-smart-router@1.1.0 release:refresh-benchmarks
+> tsx scripts/release-refresh-benchmark-profiles.ts
+
+Release benchmark refresh: attempting live ingest (catalog_freeze_date=2026-09-13)…
+
+> pi-smart-router@1.1.0 routing:ingest-benchmarks
+> tsx scripts/ingest-benchmark-profiles.ts --live --catalog-freeze-date 2026-09-13 --scrape-date 2026-09-13
+
+Live ingest succeeded.
+
+> pi-smart-router@1.1.0 routing:verify-benchmark-profiles
+> vitest run tests/unit/ingest-benchmark-profiles.test.ts -t "checked-in artifact matches fixture ingest"
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1
+
+ ✓ tests/unit/ingest-benchmark-profiles.test.ts (25 tests | 24 skipped) 14ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 24 skipped (25)
+   Start at  17:53:40
+   Duration  279ms (transform 70ms, setup 0ms, collect 110ms, tests 14ms, environment 0ms, prepare 38ms)
+
+Release benchmark refresh clean (mode=live).
+
+> pi-smart-router@1.1.0 verify:ci
+> npm run build && npm run typecheck && npm run lint && npm run coverage:check
+
+
+> pi-smart-router@1.1.0 build
+> tsc --project tsconfig.build.json
+
+
+> pi-smart-router@1.1.0 typecheck
+> tsc --noEmit
+
+
+> pi-smart-router@1.1.0 lint
+> eslint . --ext .ts && node --input-type=module -e "import { readFileSync } from 'node:fs'; import { parse } from 'yaml'; const doc = parse(readFileSync('config/models.yaml.example', 'utf8')); if (!Array.isArray(doc.models) || doc.models.length < 3) throw new Error('models.yaml.example must list at least one model per tier'); const tiers = new Set(doc.models.map((m) => m.tier)); for (const tier of ['zero-tier', 'economical-cloud', 'frontier-cloud']) { if (!tiers.has(tier)) throw new Error('missing tier: ' + tier); } console.log('models.yaml.example: valid');"
+
+models.yaml.example: valid
+
+> pi-smart-router@1.1.0 coverage:check
+> vitest run --coverage
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1
+      Coverage enabled with v8
+
+ ✓ tests/unit/pi-model-scope.test.ts (6 tests) 543ms
+   ✓ pi-model-scope > loads resolveModelScope without repo dev node_modules on cwd  466ms
+ ✓ tests/unit/local-zero-tier.test.ts (32 tests) 552ms
+   ✓ pingLocalServices (T045, FR-012, FR-013) > timeout behavior > aborts and returns unavailable when ping exceeds timeout  503ms
+ ✓ tests/unit/sqlite-store.test.ts (49 tests) 333ms
+ ✓ tests/unit/train-routing-calibration.test.ts (29 tests) 964ms
+   ✓ train routing calibration (SP-117) > excludes legacy-prefix embedding rows from projection training  925ms
+ ✓ tests/unit/speculative-prewarm.test.ts (19 tests) 244ms
+ ✓ tests/integration/session-pinning.test.ts (31 tests) 262ms
+stdout | tests/unit/write-queue-lag.test.ts > write-queue event-loop lag evidence (SP-236 / #142) > queued hot-path writes reduce event-loop blocking vs direct sync writes
+[SP-236 benchmark] 5000 hot-path telemetry writes, 50 bursts of 100
+  before (direct sync INSERT per write): wall=103.6ms p95 route=3.30ms lag p95=3.08ms
+  after  (queue enqueue per write):      wall=10.5ms p95 route=0.23ms lag p95=1.43ms
+  reduction: wall=9.9x p95 route=14.1x
+
+ ✓ tests/unit/write-queue-lag.test.ts (1 test) 209ms
+ ✓ tests/unit/extension-setup-bootstrap.test.ts (1 test) 184ms
+ ✓ tests/contract/routing-schemas.test.ts (38 tests) 176ms
+ ✓ tests/integration/pi-extension.test.ts (42 tests) 141ms
+ ✓ tests/unit/smart-router-cli.test.ts (26 tests) 93ms
+ ✓ tests/unit/resilience.test.ts (26 tests) 87ms
+ ✓ tests/unit/circuit-breaker.test.ts (22 tests) 69ms
+ ✓ tests/integration/planning-delegate.test.ts (9 tests) 78ms
+ ✓ tests/unit/embedding-provider.test.ts (28 tests) 57ms
+ ✓ tests/unit/community-bench-track-bc.test.ts (13 tests) 59ms
+ ✓ tests/unit/isotonic-calibrator.test.ts (19 tests) 62ms
+ ✓ tests/unit/smart-router-extension.test.ts (98 tests) 75ms
+ ✓ tests/unit/triage-engine.test.ts (76 tests) 55ms
+ ✓ tests/unit/analyze-twinrouterbench-overrouting.test.ts (4 tests) 42ms
+ ✓ tests/unit/smart-router-pricing.test.ts (40 tests) 53ms
+ ✓ tests/integration/full-pipeline.test.ts (22 tests) 51ms
+ ✓ tests/unit/verify-routing-calibration.test.ts (10 tests) 56ms
+ ✓ tests/unit/sqlite-store-fallback.test.ts (12 tests) 50ms
+ ✓ tests/unit/pi-model-mapper.test.ts (42 tests) 56ms
+ ✓ tests/unit/community-bench.test.ts (11 tests) 57ms
+ ✓ tests/unit/session-pinner.test.ts (74 tests) 64ms
+ ✓ tests/integration/routing-latency.test.ts (7 tests) 61ms
+ ✓ tests/unit/router-explain.test.ts (27 tests) 59ms
+stdout | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > runs the checked-in fixture campaign: valid, floors met, schema-valid packs
+Campaign VALID: 22 labeled (11 fit / 11 holdout), 2 disagreements excluded, negative fraction 0.2273, distinct failure scores 5
+
+stdout | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+Campaign VALID: 22 labeled (11 fit / 11 holdout + 1 warm-start fit-only), 2 disagreements excluded, negative fraction 0.2273, distinct failure scores 5
+
+ ✓ tests/unit/adversarial-label-campaign.test.ts (30 tests) 57ms
+ ✓ tests/unit/hydra-matcher.test.ts (66 tests) 55ms
+ ✓ tests/unit/cluster-matcher.test.ts (18 tests) 56ms
+ ✓ tests/unit/memory-store.test.ts (5 tests) 55ms
+ ✓ tests/integration/pipeline-mvp.test.ts (12 tests) 60ms
+ ✓ tests/contract/explain-endpoint.test.ts (20 tests) 62ms
+ ✓ tests/unit/degraded-route-sandwich.test.ts (32 tests) 64ms
+ ✓ tests/unit/router-pipeline-concurrent-route.test.ts (2 tests) 41ms
+ ✓ tests/unit/router-pipeline-session-pin.test.ts (19 tests) 56ms
+ ✓ tests/unit/routing-telemetry.test.ts (51 tests) 67ms
+ ✓ tests/unit/safe-default.test.ts (20 tests) 56ms
+ ✓ tests/integration/cost-baseline.test.ts (10 tests) 54ms
+ ✓ tests/unit/ingest-twinrouterbench-weak-labels.test.ts (6 tests) 65ms
+ ✓ tests/integration/explain-parity.test.ts (8 tests) 60ms
+ ✓ tests/unit/gateway-dispatch.test.ts (31 tests) 79ms
+ ✓ tests/unit/router-pipeline-low-intensity.test.ts (8 tests) 64ms
+ ✓ tests/unit/modernbert-heads.test.ts (28 tests) 82ms
+ ✓ tests/unit/dataset-limits.test.ts (3 tests) 45ms
+ ✓ tests/unit/models-loader.test.ts (8 tests) 70ms
+ ✓ tests/unit/create-router.test.ts (7 tests) 60ms
+ ✓ tests/unit/k4-head-mode-ab.test.ts (6 tests) 74ms
+ ✓ tests/unit/leaderboard-adapters/swebench-verified.test.ts (11 tests) 51ms
+ ✓ tests/unit/provider-error.test.ts (11 tests) 49ms
+ ✓ tests/unit/pi-cli-adversarial-clients.test.ts (13 tests) 51ms
+ ✓ tests/eval/assert-release-gates.test.ts (14 tests) 48ms
+ ✓ tests/unit/force-model-id-remap.test.ts (14 tests) 47ms
+ ✓ tests/unit/router-pipeline-context-fit.test.ts (7 tests) 48ms
+stdout | tests/unit/ingest-twinrouterbench-corpus.test.ts > ingest-twinrouterbench-corpus (SP-186) > CLI writes adapter-valid JSON and parses --limit
+ingest-twinrouterbench-corpus: wrote 1 record(s) → /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/trb-ingest-QvdoAd/out.json
+
+ ✓ tests/unit/workload-heat.test.ts (32 tests) 48ms
+ ✓ tests/unit/ingest-twinrouterbench-corpus.test.ts (16 tests) 45ms
+ ✓ tests/unit/leaderboard-adapters/terminal-bench.test.ts (9 tests) 51ms
+ ✓ tests/unit/routing-clusters-loader.test.ts (11 tests) 50ms
+ ✓ tests/unit/ingest-benchmark-profiles.test.ts (25 tests) 120ms
+ ✓ tests/unit/router-pipeline-error-telemetry.test.ts (3 tests) 42ms
+ ✓ tests/unit/leaderboard-adapters/livecodebench.test.ts (6 tests) 45ms
+ ✓ tests/unit/benchmark-leaderboard-fetch.test.ts (5 tests) 29ms
+ ✓ tests/unit/fleet-factory.test.ts (5 tests) 42ms
+ ✓ tests/unit/pipeline-stage.test.ts (5 tests) 40ms
+ ✓ tests/unit/router-pipeline-feature-sidecar.test.ts (4 tests) 45ms
+ ✓ tests/unit/router-pipeline-local-zero-throughput.test.ts (3 tests) 40ms
+ ✓ tests/unit/router-pipeline-p-success.test.ts (8 tests) 39ms
+ ✓ tests/unit/router-pipeline-cost-telemetry.test.ts (4 tests) 37ms
+ ✓ tests/unit/router-pipeline-gemini-deprioritization.test.ts (4 tests) 39ms
+ ✓ tests/unit/router-pipeline-safe-default.test.ts (4 tests) 37ms
+ ✓ tests/unit/local-zero-prefer-trivial.test.ts (15 tests) 37ms
+stdout | tests/unit/ingest-llmrouterbench-subset.test.ts > ingest-llmrouterbench-subset (SP-192) > CLI writes adapter-valid JSON and parses flags
+ingest-llmrouterbench-subset: wrote 1 record(s) → /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/lrb-ingest-e4SHVz/out.json
+
+ ✓ tests/unit/ingest-llmrouterbench-subset.test.ts (14 tests) 41ms
+ ✓ tests/unit/router-pipeline-stage-order.test.ts (4 tests) 39ms
+ ✓ tests/unit/embedder-dispose-lifecycle.test.ts (9 tests) 97ms
+ ✓ tests/unit/p-success-classifier.test.ts (28 tests) 56ms
+ ✓ tests/unit/router-pipeline-hydra-match.test.ts (4 tests) 37ms
+ ✓ tests/unit/router-pipeline-expected-cost.test.ts (4 tests) 38ms
+ ✓ tests/unit/turn-envelope.test.ts (52 tests) 62ms
+ ✓ tests/unit/schemas.test.ts (22 tests) 33ms
+ ✓ tests/unit/litellm-fetch.test.ts (16 tests) 124ms
+ ✓ tests/unit/calibration-aggregate.test.ts (17 tests) 86ms
+ ✓ tests/unit/pi-model-mapper-coverage.test.ts (6 tests) 90ms
+ ✓ tests/eval/harness-tracks.test.ts (9 tests) 125ms
+ ✓ tests/unit/dataset-recorder.test.ts (15 tests) 160ms
+ ✓ tests/eval/counterfactual-replay.test.ts (10 tests) 59ms
+ ✓ tests/unit/adjudicate-disagreements.test.ts (11 tests) 68ms
+ ✓ tests/unit/eval-harness.test.ts (4 tests) 78ms
+ ✓ tests/unit/expected-cost.test.ts (29 tests) 153ms
+ ✓ tests/unit/calibration-dry-run-include-excluded.test.ts (3 tests) 177ms
+ ✓ tests/eval/twinrouterbench-adapter.test.ts (5 tests) 67ms
+ ✓ tests/unit/ingest-fc-rewardbench-labels.test.ts (6 tests) 325ms
+ ✓ tests/unit/placement-plan.test.ts (25 tests) 315ms
+ ✓ tests/unit/write-queue.test.ts (15 tests) 319ms
+ ✓ tests/unit/train-p-success-weights.test.ts (6 tests) 633ms
+   ✓ train-p-success-weights (SP-175) > trains ≥30 samples from the synthetic fixture without prompt text fields  467ms
+ ✓ tests/unit/ingest-swe-gym-labels.test.ts (5 tests) 361ms
+ ✓ tests/unit/llmrouterbench-regret-report.test.ts (3 tests) 298ms
+ ✓ tests/unit/benchmark-encoder-latency.test.ts (6 tests) 308ms
+ ✓ tests/unit/loop-escalation.test.ts (44 tests) 275ms
+ ✓ tests/unit/human-label-review.test.ts (7 tests) 369ms
+ ✓ tests/unit/defaults.test.ts (15 tests) 1896ms
+   ✓ DEFAULT_PLANNING_DELEGATE_CONFIG > matches #71 compressed-context delegate defaults  359ms
+   ✓ AdaptiveReasoningConfigSchema > accepts valid floor ≤ ceiling configs  534ms
+   ✓ resolveSaarConfigFromEnv > ignores invalid env values  423ms
+ ✓ tests/unit/triage-thresholds.test.ts (5 tests) 197ms
+ ✓ tests/unit/operator-config.test.ts (3 tests) 962ms
+   ✓ operator-config.json.example > parses successfully through OperatorConfigSchema  816ms
+ ✓ tests/unit/economical-pin-break-agentic.test.ts (14 tests) 214ms
+ ✓ tests/unit/label-pack-schema.test.ts (4 tests) 498ms
+   ✓ label-pack schema (SP-189) > accepts a clean privacy-safe pack row  349ms
+ ✓ tests/unit/saar-session-state.test.ts (8 tests) 270ms
+ ✓ tests/unit/session-stats.test.ts (15 tests) 286ms
+ ✓ tests/unit/delegate-stream-composed-provider.test.ts (5 tests) 219ms
+ ✓ tests/unit/peak-pricing.test.ts (22 tests) 243ms
+ ✓ tests/unit/tier-features.test.ts (10 tests) 233ms
+ ✓ tests/unit/tool-history-guard.test.ts (39 tests) 136ms
+ ✓ tests/unit/quota-window-feed.test.ts (25 tests) 296ms
+ ✓ tests/unit/adaptive-reasoning.test.ts (46 tests) 1905ms
+   ✓ classifyReasoningTurn > classifies frontier tier and loop_escalation as escalation  427ms
+   ✓ applyConcisenessHint > appends the suffix to an existing system prompt  516ms
+ ✓ tests/unit/leaderboard-adapters/bfcl.test.ts (6 tests) 476ms
+ ✓ tests/unit/pre-delegation-abort.test.ts (2 tests) 362ms
+ ✓ tests/unit/price-broker.test.ts (29 tests) 494ms
+ ✓ tests/unit/telemetry-export.test.ts (8 tests) 351ms
+ ✓ tests/unit/ast-tool-validation.test.ts (11 tests) 279ms
+ ✓ tests/unit/outcome-recorder.test.ts (5 tests) 512ms
+   ✓ outcome-recorder > buildOutcomeRecord > builds privacy-safe outcome rows without prompt text  406ms
+ ✓ tests/unit/throughput-meter.test.ts (20 tests) 873ms
+ ✓ tests/unit/virtual-cost-v2.test.ts (11 tests) 335ms
+ ✓ tests/unit/memory-store-telemetry.test.ts (2 tests) 154ms
+ ✓ tests/unit/multi-objective.test.ts (19 tests) 341ms
+ ✓ tests/unit/router-pipeline-turn-envelope.test.ts (2 tests) 241ms
+ ✓ tests/unit/delegation-context.test.ts (14 tests) 150ms
+ ✓ tests/unit/context-fit.test.ts (9 tests) 185ms
+ ✓ tests/unit/pi-router-middleware.test.ts (10 tests) 350ms
+ ✓ tests/unit/refactor-guardrails.test.ts (6 tests) 233ms
+ ✓ tests/unit/hydra-input.test.ts (16 tests) 180ms
+ ✓ tests/unit/pricing-monitor.test.ts (10 tests) 48ms
+ ✓ tests/unit/hardware-probe.test.ts (27 tests) 421ms
+ ✓ tests/unit/index-exports.test.ts (3 tests) 244ms
+ ✓ tests/unit/router-pipeline-stage-helpers.test.ts (6 tests) 265ms
+ ✓ tests/unit/auto-model-limits.test.ts (5 tests) 390ms
+ ✓ tests/unit/cache-breakeven.test.ts (13 tests) 191ms
+ ✓ tests/unit/execution-ledger.test.ts (5 tests) 286ms
+ ✓ tests/unit/gemini-provider.test.ts (6 tests) 223ms
+ ✓ tests/unit/delegation-headroom.test.ts (5 tests) 261ms
+ ✓ tests/unit/release-refresh-benchmark-profiles.test.ts (4 tests) 147ms
+ ✓ tests/unit/session-eviction.test.ts (4 tests) 234ms
+ ✓ tests/unit/package.test.ts (1 test) 31ms
+
+ Test Files  142 passed (142)
+      Tests  2282 passed (2282)
+   Start at  17:53:49
+   Duration  496.20s (transform 14.54s, setup 0ms, collect 348.14s, tests 27.55s, environment 373ms, prepare 147.39s)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   91.53 |    87.92 |   96.41 |   91.53 |                   
+ ...s/smart-router |   82.09 |    79.37 |   88.95 |   82.09 |                   
+  ...formatters.ts |   88.43 |    76.42 |      95 |   88.43 | ...43-346,356-363 
+  commands.ts      |   56.89 |    63.07 |     100 |   56.89 | ...08-310,326-338 
+  ...set-export.ts |     100 |    95.45 |     100 |     100 | 138               
+  ...ate-stream.ts |   91.15 |    80.88 |     100 |   91.15 | ...46,348,390-402 
+  ...on-runtime.ts |   70.96 |    81.42 |   88.88 |   70.96 | ...67-384,391-445 
+  ...sion-setup.ts |   78.34 |       90 |      50 |   78.34 | ...66-174,214-215 
+  ...-bootstrap.ts |   99.14 |    84.61 |     100 |   99.14 | 162-163           
+  index.ts         |      75 |      100 |       0 |      75 | 129-133           
+  ...odel-scope.ts |   84.42 |    76.66 |     100 |   84.42 | ...29,136-137,140 
+  ...g-delegate.ts |   70.29 |    70.17 |      75 |   70.29 | ...88,338,363-375 
+  ...-lifecycle.ts |     100 |       60 |     100 |     100 | 18-23             
+  ...d-delegate.ts |   86.01 |    76.08 |   85.71 |   86.01 | ...80-682,791-799 
+  ...ng-context.ts |   97.72 |    97.43 |     100 |   97.72 | 54-55,130-131     
+  ...g-outcomes.ts |   94.28 |    84.61 |     100 |   94.28 | 22-23             
+  ...-lifecycle.ts |   79.41 |    78.94 |   76.92 |   79.41 | ...59-160,172-173 
+  ...delegation.ts |     100 |    88.88 |     100 |     100 | 38-39             
+  types.ts         |       0 |        0 |       0 |       0 |                   
+  utils.ts         |   57.74 |    69.56 |   71.42 |   57.74 | ...72,75-76,78-79 
+ src               |     100 |    85.71 |     100 |     100 |                   
+  index.ts         |     100 |    85.71 |     100 |     100 | 65                
+ src/api           |     100 |      100 |     100 |     100 |                   
+  ...n-eviction.ts |     100 |      100 |     100 |     100 |                   
+ src/api/explain   |     100 |       96 |     100 |     100 |                   
+  ...er-explain.ts |     100 |       96 |     100 |     100 | 141               
+ ...api/middleware |     100 |      100 |     100 |     100 |                   
+  ...middleware.ts |     100 |      100 |     100 |     100 |                   
+ src/cli           |   93.73 |    84.61 |     100 |   93.73 |                   
+  ...router-cli.ts |   93.73 |    84.61 |     100 |   93.73 | ...82-383,391-392 
+ src/config        |   97.06 |    87.06 |     100 |   97.06 |                   
+  defaults.ts      |     100 |      100 |     100 |     100 |                   
+  models-loader.ts |     100 |    76.92 |     100 |     100 | 33,39,47          
+  ...del-mapper.ts |   95.94 |    92.64 |     100 |   95.94 | ...19,129-130,411 
+  ...ers-loader.ts |   97.82 |    79.41 |     100 |   97.82 | 78-79             
+ src/domain        |     100 |      100 |     100 |     100 |                   
+  ...guardrails.ts |     100 |      100 |     100 |     100 |                   
+ ...ain/delegation |   91.39 |    89.47 |     100 |   91.39 |                   
+  ...-reasoning.ts |   93.77 |    96.03 |     100 |   93.77 | ...02-307,325-330 
+  ...on-context.ts |   90.66 |    84.74 |     100 |   90.66 | ...05-106,139-140 
+  ...ion-ledger.ts |     100 |      100 |     100 |     100 |                   
+  ...t-headroom.ts |   84.61 |       72 |     100 |   84.61 | ...,72,83,105-107 
+ ...omain/matching |   89.15 |    83.37 |   99.06 |   89.15 |                   
+  ...er-matcher.ts |      76 |    66.01 |   95.65 |      76 | ...80,538,559-582 
+  ...g-provider.ts |   94.57 |    93.24 |     100 |   94.57 | ...51-254,358-360 
+  hydra-input.ts   |     100 |      100 |     100 |     100 |                   
+  hydra-matcher.ts |   96.47 |    86.04 |     100 |   96.47 | ...56,674,700,703 
+  ...ason-codes.ts |     100 |      100 |     100 |     100 |                   
+  ...bert-heads.ts |   90.43 |    81.13 |     100 |   90.43 | ...37-240,268-271 
+ ...domain/pinning |   93.35 |     91.7 |     100 |   93.35 |                   
+  ...-breakeven.ts |   95.65 |     92.3 |     100 |   95.65 | ...07-108,123-124 
+  ...-economics.ts |    87.5 |    93.75 |     100 |    87.5 | 114-120           
+  ...flop-guard.ts |     100 |       95 |     100 |     100 | 63                
+  heat-affinity.ts |   79.43 |     86.2 |     100 |   79.43 | ...45-151,159-166 
+  ...escalation.ts |   99.08 |    91.35 |     100 |   99.08 | 125-126           
+  ...sion-state.ts |   96.61 |    94.73 |     100 |   96.61 | 70-71             
+  ...ion-pinner.ts |   91.97 |     90.9 |     100 |   91.97 | ...54-955,967-968 
+  ...ute-policy.ts |     100 |      100 |     100 |     100 |                   
+ ...omain/pipeline |   92.34 |    88.49 |     100 |   92.34 |                   
+  ...-fit-stage.ts |     100 |      100 |     100 |     100 |                   
+  ...back-stage.ts |     100 |      100 |     100 |     100 |                   
+  ...robe-stage.ts |     100 |      100 |     100 |     100 |                   
+  ...atch-stage.ts |   92.94 |    81.66 |     100 |   92.94 | ...91-192,238-239 
+  ...zero-stage.ts |   96.85 |    90.56 |     100 |   96.85 | ...11,126,174-175 
+  ...sity-stage.ts |   96.03 |    87.17 |     100 |   96.03 | ...42-243,279-280 
+  ...line-stage.ts |     100 |      100 |     100 |     100 |                   
+  ...r-pipeline.ts |   92.04 |    91.26 |     100 |   92.04 | ...01-602,610-611 
+  ...ault-stage.ts |   98.21 |    93.33 |     100 |   98.21 | 32                
+  safe-default.ts  |     100 |      100 |     100 |     100 |                   
+  ...-pin-stage.ts |   70.85 |       75 |     100 |   70.85 | ...02,225,249-257 
+  stage-helpers.ts |   95.27 |    87.71 |     100 |   95.27 | ...84-185,213-214 
+  triage-stage.ts  |   97.61 |    96.66 |     100 |   97.61 | 28-29             
+  ...lope-stage.ts |   93.01 |    87.35 |     100 |   93.01 | ...12-113,206-207 
+ src/domain/ports  |   95.21 |    92.54 |     100 |   95.21 |                   
+  ...probe-port.ts |     100 |      100 |     100 |     100 |                   
+  ...ntime-port.ts |   93.02 |    94.73 |     100 |   93.02 | 159-164           
+  ...itter-port.ts |   95.25 |    91.11 |     100 |   95.25 | ...00,399-400,404 
+ ...domain/pricing |   95.41 |    93.75 |     100 |   95.41 |                   
+  peak-pricing.ts  |     100 |      100 |     100 |     100 |                   
+  ...resolution.ts |     100 |      100 |     100 |     100 |                   
+  ...indow-feed.ts |     100 |    98.21 |     100 |     100 | 214               
+  ...al-cost-v2.ts |   87.87 |    78.26 |     100 |   87.87 | ...80-181,255-256 
+ ...domain/routing |   96.06 |    90.96 |   97.33 |   96.06 |                   
+  context-fit.ts   |   98.59 |     92.3 |     100 |   98.59 | 175-176           
+  ...e-sandwich.ts |   98.87 |    94.93 |     100 |   98.87 | 297,348-349       
+  expected-cost.ts |   98.19 |    93.06 |     100 |   98.19 | ...17,520,526,661 
+  ...calibrator.ts |   91.06 |    85.71 |    92.3 |   91.06 | ...05-106,182-183 
+  ...classifier.ts |   94.98 |    92.81 |    92.3 |   94.98 | ...08-710,720-724 
+  ...ve-prewarm.ts |   97.18 |     90.9 |     100 |   97.18 | 232-233,238-239   
+  tier-features.ts |   98.91 |    95.08 |     100 |   98.91 | 271-272           
+  ...tory-guard.ts |   93.07 |    85.71 |     100 |   93.07 | ...74-275,314-315 
+  workload-heat.ts |   94.06 |    86.02 |     100 |   94.06 | ...27-428,440-441 
+ ...domain/scoring |     100 |    96.87 |     100 |     100 |                   
+  ...-objective.ts |     100 |    96.87 |     100 |     100 | 58                
+ src/domain/triage |   94.34 |    88.46 |   93.93 |   94.34 |                   
+  entropy-check.ts |   94.16 |       78 |     100 |   94.16 | 208-215           
+  triage-engine.ts |   98.07 |    94.93 |     100 |   98.07 | 47-48,50-51,53-54 
+  ...thresholds.ts |    79.2 |    76.92 |   71.42 |    79.2 | ...19-123,138-139 
+  turn-envelope.ts |     100 |      100 |     100 |     100 |                   
+ src/domain/types  |    98.8 |    96.96 |     100 |    98.8 |                   
+  entities.ts      |       0 |        0 |       0 |       0 |                   
+  index.ts         |       0 |        0 |       0 |       0 |                   
+  schemas.ts       |    98.8 |    96.82 |     100 |    98.8 | 490-495,836-837   
+  store-port.ts    |       0 |        0 |       0 |       0 |                   
+ src/infra         |   88.05 |    63.93 |   94.44 |   88.05 |                   
+  ...i-provider.ts |   78.78 |    56.75 |     100 |   78.78 | ...40-141,149-152 
+  telemetry.ts     |   95.27 |       75 |   91.66 |   95.27 | 49-54             
+ ...ure/delegation |   80.83 |    68.57 |     100 |   80.83 |                   
+  ...ider-error.ts |   80.83 |    68.57 |     100 |   80.83 | ...37-239,247-248 
+ ...ucture/gateway |   97.15 |    95.95 |     100 |   97.15 |                   
+  ...it-breaker.ts |     100 |      100 |     100 |     100 |                   
+  ...y-dispatch.ts |   95.97 |    94.53 |     100 |   95.97 | ...85,423,445-446 
+ ...cture/hardware |   76.96 |    89.05 |   73.68 |   76.96 |                   
+  ...ware-probe.ts |   38.27 |    45.45 |   45.45 |   38.27 | ...17,219,229-234 
+  ...ement-plan.ts |   91.26 |    87.69 |    62.5 |   91.26 | ...22,250-254,357 
+  ...hput-meter.ts |    95.2 |    98.36 |   94.73 |    95.2 | 85-86,148-152     
+ ...tructure/local |     100 |       75 |     100 |     100 |                   
+  ...-zero-tier.ts |     100 |       75 |     100 |     100 | 52                
+ ...re/persistence |   96.48 |    94.11 |     100 |   96.48 |                   
+  memory-store.ts  |   98.87 |    96.42 |     100 |   98.87 | 107               
+  sqlite-store.ts  |   96.33 |    92.66 |     100 |   96.33 | ...1113,1120-1121 
+  write-queue.ts   |   95.32 |    96.96 |     100 |   95.32 | 158-162           
+ ...ucture/pricing |   97.55 |     87.5 |     100 |   97.55 |                   
+  litellm-fetch.ts |   95.97 |    84.81 |     100 |   95.97 | 206-207,228-232   
+  price-broker.ts  |     100 |     92.3 |     100 |     100 | 43-44             
+  ...ng-monitor.ts |     100 |      100 |     100 |     100 |                   
+ ...ture/telemetry |   95.32 |    89.66 |   97.64 |   95.32 |                   
+  ...set-limits.ts |     100 |      100 |     100 |     100 |                   
+  ...t-recorder.ts |     100 |    98.88 |     100 |     100 | 123               
+  ...ome-limits.ts |   66.66 |       50 |     100 |   66.66 | 23-29,40-41       
+  ...e-recorder.ts |     100 |    94.11 |     100 |     100 | 39                
+  ...-telemetry.ts |   94.97 |     80.9 |     100 |   94.97 | ...92-193,203-204 
+  ...-telemetry.ts |     100 |    95.45 |     100 |     100 | 88                
+  ...cision-log.ts |    95.1 |    90.16 |     100 |    95.1 | ...,95,98,251-255 
+  ...-telemetry.ts |   97.19 |    91.66 |   88.88 |   97.19 | ...99,302,368-369 
+  session-stats.ts |   91.83 |       86 |     100 |   91.83 | ...50-351,406-407 
+  ...try-limits.ts |   80.55 |      100 |   66.66 |   80.55 | 33-39             
+  ...lar-fields.ts |     100 |    95.12 |     100 |     100 | 131-132           
+  ...heat-store.ts |   88.23 |     87.5 |     100 |   88.23 | 47-52             
+-------------------|---------|----------|---------|---------|-------------------
+
+> pi-smart-router@1.1.0 release:consumer-pack
+> bash scripts/verify-consumer-pack.sh
+
+Consumer install in /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/tmp.ZGyMeWjquY/pkg from pi-smart-router-1.1.0.tgz
+
+ingest-benchmark-profiles: swebench_verified source=live (https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json)
+ingest-benchmark-profiles: terminal_bench source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/fixtures/benchmark-leaderboards/recorded/terminal_bench.json)
+ingest-benchmark-profiles: livecodebench source=live (https://raw.githubusercontent.com/LiveCodeBench/livecodebench.github.io/main/src/mocks/performances_generation.json)
+ingest-benchmark-profiles: bfcl source=live (https://raw.githubusercontent.com/ShishirPatil/gorilla/gh-pages/data_overall.csv)
+ingest-benchmark-profiles: recorded 4 snapshot(s) under /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/fixtures/benchmark-leaderboards/recorded
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+ingest-benchmark-profiles: wrote v1 (4 model(s), 40 alias(es)) to /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/config/benchmark-profiles.json [mode=live+record]
+  catalog_freeze_date=2026-09-13, scrape_date=2026-09-13
+  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows
+  fleet aliases: preserved from existing artifact when present; else DEFAULT_FLEET_BENCHMARK_ALIASES (SP-174)
+  AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > checked-in artifact matches fixture ingest
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+
+stderr | tests/unit/train-routing-calibration.test.ts > train routing calibration (SP-117) > falls back to defaults for invalid bundle version on disk
+Routing calibration bundle invalid; using baked-in defaults { error: 'Unsupported routing calibration bundle version: 99' }
+
+stderr | tests/integration/pi-extension.test.ts > @release > Pi extension integration (SP-043) > delegation output headroom (SP-108) > escalates before provider dispatch when input leaves no output headroom
+[smart-router] output headroom exceeded, escalating to larger model gemini-1.5-pro
+
+stderr | tests/integration/pi-extension.test.ts > @release > Pi extension integration (SP-043) > delegation output headroom (SP-108) > retries larger model after zero-output length stop from provider
+[smart-router] zero-output length stop, escalating to larger model gemini-1.5-pro
+
+stderr | tests/integration/planning-delegate.test.ts > @release > Planning delegate integration (SP-145, #71) > bounded delegate timeouts (SP-213, #120) > slow worker is cancelled on per-call timeout and falls back without hanging
+[smart-router] planning delegate sub-call timed out, falling back to direct frontier route planning_delegate_timeout
+
+stderr | tests/integration/planning-delegate.test.ts > @release > Planning delegate integration (SP-145, #71) > bounded delegate timeouts (SP-213, #120) > global timeout caps the stage when tighter than the per-call timeout
+[smart-router] planning delegate sub-call timed out, falling back to direct frontier route planning_delegate_timeout
+
+stderr | tests/integration/planning-delegate.test.ts > @release > Planning delegate integration (SP-145, #71) > bounded delegate timeouts (SP-213, #120) > fast worker within budget keeps delegate path and records worker success
+[smart-router] planning delegate sub-call completed {"primary_model_id":"claude-haiku","delegate_model_id":"claude-opus","observation_chars":29}
+
+stderr | tests/unit/isotonic-calibrator.test.ts > isotonic calibrator runtime lookup (SP-133) > reports within_budget from elapsed timing (mocked clock)
+Isotonic P(success) lookup exceeded latency budget { elapsed_ms: 6, budget_ms: 5, knot_count: 2 }
+
+stderr | tests/unit/smart-router-extension.test.ts > gemini tool history guard (SP-077, narrowed SP-129) > reroutes to a non-Google model when foreign-signed history excludes Gemini (SP-232)
+[smart-router] gemini tool history guard applied {"reason_code":"gemini_tool_history_excluded","session_id":"sp232-guard-reroute","excluded_providers":["google","gemini"]}
+
+stderr | tests/unit/smart-router-extension.test.ts > gemini empty-fleet fail-safe (SP-084) > routes unrepairable risk to cursor/auto without unknown delegation
+[smart-router] gemini tool history guard applied {"reason_code":"gemini_tool_history_excluded","session_id":"cursor-auto-sess","excluded_providers":["google","gemini"]}
+
+stderr | tests/unit/smart-router-extension.test.ts > delegation output headroom guard (SP-108) > escalates to larger-fit model without calling undersized provider
+[smart-router] output headroom exceeded, escalating to larger model gemini-pro
+
+stderr | tests/unit/smart-router-extension.test.ts > delegation output headroom guard (SP-108) > retries larger model after zero-output length stop from provider
+[smart-router] zero-output length stop, escalating to larger model gemini-pro
+
+stderr | tests/unit/smart-router-extension.test.ts > session teardown eviction (SP-248, #145) > fails open when the session id is unavailable at shutdown
+[smart-router] session teardown eviction failed (fail open) no active session
+
+stderr | tests/unit/sqlite-store-fallback.test.ts > createResilientStore > recreates the database when the file is corrupt
+SQLite store open failed; attempting corrupt-DB recovery SqliteError: file is not a database
+    at Database.pragma (/Users/cdelgado/Documents/github/pi-smart-router/node_modules/better-sqlite3/lib/methods/pragma.js:10:27)
+    at SqliteStore.initialize (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/src/infrastructure/persistence/sqlite-store.ts:884:13)
+    at new SqliteStore (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/src/infrastructure/persistence/sqlite-store.ts:296:10)
+    at createResilientStore (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/src/infrastructure/persistence/sqlite-store.ts:251:21)
+    at /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/unit/sqlite-store-fallback.test.ts:44:33
+    at file:///Users/cdelgado/Documents/github/pi-smart-router/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
+    at file:///Users/cdelgado/Documents/github/pi-smart-router/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
+    at file:///Users/cdelgado/Documents/github/pi-smart-router/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///Users/cdelgado/Documents/github/pi-smart-router/node_modules/@vitest/runner/dist/chunk-hooks.js:1863:10) {
+  code: 'SQLITE_NOTADB'
+}
+
+stderr | tests/unit/sqlite-store-fallback.test.ts > createResilientStore > falls back to MemoryStore when recreation also fails
+SQLite store open failed; attempting corrupt-DB recovery SqliteError: unable to open database file
+    at new Database (/Users/cdelgado/Documents/github/pi-smart-router/node_modules/better-sqlite3/lib/database.js:69:26)
+    at new SqliteStore (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/src/infrastructure/persistence/sqlite-store.ts:294:15)
+    at createResilientStore (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/src/infrastructure/persistence/sqlite-store.ts:251:21)
+    at /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/unit/sqlite-store-fallback.test.ts:60:33
+    at file:///Users/cdelgado/Documents/github/pi-smart-router/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
+    at file:///Users/cdelgado/Documents/github/pi-smart-router/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
+    at file:///Users/cdelgado/Documents/github/pi-smart-router/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///Users/cdelgado/Documents/github/pi-smart-router/node_modules/@vitest/runner/dist/chunk-hooks.js:1863:10)
+    at runTest (file:///Users/cdelgado/Documents/github/pi-smart-router/node_modules/@vitest/runner/dist/chunk-hooks.js:1574:12) {
+  code: 'SQLITE_CANTOPEN'
+}
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > generates with every generator (multi-model) and grades with all eligible graders
+[campaign] task 1/3 t1
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > generates with every generator (multi-model) and grades with all eligible graders
+[campaign] task 2/3 t2
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > generates with every generator (multi-model) and grades with all eligible graders
+[campaign] task 3/3 t3
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > excludes the generator from grading its own response
+[campaign] task 1/1 t1
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > fails loud when generator exclusion leaves fewer than 2 graders
+[campaign] task 1/1 t1
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > excludes graders that share providerModel with the generator (different ids)
+[campaign] task 1/1 t1
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > sends graders a blinded payload: exactly prompt_text + response_text
+[campaign] task 1/1 taskid-xyz
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > emits llm_judge rows on grader agreement; rows round-trip the pack schema
+[campaign] task 1/1 t1
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > excludes judge disagreements from labels — never coerces a majority vote
+[campaign] task 1/1 t1
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > maps agreed failing scores to negative labels with failure_score signals
+[campaign] task 1/1 t1
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > fails loud on empty generator output and out-of-range grader scores
+[campaign] task 1/1 t1
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > fails loud on empty generator output and out-of-range grader scores
+[campaign] task 1/1 t1
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > splits holdout by session: deterministic, all rows of a session on one side
+[campaign] task 1/4 t1
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > splits holdout by session: deterministic, all rows of a session on one side
+[campaign] task 2/4 t2
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > splits holdout by session: deterministic, all rows of a session on one side
+[campaign] task 3/4 t3
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > splits holdout by session: deterministic, all rows of a session on one side
+[campaign] task 4/4 t4
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > splits holdout by session: deterministic, all rows of a session on one side
+[campaign] task 1/4 t1
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > splits holdout by session: deterministic, all rows of a session on one side
+[campaign] task 2/4 t2
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > splits holdout by session: deterministic, all rows of a session on one side
+[campaign] task 3/4 t3
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > campaign runner > splits holdout by session: deterministic, all rows of a session on one side
+[campaign] task 4/4 t4
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > runs the checked-in fixture campaign: valid, floors met, schema-valid packs
+[campaign] task 1/12 adv-t01
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > runs the checked-in fixture campaign: valid, floors met, schema-valid packs
+[campaign] task 2/12 adv-t02
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > runs the checked-in fixture campaign: valid, floors met, schema-valid packs
+[campaign] task 3/12 adv-t03
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > runs the checked-in fixture campaign: valid, floors met, schema-valid packs
+[campaign] task 4/12 adv-t04
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > runs the checked-in fixture campaign: valid, floors met, schema-valid packs
+[campaign] task 5/12 adv-t05
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > runs the checked-in fixture campaign: valid, floors met, schema-valid packs
+[campaign] task 6/12 adv-t06
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > runs the checked-in fixture campaign: valid, floors met, schema-valid packs
+[campaign] task 7/12 adv-t07
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > runs the checked-in fixture campaign: valid, floors met, schema-valid packs
+[campaign] task 8/12 adv-t08
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > runs the checked-in fixture campaign: valid, floors met, schema-valid packs
+[campaign] task 9/12 adv-t09
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > runs the checked-in fixture campaign: valid, floors met, schema-valid packs
+[campaign] task 10/12 adv-t10
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > runs the checked-in fixture campaign: valid, floors met, schema-valid packs
+[campaign] task 11/12 adv-t11
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > runs the checked-in fixture campaign: valid, floors met, schema-valid packs
+[campaign] task 12/12 adv-t12
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > writes no pack artifacts when floors fail (all-positive campaign)
+[campaign] task 1/10 t0
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > writes no pack artifacts when floors fail (all-positive campaign)
+[campaign] task 2/10 t1
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > writes no pack artifacts when floors fail (all-positive campaign)
+[campaign] task 3/10 t2
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > writes no pack artifacts when floors fail (all-positive campaign)
+[campaign] task 4/10 t3
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > writes no pack artifacts when floors fail (all-positive campaign)
+[campaign] task 5/10 t4
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > writes no pack artifacts when floors fail (all-positive campaign)
+[campaign] task 6/10 t5
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > writes no pack artifacts when floors fail (all-positive campaign)
+[campaign] task 7/10 t6
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > writes no pack artifacts when floors fail (all-positive campaign)
+[campaign] task 8/10 t7
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > writes no pack artifacts when floors fail (all-positive campaign)
+[campaign] task 9/10 t8
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > writes no pack artifacts when floors fail (all-positive campaign)
+[campaign] task 10/10 t9
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > writes no pack artifacts when floors fail (all-positive campaign)
+CAMPAIGN INVALID: negative fraction 0.000 below floor 0.2 (0/20) — #169 requires ≥20% genuine negatives
+CAMPAIGN INVALID: distinct failure scores 0 below floor 5 (scores: none)
+No pack artifacts written. Fix the campaign (more adversarial tasks, genuine negatives) before re-running.
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 1/12 adv-t01
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 2/12 adv-t02
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 3/12 adv-t03
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 4/12 adv-t04
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 5/12 adv-t05
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 6/12 adv-t06
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 7/12 adv-t07
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 8/12 adv-t08
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 9/12 adv-t09
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 10/12 adv-t10
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 11/12 adv-t11
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 12/12 adv-t12
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 1/12 adv-t01
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 2/12 adv-t02
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 3/12 adv-t03
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 4/12 adv-t04
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 5/12 adv-t05
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 6/12 adv-t06
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 7/12 adv-t07
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 8/12 adv-t08
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 9/12 adv-t09
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 10/12 adv-t10
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 11/12 adv-t11
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > warm-start packs join fit only and must carry exclude_from_holdout_ece
+[campaign] task 12/12 adv-t12
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > requires output paths and a client mode
+Missing required arguments: --input, --output, --holdout-output, --report
+
+Usage: tsx scripts/calibration/adversarial-label-campaign.ts [options]
+
+Adversarial LLM labeling campaign (SP-282 / #169): multi-model generate,
+2-3 blinded graders (temp 0, generator excluded), >=20% negatives and >=5
+distinct failure scores floors, session-level holdout, llm_judge provenance.
+
+Required:
+  --input <tasks.jsonl>           Campaign tasks ({task_id, session_id, prompt_text, features, tier?})
+  --output <fit.jsonl>            Fit-partition label pack (llm_judge rows)
+  --holdout-output <holdout.jsonl> Session-holdout label pack
+  --report <report.json>          Campaign report (always written)
+
+Clients (pick one mode):
+  --recorded <recorded.jsonl>     Offline replay; --generator/--grader take plain ids
+  --generator <id=model@endpoint> Live OpenAI-compat generator (repeatable; >=2)
+  --grader <id=model@endpoint>    Live OpenAI-compat grader (repeatable; 2-3, temp 0)
+  OpenAI-compat live mode reads ADVERSARIAL_LABEL_API_KEY from the environment.
+
+  --pi-cli                        Live via pi CLI (SP-288); specs are id=provider/model
+  --from-scoped-models            Auto-pick 2 gens + 2 graders from pi enabledModels
+                                  (excludes smart-router/* and cursor/auto as grader)
+  --pi-settings <path>            Override ~/.pi/agent/settings.json (or PI_AGENT_SETTINGS)
+  --pi-timeout-ms <n>             Per-call pi CLI timeout (default 300000)
+
+Options:
+  --warm-start-pack <pack.jsonl>  Weak pack appended to FIT only (repeatable);
+                                  rows must carry exclude_from_holdout_ece
+  --seed <s>                      Holdout split seed (default sp-282-adversarial-labeling)
+  --holdout-percent <n>           Session holdout percent (default 20)
+  --pass-score <n>                Grader pass threshold 1-9 (default 7)
+  --limit <n>                     Process at most n tasks
+  --help                          Show this help
+
+
+stderr | tests/unit/adversarial-label-campaign.test.ts > adversarial-label-campaign (SP-282 / #169) > CLI end-to-end (recorded fixture) > requires output paths and a client mode
+Provide --recorded <file>, --pi-cli, or live --generator/--grader id=model@endpoint specs.
+
+stderr | tests/unit/hydra-matcher.test.ts > HyDRA projection weights loader > falls back to placeholder when artifact is invalid
+HyDRA projection weights artifact invalid; using placeholder projection {
+  error: 'Invalid HyDRA projection weights artifact:\n' +
+    'version: Invalid input: expected 1\n' +
+    'embedding_dim: Invalid input: expected 384\n' +
+    'weights: Invalid input: expected array, received undefined\n' +
+    'bias: Invalid input: expected array, received undefined'
+}
+
+stderr | tests/unit/hydra-matcher.test.ts > missing-weights reason codes (SP-251) > emits hydra_weights_missing when projection artifact is invalid
+HyDRA projection weights artifact invalid; using placeholder projection {
+  error: 'Invalid HyDRA projection weights artifact:\n' +
+    'version: Invalid input: expected 1\n' +
+    'embedding_dim: Invalid input: expected 384\n' +
+    'weights: Invalid input: expected array, received undefined\n' +
+    'bias: Invalid input: expected array, received undefined'
+}
+
+stderr | tests/unit/modernbert-heads.test.ts > ModernBertK4HeadWeights loading > resolveModernBertK4HeadWeights returns null on invalid file
+ModernBERT K=4 head weights artifact invalid; using placeholder heads {
+  error: 'Invalid ModernBERT K=4 head weights artifact:\n' +
+    'cls_dim: Invalid input: expected 768\n' +
+    'weights: Invalid input: expected array, received undefined\n' +
+    'bias: Invalid input: expected array, received undefined'
+}
+
+stderr | tests/unit/modernbert-heads.test.ts > createModernBertHeadsPredictor > reports k4_heads_placeholder when the head weights artifact is invalid
+ModernBERT K=4 head weights artifact invalid; using placeholder heads {
+  error: 'Invalid ModernBERT K=4 head weights artifact:\n' +
+    'cls_dim: Invalid input: expected 768\n' +
+    'weights: Invalid input: expected array, received undefined\n' +
+    'bias: Invalid input: expected array, received undefined'
+}
+
+stderr | tests/unit/pi-cli-adversarial-clients.test.ts > pi-cli-adversarial-clients (SP-288) > CLI rejects combining --recorded with --pi-cli
+Cannot combine --recorded with --pi-cli.
+
+stderr | tests/unit/workload-heat.test.ts > workload heat record schema (SP-215) > rejects invalid keys/tiers/model ids loudly without storing
+Workload heat rejected invalid key (privacy-safe keys only)
+Workload heat rejected invalid model id
+
+stderr | tests/unit/workload-heat.test.ts > heat export / import / clear (SP-215) > import clamps successes to attempts and skips invalid cells
+Workload heat import skipped invalid cell key { keySpace: 'cluster' }
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > checked-in artifact matches fixture ingest
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > skips models missing a capability dimension; rejects duplicate benchmark rows
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip incomplete-model (missing code_gen)
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > skips malformed tool_call_snippet rows on tool-use benchmarks with reason codes
+ingest-benchmark-profiles: skipped 1 tool-use row(s) after AST validation
+  skip terminal_bench/model-a: invalid_arguments_json (Tool-call arguments string is not valid JSON)
+  note: AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles live/recorded (SP-179 / SP-181) > replays checked-in recorded live snapshots offline with provenance
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles live/recorded (SP-179 / SP-181) > HTML live falls back to recorded/fixtures without corrupting output when all live fails
+ingest-benchmark-profiles: swebench_verified source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/fixtures/benchmark-leaderboards/recorded/swebench_verified.json)
+ingest-benchmark-profiles: terminal_bench source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/fixtures/benchmark-leaderboards/recorded/terminal_bench.json)
+ingest-benchmark-profiles: livecodebench source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/fixtures/benchmark-leaderboards/recorded/livecodebench.json)
+ingest-benchmark-profiles: bfcl source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/fixtures/benchmark-leaderboards/recorded/bfcl.json)
+ingest-benchmark-profiles: recorded 4 snapshot(s) under /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-html-fallback-b5yCpF/recorded
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+ingest-benchmark-profiles: wrote v1 (4 model(s), 40 alias(es)) to /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-html-fallback-b5yCpF/benchmark-profiles.json [mode=live+record]
+  catalog_freeze_date=2026-07-10, scrape_date=2026-07-10
+  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows
+  fleet aliases: preserved from existing artifact when present; else DEFAULT_FLEET_BENCHMARK_ALIASES (SP-174)
+  AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles live/recorded (SP-179 / SP-181) > live with --live-url records snapshots; empty fallback dirs fail without corrupting output
+ingest-benchmark-profiles: swebench_verified source=live (https://mirror.example/leaderboards/swebench_verified.json)
+ingest-benchmark-profiles: terminal_bench source=live (https://mirror.example/leaderboards/terminal_bench.json)
+ingest-benchmark-profiles: livecodebench source=live (https://mirror.example/leaderboards/livecodebench.json)
+ingest-benchmark-profiles: bfcl source=live (https://mirror.example/leaderboards/bfcl.json)
+ingest-benchmark-profiles: recorded 4 snapshot(s) under /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-live-F7luVe/recorded
+ingest-benchmark-profiles: wrote v1 (2 model(s), 40 alias(es)) to /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-live-F7luVe/benchmark-profiles.json [mode=live+record]
+  catalog_freeze_date=2026-07-10, scrape_date=2026-07-10
+  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows
+  fleet aliases: preserved from existing artifact when present; else DEFAULT_FLEET_BENCHMARK_ALIASES (SP-174)
+  AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+stderr | tests/unit/router-pipeline-error-telemetry.test.ts > RouterPipeline > pipeline error telemetry (SP-053) > never propagates stage exceptions to the caller
+Router pipeline stage failed; degrading to safe default {
+  stage: 'hardware_probe',
+  request_id: '00000000-0000-0000-0000-000000000001',
+  session_id: 'sess-1',
+  error: 'hardware probe unavailable'
+}
+
+stderr | tests/unit/router-pipeline-error-telemetry.test.ts > RouterPipeline > pipeline error telemetry (SP-053) > reports triage_cloud_fallback (not triage) when cloud fallback stage throws (SP-071)
+Router pipeline stage failed; degrading to safe default {
+  stage: 'triage_cloud_fallback',
+  request_id: '00000000-0000-0000-0000-000000000001',
+  session_id: 'sess-1',
+  error: 'cloud fallback failed'
+}
+
+stderr | tests/unit/pipeline-stage.test.ts > RouterPipeline hardware_probe thin-wrap (SP-272) > degrades to safe default when the wrapped hardware_probe stage throws (zero-crash)
+Router pipeline stage failed; degrading to safe default {
+  stage: 'hardware_probe',
+  request_id: '00000000-0000-0000-0000-000000000001',
+  session_id: 'sess-1',
+  error: 'probe unavailable'
+}
+
+stderr | tests/unit/p-success-classifier.test.ts > predictPSuccessCheapTimed (SP-105) > flags predictions that exceed the latency budget
+P(success) inference exceeded latency budget { elapsed_ms: 6, budget_ms: 5 }
+
+stderr | tests/unit/router-pipeline-hydra-match.test.ts > RouterPipeline > fail_closed_on_missing_weights sandwich integration (SP-252, #148) > routes through the degraded sandwich with hydra_weights_missing on the decision when the matcher fails closed
+HyDRA fail-closed on missing weight artifacts; routing via degraded sandwich {
+  request_id: '00000000-0000-0000-0000-000000000001',
+  session_id: 'sess-1',
+  reason_codes: [ 'hydra_weights_missing' ]
+}
+
+stderr | tests/unit/router-pipeline-hydra-match.test.ts > RouterPipeline > fail_closed_on_missing_weights sandwich integration (SP-252, #148) > honors the operator degraded_route flag pipeline-side even when the matcher was built fail-open
+HyDRA fail-closed on missing weight artifacts; routing via degraded sandwich {
+  request_id: '00000000-0000-0000-0000-000000000001',
+  session_id: 'sess-1',
+  reason_codes: [ 'hydra_weights_missing' ]
+}
+
+stderr | tests/unit/adjudicate-disagreements.test.ts > adjudicate-disagreements > all panelists failing becomes residual
+[adjudicate] panelist panel-glm failed for task-1/gen-1: unparseable
+
+stderr | tests/unit/adjudicate-disagreements.test.ts > adjudicate-disagreements > all panelists failing becomes residual
+[adjudicate] panelist panel-pro failed for task-1/gen-1: unparseable
+
+stderr | tests/unit/adjudicate-disagreements.test.ts > adjudicate-disagreements > all panelists failing becomes residual
+[adjudicate] panelist panel-fill-0 failed for task-1/gen-1: unparseable
+

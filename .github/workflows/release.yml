@@ -36,7 +36,7 @@ jobs:
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout at tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ steps.ref.outputs.tag }}
           fetch-depth: 0
@@ -51,7 +51,7 @@ jobs:
 
       - name: Verify CI status for tagged commit
         id: ci_gate
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const sha = context.sha;
@@ -84,7 +84,7 @@ jobs:
             }
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "22.19.0"
           registry-url: https://registry.npmjs.org
