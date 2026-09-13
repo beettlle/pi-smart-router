@@ -1,7 +1,7 @@
 # SP-291: encoder cascade config + gate — Status
 
-**Current Step:** 1
-**Status:** 🟡 In Progress
+**Current Step:** 3
+**Status:** ✅ Complete
 **Last Updated:** 2026-09-13
 **Review Level:** 1
 **Review Counter:** 0
@@ -23,7 +23,7 @@
 ---
 
 ### Step 1: Schema + defaults
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 - [x] Add EncoderCascadeConfig default off
   - Plan: `EncoderCascadeConfigSchema` {enabled: z.boolean().default(false), long_context_encoder: EncoderSchema.default('granite'), token_threshold: z.number().int().min(1).default(512)} + `DEFAULT_ENCODER_CASCADE_CONFIG`; add `encoder_cascade` (defaulted) to `HydraConfigSchema`; mirror in `DEFAULT_OPERATOR_CONFIG.hydra`
@@ -33,7 +33,7 @@
 ---
 
 ### Step 2: Gate + tests
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
 - [x] Implement selectEncoderForPrompt
   - `src/domain/matching/encoder-gate.ts`: pure gate, reason codes `cascade_disabled | under_threshold | over_threshold | granite_fallback`; `estimatePromptTokens` = `estimatedTokens ?? prompt.length` (turn-envelope parity); boundary `>=` threshold
@@ -43,8 +43,10 @@
 ---
 
 ### Step 3: Testing & Verification
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run npm run verify:ci
+- [x] Run npm run verify:ci
+  - First run failed typecheck: exactOptionalPropertyTypes rejected explicit `undefined` for optional `estimatedTokens` in parity test — fixed by typing options as `Encoder | undefined` / `number | undefined` in encoder-gate.ts
+  - Rerun: EXIT=0 — build ✓ typecheck ✓ lint ✓ coverage:check ✓ (143 files, 2299 tests passed; encoder-gate.ts 100% lines/branches/functions)
 
 ---

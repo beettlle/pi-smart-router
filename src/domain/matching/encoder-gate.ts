@@ -48,12 +48,12 @@ export interface EncoderGateOptions {
    * when set. Falls back to `prompt.length`, exactly mirroring the
    * turn-envelope stage estimator (`estimated_input_tokens ?? prompt_text.length`).
    */
-  readonly estimatedTokens?: number;
+  readonly estimatedTokens?: number | undefined;
   /**
    * Primary encoder used when the cascade is disabled or does not fire.
    * Default: DEFAULT_ENCODER ('minilm'), matching `hydra.encoder` defaults.
    */
-  readonly primaryEncoder?: Encoder;
+  readonly primaryEncoder?: Encoder | undefined;
   /**
    * Long-context encoder availability signal (SP-292 embedder layer owns
    * session/artifact health). When explicitly false, an over-threshold prompt
