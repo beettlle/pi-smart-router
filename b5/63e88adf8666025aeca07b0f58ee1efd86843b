@@ -1,0 +1,20 @@
+README.md
+  h_ae151c586ac6c5 994-1015
+docs/migration-v1.md
+  h_ae151c586ac6c5 114-151,200
+docs/qa/encoder-cascade-replay-v1.2.0.md
+  h_ae151c586ac6c5 1-84
+spine-tasks/SP-294-cascade-docs-eval-report/STATUS.md
+  h_ae151c586ac6c5 3-5,14,16-22,27,29-33,38-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b563e88adf8666025aeca07b0f58ee1efd86843b",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
