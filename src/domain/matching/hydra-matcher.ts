@@ -19,8 +19,11 @@ import { z } from 'zod';
 import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
 import { buildHydraInput } from './hydra-input.js';
 import {
+  createCascadingTextEmbedder,
   createTextEmbedder,
+  isCascadingTextEmbedder,
   EMBEDDING_DIM,
+  type CascadeEmbedderTelemetry,
   type TextEmbedder,
 } from './embedding-provider.js';
 import {
@@ -29,7 +32,12 @@ import {
   type ModernBertHeadsPredictor,
 } from './modernbert-heads.js';
 import { HYDRA_WEIGHTS_MISSING_REASON_CODE } from './missing-weights-reason-codes.js';
-import type { Encoder, HydraConfig, HydraHeads } from '../types/schemas.js';
+import type {
+  Encoder,
+  EncoderCascadeConfig,
+  HydraConfig,
+  HydraHeads,
+} from '../types/schemas.js';
 import { DEFAULT_ENCODER, DEFAULT_HYDRA_HEADS } from '../types/schemas.js';
 import {
   scoreMultiObjective,
@@ -69,6 +77,12 @@ export interface EmbeddingProvider {
    * Absent/empty when learned weights are active.
    */
   requirementReasonCodes?(): readonly string[];
+  /**
+   * Cascade decision telemetry from the most recent extraction (SP-292, #173).
+   * Present only on cascading-embedder-backed providers; null before the first
+   * embed. Absent on single-encoder and ModernBERT K=4 providers.
+   */
+  cascadeTelemetry?(): CascadeEmbedderTelemetry | null;
   dispose(): Promise<void>;
 }
 
@@ -94,6 +108,13 @@ export interface MatchResult {
    * always populates it.
    */
   readonly requirement_reason_codes?: readonly string[];
+  /**
+   * Encoder cascade decision telemetry for this match (SP-292, #173):
+   * `encoder_selected`, `token_estimate`, `cascade_threshold`, and the
+   * fallback reason when an over-threshold prompt degraded to the primary
+   * encoder. Absent on legacy call paths and non-cascade providers.
+   */
+  readonly cascade_telemetry?: CascadeEmbedderTelemetry | null;
   readonly elapsedMs: number;
   readonly budgetExceeded: boolean;
 }
@@ -414,6 +435,10 @@ export function wrapHydraEmbeddingProvider(
       return { requirements, embedding: Array.from(embedding) };
     },
 
+    ...(isCascadingTextEmbedder(embedder)
+      ? { cascadeTelemetry: () => embedder.lastTelemetry() }
+      : {}),
+
     async dispose(): Promise<void> {
       await embedder.dispose();
     },
@@ -595,12 +620,20 @@ export class HydraMatcher {
 
     const elapsedMs = performance.now() - start;
 
+    // SP-292 / #173: snapshot the cascade decision for this match (null on
+    // non-cascade providers and before any embed ran).
+    const cascadeTelemetry = this.provider.cascadeTelemetry?.() ?? null;
+
     return {
       selected,
       candidates: rankedCandidates,
       requirements,
       embedding: detailed ? detailed.embedding : null,
       requirement_reason_codes: this.requirementReasonCodes,
+      // SP-292 / #173: cascade decision telemetry rides the match result so
+      // the pipeline can copy it onto the decision feature sidecar. Absent
+      // on single-encoder providers (cascade disabled path unchanged).
+      ...(cascadeTelemetry ? { cascade_telemetry: cascadeTelemetry } : {}),
       elapsedMs,
       budgetExceeded: elapsedMs > this.budgetMs,
     };
@@ -632,6 +665,14 @@ export class HydraMatcher {
 export interface CreateOnnxEmbeddingProviderOptions {
   readonly encoder?: Encoder;
   readonly projectionWeightsPath?: string;
+  /**
+   * Opt-in encoder cascade (SP-292, #173). When enabled, the provider is
+   * backed by a lazy dual-session cascading embedder that routes
+   * over-threshold prompts to the long-context encoder and degrades to the
+   * primary encoder with an explicit fallback reason when unavailable.
+   * Default: disabled (single-encoder path unchanged).
+   */
+  readonly encoderCascade?: EncoderCascadeConfig;
 }
 
 export interface CreateHydraEmbeddingProviderOptions extends CreateOnnxEmbeddingProviderOptions {
@@ -649,7 +690,13 @@ export async function createOnnxEmbeddingProvider(
   options?: CreateOnnxEmbeddingProviderOptions,
 ): Promise<EmbeddingProvider> {
   const encoder = options?.encoder ?? DEFAULT_ENCODER;
-  const embedder = await createTextEmbedder(encoder, artifactCachePath);
+  // SP-292 / #173: cascade path only when the operator opted in; otherwise
+  // the single-encoder createTextEmbedder behavior is byte-identical.
+  const embedder = options?.encoderCascade?.enabled
+    ? createCascadingTextEmbedder(options.encoderCascade, artifactCachePath, {
+        primaryEncoder: encoder,
+      })
+    : await createTextEmbedder(encoder, artifactCachePath);
   const projectionWeights = resolveHydraProjectionWeights(
     options?.projectionWeightsPath ? { filePath: options.projectionWeightsPath } : undefined,
   );
@@ -687,7 +734,7 @@ export async function createHydraEmbeddingProvider(
  */
 export async function createHydraMatcherFromHydraConfig(
   hydraConfig: Pick<HydraConfig, 'artifact_cache_path'> &
-    Partial<Pick<HydraConfig, 'encoder' | 'hydra_heads'>>,
+    Partial<Pick<HydraConfig, 'encoder' | 'hydra_heads' | 'encoder_cascade'>>,
   options?: Omit<HydraMatcherConfig, 'artifactCachePath' | 'encoder' | 'hydraHeads'>,
 ): Promise<HydraMatcher> {
   const encoder = hydraConfig.encoder ?? DEFAULT_ENCODER;
@@ -695,6 +742,9 @@ export async function createHydraMatcherFromHydraConfig(
   const provider = await createHydraEmbeddingProvider(hydraConfig.artifact_cache_path, {
     encoder,
     hydraHeads,
+    ...(hydraConfig.encoder_cascade === undefined
+      ? {}
+      : { encoderCascade: hydraConfig.encoder_cascade }),
     ...(options?.projectionWeightsPath === undefined
       ? {}
       : { projectionWeightsPath: options.projectionWeightsPath }),

@@ -1,0 +1,95 @@
+Contract testCommand failure log
+Command: npm run verify:ci
+Exit code: 1
+Attempt: 1 of 2
+Timestamp: 2026-09-13T04:05:29.012Z
+Buffer overflow: no
+---
+
+> pi-smart-router@1.1.0 verify:ci
+> npm run build && npm run typecheck && npm run lint && npm run coverage:check
+
+
+> pi-smart-router@1.1.0 build
+> tsc --project tsconfig.build.json
+
+
+> pi-smart-router@1.1.0 typecheck
+> tsc --noEmit
+
+
+> pi-smart-router@1.1.0 lint
+> eslint . --ext .ts && node --input-type=module -e "import { readFileSync } from 'node:fs'; import { parse } from 'yaml'; const doc = parse(readFileSync('config/models.yaml.example', 'utf8')); if (!Array.isArray(doc.models) || doc.models.length < 3) throw new Error('models.yaml.example must list at least one model per tier'); const tiers = new Set(doc.models.map((m) => m.tier)); for (const tier of ['zero-tier', 'economical-cloud', 'frontier-cloud']) { if (!tiers.has(tier)) throw new Error('missing tier: ' + tier); } console.log('models.yaml.example: valid');"
+
+models.yaml.example: valid
+
+> pi-smart-router@1.1.0 coverage:check
+> vitest run --coverage
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T015112-a54e/lane-1
+      Coverage enabled with v8
+
+ ✓ tests/unit/local-zero-tier.test.ts (32 tests) 6445ms
+   ✓ pingLocalServices (T045, FR-012, FR-013) > timeout behavior > aborts and returns unavailable when ping exceeds timeout  794ms
+   ✓ RouterPipeline local zero-tier integration (T046, T047) > 16GB Apple Silicon — full_local (T047) > routes to zero-tier when hardware is full_local and services are ready  1538ms
+ ✓ tests/unit/sqlite-store.test.ts (49 tests) 36454ms
+   ✓ SqliteStore > initialization > migrates to schema v8 with outcomes table, dataset privacy columns, context_overflow pin_reason, usage actuals columns (SP-241), and dataset embedding column (SP-285)  368ms
+   ✓ SqliteStore > telemetry > evicts oldest rows beyond max entry count  1734ms
+   ✓ SqliteStore > dataset > evicts oldest rows beyond max entry count  29500ms
+ ✓ tests/unit/pi-model-scope.test.ts (6 tests) 63428ms
+   ✓ pi-model-scope > findPiCodingAgentDir resolves from dev-repo ancestor walk  1914ms
+   ✓ pi-model-scope > findPiCodingAgentDir resolves from ~/.pi/agent/npm in a consumer layout  1516ms
+   ✓ pi-model-scope > loads resolveModelScope without repo dev node_modules on cwd  56699ms
+   ✓ pi-model-scope > findPiCodingAgentDir resolves without agent npm when pi is globally installed  1993ms
+   ✓ pi-model-scope > throws a clear install hint when pi-coding-agent cannot be located  1208ms
+ ✓ tests/unit/speculative-prewarm.test.ts (19 tests) 1158ms
+   ✓ SP-217 / #117 — pipeline prewarm wiring > attempts no prewarm by default (config off) and routes normally  389ms
+stdout | tests/unit/write-queue-lag.test.ts > write-queue event-loop lag evidence (SP-236 / #142) > queued hot-path writes reduce event-loop blocking vs direct sync writes
+[SP-236 benchmark] 5000 hot-path telemetry writes, 50 bursts of 100
+  before (direct sync INSERT per write): wall=7101.3ms p95 route=344.41ms lag p95=351.54ms
+  after  (queue enqueue per write):      wall=848.0ms p95 route=25.41ms lag p95=49.18ms
+  reduction: wall=8.4x p95 route=13.6x
+
+ ✓ tests/unit/write-queue-lag.test.ts (1 test) 13638ms
+   ✓ write-queue event-loop lag evidence (SP-236 / #142) > queued hot-path writes reduce event-loop blocking vs direct sync writes  13624ms
+ ❯ tests/unit/train-routing-calibration.test.ts (29 tests | 1 failed) 78279ms
+   ✓ train routing calibration (SP-117) > documents minimum training sample thresholds 112ms
+   ✓ train routing calibration (SP-117) > produces a versioned bundle with all five artifact types 234ms
+   ✓ train routing calibration (SP-117) > serializes and parses bundle JSON with schema validation  365ms
+   ✓ train routing calibration (SP-117) > rejects incompatible bundle versions 125ms
+   ✓ train routing calibration (SP-117) > rejects stale hydra_projection artifact versions at parse time  313ms
+   ✓ train routing calibration (SP-117) > rejects stale hydra_projection artifacts when unflattening weights 50ms
+   ✓ train routing calibration (SP-117) > infers seven-flag prefix schema from contrib metadata scalars 11ms
+   × train routing calibration (SP-117) > excludes legacy-prefix embedding rows from projection training 73859ms
+     → Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ train routing calibration (SP-117) > round-trips flattened hydra projection weights 60ms
+   ✓ train routing calibration (SP-117) > fits triage cyclomatic threshold from labeled contrib rows  513ms
+   ✓ train routing calibration (SP-117) > fits isotonic calibrator and reports holdout ECE with enough labeled rows  330ms
+   ✓ train routing calibration (SP-117) > falls back to defaults when bundle file is missing 171ms
+   ✓ train routing calibration (SP-117) > falls back to defaults for invalid bundle version on disk 219ms
+   ✓ verify routing calibration (SP-117) > validates artifact shapes on default bundle 223ms
+   ✓ verify routing calibration (SP-117) > evaluates benchmark triage gates with bundle threshold 99ms
+   ✓ verify routing calibration (SP-117) > verifyRoutingCalibration passes for example bundle path  320ms
+   ✓ OATS centroid refinement (SP-146) > classifies cheap-tier successes and loop-escalation failures 13ms
+   ✓ OATS centroid refinement (SP-146) > shifts centroid toward positives and away from negatives on synthetic sets 36ms
+   ✓ OATS centroid refinement (SP-146) > refines routing centroids in calibration train when enough labeled embeddings exist  408ms
+   ✓ verifier-grade train (SP-283 / #168) > keeps hard-gate constants in parity with verify-routing-calibration 9ms
+   ✓ verifier-grade train (SP-283 / #168) > maps pack rows to training samples with missing features zeroed 4ms
+   ✓ verifier-grade train (SP-283 / #168) > flags weak pack rows via the exclude_from_holdout_ece signal 1ms
+   ✓ verifier-grade train (SP-283 / #168) > uses campaign session_holdout for isotonic ECE when pack partitions exist  352ms
+   ✓ verifier-grade train (SP-283 / #168) > verifier-grade-only drops untagged and scripted contrib rows, keeps ship-eligible 43ms
+   ✓ verifier-grade train (SP-283 / #168) > joins pack rows into the labeled pool and never trains weak labels 129ms
+   ✓ verifier-grade train (SP-283 / #168) > verifier-grade-only leaves triage honest-untrained without ship-eligible rows 25ms
+   ✓ verifier-grade train (SP-283 / #168) > evaluateIsotonicHardGates passes honest-untrained and fails trained fits over the ECE ceiling 5ms
+   ✓ verifier-grade train (SP-283 / #168) > gate report never marks honest-untrained as a ship pass 7ms
+   ✓ verifier-grade train (SP-283 / #168) > gate report marks a trained bundle PASS only when every hard gate passes 84ms
+
+stderr | tests/unit/local-zero-tier.test.ts > RouterPipeline local zero-tier integration (T046, T047) > 16GB Apple Silicon — full_local (T047) > routes to zero-tier when hardware is full_local and services are ready
+P(success) inference exceeded latency budget { elapsed_ms: [33m24.91462500000489[39m, budget_ms: [33m5[39m }
+Isotonic P(success) lookup exceeded latency budget { elapsed_ms: [33m21.015165999997407[39m, budget_ms: [33m5[39m, knot_count: [33m66[39m }
+
+stderr | tests/unit/train-routing-calibration.test.ts > train routing calibration (SP-117) > falls back to defaults for invalid bundle version on disk
+Routing calibration bundle invalid; using baked-in defaults { error: [32m'Unsupported routing calibration bundle version: 99'[39m }
+
