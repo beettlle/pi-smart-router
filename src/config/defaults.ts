@@ -6,6 +6,7 @@
 import {
   DEFAULT_ADAPTIVE_REASONING_CONFIG,
   DEFAULT_DEGRADED_ROUTE_CONFIG,
+  DEFAULT_ENCODER_CASCADE_CONFIG,
   DEFAULT_LOCAL_ZERO_CONFIG,
   DEFAULT_PLANNING_DELEGATE_CONFIG,
   DEFAULT_SAAR_CONFIG,
@@ -62,6 +63,8 @@ export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
   hydra: {
     artifact_cache_path: '.pi-smart-router/models/',
     encoder: 'minilm',
+    /** Opt-in encoder cascade (SP-291, #173): default off. */
+    encoder_cascade: DEFAULT_ENCODER_CASCADE_CONFIG,
     hydra_heads: 'learned_projection',
   },
   low_intensity: {

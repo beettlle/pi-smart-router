@@ -451,10 +451,52 @@ export type HydraHeads = z.infer<typeof HydraHeadsSchema>;
 
 export const DEFAULT_HYDRA_HEADS: HydraHeads = 'learned_projection';
 
+/**
+ * Opt-in encoder cascade knobs (SP-291, #173 part 1).
+ *
+ * When enabled, prompts whose estimated token count reaches
+ * `token_threshold` are routed to `long_context_encoder` (Granite) instead of
+ * the primary `hydra.encoder` (MiniLM), avoiding 512-token truncation on long
+ * prompts. Default OFF: existing single-encoder installs are unaffected and
+ * pay zero added cost (the gate is pre-embedding arithmetic).
+ *
+ * Hard constraint (#173): embeddings from different encoders live in different
+ * vector spaces — the cascade must never mix per-encoder artifacts (centroids,
+ * learned projection). Per-encoder artifact sets + cascading embedder land in
+ * SP-292.
+ */
+export const EncoderCascadeConfigSchema = z.object({
+  /** When false (default), every prompt uses the primary `hydra.encoder`. */
+  enabled: z.boolean().default(false),
+  /** Long-context encoder selected at/over the threshold. Granite 97M (SP-156). */
+  long_context_encoder: EncoderSchema.default('granite'),
+  /**
+   * Estimated-token boundary: estimates >= threshold route to the long-context
+   * encoder. Default 512 matches the MiniLM context window.
+   */
+  token_threshold: z.number().int().min(1).default(512),
+});
+
+export type EncoderCascadeConfig = z.infer<typeof EncoderCascadeConfigSchema>;
+
+/** Encoder cascade defaults per #173: opt-in, default off, 512-token threshold. */
+export const DEFAULT_ENCODER_CASCADE_CONFIG: Readonly<EncoderCascadeConfig> = {
+  enabled: false,
+  long_context_encoder: 'granite',
+  token_threshold: 512,
+} as const;
+
 export const HydraConfigSchema = z.object({
   artifact_cache_path: z.string(),
   /** ONNX encoder: MiniLM (default) or Granite 97M 384-dim long-context trial. */
   encoder: EncoderSchema.default(DEFAULT_ENCODER),
+  /**
+   * Opt-in per-prompt encoder cascade (SP-291, #173). Default off; when
+   * enabled, over-threshold prompts use the long-context encoder.
+   */
+  encoder_cascade: EncoderCascadeConfigSchema.default(
+    DEFAULT_ENCODER_CASCADE_CONFIG,
+  ),
   /**
    * Requirement extraction mode:
    * - `learned_projection` — SP-115 384×3 linear projection (default)
