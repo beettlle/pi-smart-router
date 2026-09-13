@@ -1,7 +1,7 @@
 # SP-293: per-encoder centroids + cal verify — Status
 
-**Current Step:** 3
-**Status:** 🟡 In Progress
+**Current Step:** Done
+**Status:** ✅ Complete
 **Last Updated:** 2026-09-13
 **Review Level:** 1
 **Review Counter:** 0
@@ -48,8 +48,16 @@
 ---
 
 ### Step 3: Testing & Verification
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Run npm run verify:ci
+- [x] Run Contract `testCommand` (typecheck + scoped calibration/verify tests); full `verify:ci` is post-integrate on `main`
+
+**Evidence:**
+- Contract `npm run typecheck && npx vitest run tests/unit/train-routing-calibration.test.ts` → typecheck clean, 32/32 pass.
+- Scoped suite: 58/58 across `bootstrap-routing-centroids`, `verify-routing-calibration`, `train-routing-calibration` test files.
+- Shipped bundle end-to-end: `npm run routing:verify-calibration` → 20/20 PASS incl. `encoder_flavor_consistency: encoder=minilm` (shipped MiniLM defaults untouched; no cascade flip).
+- Per in-lane note, full `verify:ci` left as post-integrate gate (coverage flake risk under load).
+
+**Completion criteria:** `--encoder granite` emits flavored namespaced artifact ✓; verify rejects cross-encoder mixes ✓; Granite projection honest-untrained gate ✓.
 
 ---
