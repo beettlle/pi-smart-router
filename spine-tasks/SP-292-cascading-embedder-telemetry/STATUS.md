@@ -1,7 +1,7 @@
 # SP-292: cascading embedder + telemetry — Status
 
-**Current Step:** 3
-**Status:** 🟡 In Progress
+**Current Step:** Done
+**Status:** 🟢 Complete
 **Last Updated:** 2026-09-13
 **Review Level:** 1
 **Review Counter:** 0
@@ -41,10 +41,14 @@
 ---
 
 ### Step 3: Testing & Verification
-**Status:** 🟡 In Progress
+**Status:** ✅ Complete
 
-- [ ] Tests for selection/lazy/fallback/dispose
-- [ ] Run npm run verify:ci
+- [x] Tests for selection/lazy/fallback/dispose
+- [x] Run npm run verify:ci
+
+**Notes:** 18 new tests in tests/unit/embedding-provider.test.ts: selection (under/over threshold, disabled, never-mix identity), lazy load (no session until first embed, Granite only on over-threshold, one session per encoder), fallback (Granite load failure + embed failure → MiniLM + `granite_fallback` latch, primary failure propagates fail-loud), dispose (closes both, idempotent, fail-closed embed after dispose, fail-loud on session dispose error), telemetry wiring (provider.cascadeTelemetry, MatchResult.cascade_telemetry, sidecar schema fields, createHydraMatcherFromHydraConfig integration: disabled path stays MiniLM-only, enabled path lazy-loads Granite + emits telemetry). Gate estimates tokens over the metadata-prefixed HyDRA input — the exact text the encoder embeds/truncates.
+
+**Verification:** build ✓, typecheck ✓, lint ✓, coverage:check ✓ (143 files / 2321 tests passed; embedding-provider.ts 96.42% lines, hydra-matcher.ts 96.56%, encoder-gate.ts 100%). GitNexus detect_changes unavailable in lane worktree (MCP process exited).
 
 ---
 
