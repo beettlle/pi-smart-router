@@ -1,0 +1,23 @@
+README.md
+  s_dcdfa027efd3d7::t_d7fce3ded705f8 994-1015
+docs/migration-v1.md
+  s_dcdfa027efd3d7::t_c5d174bf37bc59 114-151,200
+spine-tasks/SP-294-cascade-docs-eval-report/STATUS.md
+  s_dcdfa027efd3d7::t_3281d4ee1fbf33 3-5,14,16-22,27,29-33,38-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "947ab85163a5321e5b7108df344e7dc64f9f5579",
+  "prompts": {},
+  "sessions": {
+    "s_dcdfa027efd3d7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-544204c8-eed1-4e77-ba2e-1dac06867f0a",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
