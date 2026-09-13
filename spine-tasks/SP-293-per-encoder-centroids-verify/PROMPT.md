@@ -43,10 +43,12 @@ Extend centroid bootstrap with `--encoder granite` (namespaced artifact). Granit
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run verify:ci` |
+| testCommand | `npm run typecheck && npx vitest run tests/unit/train-routing-calibration.test.ts -t "verifyRoutingCalibration|OATS|rejects"` |
 | fileScopeMustChange | `scripts/bootstrap-routing-centroids.ts`, `scripts/verify-routing-calibration.ts` |
 | fileScopeMustNotChange | `.github/` |
 | completionCriteria | `--encoder granite` emits flavored artifact; verify rejects cross-encoder mixes; Granite projection honest-untrained |
+
+> **In-lane note:** Prefer scoped unit tests that assert mix rejection / encoder flavor. Full `verify:ci` is the post-integrate gate — avoid as Contract `testCommand` (coverage timeout flakes under load).
 
 ## Steps
 
@@ -66,7 +68,7 @@ Extend centroid bootstrap with `--encoder granite` (namespaced artifact). Granit
 
 ### Step 3: Testing & Verification
 
-- [ ] Run `npm run verify:ci`
+- [ ] Run Contract `testCommand` (typecheck + scoped calibration/verify tests); full `verify:ci` is post-integrate on `main`
 
 ## Do NOT
 

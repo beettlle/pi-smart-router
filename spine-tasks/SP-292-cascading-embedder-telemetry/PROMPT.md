@@ -43,10 +43,12 @@ Implement `createCascadingTextEmbedder` that lazily owns MiniLM + Granite sessio
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run verify:ci` |
-| fileScopeMustChange | `src/domain/matching/embedding-provider.ts` |
+| testCommand | `npm run typecheck && npx vitest run tests/unit/embedding-provider.test.ts tests/unit/encoder-gate.test.ts` |
+| fileScopeMustChange | `src/domain/matching/embedding-provider.ts`, `tests/unit/embedding-provider.test.ts` |
 | fileScopeMustNotChange | `.github/` |
 | completionCriteria | Cascading embedder + tests for selection/lazy load/fallback/dispose; telemetry fields present when cascade enabled |
+
+> **In-lane note:** Full `npm run verify:ci` / `release:check` are post-integrate gates on `main`. Do not use them as Contract `testCommand` — coverage flaked on unrelated `train-routing-calibration` timeout under load (`excludes legacy-prefix embedding rows`, #161-class).
 
 ## Steps
 
@@ -69,7 +71,7 @@ Implement `createCascadingTextEmbedder` that lazily owns MiniLM + Granite sessio
 ### Step 3: Testing & Verification
 
 - [ ] Unit/integration tests for selection, lazy load, fallback, dispose
-- [ ] Run `npm run verify:ci`
+- [ ] Run Contract `testCommand` (typecheck + scoped vitest); full `verify:ci` is post-integrate on `main`
 
 ## Do NOT
 
