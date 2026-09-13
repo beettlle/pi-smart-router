@@ -5,7 +5,7 @@
 **Next Task ID:** SP-296
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v1.1.0** on npm (`latest`, tag `v1.1.0`, 2026-09-12). Shipped provenance `verifier_grade_train_2026-09-12` (trained_sample_count 243; isotonic ECE cal 0.0645; hard gates PASS). Closed issues: #168/#169/#170/#171. Left open: #110 (Partial — HyDRA ≥100, session-holdout ECE ship, #95 volume), #95, #96 (not flipped), #172 (P3). Prior: **v1.0.0** honest-untrained. Train SP-280–SP-288 `.DONE`. **In authoring:** v1.2.0 (SP-289–SP-295) — long-context encoder path (#173/#167) + non-quota #174. Deferred from v1.2: #110 (no embeddings; session-holdout ECE not shippable).
+**Released:** **v1.2.0** on npm (`latest`, tag `v1.2.0`, 2026-09-13). Theme: long-context encoder path — #173 cascade (SP-291–294) + #167 Granite opt-in runbook (SP-295 Partial — human dogfood remaining) + non-quota #174 (SP-290). Closed: #173, #174. Left open: #167 (Partial), #110 (deferred — no embeddings / session-holdout ECE), #95, #96 (not flipped), #172 (P3). Note: accidental empty `1.3.0` git bump was never published; tag deleted; `main` reverted to package `1.2.0` (`ff28a0c`). Prior: **v1.1.0** verifier-grade train. Train SP-289–SP-295 `.DONE`. Next-train slate: #110, #95, #162/#163, #172, #96, #157, hardware #1/#25/#26 parked.
 
 ---
 
