@@ -1,0 +1,260 @@
+Contract testCommand failure log
+Command: npm run release:check
+Exit code: 1
+Attempt: 2 of 2
+Timestamp: 2026-09-13T01:13:44.551Z
+Buffer overflow: no
+---
+
+> pi-smart-router@1.1.0 release:check
+> bash -c 'export VITEST_MAX_WORKERS="${VITEST_MAX_WORKERS:-2}"; npm run verify:script-artifacts && npm run release:refresh-benchmarks && npm run verify:ci && npm run release:consumer-pack && npm run release:functional-smoke'
+
+
+> pi-smart-router@1.1.0 verify:script-artifacts
+> bash scripts/assert-no-script-artifacts.sh
+
+scripts/: no tracked compiled artifacts
+
+> pi-smart-router@1.1.0 release:refresh-benchmarks
+> tsx scripts/release-refresh-benchmark-profiles.ts
+
+Release benchmark refresh: attempting live ingest (catalog_freeze_date=2026-09-13)…
+
+> pi-smart-router@1.1.0 routing:ingest-benchmarks
+> tsx scripts/ingest-benchmark-profiles.ts --live --catalog-freeze-date 2026-09-13 --scrape-date 2026-09-13
+
+Live ingest succeeded.
+
+> pi-smart-router@1.1.0 routing:verify-benchmark-profiles
+> vitest run tests/unit/ingest-benchmark-profiles.test.ts -t "checked-in artifact matches fixture ingest"
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1
+
+ ✓ tests/unit/ingest-benchmark-profiles.test.ts (25 tests | 24 skipped) 309ms
+   ✓ ingest-benchmark-profiles (SP-134) > checked-in artifact matches fixture ingest  306ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 24 skipped (25)
+   Start at  18:04:09
+   Duration  6.35s (transform 1.29s, setup 0ms, collect 2.89s, tests 309ms, environment 0ms, prepare 744ms)
+
+Release benchmark refresh clean (mode=live).
+
+> pi-smart-router@1.1.0 verify:ci
+> npm run build && npm run typecheck && npm run lint && npm run coverage:check
+
+
+> pi-smart-router@1.1.0 build
+> tsc --project tsconfig.build.json
+
+
+> pi-smart-router@1.1.0 typecheck
+> tsc --noEmit
+
+
+> pi-smart-router@1.1.0 lint
+> eslint . --ext .ts && node --input-type=module -e "import { readFileSync } from 'node:fs'; import { parse } from 'yaml'; const doc = parse(readFileSync('config/models.yaml.example', 'utf8')); if (!Array.isArray(doc.models) || doc.models.length < 3) throw new Error('models.yaml.example must list at least one model per tier'); const tiers = new Set(doc.models.map((m) => m.tier)); for (const tier of ['zero-tier', 'economical-cloud', 'frontier-cloud']) { if (!tiers.has(tier)) throw new Error('missing tier: ' + tier); } console.log('models.yaml.example: valid');"
+
+models.yaml.example: valid
+
+> pi-smart-router@1.1.0 coverage:check
+> vitest run --coverage
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1
+      Coverage enabled with v8
+
+ ✓ tests/unit/adaptive-reasoning.test.ts (46 tests) 49ms
+ ✓ tests/unit/defaults.test.ts (15 tests) 73ms
+ ✓ tests/unit/operator-config.test.ts (3 tests) 62ms
+ ✓ tests/unit/throughput-meter.test.ts (20 tests) 48ms
+ ✓ tests/unit/train-p-success-weights.test.ts (6 tests) 69ms
+ ✓ tests/unit/local-zero-tier.test.ts (32 tests) 1333ms
+   ✓ pingLocalServices (T045, FR-012, FR-013) > timeout behavior > aborts and returns unavailable when ping exceeds timeout  505ms
+   ✓ RouterPipeline local zero-tier integration (T046, T047) > 16GB Apple Silicon — full_local (T047) > routes to zero-tier when hardware is full_local and services are ready  312ms
+ ✓ tests/unit/train-routing-calibration.test.ts (29 tests) 16016ms
+   ✓ train routing calibration (SP-117) > excludes legacy-prefix embedding rows from projection training  15470ms
+ ✓ tests/unit/outcome-recorder.test.ts (5 tests) 71ms
+ ✓ tests/unit/label-pack-schema.test.ts (4 tests) 111ms
+ ✓ tests/unit/pi-model-scope.test.ts (6 tests) 14932ms
+   ✓ pi-model-scope > findPiCodingAgentDir resolves from dev-repo ancestor walk  1151ms
+   ✓ pi-model-scope > findPiCodingAgentDir resolves from ~/.pi/agent/npm in a consumer layout  1160ms
+   ✓ pi-model-scope > loads resolveModelScope without repo dev node_modules on cwd  10568ms
+   ✓ pi-model-scope > findPiCodingAgentDir resolves without agent npm when pi is globally installed  724ms
+   ✓ pi-model-scope > throws a clear install hint when pi-coding-agent cannot be located  1294ms
+ ✓ tests/unit/price-broker.test.ts (29 tests) 195ms
+ ✓ tests/unit/leaderboard-adapters/bfcl.test.ts (6 tests) 158ms
+ ✓ tests/unit/hardware-probe.test.ts (27 tests) 138ms
+ ✓ tests/unit/human-label-review.test.ts (7 tests) 257ms
+ ✓ tests/unit/pre-delegation-abort.test.ts (2 tests) 251ms
+ ✓ tests/unit/auto-model-limits.test.ts (5 tests) 338ms
+ ✓ tests/unit/ingest-swe-gym-labels.test.ts (5 tests) 733ms
+   ✓ ingest-swe-gym-labels (SP-189) > converts synthetic upstream rows into schema-valid pack documents  448ms
+ ✓ tests/unit/pi-router-middleware.test.ts (10 tests) 70ms
+ ✓ tests/unit/telemetry-export.test.ts (8 tests) 46ms
+ ✓ tests/unit/multi-objective.test.ts (19 tests) 24ms
+ ✓ tests/unit/virtual-cost-v2.test.ts (11 tests) 65ms
+ ✓ tests/unit/ingest-fc-rewardbench-labels.test.ts (6 tests) 31ms
+ ✓ tests/unit/write-queue.test.ts (15 tests) 52ms
+ ✓ tests/unit/sqlite-store.test.ts (49 tests) 4274ms
+   ✓ SqliteStore > dataset > evicts oldest rows beyond max entry count  3139ms
+ ✓ tests/unit/ingest-benchmark-profiles.test.ts (25 tests) 729ms
+ ✓ tests/unit/benchmark-encoder-latency.test.ts (6 tests) 107ms
+ ✓ tests/unit/llmrouterbench-regret-report.test.ts (3 tests) 50ms
+ ✓ tests/unit/placement-plan.test.ts (25 tests) 177ms
+ ✓ tests/unit/session-stats.test.ts (15 tests) 65ms
+ ✓ tests/unit/execution-ledger.test.ts (5 tests) 29ms
+ ✓ tests/unit/ast-tool-validation.test.ts (11 tests) 31ms
+ ✓ tests/unit/loop-escalation.test.ts (44 tests) 68ms
+ ✓ tests/unit/quota-window-feed.test.ts (25 tests) 30ms
+ ✓ tests/unit/saar-session-state.test.ts (8 tests) 68ms
+ ✓ tests/unit/router-pipeline-stage-helpers.test.ts (6 tests) 24ms
+ ✓ tests/unit/delegation-headroom.test.ts (5 tests) 9ms
+ ✓ tests/unit/index-exports.test.ts (3 tests) 16ms
+ ✓ tests/unit/speculative-prewarm.test.ts (19 tests) 342ms
+ ✓ tests/integration/session-pinning.test.ts (31 tests) 3923ms
+   ✓ @release > Session pinning integration > SP-051: extension-path lifecycle hook wiring > compaction hook breaks pin on next extension routing request  760ms
+   ✓ @release > Session pinning integration > SP-051: extension-path lifecycle hook wiring > model_select hook applies force_model_id on next extension routing request  619ms
+   ✓ @release > Session pinning integration > SP-051: extension-path lifecycle hook wiring > status reflects reroute after compaction break via lifecycle hooks  642ms
+   ✓ @release > Session pinning integration > SP-054: pin persistence across simulated session reload > extension-path pin survives store-backed SessionPinner reload  1236ms
+ ✓ tests/unit/peak-pricing.test.ts (22 tests) 127ms
+ ✓ tests/unit/router-pipeline-turn-envelope.test.ts (2 tests) 70ms
+ ✓ tests/unit/session-eviction.test.ts (4 tests) 68ms
+ ✓ tests/unit/refactor-guardrails.test.ts (6 tests) 125ms
+ ✓ tests/unit/tier-features.test.ts (10 tests) 113ms
+ ✓ tests/unit/gemini-provider.test.ts (6 tests) 71ms
+ ✓ tests/unit/economical-pin-break-agentic.test.ts (14 tests) 214ms
+ ✓ tests/unit/delegate-stream-composed-provider.test.ts (5 tests) 98ms
+ ✓ tests/unit/triage-thresholds.test.ts (5 tests) 813ms
+   ✓ triage-thresholds loader (#171) > uses trained threshold when sample floor is met  368ms
+stdout | tests/unit/write-queue-lag.test.ts > write-queue event-loop lag evidence (SP-236 / #142) > queued hot-path writes reduce event-loop blocking vs direct sync writes
+[SP-236 benchmark] 5000 hot-path telemetry writes, 50 bursts of 100
+  before (direct sync INSERT per write): wall=5184.8ms p95 route=199.25ms lag p95=193.99ms
+  after  (queue enqueue per write):      wall=626.7ms p95 route=17.10ms lag p95=31.54ms
+  reduction: wall=8.3x p95 route=11.7x
+
+ ✓ tests/unit/write-queue-lag.test.ts (1 test) 11360ms
+   ✓ write-queue event-loop lag evidence (SP-236 / #142) > queued hot-path writes reduce event-loop blocking vs direct sync writes  11354ms
+ ✓ tests/unit/cache-breakeven.test.ts (13 tests) 355ms
+ ✓ tests/unit/context-fit.test.ts (9 tests) 276ms
+ ✓ tests/unit/hydra-input.test.ts (16 tests) 135ms
+ ✓ tests/unit/calibration-dry-run-include-excluded.test.ts (3 tests) 236ms
+ ✓ tests/contract/routing-schemas.test.ts (38 tests) 10052ms
+   ✓ @release > schema cross-validation > Zod RoutingRequestSchema and JSON schema agree on a valid minimal payload  335ms
+   ✓ @release > schema cross-validation > Zod RoutingDecisionSchema and JSON schema agree on a valid full payload  925ms
+   ✓ @release > schema cross-validation > both schemas reject a completely empty object  1545ms
+   ✓ @release > live RouterPipeline.route() round-trip (SP-229, #136) > live route() decision validates against JSON Schema and strict Zod  1400ms
+ ✓ tests/unit/extension-setup-bootstrap.test.ts (1 test) 11955ms
+   ✓ createSmartRouterRuntime bootstrap (Pi 0.80.8+) > builds a runtime via ModelRuntime.create and ModelRegistry (no AuthStorage)  11929ms
+ ✓ tests/unit/dataset-recorder.test.ts (15 tests) 391ms
+ ✓ tests/unit/memory-store-telemetry.test.ts (2 tests) 200ms
+ ✓ tests/unit/expected-cost.test.ts (29 tests) 779ms
+ ✓ tests/unit/delegation-context.test.ts (14 tests) 217ms
+ ✓ tests/unit/release-refresh-benchmark-profiles.test.ts (4 tests) 68ms
+ ✓ tests/unit/tool-history-guard.test.ts (39 tests) 543ms
+ ✓ tests/eval/harness-tracks.test.ts (9 tests) 567ms
+ ✓ tests/unit/litellm-fetch.test.ts (16 tests) 360ms
+ ✓ tests/unit/embedder-dispose-lifecycle.test.ts (9 tests) 241ms
+ ✓ tests/integration/pi-extension.test.ts (42 tests) 5159ms
+   ✓ @release > Pi extension integration (SP-043) > estimated_input_tokens (SP-091) > buildRoutingRequest populates estimated_input_tokens for routing dispatch  592ms
+   ✓ @release > Pi extension integration (SP-043) > estimated_input_tokens (SP-091) > stream delegation persists non-zero estimated_input_tokens  473ms
+   ✓ @release > Pi extension integration (SP-043) > usage actuals capture (SP-241, #164) > records pi usage actuals onto the telemetry row after delegation  475ms
+   ✓ @release > Pi extension integration (SP-043) > outcome labels (SP-062) > records model_override outcome after user model override  2099ms
+ ✓ tests/unit/pi-model-mapper-coverage.test.ts (6 tests) 331ms
+ ✓ tests/unit/resilience.test.ts (26 tests) 1839ms
+   ✓ Rate limit race conditions > concurrent request races > only first request passes when bucket has single token  1066ms
+ ✓ tests/unit/calibration-aggregate.test.ts (17 tests) 987ms
+ ✓ tests/unit/smart-router-cli.test.ts (26 tests) 3567ms
+ ✓ tests/unit/modernbert-heads.test.ts (28 tests) 1232ms
+
+ingest-benchmark-profiles: swebench_verified source=live (https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json)
+ingest-benchmark-profiles: terminal_bench source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/fixtures/benchmark-leaderboards/recorded/terminal_bench.json)
+ingest-benchmark-profiles: livecodebench source=live (https://raw.githubusercontent.com/LiveCodeBench/livecodebench.github.io/main/src/mocks/performances_generation.json)
+ingest-benchmark-profiles: bfcl source=live (https://raw.githubusercontent.com/ShishirPatil/gorilla/gh-pages/data_overall.csv)
+ingest-benchmark-profiles: recorded 4 snapshot(s) under /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/fixtures/benchmark-leaderboards/recorded
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+ingest-benchmark-profiles: wrote v1 (4 model(s), 40 alias(es)) to /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/config/benchmark-profiles.json [mode=live+record]
+  catalog_freeze_date=2026-09-13, scrape_date=2026-09-13
+  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows
+  fleet aliases: preserved from existing artifact when present; else DEFAULT_FLEET_BENCHMARK_ALIASES (SP-174)
+  AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > checked-in artifact matches fixture ingest
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+
+stderr | tests/unit/local-zero-tier.test.ts > RouterPipeline local zero-tier integration (T046, T047) > battery below threshold — disabled (T047) > routes to local when battery is low but on AC power
+P(success) inference exceeded latency budget { elapsed_ms: 6.200624999999491, budget_ms: 5 }
+
+stderr | tests/unit/train-routing-calibration.test.ts > train routing calibration (SP-117) > falls back to defaults for invalid bundle version on disk
+Routing calibration bundle invalid; using baked-in defaults { error: 'Unsupported routing calibration bundle version: 99' }
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > checked-in artifact matches fixture ingest
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > skips models missing a capability dimension; rejects duplicate benchmark rows
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip incomplete-model (missing code_gen)
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > skips malformed tool_call_snippet rows on tool-use benchmarks with reason codes
+ingest-benchmark-profiles: skipped 1 tool-use row(s) after AST validation
+  skip terminal_bench/model-a: invalid_arguments_json (Tool-call arguments string is not valid JSON)
+  note: AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles live/recorded (SP-179 / SP-181) > replays checked-in recorded live snapshots offline with provenance
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles live/recorded (SP-179 / SP-181) > HTML live falls back to recorded/fixtures without corrupting output when all live fails
+ingest-benchmark-profiles: swebench_verified source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/fixtures/benchmark-leaderboards/recorded/swebench_verified.json)
+ingest-benchmark-profiles: terminal_bench source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/fixtures/benchmark-leaderboards/recorded/terminal_bench.json)
+ingest-benchmark-profiles: livecodebench source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/fixtures/benchmark-leaderboards/recorded/livecodebench.json)
+ingest-benchmark-profiles: bfcl source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20260913T004803-e9a5/lane-1/tests/fixtures/benchmark-leaderboards/recorded/bfcl.json)
+ingest-benchmark-profiles: recorded 4 snapshot(s) under /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-html-fallback-nDvNAE/recorded
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+ingest-benchmark-profiles: wrote v1 (4 model(s), 40 alias(es)) to /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-html-fallback-nDvNAE/benchmark-profiles.json [mode=live+record]
+  catalog_freeze_date=2026-07-10, scrape_date=2026-07-10
+  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows
+  fleet aliases: preserved from existing artifact when present; else DEFAULT_FLEET_BENCHMARK_ALIASES (SP-174)
+  AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles live/recorded (SP-179 / SP-181) > live with --live-url records snapshots; empty fallback dirs fail without corrupting output
+ingest-benchmark-profiles: swebench_verified source=live (https://mirror.example/leaderboards/swebench_verified.json)
+ingest-benchmark-profiles: terminal_bench source=live (https://mirror.example/leaderboards/terminal_bench.json)
+ingest-benchmark-profiles: livecodebench source=live (https://mirror.example/leaderboards/livecodebench.json)
+ingest-benchmark-profiles: bfcl source=live (https://mirror.example/leaderboards/bfcl.json)
+ingest-benchmark-profiles: recorded 4 snapshot(s) under /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-live-9paf1L/recorded
+ingest-benchmark-profiles: wrote v1 (2 model(s), 40 alias(es)) to /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-live-9paf1L/benchmark-profiles.json [mode=live+record]
+  catalog_freeze_date=2026-07-10, scrape_date=2026-07-10
+  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows
+  fleet aliases: preserved from existing artifact when present; else DEFAULT_FLEET_BENCHMARK_ALIASES (SP-174)
+  AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+stderr | tests/contract/routing-schemas.test.ts > @release > live RouterPipeline.route() round-trip (SP-229, #136) > live route() decision validates against JSON Schema and strict Zod
+Isotonic P(success) lookup exceeded latency budget { elapsed_ms: 9.980082999998558, budget_ms: 5, knot_count: 66 }
+
+stderr | tests/integration/pi-extension.test.ts > @release > Pi extension integration (SP-043) > delegation output headroom (SP-108) > escalates before provider dispatch when input leaves no output headroom
+[smart-router] output headroom exceeded, escalating to larger model gemini-1.5-pro
+
+stderr | tests/integration/pi-extension.test.ts > @release > Pi extension integration (SP-043) > delegation output headroom (SP-108) > retries larger model after zero-output length stop from provider
+[smart-router] zero-output length stop, escalating to larger model gemini-1.5-pro
+
+stderr | tests/unit/modernbert-heads.test.ts > ModernBertK4HeadWeights loading > resolveModernBertK4HeadWeights returns null on invalid file
+ModernBERT K=4 head weights artifact invalid; using placeholder heads {
+  error: 'Invalid ModernBERT K=4 head weights artifact:\n' +
+    'cls_dim: Invalid input: expected 768\n' +
+    'weights: Invalid input: expected array, received undefined\n' +
+    'bias: Invalid input: expected array, received undefined'
+}
+
+stderr | tests/unit/modernbert-heads.test.ts > createModernBertHeadsPredictor > reports k4_heads_placeholder when the head weights artifact is invalid
+ModernBERT K=4 head weights artifact invalid; using placeholder heads {
+  error: 'Invalid ModernBERT K=4 head weights artifact:\n' +
+    'cls_dim: Invalid input: expected 768\n' +
+    'weights: Invalid input: expected array, received undefined\n' +
+    'bias: Invalid input: expected array, received undefined'
+}
+
