@@ -43,10 +43,14 @@ Add opt-in `hydra.encoder_cascade` config (**default off**) and a pure `selectEn
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run verify:ci` |
+| testCommand | `npm run typecheck && npx vitest run tests/unit/encoder-gate.test.ts` |
 | fileScopeMustChange | `src/domain/types/schemas.ts`, `src/domain/matching/encoder-gate.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/router-pipeline.ts` |
 | completionCriteria | Cascade config default off; gate unit tests cover threshold/disabled/estimator parity |
+
+> **Contract note (wave-1 retry):** Scoped typecheck + encoder-gate unit tests. Full
+> `verify:ci` / `release:check` remain post-integrate gates — prior attempt exited
+> mid-`verify:ci` before `.DONE`.
 
 ## Steps
 
@@ -67,7 +71,8 @@ Add opt-in `hydra.encoder_cascade` config (**default off**) and a pure `selectEn
 
 ### Step 3: Testing & Verification
 
-- [ ] Run `npm run verify:ci`
+- [ ] Run Contract `testCommand` (`npm run typecheck && npx vitest run tests/unit/encoder-gate.test.ts`)
+- [ ] Optionally run `npm run verify:ci` if time allows; otherwise rely on post-integrate `release:check`
 
 ## Do NOT
 

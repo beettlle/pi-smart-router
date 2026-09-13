@@ -45,10 +45,15 @@ Bump workflow action pins to Node-24-native majors for the inventory in #174 (`a
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run release:check` |
+| testCommand | `npm run typecheck` |
 | fileScopeMustChange | `.github/workflows/` |
 | fileScopeMustNotChange | `package.json`, `src/` |
 | completionCriteria | All inventoried actions on Node-24-native majors; no engines/node-version app change; STATUS notes versions chosen |
+
+> **Contract note (wave-1 retry):** Prefer `typecheck` over `release:check` in-lane — live
+> benchmark refresh dirties the worktree and fails contract verify. Full
+> `SMART_ROUTER_SKIP_LIVE_BENCHMARK_REFRESH=1 npm run release:check` remains the
+> post-integrate regression gate on `main`.
 
 ## Steps
 
@@ -64,8 +69,9 @@ Bump workflow action pins to Node-24-native majors for the inventory in #174 (`a
 
 ### Step 2: Testing & Verification
 
-- [ ] Run `npm run release:check`
+- [ ] Run Contract `testCommand` (`npm run typecheck`)
 - [ ] Record chosen action versions in STATUS
+- [ ] Note: post-integrate `release:check` (with skip-live if needed) is operator-owned on `main`
 
 ## Do NOT
 
