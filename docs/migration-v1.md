@@ -111,6 +111,44 @@ Two composition roots wire the same pipeline. They are **not** equivalent defaul
 
 This is intentional documentation of the composition split from the #143 ports inversion — not a silent capability loss on the extension path.
 
+## Long-context encoder cascade (v1.2.0, #173)
+
+The `v1.2.0` train ships an **opt-in, per-prompt encoder cascade** behind `hydra.encoder_cascade` ([#173](https://github.com/beettlle/pi-smart-router/issues/173), SP-291–SP-293). **Nothing changes unless you enable it** — `hydra.encoder` stays `minilm`, `encoder_cascade.enabled` defaults to `false`, and the cascade-disabled wire path is unchanged.
+
+### Composition notes
+
+| Piece | Behavior |
+|-------|----------|
+| Gate (`selectEncoderForPrompt`) | Pure pre-embedding arithmetic; reuses the turn-envelope token estimator (`estimated_input_tokens ?? prompt_text.length`). Reason codes: `cascade_disabled`, `under_threshold`, `over_threshold`, `granite_fallback` |
+| Cascading embedder | Lazily owns two ONNX sessions — the Granite session loads only on the first over-threshold prompt; `dispose()` closes both. Wired only when `encoder_cascade.enabled` |
+| Per-encoder artifacts | Encoders embed into different vector spaces — the cascade **never mixes** centroids or learned projection across encoders. Granite centroids come from `npm run routing:bootstrap-centroids -- --encoder granite` (namespaced `config/routing-centroids.granite.json`); the Granite-side projection ships **honest-untrained** (`trained_sample_count: 0`) and `npm run routing:verify-calibration` rejects cross-encoder bundles (fail closed) |
+| Failure posture | Granite unavailable at request time → serve with MiniLM + `granite_fallback` telemetry. Continuity of routing wins; a crash or silent cross-space comparison is a bug |
+
+### Config notes
+
+`encoder_cascade` is an **additive key** on the existing `hydra` operator config (within the SemVer config-shape promise — additive keys only):
+
+```json
+{
+  "hydra": {
+    "encoder": "minilm",
+    "encoder_cascade": {
+      "enabled": false,
+      "long_context_encoder": "granite",
+      "token_threshold": 512
+    }
+  }
+}
+```
+
+| Field | Default | Meaning |
+|-------|---------|---------|
+| `enabled` | `false` | Master switch; when off, every prompt uses the primary `hydra.encoder` |
+| `long_context_encoder` | `"granite"` | Encoder selected at/over the threshold |
+| `token_threshold` | `512` | Estimated-token boundary; matches MiniLM's context window |
+
+Cascade-enabled decisions add four optional fields to the routing feature sidecar — `encoder_selected`, `token_estimate`, `cascade_threshold`, `cascade_fallback_reason` — additive telemetry, absent when the cascade is disabled. These fields exist to make the #173 eval table measurable on future dogfood evidence; **no default flip ships in v1.2.0**. Evidence: [`docs/qa/encoder-cascade-replay-v1.2.0.md`](qa/encoder-cascade-replay-v1.2.0.md). Operator runbook for the process-wide Granite switch (separate from the cascade) remains in the [README](../README.md) (#167).
+
 ## Shadow dogfood → calibration behavioral path
 
 The shadow dogfood protocol and the behavioral calibration pipeline are two ends of one loop: dogfood sessions produce privacy-safe outcome-labeled rows; those rows can train calibration artifacts that ship back into routing. `1.0.0` shipped the **pipeline, hard ECE gates, and honest-untrained defaults**. `v1.1.0` ships **verifier-graded trained P(success) + isotonic** ([#168](https://github.com/beettlle/pi-smart-router/issues/168)); HyDRA + further dogfood remain on [#110](https://github.com/beettlle/pi-smart-router/issues/110) / [#95](https://github.com/beettlle/pi-smart-router/issues/95).
@@ -159,7 +197,7 @@ Starting with `1.0.0`, pi-smart-router follows [semantic versioning](https://sem
 
 To keep expectations matched to shipped behavior:
 
-- **Encoder defaults are unchanged.** MiniLM remains the default encoder; `granite` stays opt-in trial; `modernbert_k4` stays **off** by default — [#96](https://github.com/beettlle/pi-smart-router/issues/96) go/no-go evidence ([SP-204 artifact](../spine-tasks/_authoring/release-v0.11.0/encoder-gonogo-artifact.md), [SP-219 A/B](../spine-tasks/_authoring/release-v0.16.0/modernbert-k4-top1-artifact.md)) recommends keeping the default until trained heads exist. The gate is **not measurable as flipped**, and this guide does not claim it.
+- **Encoder defaults are unchanged** — through `v1.2.0` inclusive. MiniLM remains the default encoder; `granite` stays opt-in trial; the v1.2.0 per-prompt **encoder cascade** ([#173](https://github.com/beettlle/pi-smart-router/issues/173)) ships **default off** (see [Long-context encoder cascade](#long-context-encoder-cascade-v120-173)); `modernbert_k4` stays **off** by default — [#96](https://github.com/beettlle/pi-smart-router/issues/96) go/no-go evidence ([SP-204 artifact](../spine-tasks/_authoring/release-v0.11.0/encoder-gonogo-artifact.md), [SP-219 A/B](../spine-tasks/_authoring/release-v0.16.0/modernbert-k4-top1-artifact.md)) recommends keeping the default until trained heads exist. The gate is **not measurable as flipped**, and this guide does not claim it.
 - **Frugality defaults are kept** — the #95 human dogfood floor was unmet at release; no relaxation shipped.
 - **The extension vs library capability gap** (stream failover loop, planning delegate spawn, headroom escalation, quota reaction, **and default hardware/telemetry wiring**) remains extension-only pending [#149](https://github.com/beettlle/pi-smart-router/issues/149). See [Composition roots](#composition-roots-library-createrouter-vs-pi-extension).
 - **Toolchain majors are deferred** — `better-sqlite3` v13 ([#162](https://github.com/beettlle/pi-smart-router/issues/162)), TS7/vitest4 ([#163](https://github.com/beettlle/pi-smart-router/issues/163)), ESLint flat config ([#157](https://github.com/beettlle/pi-smart-router/issues/157)) stay on current ranges.

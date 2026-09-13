@@ -991,6 +991,28 @@ Set the encoder in operator config:
 
 MiniLM remains the default fallback when `encoder` is omitted. Both encoders produce 384-dim vectors compatible with the SP-115 learned projection head.
 
+**Opt-in per-prompt encoder cascade ([#173](https://github.com/beettlle/pi-smart-router/issues/173), v1.2.0 — default OFF).** Instead of a process-wide single encoder, an opt-in gate routes prompts whose estimated token count reaches a threshold to the long-context encoder, avoiding MiniLM's 512-token truncation on long turns:
+
+```json
+{
+  "hydra": {
+    "artifact_cache_path": ".pi-smart-router/models/",
+    "encoder": "minilm",
+    "encoder_cascade": {
+      "enabled": true,
+      "long_context_encoder": "granite",
+      "token_threshold": 512
+    }
+  }
+}
+```
+
+- **Default off** — existing single-encoder installs are unaffected and pay zero added cost (the gate is pre-embedding arithmetic, ~sub-microsecond p50 in replay).
+- **Lazy memory** — the Granite ONNX session loads only on the first over-threshold prompt; short prompts keep using the same MiniLM session, so their routing decisions are identical to the MiniLM-only baseline.
+- **Degrade, never mix** — encoders embed into different vector spaces. If Granite is unavailable at request time, routing continues on MiniLM with `granite_fallback` telemetry; the cascade never compares cross-encoder vectors. Per-encoder artifacts: bootstrap Granite centroids with `npm run routing:bootstrap-centroids -- --encoder granite` (namespaced `config/routing-centroids.granite.json`); `npm run routing:verify-calibration` rejects mixed-encoder bundles, and Granite-side projection ships honest-untrained.
+- **Telemetry** — cascade-enabled decisions carry `encoder_selected`, `token_estimate`, `cascade_threshold`, and `cascade_fallback_reason` on the feature sidecar.
+- **Evidence, not a default flip** — see the cascade replay report [`docs/qa/encoder-cascade-replay-v1.2.0.md`](docs/qa/encoder-cascade-replay-v1.2.0.md). Promoting the cascade (or Granite) to a default is a future ticket gated on the #173 eval table.
+
 **Latency budget:** the HyDRA embedding stage targets ~80–120 ms per turn. Compare MiniLM vs Granite on held-out agent turn samples:
 
 ```bash
