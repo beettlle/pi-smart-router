@@ -1,0 +1,28 @@
+.github/workflows/benchmark-profile-refresh.yml
+  h_ae151c586ac6c5 45,48,67,72
+.github/workflows/calibration-verify.yml
+  h_ae151c586ac6c5 26,29
+.github/workflows/ci.yml
+  h_ae151c586ac6c5 17,20
+.github/workflows/eval-harness-smoke.yml
+  h_ae151c586ac6c5 22,25
+.github/workflows/npm-deprecate.yml
+  h_ae151c586ac6c5 33,36
+.github/workflows/release.yml
+  h_ae151c586ac6c5 39,54,87
+.github/workflows/twinrouterbench-full-nightly.yml
+  h_ae151c586ac6c5 27,30,45
+spine-tasks/SP-290-gha-node24-runtimes/STATUS.md
+  h_ae151c586ac6c5 3-5,14,16-22,27,29-32,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "43223b6662785f6b8ee3f37231ed9f757f06f1a5",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
