@@ -1,0 +1,20 @@
+config/operator-config.json.example
+  h_ae151c586ac6c5 24-29
+spine-tasks/SP-291-encoder-cascade-config-gate/STATUS.md
+  h_ae151c586ac6c5 3-5,14,16-21,26,28-31,38-41
+src/config/defaults.ts
+  h_ae151c586ac6c5 9,66-67
+src/domain/types/schemas.ts
+  h_ae151c586ac6c5 454-488,493-499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "044802a51ab3eda1e13440887741e9ab26a44825",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
