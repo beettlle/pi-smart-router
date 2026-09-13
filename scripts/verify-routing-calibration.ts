@@ -12,13 +12,20 @@
  * prompt text into artifacts.
  * SP-201: `--include-excluded-in-fit` warm-starts fit with weak rows; holdout
  * ECE / soft ECE pass-fail stay verifier-grade only (#96).
+ * SP-293 (#173 part 3): encoder-flavor consistency gate — bundles whose
+ * `hydra_projection` and `routing_centroids` declare different `encoder`
+ * flavors (minilm vs granite) are rejected fail-closed (raw JSON check,
+ * missing flavor implies the shipped minilm default). Non-minilm bundles must
+ * keep the learned projection honest-untrained (`trained_sample_count: 0`)
+ * until a granite train path ships — MiniLM weights are never granite weights.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { cyclomaticScan, sanitize } from '../src/domain/triage/triage-engine.js';
+import { DEFAULT_ENCODER, type Encoder } from '../src/domain/types/schemas.js';
 import { buildHydraInput } from '../src/domain/matching/hydra-input.js';
 import { projectToRequirements } from '../src/domain/matching/hydra-matcher.js';
 import {
@@ -70,6 +77,9 @@ import {
 
 /** Soft advisory ECE ceiling for pack dry-run (not a release-gate absolute). */
 export const CALIBRATION_DRY_RUN_SOFT_ECE_THRESHOLD = 0.25;
+
+/** Known encoder flavors for artifact stamps (SP-293 / #173). */
+export const ENCODER_FLAVORS: readonly Encoder[] = ['minilm', 'granite'];
 
 /**
  * Hard ship gate for trained isotonic artifacts: calibrated ECE must beat raw
@@ -588,6 +598,153 @@ export function verifyClusterBenchmarks(
   });
 }
 
+/**
+ * Extract the declared encoder flavor from a raw bundle sub-artifact.
+ * Missing `encoder` implies the shipped MiniLM default; unknown values are
+ * rejected fail-closed (SP-252 precedent) — never silently coerce.
+ */
+function extractDeclaredEncoder(
+  section: unknown,
+): { readonly encoder: Encoder } | { readonly error: string } {
+  if (typeof section !== 'object' || section === null) {
+    return { encoder: DEFAULT_ENCODER };
+  }
+  const value = (section as Record<string, unknown>).encoder;
+  if (value === undefined) {
+    return { encoder: DEFAULT_ENCODER };
+  }
+  if (typeof value !== 'string' || !ENCODER_FLAVORS.includes(value as Encoder)) {
+    return { error: `unknown encoder flavor ${JSON.stringify(value)}` };
+  }
+  return { encoder: value as Encoder };
+}
+
+/**
+ * SP-293 (#173 part 3): reject calibration bundles that mix encoder flavors.
+ *
+ * Operates on the **raw** bundle JSON because the typed bundle schema strips
+ * unknown keys — the `encoder` stamp never survives zod parsing. A bundle
+ * whose `hydra_projection` and `routing_centroids` declare different flavors
+ * would compare embeddings from disjoint vector spaces; reject fail-closed.
+ * Non-minilm bundles must also keep the learned projection honest-untrained
+ * (`trained_sample_count: 0`) until a granite train path ships.
+ */
+export function assertEncoderFlavorConsistency(rawBundle: unknown): BenchmarkAssertionResult[] {
+  if (typeof rawBundle !== 'object' || rawBundle === null) {
+    return [
+      {
+        id: 'encoder_flavor_consistency',
+        passed: false,
+        message: 'bundle is not a JSON object — cannot prove encoder flavor consistency',
+      },
+    ];
+  }
+
+  const record = rawBundle as Record<string, unknown>;
+  const hydra = extractDeclaredEncoder(record.hydra_projection);
+  if ('error' in hydra) {
+    return [
+      {
+        id: 'encoder_flavor_hydra_projection',
+        passed: false,
+        message: `hydra_projection: ${hydra.error}`,
+      },
+    ];
+  }
+  const centroids = extractDeclaredEncoder(record.routing_centroids);
+  if ('error' in centroids) {
+    return [
+      {
+        id: 'encoder_flavor_routing_centroids',
+        passed: false,
+        message: `routing_centroids: ${centroids.error}`,
+      },
+    ];
+  }
+
+  if (hydra.encoder !== centroids.encoder) {
+    return [
+      {
+        id: 'encoder_flavor_consistency',
+        passed: false,
+        message:
+          `mixed encoder flavors: hydra_projection=${hydra.encoder}, ` +
+          `routing_centroids=${centroids.encoder} — cross-encoder bundles are rejected (#173)`,
+      },
+    ];
+  }
+
+  const results: BenchmarkAssertionResult[] = [
+    {
+      id: 'encoder_flavor_consistency',
+      passed: true,
+      message: `encoder=${hydra.encoder} (hydra_projection + routing_centroids agree)`,
+    },
+  ];
+
+  if (hydra.encoder !== DEFAULT_ENCODER) {
+    const section = (record.hydra_projection ?? {}) as Record<string, unknown>;
+    const trainedSampleCount = section.trained_sample_count;
+    const honest = trainedSampleCount === 0;
+    results.push({
+      id: 'encoder_flavor_honest_untrained',
+      passed: honest,
+      message: honest
+        ? `${hydra.encoder} projection honest-untrained (trained_sample_count=0)`
+        : `${hydra.encoder} bundle must keep hydra_projection.trained_sample_count=0 ` +
+          `until a ${hydra.encoder} train path ships; got ${String(trainedSampleCount)}`,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Encoder-flavor assertions for a bundle file on disk. Missing file → implicit
+ * minilm defaults (pass); unreadable/unparseable file → fail-closed, since a
+ * corrupt bundle cannot prove flavor consistency.
+ */
+export function assertEncoderFlavorConsistencyFromFile(
+  resolvedPath: string,
+): BenchmarkAssertionResult[] {
+  if (!existsSync(resolvedPath)) {
+    return [
+      {
+        id: 'encoder_flavor_consistency',
+        passed: true,
+        message: 'no bundle file — implicit minilm defaults',
+      },
+    ];
+  }
+
+  let rawText: string;
+  try {
+    rawText = readFileSync(resolvedPath, 'utf8');
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return [
+      {
+        id: 'encoder_flavor_consistency',
+        passed: false,
+        message: `bundle unreadable — cannot prove encoder flavor consistency: ${message}`,
+      },
+    ];
+  }
+
+  try {
+    return assertEncoderFlavorConsistency(JSON.parse(rawText));
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return [
+      {
+        id: 'encoder_flavor_consistency',
+        passed: false,
+        message: `bundle JSON unparseable — cannot prove encoder flavor consistency: ${message}`,
+      },
+    ];
+  }
+}
+
 export function verifyRoutingCalibration(
   bundlePath: string = DEFAULT_ROUTING_CALIBRATION_PATH,
   options?: {
@@ -601,6 +758,7 @@ export function verifyRoutingCalibration(
 
   const assertions = [
     ...verifyArtifactShapes(bundle),
+    ...assertEncoderFlavorConsistencyFromFile(resolvedPath),
     ...CALIBRATION_BENCHMARKS.map((benchmark) => assertBenchmark(benchmark, bundle)),
     ...verifyClusterBenchmarks(bundle, options?.embeddingsByBenchmarkId),
   ];

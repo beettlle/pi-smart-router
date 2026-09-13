@@ -1,6 +1,6 @@
 # SP-293: per-encoder centroids + cal verify — Status
 
-**Current Step:** 1
+**Current Step:** 3
 **Status:** 🟡 In Progress
 **Last Updated:** 2026-09-13
 **Review Level:** 1
@@ -38,10 +38,12 @@
 ---
 
 ### Step 2: Verify reject mix
-**Status:** ⬜ Not Started
+**Status:** ✅ Complete
 
-- [ ] Reject mixed-encoder bundles
-- [ ] Tests for reject path
+- [x] Reject mixed-encoder bundles
+- [x] Tests for reject path
+
+`scripts/verify-routing-calibration.ts`: `assertEncoderFlavorConsistency(rawBundle)` + `assertEncoderFlavorConsistencyFromFile(path)` — raw-JSON check (zod strips unknown keys); missing `encoder` ⇒ implicit minilm; unknown flavors + unparseable bundles fail closed (SP-252); non-minilm bundles must keep `hydra_projection.trained_sample_count=0` (honest-untrained; MiniLM weights never reused as granite). Wired into `verifyRoutingCalibration`. Tests: 10 new in `verify-routing-calibration.test.ts`, 3 in `train-routing-calibration.test.ts` (contract file), 6 in new `bootstrap-routing-centroids.test.ts` — 58/58 green across the three files.
 
 ---
 

@@ -33,6 +33,7 @@ import {
 import type { LabelPackRow } from '../../scripts/lib/label-pack-schema.js';
 import {
   assertBenchmark,
+  assertEncoderFlavorConsistency,
   CALIBRATION_BENCHMARKS,
   CALIBRATION_HARD_ECE_THRESHOLD,
   CALIBRATION_MIN_Y_KNOT_SPAN,
@@ -636,5 +637,82 @@ describe('verifier-grade train (SP-283 / #168)', () => {
     expect(report.isotonic.trained).toBe(true);
     expect(report.isotonic.y_knot_span).toBeCloseTo(0.8, 5);
     expect(report.hard_gates_passed).toBe(true);
+  });
+});
+
+describe('encoder flavor gate (SP-293 / #173 part 3)', () => {
+  function makeRawBundleWithEncoders(
+    overrides: {
+      readonly hydraEncoder?: string;
+      readonly centroidsEncoder?: string;
+      readonly hydraTrainedSampleCount?: number;
+    } = {},
+  ): Record<string, unknown> {
+    const raw = JSON.parse(
+      serializeRoutingCalibrationBundle(createDefaultRoutingCalibrationBundle()),
+    ) as Record<string, unknown>;
+    const hydra = raw.hydra_projection as Record<string, unknown>;
+    const centroids = raw.routing_centroids as Record<string, unknown>;
+    if (overrides.hydraEncoder !== undefined) {
+      hydra.encoder = overrides.hydraEncoder;
+    }
+    if (overrides.centroidsEncoder !== undefined) {
+      centroids.encoder = overrides.centroidsEncoder;
+    }
+    if (overrides.hydraTrainedSampleCount !== undefined) {
+      hydra.trained_sample_count = overrides.hydraTrainedSampleCount;
+    }
+    return raw;
+  }
+
+  it('rejects cross-encoder mixes and unknown flavors fail-closed', () => {
+    const mixed = assertEncoderFlavorConsistency(
+      makeRawBundleWithEncoders({ centroidsEncoder: 'granite' }),
+    );
+    expect(mixed).toHaveLength(1);
+    expect(mixed[0]!.passed).toBe(false);
+    expect(mixed[0]!.message).toContain('mixed encoder flavors');
+
+    const unknown = assertEncoderFlavorConsistency(
+      makeRawBundleWithEncoders({ hydraEncoder: 'bert', centroidsEncoder: 'bert' }),
+    );
+    expect(unknown[0]!.passed).toBe(false);
+  });
+
+  it('keeps granite learned projection honest-untrained (trained_sample_count=0)', () => {
+    const honest = assertEncoderFlavorConsistency(
+      makeRawBundleWithEncoders({ hydraEncoder: 'granite', centroidsEncoder: 'granite' }),
+    );
+    expect(honest.every((entry) => entry.passed)).toBe(true);
+
+    const dishonest = assertEncoderFlavorConsistency(
+      makeRawBundleWithEncoders({
+        hydraEncoder: 'granite',
+        centroidsEncoder: 'granite',
+        hydraTrainedSampleCount: 100,
+      }),
+    );
+    expect(
+      dishonest.some(
+        (entry) => entry.id === 'encoder_flavor_honest_untrained' && !entry.passed,
+      ),
+    ).toBe(true);
+  });
+
+  it('verifyRoutingCalibration reports a passing encoder gate for the default bundle', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sp293-default-'));
+    try {
+      const bundlePath = join(dir, 'routing-calibration.json');
+      writeFileSync(
+        bundlePath,
+        serializeRoutingCalibrationBundle(createDefaultRoutingCalibrationBundle()),
+      );
+      const result = verifyRoutingCalibration(bundlePath);
+      const gate = result.assertions.find((entry) => entry.id === 'encoder_flavor_consistency');
+      expect(gate?.passed).toBe(true);
+      expect(gate?.message).toContain('minilm');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
