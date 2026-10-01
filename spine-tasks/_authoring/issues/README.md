@@ -2,6 +2,24 @@
 
 Paste-ready bodies for the post-assessment four outcomes. Created because GitHub API may be unavailable from CI/agent environments.
 
+## Typed-judgment batch (`typed-judgment/`)
+
+Created 2026-10-01 via `scripts/github/create-typed-judgment-issues.sh`. Manifest: `scripts/github/typed-judgment-issues-created.txt`. Milestones: **Sprint 1 — typed judgment foundation**, **Sprint 2 — consumers + eval**.
+
+| File | Priority | Milestone | GitHub |
+|------|----------|-----------|--------|
+| [E-epic.md](./typed-judgment/E-epic.md) | P1 | — | [#183](https://github.com/beettlle/pi-smart-router/issues/183) |
+| [T1-typed-judgment-port.md](./typed-judgment/T1-typed-judgment-port.md) | P1 | Sprint 1 | [#184](https://github.com/beettlle/pi-smart-router/issues/184) |
+| [T2-state-and-questions.md](./typed-judgment/T2-state-and-questions.md) | P1 | Sprint 1 | [#185](https://github.com/beettlle/pi-smart-router/issues/185) |
+| [T3-hydra-input-loop-flag.md](./typed-judgment/T3-hydra-input-loop-flag.md) | P2 | Sprint 1 | [#186](https://github.com/beettlle/pi-smart-router/issues/186) |
+| [T4-typed-judgment-stage.md](./typed-judgment/T4-typed-judgment-stage.md) | P1 | Sprint 2 | [#187](https://github.com/beettlle/pi-smart-router/issues/187) |
+| [T5-tier-hints-and-gates.md](./typed-judgment/T5-tier-hints-and-gates.md) | P1 | Sprint 2 | [#188](https://github.com/beettlle/pi-smart-router/issues/188) |
+| [T6-hydra-requirements-source.md](./typed-judgment/T6-hydra-requirements-source.md) | P2 | Sprint 2 | [#189](https://github.com/beettlle/pi-smart-router/issues/189) |
+| [T7-adaptive-reasoning.md](./typed-judgment/T7-adaptive-reasoning.md) | P2 | Sprint 2 | [#190](https://github.com/beettlle/pi-smart-router/issues/190) |
+| [T8-eval-comparison.md](./typed-judgment/T8-eval-comparison.md) | P1 | Sprint 2 | [#191](https://github.com/beettlle/pi-smart-router/issues/191) |
+
+Comments posted (bodies in `typed-judgment/comments/`): [#179](https://github.com/beettlle/pi-smart-router/issues/179) (scope narrowed; added to Sprint 1), [#96](https://github.com/beettlle/pi-smart-router/issues/96) / [#167](https://github.com/beettlle/pi-smart-router/issues/167) / [#110](https://github.com/beettlle/pi-smart-router/issues/110) (`encoder-path.md`), [#181](https://github.com/beettlle/pi-smart-router/issues/181), [#169](https://github.com/beettlle/pi-smart-router/issues/169), [#112](https://github.com/beettlle/pi-smart-router/issues/112).
+
 ## 0.17 audit backlog (`audit-v017/`)
 
 Created 2026-08-22 via `scripts/github/create-audit-v017-issues.sh`. Manifest: `scripts/github/audit-v017-issues-created.txt`.
