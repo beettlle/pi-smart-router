@@ -1,0 +1,53 @@
+spine-tasks/_authoring/issues/typed-judgment/E-epic.md
+  s_bfb75a3888b21a::t_23267d9789d8f1 1-100
+spine-tasks/_authoring/issues/typed-judgment/comments/179.md
+  s_bfb75a3888b21a::t_7566a254038df9 1-15
+spine-tasks/_authoring/issues/typed-judgment/T3-hydra-input-loop-flag.md
+  s_bfb75a3888b21a::t_8c819f2c902445 1-40
+spine-tasks/_authoring/issues/README.md
+  s_bfb75a3888b21a::t_13e5fc7331710a 5-22
+scripts/github/create-typed-judgment-issues.sh
+  s_bfb75a3888b21a::t_7fda8be770717d 143-144
+  s_bfb75a3888b21a::t_7057e519d2a0d2 1-142,145-188
+spine-tasks/_authoring/issues/typed-judgment/T2-state-and-questions.md
+  s_bfb75a3888b21a::t_cc85f2020699c8 1-73
+spine-tasks/_authoring/issues/typed-judgment/comments/169.md
+  s_bfb75a3888b21a::t_4394d6fdfd85c7 1-9
+spine-tasks/_authoring/issues/typed-judgment/T5-tier-hints-and-gates.md
+  s_bfb75a3888b21a::t_bc35d3ccf50e5e 1-64
+spine-tasks/_authoring/issues/typed-judgment/T7-adaptive-reasoning.md
+  s_bfb75a3888b21a::t_5d34ae6ff75498 1-49
+spine-tasks/_authoring/issues/typed-judgment/T8-eval-comparison.md
+  s_bfb75a3888b21a::t_ef79694ff92a1e 1-60
+spine-tasks/_authoring/issues/typed-judgment/T1-typed-judgment-port.md
+  s_bfb75a3888b21a::t_b770ca05ba1f4a 1-68
+scripts/github/typed-judgment-issues-created.txt
+  s_bfb75a3888b21a::t_e12b633286cd25 1-11
+spine-tasks/_authoring/issues/typed-judgment/T4-typed-judgment-stage.md
+  s_bfb75a3888b21a::t_13cb9fc93fc21f 1-60
+spine-tasks/_authoring/issues/typed-judgment/comments/181.md
+  s_bfb75a3888b21a::t_140a0d358fec97 1-7
+spine-tasks/_authoring/issues/typed-judgment/T6-hydra-requirements-source.md
+  s_bfb75a3888b21a::t_9ba78604a35db0 45
+  s_bfb75a3888b21a::t_e7024c97d97cf9 1-44,46-56
+spine-tasks/_authoring/issues/typed-judgment/comments/encoder-path.md
+  s_bfb75a3888b21a::t_1727ad90537e6f 1-9
+spine-tasks/_authoring/issues/typed-judgment/comments/112.md
+  s_bfb75a3888b21a::t_5be5277d7b9834 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fdbed97cfbd15e56e0aed41576fd867b60d5b5aa",
+  "prompts": {},
+  "sessions": {
+    "s_bfb75a3888b21a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3008b680-6c27-4331-a0e4-d9dbcf239a5c",
+        "model": "default"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
