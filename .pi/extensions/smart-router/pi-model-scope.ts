@@ -42,6 +42,27 @@ function collectAncestorPackageDirs(startDir: string, maxDepth = 12): string[] {
   return candidates;
 }
 
+/**
+ * Homebrew's pi-coding-agent formula installs the real npm package under
+ * <cellar_version_dir>/libexec/lib/node_modules/@earendil-works/pi-coding-agent,
+ * while `pi` itself is a thin wrapper at <cellar_version_dir>/bin/pi. A plain
+ * node_modules ancestor-walk from the binary never reaches into libexec/lib,
+ * so check that Homebrew-specific layout at each ancestor level too.
+ */
+function collectHomebrewLibexecPackageDirs(startDir: string, maxDepth = 8): string[] {
+  const candidates: string[] = [];
+  let dir = startDir;
+  for (let i = 0; i < maxDepth; i++) {
+    candidates.push(join(dir, 'libexec', 'lib', 'node_modules', PI_CODING_AGENT_PKG));
+    const parent = dirname(dir);
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  return candidates;
+}
+
 function resolvePiBinaryPackageDirs(): string[] {
   try {
     const piBin = execSync('which pi', {
@@ -51,7 +72,11 @@ function resolvePiBinaryPackageDirs(): string[] {
     if (!piBin) {
       return [];
     }
-    return collectAncestorPackageDirs(dirname(realpathSync(piBin)), 8);
+    const binDir = dirname(realpathSync(piBin));
+    return [
+      ...collectAncestorPackageDirs(binDir, 8),
+      ...collectHomebrewLibexecPackageDirs(binDir, 8),
+    ];
   } catch {
     return [];
   }
