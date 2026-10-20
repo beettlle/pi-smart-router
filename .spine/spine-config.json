@@ -15,14 +15,14 @@
   },
   "agents": {
     "worker": {
-      "model": "zai/glm-5.3",
+      "model": "kimi-coding/k3",
       "thinking": "high"
     },
     "reviewer": {
       "model": "google/gemini-3.1-pro-preview",
       "thinking": "high",
       "plan": {
-        "model": "zai/glm-5.3-flash",
+        "model": "google/gemini-flash-latest",
         "thinking": "low"
       },
       "code": {
@@ -36,7 +36,7 @@
     },
     "supervisor": {
       "enabled": false,
-      "model": "zai/glm-5.3-flash",
+      "model": "google/gemini-flash-lite-latest",
       "pollIntervalMs": 30000,
       "autoNudge": false,
       "thinking": "off"
@@ -52,7 +52,7 @@
           "model": "google/gemini-3.1-pro-preview",
           "thinking": "high",
           "plan": {
-            "model": "zai/glm-5.3-flash",
+            "model": "google/gemini-flash-latest",
             "thinking": "low"
           },
           "code": {
@@ -65,7 +65,7 @@
           }
         },
         "supervisor": {
-          "model": "zai/glm-5.3-flash",
+          "model": "google/gemini-flash-lite-latest",
           "thinking": "off"
         }
       },
@@ -97,14 +97,14 @@
       },
       "budget": {
         "worker": {
-          "model": "zai/glm-5.3",
+          "model": "zai/glm-5.3-flash",
           "thinking": "high"
         },
         "reviewer": {
           "model": "google/gemini-3.1-pro-preview",
           "thinking": "high",
           "plan": {
-            "model": "zai/glm-5.3-flash",
+            "model": "google/gemini-flash-latest",
             "thinking": "low"
           },
           "code": {
@@ -117,18 +117,18 @@
           }
         },
         "supervisor": {
-          "model": "zai/glm-5.3-flash",
+          "model": "google/gemini-flash-lite-latest",
           "thinking": "off"
         }
       },
       "hard": {
         "worker": {
-          "model": "zai/glm-5.3",
+          "model": "anthropic/claude-opus-5-5",
           "thinking": "high"
         },
         "reviewer": {
           "plan": {
-            "model": "zai/glm-5.3-flash",
+            "model": "google/gemini-flash-latest",
             "thinking": "medium"
           },
           "code": {
@@ -145,10 +145,11 @@
     "escalatePolicy": {
       "enabled": true,
       "toProfile": "hard"
-    }
+    },
+    "quotaFallbackProfile": "budget"
   },
   "lanes": {
-    "maxParallel": 3,
+    "maxParallel": 2,
     "queueExcess": true,
     "workerBackend": "subprocess",
     "workerOutputMaxBytes": 262144,
