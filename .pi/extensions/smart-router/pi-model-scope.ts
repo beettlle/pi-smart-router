@@ -28,11 +28,22 @@ function hasModelResolver(pkgDir: string): boolean {
   return existsSync(join(pkgDir, MODEL_RESOLVER_REL));
 }
 
-function collectAncestorPackageDirs(startDir: string, maxDepth = 12): string[] {
+const NODE_MODULES_REL = 'node_modules';
+/**
+ * Homebrew Node formulas (`brew install pi-coding-agent`) put the npm package at
+ * <cellar>/<version>/libexec/lib/node_modules/... next to a thin <cellar>/<version>/bin/pi wrapper.
+ */
+const HOMEBREW_LIBEXEC_NODE_MODULES_REL = join('libexec', 'lib', 'node_modules');
+
+function collectAncestorPackageDirs(
+  startDir: string,
+  maxDepth = 12,
+  nodeModulesRel = NODE_MODULES_REL,
+): string[] {
   const candidates: string[] = [];
   let dir = startDir;
   for (let i = 0; i < maxDepth; i++) {
-    candidates.push(join(dir, 'node_modules', PI_CODING_AGENT_PKG));
+    candidates.push(join(dir, nodeModulesRel, PI_CODING_AGENT_PKG));
     const parent = dirname(dir);
     if (parent === dir) {
       break;
@@ -51,7 +62,11 @@ function resolvePiBinaryPackageDirs(): string[] {
     if (!piBin) {
       return [];
     }
-    return collectAncestorPackageDirs(dirname(realpathSync(piBin)), 8);
+    const binDir = dirname(realpathSync(piBin));
+    return [
+      ...collectAncestorPackageDirs(binDir, 8),
+      ...collectAncestorPackageDirs(binDir, 8, HOMEBREW_LIBEXEC_NODE_MODULES_REL),
+    ];
   } catch {
     return [];
   }
