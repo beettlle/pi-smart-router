@@ -1,8 +1,8 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-09-13
+**Last Updated:** 2026-10-19
 **Status:** Active
-**Next Task ID:** SP-296
+**Next Task ID:** SP-300
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** **v1.2.0** on npm (`latest`, tag `v1.2.0`, 2026-09-13). Theme: long-context encoder path — #173 cascade (SP-291–294) + #167 Granite opt-in runbook (SP-295 Partial — human dogfood remaining) + non-quota #174 (SP-290). Closed: #173, #174. Left open: #167 (Partial), #110 (deferred — no embeddings / session-holdout ECE), #95, #96 (not flipped), #172 (P3). Note: accidental empty `1.3.0` git bump was never published; tag deleted; `main` reverted to package `1.2.0` (`ff28a0c`). Prior: **v1.1.0** verifier-grade train. Train SP-289–SP-295 `.DONE`. Next-train slate: #110, #95, #162/#163, #172, #96, #157, hardware #1/#25/#26 parked.
@@ -957,6 +957,23 @@
 **Scope ID:** `SP-289,SP-290,SP-291,SP-292,SP-293,SP-294,SP-295`
 
 **Authoring notes:** `spine-tasks/_authoring/release-v1.2.0/manifest.md`
+
+### Phase 61 — Release v1.2.1 pi 1.x Host Compatibility (SP-296–SP-299)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-296 | host-provided pi-ai out of dependencies | S | — | Closes #176 |
+| SP-297 | dev pi packages → ^1.3.0 | S | SP-296 | Partial #176 (peer drift) |
+| SP-298 | pi registry cost is per-1M | S | — | Closes #175 |
+| SP-299 | pi registry limits before tier defaults | M | SP-297, SP-298 | Closes #177 (epic #182) |
+
+**Source:** Operator-approved **v1.2.1** (2026-10-19, patch profile). Theme: pi 1.x host compatibility. PR #192 (Homebrew libexec resolution) merged directly with a regression test (`6ef732fe`) — no packet.
+
+**Status:** Packets authored; awaiting Phase 4 batch execution.
+
+**Scope ID:** `SP-296,SP-297,SP-298,SP-299`
+
+**Authoring notes:** `spine-tasks/_authoring/release-v1.2.1/manifest.md`
 
 ---
 

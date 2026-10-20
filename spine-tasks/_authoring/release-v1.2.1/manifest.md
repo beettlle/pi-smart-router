@@ -6,7 +6,7 @@
 **Bump type:** patch
 **Profile:** patch
 **Theme:** pi 1.x host compatibility — clear the pi 1.0 extension-loader warning, resolve Homebrew pi installs, and align with pi registry contracts (cost units, model limits).
-**Operator approved scope:** no
+**Operator approved scope:** yes (2026-10-19, including #177)
 
 ---
 
@@ -16,12 +16,12 @@
 |--------|----------|---------------|--------|
 | Theme | pi 1.x host compatibility | required | PASS |
 | Documentation | 0 | patch 0–2 | PASS |
-| Bug fixes | 3 core (#176, PR #192, #175) + 1 optional (#177) | soft 1–5 | PASS |
+| Bug fixes | 4 (#176, PR #192 merged, #175, #177) | soft 1–5 | PASS |
 | Dependency hygiene | 1 (peer drift dev bump) | counts toward total | PASS |
 | Enhancements | 0 | patch **0** | PASS |
-| **Total tasks** | 4 core / 5 with optional | patch ≤8 | PASS |
+| **Total tasks** | 4 packets + PR #192 | patch ≤8 | PASS |
 
-**Profile audit:** PASS (pending operator scope approval)
+**Profile audit:** PASS
 
 **Hygiene (patch only):** SP-297 bumps dev-only `@earendil-works/pi-ai` / `pi-coding-agent` from ^0.85.1 to ^1.3.0 so typecheck and tests run against the pi version users have installed. No runtime capability change.
 
@@ -52,14 +52,13 @@ Inventory on 2026-10-19: `npm outdated --long`, `npm view @earendil-works/pi-ai 
 
 | SP-ID | Issue | Bucket | Size | Title | Notes |
 |-------|-------|--------|------|-------|-------|
-| SP-296 | #176 | bug | S | Remove host-provided `pi-ai` from `dependencies` | Closes #176. Keep peer `*`; add to devDependencies; unit test asserting no host-provided package (`pi-ai`, `pi-coding-agent`, `pi-tui`, `typebox`) in `dependencies`; `release:consumer-pack` must stay green; confirm CLI (`bin/pi-smart-router.mjs`) import graph does not pull `provider-error.ts` → `pi-ai` |
-| SP-297 | #176 | hygiene | S | Dev peer bump `pi-ai` / `pi-coding-agent` → ^1.3.0 | Partial #176. Depends on SP-296. `/compat` subpath still exported in 1.3.0; fix typecheck drift if any; keep `pi.minPiVersion` unless an API requires raising it |
-| SP-298 | PR #192 | bug | S | Homebrew libexec resolution for `resolveModelScope` | Merge PR #192 (contributor credit), then add unit test for the `<ancestor>/libexec/lib/node_modules/@earendil-works/pi-coding-agent` candidate. PR has no tests and repo `ci.yml` has not run on it (only GitGuardian) |
-| SP-299 | #175 | bug | S | pi registry `Model.cost` is per-1M, not per-token | Closes #175. Drop `* 1_000_000` in `deriveFallbackCostPer1M`; treat negative rates as unknown; fix per-token fixtures in `pi-model-mapper.test.ts` and `smart-router-pricing.test.ts` |
-| SP-300 *(optional)* | #177 | bug | M | pi registry limits before tier defaults | Closes #177. YAML → LiteLLM → pi registry → tier default in `resolveLimits`; registry limits passed at fleet bootstrap. Child of epic #182 |
+| — | PR #192 | bug | S | Homebrew libexec resolution for `resolveModelScope` | **Merged 2026-10-19** (`6ef732fe`). Review refactor reused the ancestor walk; regression test added and shown to fail without the fix. CI + Eval Harness Smoke green |
+| SP-296 | #176 | bug | S | Remove host-provided `pi-ai` from `dependencies` | Closes #176 |
+| SP-297 | #176 | hygiene | S | Dev pi packages → ^1.3.0 | Partial #176; depends on SP-296 |
+| SP-298 | #175 | bug | S | pi registry `Model.cost` is per-1M | Closes #175 |
+| SP-299 | #177 | bug | M | pi registry limits before tier defaults | Closes #177; depends on SP-297, SP-298 |
 
-**Release scope ID (core):** `SP-296,SP-297,SP-298,SP-299`
-**Release scope ID (with optional):** `SP-296,SP-297,SP-298,SP-299,SP-300`
+**Release scope ID:** `SP-296,SP-297,SP-298,SP-299`
 
 ---
 
@@ -81,7 +80,7 @@ test "${PIPESTATUS[0]}" -eq 0
 
 **Operator gates** (human only):
 
-1. Approve this manifest (scope + theme; decide on optional SP-300)
+1. ~~Approve this manifest~~ — approved 2026-10-19 (with #177)
 2. `spine gate approve` per integrate wave
 3. Publish approval before **exactly one** `npm version patch` (after `release:assert-content` PASS)
 
@@ -89,23 +88,20 @@ test "${PIPESTATUS[0]}" -eq 0
 
 ## Gaps requiring new packets
 
-| Issue | Bucket | Proposed SP-ID | Author with |
-|-------|--------|----------------|-------------|
-| #176 | bug | SP-296 | create-spine-tasks (lean) |
-| #176 | hygiene | SP-297 | create-spine-tasks (lean) |
-| PR #192 | bug | SP-298 | merge PR + create-spine-tasks (test only) |
-| #175 | bug | SP-299 | create-spine-tasks (lean) |
-| #177 | bug | SP-300 (optional) | create-spine-tasks (lean) |
+All authored 2026-10-19 (SP-296–SP-299). PR #192 handled by direct merge.
 
 ---
 
 ## Wave plan snapshot
 
 ```text
-(pending — run after packets are authored: spine plan <release-scope>)
+spine plan SP-296,SP-297,SP-298,SP-299 — 4 tasks · 3 waves · maxParallel 2
+Wave 0: SP-296, SP-298
+Wave 1: SP-297
+Wave 2: SP-299
 ```
 
-Expected: wave 1 = SP-296, SP-298, SP-299 (disjoint files); wave 2 = SP-297 (shares `package.json` / lockfile with SP-296) [+ SP-300].
+Expected: wave 1 = SP-296, SP-298; wave 2 = SP-297; wave 3 = SP-299.
 
 ---
 
@@ -128,7 +124,6 @@ Expected: wave 1 = SP-296, SP-298, SP-299 (disjoint files); wave 2 = SP-297 (sha
 |-------|-----------------|--------|
 | #180 | glm runaway hardening (epic #182) — patch | Ready |
 | #178 | glm runaway hardening (epic #182) — patch | Ready |
-| #177 (if not taken here) | glm runaway hardening (epic #182) — patch | Ready |
 | #186 | HyDRA input correctness — patch | Ready |
 | #181, #179 | degenerate-output failover + main_loop policy — minor | Funnel |
 | #184, #185, #187 | typed-judgment routing signals — minor | Funnel |
@@ -142,8 +137,8 @@ Open-issue count must **not** raise this release's enhancement or total-task cap
 
 - SP-296: `provider-error.ts` (value import of `isContextOverflow` from `pi-ai`) is re-exported from `src/index.ts`. With `pi-ai` only an optional peer, a non-pi consumer importing the library root would fail to resolve it. Packet must decide: keep the optional peer (pi always provides it) or make the import lazy. `release:consumer-pack` is the gate.
 - SP-297: 0.x → 1.x jump on dev deps may surface type drift; split if it exceeds S.
-- SP-298: PR #192 from a fork; `ci.yml` has not run on it.
-- Git hygiene: `.spine/spine-config.json` is modified and `main` is 1 commit ahead of `origin/main` — resolve before Phase 3.
+- Git hygiene: resolved — spine-config committed (`6f2112eb`), `.gitignore` fix (`1d2114a6`), all pushed.
+- GitNexus: index rebuilt 2026-10-19, but GitNexus 1.6.8 skips dot-directories, so `.pi/extensions/**` impact checks use grep (operator-approved).
 
 ---
 
