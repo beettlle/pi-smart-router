@@ -195,6 +195,50 @@ describe('pi-model-scope', () => {
       /Unable to locate @earendil-works\/pi-coding-agent for resolveModelScope/,
     );
   });
+
+  it('findPiCodingAgentDir resolves the Homebrew Cellar libexec layout from the pi binary', async () => {
+    const homeDir = mkdtempSync(join(tmpdir(), 'pr192-home-'));
+    const projectDir = mkdtempSync(join(tmpdir(), 'pr192-project-'));
+    const cellarRoot = mkdtempSync(join(tmpdir(), 'pr192-cellar-'));
+    const isolatedExtDir = mkdtempSync(join(tmpdir(), 'pr192-isolated-ext-'));
+    const versionDir = join(cellarRoot, 'pi-coding-agent', '1.0.0');
+    const piBin = join(versionDir, 'bin', 'pi');
+    const libexecPkgDir = join(
+      versionDir,
+      'libexec/lib/node_modules/@earendil-works/pi-coding-agent',
+    );
+    mkdirSync(join(versionDir, 'bin'), { recursive: true });
+    writeFileSync(piBin, '#!/bin/sh\n');
+    writeModelResolverStub(libexecPkgDir);
+
+    const isolatedModulePath = join(isolatedExtDir, 'pi-model-scope.ts');
+    writeFileSync(isolatedModulePath, readFileSync(PI_MODEL_SCOPE_PATH, 'utf8'));
+
+    consumerFixture = {
+      homeDir,
+      projectDir,
+      agentPiCodingAgentDir: libexecPkgDir,
+      moduleUrl: pathToFileURL(isolatedModulePath).href,
+      cleanup: () => {
+        for (const dir of [homeDir, projectDir, cellarRoot, isolatedExtDir]) {
+          rmSync(dir, { recursive: true, force: true });
+        }
+      },
+    };
+
+    vi.stubEnv('HOME', homeDir);
+    vi.stubEnv('HOMEBREW_PREFIX', '');
+    process.chdir(projectDir);
+
+    vi.doMock('node:child_process', () => ({
+      execSync: vi.fn(() => `${piBin}\n`),
+    }));
+
+    const { findPiCodingAgentDir } = await import(
+      `${consumerFixture.moduleUrl}?homebrew=${Date.now()}`
+    );
+    expect(realpathSync(findPiCodingAgentDir())).toBe(realpathSync(libexecPkgDir));
+  });
 });
 
 function hasModelResolver(pkgDir: string): boolean {
