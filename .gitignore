@@ -1,5 +1,4 @@
 # pi local state (track project extensions under .pi/extensions/)
-.pi/
 .pi/*
 !.pi/extensions/
 !.pi/extensions/**
