@@ -80,4 +80,23 @@ describe('output headroom (SP-108)', () => {
 
     expect(result.kind).toBe('no_fit');
   });
+
+  it('delegates maxTokens above 8192 when resolved limits come from the pi registry (SP-299 / #177)', () => {
+    // glm-5.3-flash-style profile: pi registry limits (200K window / 32K max
+    // output) resolved by price-broker instead of the 128K/8K tier default.
+    const profile = makeProfile({
+      id: 'glm-5.3-flash',
+      provider: 'zai',
+      limits: { max_input_tokens: 200_000, max_output_tokens: 32_768 },
+    });
+
+    const result = computeOutputHeadroom(profile, 10_000);
+
+    expect(result.kind).toBe('fit');
+    if (result.kind === 'fit') {
+      expect(result.contextWindow).toBe(200_000);
+      expect(result.maxTokens).toBe(32_768);
+      expect(result.maxTokens).toBeGreaterThan(8_192);
+    }
+  });
 });

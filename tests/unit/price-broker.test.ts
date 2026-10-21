@@ -8,7 +8,7 @@ import {
   applyCatalogLimitsToFleet,
   resolveLimits,
 } from '../../src/infrastructure/pricing/price-broker.js';
-import { getDefaultLimitsForTier } from '../../src/config/pi-model-mapper.js';
+import { getDefaultLimitsForTier, mapPiModelToProfile } from '../../src/config/pi-model-mapper.js';
 import type { ModelProfile, PriceCatalog } from '../../src/domain/types/index.js';
 
 function makeModel(
@@ -456,5 +456,84 @@ describe('applyCatalogLimitsToFleet (SP-092)', () => {
 
     expect(limited[0]?.limits?.max_input_tokens).toBe(128_000);
     expect(limited[0]?.limits?.max_output_tokens).toBe(16_384);
+  });
+});
+
+describe('resolveLimits pi registry precedence (SP-299 / #177)', () => {
+  it('uses pi registry contextWindow/maxTokens before tier defaults (glm-5.3-flash)', () => {
+    const model = mapPiModelToProfile({
+      provider: 'zai',
+      id: 'glm-5.3-flash',
+      contextWindow: 200_000,
+      maxTokens: 32_768,
+    });
+
+    const resolved = resolveLimits(model, null);
+
+    expect(resolved.limits.max_input_tokens).toBe(200_000);
+    expect(resolved.limits.max_output_tokens).toBe(32_768);
+    expect(resolved.limits).not.toEqual(getDefaultLimitsForTier('economical-cloud'));
+  });
+
+  it('falls through to tier defaults when the pi registry carries no usable limits', () => {
+    const model = mapPiModelToProfile({
+      provider: 'zai',
+      id: 'glm-5.3-flash',
+      contextWindow: 0,
+      maxTokens: -1,
+    });
+
+    const resolved = resolveLimits(model, null);
+
+    expect(resolved.limits).toEqual(getDefaultLimitsForTier('economical-cloud'));
+  });
+
+  it('ranks YAML > LiteLLM > pi registry > tier default per field', () => {
+    const base = mapPiModelToProfile({
+      provider: 'zai',
+      id: 'glm-5.3-flash',
+      contextWindow: 200_000,
+      maxTokens: 32_768,
+    });
+    const catalog = makeCatalog({
+      registry_limits_snapshot: {
+        'zai/glm-5.3-flash': { max_input_tokens: 128_000, max_output_tokens: 8_192 },
+      },
+    });
+
+    // LiteLLM beats pi registry when no YAML override exists.
+    const litellmResolved = resolveLimits(base, catalog);
+    expect(litellmResolved.limits.max_input_tokens).toBe(128_000);
+    expect(litellmResolved.limits.max_output_tokens).toBe(8_192);
+
+    // YAML beats LiteLLM and pi registry; unset fields keep cascading.
+    const withYaml: ModelProfile = {
+      ...base,
+      limits: { max_input_tokens: 256_000 },
+    };
+    const yamlResolved = resolveLimits(withYaml, catalog);
+    expect(yamlResolved.limits.max_input_tokens).toBe(256_000);
+    expect(yamlResolved.limits.max_output_tokens).toBe(8_192);
+
+    // Without a LiteLLM entry, pi registry beats tier defaults field-wise.
+    const piOnlyResolved = resolveLimits(withYaml, makeCatalog());
+    expect(piOnlyResolved.limits.max_input_tokens).toBe(256_000);
+    expect(piOnlyResolved.limits.max_output_tokens).toBe(32_768);
+  });
+
+  it('applies pi registry limits on the !catalog path via applyCatalogPricesToFleet', () => {
+    const fleet = [
+      mapPiModelToProfile({
+        provider: 'zai',
+        id: 'glm-5.3-flash',
+        contextWindow: 200_000,
+        maxTokens: 32_768,
+      }),
+    ];
+
+    const priced = applyCatalogPricesToFleet(fleet, null);
+
+    expect(priced[0]?.limits?.max_input_tokens).toBe(200_000);
+    expect(priced[0]?.limits?.max_output_tokens).toBe(32_768);
   });
 });

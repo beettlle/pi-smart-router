@@ -392,6 +392,25 @@ describe('discoverFleet pricing integration (SP-045)', () => {
     expect(fleet[0]?.limits?.max_input_tokens).toBe(128_000);
     expect(fleet[0]?.limits?.max_output_tokens).toBe(16_384);
   });
+
+  it('applies pi registry contextWindow/maxTokens when LiteLLM has no limits entry (SP-299 / #177)', async () => {
+    const store = new MemoryStore([]);
+    await store.putPriceCatalog({
+      registry_snapshot: { 'openai/gpt-4o-mini': 0.375 },
+      registry_limits_snapshot: {},
+      user_overrides: {},
+      last_updated: new Date().toISOString(),
+      source: 'registry',
+    });
+
+    const registry = createMockRegistry([makeRegistryModel('gpt-4o-mini')]);
+    const { fleet } = await discoverFleet(registry, 'all', '/tmp', store);
+
+    // Mock registry model: contextWindow 128_000, maxTokens 4_096.
+    // maxTokens 4_096 beats the economical-cloud tier default of 8_192.
+    expect(fleet[0]?.limits?.max_input_tokens).toBe(128_000);
+    expect(fleet[0]?.limits?.max_output_tokens).toBe(4_096);
+  });
 });
 
 describe('discoverFleet registry cost pass-through (SP-046)', () => {

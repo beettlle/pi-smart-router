@@ -33,6 +33,13 @@ export type CapabilitySource = 'benchmark' | 'pattern_default';
 /** ModelProfile plus operator-visible capability provenance (SP-174). */
 export interface MappedModelProfile extends ModelProfile {
   readonly capability_source: CapabilitySource;
+  /**
+   * Context limits carried from the pi model registry (`Model.contextWindow` /
+   * `Model.maxTokens`) — SP-299 / #177. Kept separate from `limits` (YAML
+   * overrides) so `resolveLimits` can rank them below LiteLLM catalog data
+   * and above tier defaults.
+   */
+  readonly pi_registry_limits?: ModelLimits;
 }
 
 const benchmarkCapabilitiesSchema = z.object({
@@ -194,6 +201,10 @@ export interface PiModelInput {
   readonly id: string;
   readonly name?: string;
   readonly cost?: PiRegistryCost;
+  /** Pi registry `Model.contextWindow` — total input token window (SP-299 / #177). */
+  readonly contextWindow?: number;
+  /** Pi registry `Model.maxTokens` — max output tokens (SP-299 / #177). */
+  readonly maxTokens?: number;
 }
 
 interface ModelPatternRule {
@@ -387,6 +398,23 @@ function resolveFallbackCost(
   return fromRegistry ?? defaults.pricing.fallback_cost_per_1m;
 }
 
+/**
+ * Pi registry contextWindow/maxTokens → ModelLimits (SP-299 / #177).
+ * Non-positive or non-finite registry values are vendor sentinels, not real
+ * limits — ignored so tier defaults still apply.
+ */
+function derivePiRegistryLimits(input: PiModelInput): ModelLimits | undefined {
+  const limits: { max_input_tokens?: number; max_output_tokens?: number } = {};
+  const { contextWindow, maxTokens } = input;
+  if (contextWindow !== undefined && Number.isFinite(contextWindow) && contextWindow > 0) {
+    limits.max_input_tokens = Math.floor(contextWindow);
+  }
+  if (maxTokens !== undefined && Number.isFinite(maxTokens) && maxTokens > 0) {
+    limits.max_output_tokens = Math.floor(maxTokens);
+  }
+  return Object.keys(limits).length > 0 ? limits : undefined;
+}
+
 function buildProfile(
   input: PiModelInput,
   defaults: ModelFamilyDefaults,
@@ -415,11 +443,17 @@ function buildProfile(
       ? { ...profile, performance: { ...defaults.performance } }
       : profile;
 
+  const piRegistryLimits = derivePiRegistryLimits(input);
+  const withLimits =
+    piRegistryLimits !== undefined
+      ? { ...withPerformance, pi_registry_limits: piRegistryLimits }
+      : withPerformance;
+
   if (defaults.endpoint !== undefined) {
-    return { ...withPerformance, endpoint: defaults.endpoint };
+    return { ...withLimits, endpoint: defaults.endpoint };
   }
 
-  return withPerformance;
+  return withLimits;
 }
 
 /**
