@@ -190,6 +190,16 @@ export function mapContextMessages(
       return mapped;
     }
 
+    // pi-ai 1.3+: the Message union includes SystemMessage (prompt sections,
+    // mid-transcript tool updates). Map it to a plain text routing message so
+    // the union narrows to ToolResultMessage below.
+    if (message.role === 'system') {
+      return {
+        role: message.role,
+        content: messageContentToString(message.content),
+      };
+    }
+
     const status = readOptionalStatus(message);
     // When a host attaches an HTTP-ish status, let the domain status>=400 rule
     // arbitrate (#137): a bare isError=false would otherwise mask the
