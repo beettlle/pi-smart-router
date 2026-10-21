@@ -469,9 +469,10 @@ describe('mapPiModelToProfile', () => {
   });
 
   describe('registry cost pricing (SP-046)', () => {
+    // Pi registry `Model.cost` is denominated per 1M tokens (SP-298), not per-token.
     const registryCost = {
-      input: 1.5e-7,
-      output: 6e-7,
+      input: 0.15,
+      output: 0.6,
       cacheRead: 0,
       cacheWrite: 0,
     };
@@ -487,6 +488,33 @@ describe('mapPiModelToProfile', () => {
 
       expect(profile.tier).toBe('economical-cloud');
       expect(profile.pricing.fallback_cost_per_1m).toBeCloseTo(0.375, 5);
+    });
+
+    it('treats registry cost as per-1M without scaling (gpt-4o-mini, SP-298)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({
+          provider: 'openai',
+          id: 'gpt-4o-mini',
+          cost: { input: 0.15, output: 0.6, cacheRead: 0, cacheWrite: 0 },
+        }),
+      );
+
+      // Average of per-1M rates directly — no 1,000,000× scaling (would be 375,000).
+      expect(profile.pricing.fallback_cost_per_1m).toBeCloseTo(0.375, 5);
+    });
+
+    it('keeps cost unknown when registry rates are negative sentinels (SP-298)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({
+          provider: 'openai',
+          id: 'gpt-4o-mini',
+          cost: { input: -1, output: -1, cacheRead: -1, cacheWrite: -1 },
+        }),
+      );
+
+      // Negative rates are unknown/sentinel — fall back to pattern default
+      // (gpt-4o-mini matches no rule, so safe default FRONTIER = 1.0).
+      expect(profile.pricing.fallback_cost_per_1m).toBe(1.0);
     });
 
     it('keeps pattern default when cost is omitted', () => {
