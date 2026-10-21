@@ -1,7 +1,7 @@
 # SP-296: move host-provided pi-ai out of dependencies — Status
 
-**Current Step:** Step 1: Implementation
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-10-20
 **Review Level:** 1
 **Discoveries:**
@@ -22,7 +22,7 @@
 ---
 
 ### Step 1: Implementation
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Move pi-ai from dependencies to devDependencies; keep optional `*` peer
 - [x] npm install to sync package-lock.json
@@ -31,7 +31,7 @@
 ---
 
 ### Step 2: Testing & Verification
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run Contract testCommand
-- [ ] Record CLI import-graph finding
+- [x] Run Contract testCommand — typecheck 0 errors; host-deps test 4/4; `release:consumer-pack` "Consumer pack verify passed" (exit 0)
+- [x] Record CLI import-graph finding
