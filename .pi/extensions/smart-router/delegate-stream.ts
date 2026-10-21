@@ -69,10 +69,16 @@ function resolveDelegateStream(
     return deps.delegateStream;
   }
   const registry = deps.modelRegistry as RegistryWithProviders;
-  const provider =
+  const raw =
     typeof registry.getProvider === 'function'
       ? registry.getProvider(targetModel.provider)
       : undefined;
+  // pi-coding-agent 1.3+ types the composed provider's streamSimple with a
+  // branded TranscriptContext (pi-ai); runtime still normalizes a raw Context
+  // defensively (Models.streamSimple → normalizeContext), and the extension
+  // streamSimple path receives the context verbatim as before. Keep the
+  // structural DelegateStreamFn view so older hosts keep loading.
+  const provider = raw as ComposedProviderLike | undefined;
   if (provider && typeof provider.streamSimple === 'function') {
     return (model, context, options) => provider.streamSimple(model, context, options);
   }
