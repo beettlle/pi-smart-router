@@ -395,9 +395,10 @@ describe('discoverFleet pricing integration (SP-045)', () => {
 });
 
 describe('discoverFleet registry cost pass-through (SP-046)', () => {
+  // Pi registry `Model.cost` is denominated per 1M tokens (SP-298), not per-token.
   const registryCost = {
-    input: 1.5e-7,
-    output: 6e-7,
+    input: 0.15,
+    output: 0.6,
     cacheRead: 0,
     cacheWrite: 0,
   };

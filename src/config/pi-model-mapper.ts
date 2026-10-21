@@ -181,7 +181,7 @@ function withBenchmarkCapabilities(
   };
 }
 
-/** Pi registry `Model.cost` shape — per-token USD rates. */
+/** Pi registry `Model.cost` shape — per-1M-token USD rates (SP-298). */
 export interface PiRegistryCost {
   readonly input: number;
   readonly output: number;
@@ -355,19 +355,24 @@ function matchPatternRules(id: string): ModelFamilyDefaults | undefined {
 }
 
 /**
- * Registry cost → USD per 1M tokens: average of input and output rates scaled to 1M.
- * Matches `computeCostPer1MTokens` in litellm-fetch (SP-045/SP-046).
- * Returns undefined when both input and output rates are zero (use pattern default).
+ * Registry cost → USD per 1M tokens: average of input and output rates.
+ * Pi registry `Model.cost` rates are already denominated per 1M tokens
+ * (SP-298), so no scaling is applied — unlike LiteLLM per-token rates handled
+ * by `computeCostPer1MTokens` in litellm-fetch (SP-045/SP-046).
+ * Returns undefined when both input and output rates are zero (use pattern
+ * default), or when either rate is negative — negative values are vendor
+ * unknown/sentinel rates, not valid pricing, so cost stays unknown (SP-298).
  */
 function deriveFallbackCostPer1M(cost: PiRegistryCost): number | undefined {
   const { input, output } = cost;
   if (input === 0 && output === 0) {
     return undefined;
   }
+  if (input < 0 || output < 0) {
+    return undefined;
+  }
 
-  const inputPer1M = input * 1_000_000;
-  const outputPer1M = output * 1_000_000;
-  return (inputPer1M + outputPer1M) / 2;
+  return (input + output) / 2;
 }
 
 function resolveFallbackCost(
