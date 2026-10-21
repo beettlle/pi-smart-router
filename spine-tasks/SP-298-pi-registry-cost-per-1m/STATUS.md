@@ -1,7 +1,7 @@
 # SP-298: pi registry Model.cost is per-1M — Status
 
-**Current Step:** Step 1: Implementation
-**Status:** In Progress
+**Current Step:** Step 2: Testing & Verification
+**Status:** Complete
 **Last Updated:** 2026-10-20
 **Review Level:** 2
 **Review Counter:** 0
@@ -18,7 +18,7 @@
 ---
 
 ### Step 1: Implementation
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Fix deriveFallbackCostPer1M units + PiRegistryCost comment — rates averaged directly (per-1M), no 1,000,000× scaling
 - [x] Negative rate → undefined — either input/output negative → cost unknown → pattern default
@@ -27,6 +27,6 @@
 ---
 
 ### Step 2: Testing & Verification
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Run Contract testCommand
+- [x] Run Contract testCommand — typecheck clean; pi-model-mapper + smart-router-pricing 84/84 pass; full suite 2343/2343 pass; forbidden files untouched
