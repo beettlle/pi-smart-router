@@ -11,10 +11,14 @@
  * to finish the domain→infra inversion; this module re-exports them for
  * import-path stability. What remains here is limit resolution and
  * fleet-mapping, which depend on `config/pi-model-mapper` tier defaults.
+ *
+ * SP-299 (#177): limit resolution is a four-level cascade — YAML profile
+ * override → LiteLLM registry snapshot → pi registry (`contextWindow` /
+ * `maxTokens` carried on the mapped profile) → tier default.
  */
 
 import type { ModelProfile, ModelLimits, PriceCatalog } from '../../domain/types/index.js';
-import { getDefaultLimitsForTier } from '../../config/pi-model-mapper.js';
+import { getDefaultLimitsForTier, type MappedModelProfile } from '../../config/pi-model-mapper.js';
 
 export {
   resolvePrice,
@@ -45,9 +49,18 @@ function lookupRegistryLimits(
 }
 
 /**
+ * Pi registry limits attached by `mapPiModelToProfile` (SP-299 / #177).
+ * Profiles built from fleet YAML never carry this field.
+ */
+function lookupPiRegistryLimits(model: ModelProfile): ModelLimits | undefined {
+  return (model as MappedModelProfile).pi_registry_limits;
+}
+
+/**
  * Resolve effective context limits for a model.
  *
- * Priority: YAML/profile override → LiteLLM registry snapshot → tier default.
+ * Priority: YAML/profile override → LiteLLM registry snapshot → pi registry
+ * (`contextWindow`/`maxTokens`) → tier default (SP-299 / #177).
  */
 export function resolveLimits(
   model: ModelProfile,
@@ -55,6 +68,7 @@ export function resolveLimits(
 ): ResolvedLimits {
   const yamlLimits = model.limits;
   const registryLimits = catalog ? lookupRegistryLimits(model, catalog) : undefined;
+  const piRegistryLimits = lookupPiRegistryLimits(model);
   const defaults = getDefaultLimitsForTier(model.tier);
 
   return {
@@ -63,10 +77,12 @@ export function resolveLimits(
       max_input_tokens:
         yamlLimits?.max_input_tokens ??
         registryLimits?.max_input_tokens ??
+        piRegistryLimits?.max_input_tokens ??
         defaults.max_input_tokens,
       max_output_tokens:
         yamlLimits?.max_output_tokens ??
         registryLimits?.max_output_tokens ??
+        piRegistryLimits?.max_output_tokens ??
         defaults.max_output_tokens,
     },
   };
