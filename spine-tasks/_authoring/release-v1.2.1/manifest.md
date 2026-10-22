@@ -144,14 +144,14 @@ Open-issue count must **not** raise this release's enhancement or total-task cap
 
 ## Publish checklist (Phase 5–6)
 
-- [ ] All release-scoped tasks `.DONE` on `main`
-- [ ] Post-integrate `release:check` green after **each wave** (log paths recorded)
-- [ ] `spine preflight` green
-- [ ] `npm run release:check` green on final `HEAD` (exit 0 verified)
-- [ ] `npm run release:assert-content` green (substantive delta vs `v1.2.0`)
-- [ ] Manifest target 1.2.1 == `package.json` 1.2.0 + patch
-- [ ] No existing git tag `v1.2.1`
-- [ ] CI workflow green on `HEAD`
+- [x] All release-scoped tasks `.DONE` on `main` (SP-296–SP-299)
+- [x] Post-integrate `release:check` green after **each wave** (`/tmp/pi-smart-router-post-integrate-wave-{0,1,2}.log`, exit 0, release-gates PASS)
+- [x] `spine preflight` green
+- [x] `npm run release:check` green on final `HEAD` (exit 0 verified, wave-2 log at `84882bac`)
+- [x] `npm run release:assert-content` green (substantive delta vs `v1.2.0`)
+- [x] Manifest target 1.2.1 == `package.json` 1.2.0 + patch
+- [x] No existing git tag `v1.2.1` (local + origin)
+- [x] CI workflow green on `HEAD` (`84882bac`, run 39696729500)
 - [ ] `git status` clean
 - [ ] Operator approved publish bump type: patch
 - [ ] **Exactly one** `npm version patch` then `git push && git push --tags` — then **STOP**

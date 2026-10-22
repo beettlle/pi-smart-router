@@ -969,7 +969,7 @@
 
 **Source:** Operator-approved **v1.2.1** (2026-10-19, patch profile). Theme: pi 1.x host compatibility. PR #192 (Homebrew libexec resolution) merged directly with a regression test (`6ef732fe`) — no packet.
 
-**Status:** Packets authored; awaiting Phase 4 batch execution.
+**Status:** Executed 2026-10-21 — waves 0–2 integrated on `main` (`84882bac`); post-integrate `release:check` green each wave. Awaiting publish approval.
 
 **Scope ID:** `SP-296,SP-297,SP-298,SP-299`
 
