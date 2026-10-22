@@ -13,6 +13,7 @@ on:
 permissions:
   contents: write
   actions: read
+  id-token: write # npm trusted publishing (OIDC)
 
 jobs:
   release:
@@ -125,17 +126,21 @@ jobs:
       - name: CLI help smoke
         run: node bin/pi-smart-router.mjs 2>&1 | grep -q 'export telemetry-contrib'
 
-      - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPMSECRET }}
+      # Trusted publisher is stage-only: a maintainer approves with 2FA
+      # (`npm stage approve` or npmjs.com) before the version goes live.
+      # `npm stage publish` needs npm >= 11.15.0; Node 22.19 ships npm 10.
+      - name: Install npm with staged publishing support
+        run: npm install -g npm@11.21.1
+
+      - name: Stage publish to npm
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           if npm view "pi-smart-router@${VERSION}" version >/dev/null 2>&1; then
             echo "pi-smart-router@${VERSION} already on npm; skipping publish"
           elif [[ "${{ steps.ref.outputs.tag }}" == *-* ]]; then
-            npm publish --access public --ignore-scripts --tag beta
+            npm stage publish --access public --ignore-scripts --tag beta
           else
-            npm publish --access public --ignore-scripts
+            npm stage publish --access public --ignore-scripts
           fi
 
       - name: Create GitHub Release
