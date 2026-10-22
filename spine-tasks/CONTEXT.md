@@ -993,6 +993,22 @@
 
 ---
 
+## Stet batch policy
+
+Adopted 2026-10-22 from pi-spine's policy (SP-828 / v2.27.1). Applies to packets authored after v1.2.1.
+
+- **Prerequisites:** LM Studio at `http://127.0.0.1:1234/v1` with `qwen/qwen3.8-27b` loaded (preset: Enable Thinking off) and OpenJev System One at `http://127.0.0.1:8080` (critic, `systemone_timeout = "90s"`); `stet doctor` exits 0. Without OpenJev, export `STET_CRITIC_ENABLED=false`. Secrets stay env-only (`STET_SYSTEMONE_API_KEY`).
+- **Integration:** `worktreeSetupHook` (`scripts/spine-worktree-setup.sh` opens the session at the pre-worker HEAD and writes `.review/spine-stet-baseline.ref`; skips when `stet` is not on `PATH`) + contract `testCommand`. Reviewer settings live in `.review/config.toml`; `.stet.yaml` is the guardrails document and is not read by the contract.
+- **Review scope:** Code files only; non-code is excluded via `.review/config.toml` `exclude_patterns`.
+- **Contract:** append `&& bash scripts/spine-stet-contract-run.sh <level> SP-NNN` to the packet's scoped tests (e.g. `npm run typecheck && npx vitest run tests/unit/foo.test.ts && bash scripts/spine-stet-contract-run.sh default SP-300`). The task id scopes the review to that task's commits when a lane runs several tasks. The script fails while `stet list` shows active findings, fails when `stet run` fails, and runs `stet finish` at zero findings. Do not use a full `npm test` or `npm run verify:ci` in stet-gated contracts: the contract wall clock is 10 minutes and a first stet review takes about 3–5 minutes (and full `npm test` hits the timing flakes behind the SP-235 convention).
+- **Level by task:** docs-only → no stet step; S low-risk → `lenient`; routing pipeline (`src/domain/pipeline/**`), gateway (`src/infrastructure/gateway/**`), config, persistence, or security code → `default` (or `strict`). These match the `.stet.yaml` zero-crash, no-`any`, and no-I/O-in-loops scopes.
+- **Batch env (required):** `export SPINE_STET_NO_AUTO_FINISH=1` before every `spine batch start` / `resume`. The engine re-runs the Contract at final review, and `worktreeSetupHook` opens the session once per lane, not per task; with auto-finish, that re-run starts a fresh full review that can resurface dismissed findings.
+- **Concurrency:** keep `lanes.maxParallel` at 2 for stet-gated waves so lanes do not starve LM Studio and OpenJev.
+- **Packet scope:** stet-gated packets list `.review/**` in `fileScopeMustNotChange`; `.review/*` except `config.toml` is gitignored.
+- **Known limit:** `.cursor/` is gitignored, so lane worktrees have no `.cursor/rules` and stet reviews run without rule digests.
+
+---
+
 ## Execution policy
 
 1. **Preflight:** `spine preflight`

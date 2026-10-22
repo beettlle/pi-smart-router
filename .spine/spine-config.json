@@ -203,7 +203,7 @@
       "TP-"
     ]
   },
-  "worktreeSetupHook": "",
+  "worktreeSetupHook": "scripts/spine-worktree-setup.sh",
   "worktreeSetupIgnorePaths": [],
   "referenceDocs": [
     "docs/constitution.md",

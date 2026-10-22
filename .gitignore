@@ -41,3 +41,7 @@ coverage/
 
 # Cusor 
 .cursor/
+
+# Stet runtime state (config.toml is committed; everything else is per-worktree)
+.review/*
+!.review/config.toml
