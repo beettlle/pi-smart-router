@@ -152,7 +152,7 @@ Open-issue count must **not** raise this release's enhancement or total-task cap
 - [x] Manifest target 1.2.1 == `package.json` 1.2.0 + patch
 - [x] No existing git tag `v1.2.1` (local + origin)
 - [x] CI workflow green on `HEAD` (`84882bac`, run 39696729500)
-- [ ] `git status` clean
-- [ ] Operator approved publish bump type: patch
-- [ ] **Exactly one** `npm version patch` then `git push && git push --tags` — then **STOP**
-- [ ] `release.yml` succeeded; `npm view pi-smart-router` `latest` == 1.2.1
+- [x] `git status` clean
+- [x] Operator approved publish bump type: patch (2026-10-22)
+- [x] **Exactly one** `npm version patch` then `git push && git push --tags` — then **STOP** (`62dea5f8`, tag `v1.2.1`)
+- [x] `release.yml` succeeded; `npm view pi-smart-router` `latest` == 1.2.1 (run 39831110495 via workflow_dispatch after switching to npm trusted publishing, stage-only, `fb068576`; operator approved staged publish 2026-10-22)
