@@ -85,6 +85,30 @@ export function isGoogleOriginAssistantMessage(message: AssistantMessage): boole
   return provider === 'cursor' && /gemini/i.test(message.model);
 }
 
+const CURSOR_PROVIDER = 'cursor' as const;
+
+/**
+ * Env gate for the Cursor lifecycle strip (SP-300, #180). Default on;
+ * `SMART_ROUTER_STRIP_CURSOR_LIFECYCLE=0` disables the sanitizer.
+ */
+export const STRIP_CURSOR_LIFECYCLE_ENV = 'SMART_ROUTER_STRIP_CURSOR_LIFECYCLE' as const;
+
+/** Whether the delegation target is a Cursor model (cursor/auto, composer-*). */
+export function isCursorDelegationTarget<TApi extends Api>(model: Model<TApi>): boolean {
+  return model.provider.trim().toLowerCase() === CURSOR_PROVIDER;
+}
+
+/**
+ * Whether an assistant message was produced by the Cursor provider (e.g.
+ * `cursor/auto`). Cursor-origin thinking blocks carry pi-cursor-sdk lifecycle
+ * progress lines (`Cursor shell: …`, `Cursor MCP: …`) rather than model
+ * reasoning — replaying them cross-provider teaches the target to imitate
+ * shell commands as prose (issue #180).
+ */
+export function isCursorOriginAssistantMessage(message: AssistantMessage): boolean {
+  return message.provider.trim().toLowerCase() === CURSOR_PROVIDER;
+}
+
 export function hasReplaySensitiveState(messages: readonly Message[]): boolean {
   for (const message of messages) {
     if (message.role !== 'assistant') {
@@ -235,4 +259,109 @@ export function repairGeminiReplayContext<TApi extends Api>(
   });
 
   return { ...context, messages };
+}
+
+export interface StripCursorLifecycleOptions {
+  /** Env override for tests; defaults to `process.env`. */
+  readonly env?: Record<string, string | undefined>;
+}
+
+export interface CursorLifecycleStripResult {
+  readonly context: Context;
+  /** Thinking blocks removed from Cursor-origin assistant messages. */
+  readonly strippedThinkingBlocks: number;
+  /** Total characters of removed thinking text (observability for #180). */
+  readonly strippedThinkingChars: number;
+  /** Assistant messages dropped because they held only lifecycle thinking. */
+  readonly droppedMessages: number;
+}
+
+/**
+ * SP-300 (#180): drop Cursor lifecycle thinking from Cursor-origin assistant
+ * messages before delegating to a non-Cursor target.
+ *
+ * The third-party pi-cursor-sdk provider emits tool progress as thinking lines
+ * (`Cursor shell: …`). pi-ai's transformMessages converts foreign thinking
+ * blocks to plain text when the provider/model differs, so a Cursor-origin
+ * history handed to GLM/Gemini replays those progress lines as assistant
+ * prose — the target then imitates shell commands as text instead of emitting
+ * real toolCalls (2026-10-01 glm-5.3-flash runaway).
+ *
+ * Scope guardrails:
+ * - Cursor targets are returned unchanged (Cursor→Cursor replay is native).
+ * - Non-Cursor thinking (Gemini, Anthropic, …) is never touched.
+ * - Text, toolCall, and other blocks are preserved; a message is only dropped
+ *   when it held nothing but lifecycle thinking.
+ * - Disabled via `SMART_ROUTER_STRIP_CURSOR_LIFECYCLE=0`.
+ *
+ * Call after {@link normalizeDelegationContext} so virtual-tagged messages
+ * already resolved to a Cursor session execution are caught as Cursor-origin.
+ */
+export function stripCursorLifecycleThinking<TApi extends Api>(
+  context: Context,
+  targetModel: Model<TApi>,
+  options?: StripCursorLifecycleOptions,
+): CursorLifecycleStripResult {
+  const unchanged: CursorLifecycleStripResult = {
+    context,
+    strippedThinkingBlocks: 0,
+    strippedThinkingChars: 0,
+    droppedMessages: 0,
+  };
+
+  const env = options?.env ?? process.env;
+  if (env[STRIP_CURSOR_LIFECYCLE_ENV] === '0') {
+    return unchanged;
+  }
+
+  if (isCursorDelegationTarget(targetModel)) {
+    return unchanged;
+  }
+
+  let strippedThinkingBlocks = 0;
+  let strippedThinkingChars = 0;
+  let droppedMessages = 0;
+  let changed = false;
+
+  const messages: Message[] = [];
+  for (const message of context.messages) {
+    if (message.role !== 'assistant' || !isCursorOriginAssistantMessage(message)) {
+      messages.push(message);
+      continue;
+    }
+
+    const kept: typeof message.content = [];
+    for (const block of message.content) {
+      if (block.type === 'thinking') {
+        strippedThinkingBlocks += 1;
+        strippedThinkingChars += block.thinking.length;
+        changed = true;
+        continue;
+      }
+      kept.push(block);
+    }
+
+    if (kept.length === message.content.length) {
+      messages.push(message);
+      continue;
+    }
+
+    if (kept.length === 0) {
+      droppedMessages += 1;
+      continue;
+    }
+
+    messages.push({ ...message, content: kept });
+  }
+
+  if (!changed) {
+    return unchanged;
+  }
+
+  return {
+    context: { ...context, messages },
+    strippedThinkingBlocks,
+    strippedThinkingChars,
+    droppedMessages,
+  };
 }

@@ -1,8 +1,8 @@
 # SP-300: strip Cursor lifecycle thinking on cross-provider delegation — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
-**Last Updated:** 2026-10-22
+**Current Step:** Step 1: Implementation
+**Status:** In Progress
+**Last Updated:** 2026-10-23
 **Review Level:** 2
 **Review Counter:** 0
 **Iteration:** 0
@@ -11,28 +11,28 @@
 ---
 
 ### Step 0: Preflight
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Read repairGeminiReplayContext and tests
-- [ ] Confirm AssistantMessage provider field
+- [x] Read repairGeminiReplayContext and tests
+- [x] Confirm AssistantMessage provider field
 
 ---
 
 ### Step 1: Implementation
-**Status:** Not Started
+**Status:** In Progress (work done, pending plan review)
 
-- [ ] Add sanitizer to delegation-context.ts
-- [ ] Wire into buildDelegationContext for non-Cursor targets
-- [ ] Env gate SMART_ROUTER_STRIP_CURSOR_LIFECYCLE=0
+- [x] Add sanitizer to delegation-context.ts
+- [x] Wire into buildDelegationContext for non-Cursor targets
+- [x] Env gate SMART_ROUTER_STRIP_CURSOR_LIFECYCLE=0
 
 ---
 
 ### Step 2: Testing & Verification
-**Status:** Not Started
+**Status:** In Progress (work done, pending plan review)
 
-- [ ] Cursor thinking stripped for GLM and Gemini targets
-- [ ] Cursor target unchanged
-- [ ] Non-Cursor thinking unchanged
-- [ ] Env gate disables
-- [ ] Tool-call blocks preserved
-- [ ] Run Contract testCommand
+- [x] Cursor thinking stripped for GLM and Gemini targets
+- [x] Cursor target unchanged
+- [x] Non-Cursor thinking unchanged
+- [x] Env gate disables
+- [x] Tool-call blocks preserved
+- [x] Run Contract testCommand
