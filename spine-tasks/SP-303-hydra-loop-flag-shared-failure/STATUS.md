@@ -1,7 +1,7 @@
 # SP-303: HyDRA loop flag reuses loop-escalation failure detection — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 2: Testing & Verification
+**Status:** Complete
 **Last Updated:** 2026-10-22
 **Review Level:** 1
 **Review Counter:** 0
@@ -11,25 +11,25 @@
 ---
 
 ### Step 0: Preflight
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Confirm Message is_error/status fields
+- [x] Confirm Message is_error/status fields
 
 ---
 
 ### Step 1: Implementation
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Extract shared isToolFailure
-- [ ] Use it in loop-escalation.ts and hydra-input.ts
+- [x] Extract shared isToolFailure
+- [x] Use it in loop-escalation.ts and hydra-input.ts
 
 ---
 
 ### Step 2: Testing & Verification
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Structured error signals → loop:1
-- [ ] Structured success signals → loop:0
-- [ ] Benign negations → loop:0
-- [ ] Rate-limit body → loop:1
-- [ ] Run Contract testCommand
+- [x] Structured error signals → loop:1
+- [x] Structured success signals → loop:0
+- [x] Benign negations → loop:0
+- [x] Rate-limit body → loop:1
+- [x] Run Contract testCommand (typecheck clean; 67/67 tests green)

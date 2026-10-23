@@ -106,6 +106,97 @@ describe('buildHydraInput', () => {
     expect(input).toMatch(/\|loop:0\|attach:0\] /);
   });
 
+  it('sets loop flag on structured is_error: true regardless of body (#186)', () => {
+    const input = buildHydraInput(
+      makeRequest({
+        messages: [
+          { role: 'user', content: 'run tests' },
+          { role: 'tool', content: '{"ok":true}', is_error: true },
+        ],
+      }),
+    );
+
+    expect(input).toMatch(/\|loop:1\|attach:0\] /);
+  });
+
+  it('sets loop flag on structured status >= 400 regardless of body (#186)', () => {
+    const input = buildHydraInput(
+      makeRequest({
+        messages: [
+          { role: 'user', content: 'run tests' },
+          { role: 'tool', content: 'Build finished: no errors, 0 warnings.', status: 500 },
+        ],
+      }),
+    );
+
+    expect(input).toMatch(/\|loop:1\|attach:0\] /);
+  });
+
+  it('clears loop flag on is_error: false without body grep (#186)', () => {
+    const input = buildHydraInput(
+      makeRequest({
+        messages: [
+          { role: 'user', content: 'run tests' },
+          { role: 'tool', content: 'Error: command failed with exit code 1', is_error: false },
+        ],
+      }),
+    );
+
+    expect(input).toMatch(/\|loop:0\|attach:0\] /);
+  });
+
+  it('clears loop flag on status < 400 without body grep (#186)', () => {
+    const input = buildHydraInput(
+      makeRequest({
+        messages: [
+          { role: 'user', content: 'run tests' },
+          { role: 'tool', content: 'Error: command failed with exit code 1', status: 200 },
+        ],
+      }),
+    );
+
+    expect(input).toMatch(/\|loop:0\|attach:0\] /);
+  });
+
+  it('clears loop flag for benign "no errors" body (#186)', () => {
+    const input = buildHydraInput(
+      makeRequest({
+        messages: [
+          { role: 'user', content: 'run tests' },
+          { role: 'tool', content: 'Build finished: no errors, 0 warnings.' },
+        ],
+      }),
+    );
+
+    expect(input).toMatch(/\|loop:0\|attach:0\] /);
+  });
+
+  it('clears loop flag for benign "without failure" body (#186)', () => {
+    const input = buildHydraInput(
+      makeRequest({
+        messages: [
+          { role: 'user', content: 'run tests' },
+          { role: 'tool', content: 'Command completed without failure.' },
+        ],
+      }),
+    );
+
+    expect(input).toMatch(/\|loop:0\|attach:0\] /);
+  });
+
+  it('sets loop flag for rate-limit body with no structured signal (#186)', () => {
+    const input = buildHydraInput(
+      makeRequest({
+        messages: [
+          { role: 'user', content: 'run tests' },
+          { role: 'tool', content: 'HTTP 429 Rate limit exceeded' },
+        ],
+      }),
+    );
+
+    expect(input).toMatch(/\|loop:1\|attach:0\] /);
+  });
+
   it('sets attach flag when user content includes image data URI', () => {
     const input = buildHydraInput(
       makeRequest({
