@@ -48,7 +48,7 @@ import { EMBEDDING_DIM } from '../../domain/matching/embedding-provider.js';
 
 // ─── Schema version & migrations ────────────────────────────────────────────
 
-const CURRENT_SCHEMA_VERSION = 8;
+const CURRENT_SCHEMA_VERSION = 9;
 
 const MIGRATION_V1 = `
   CREATE TABLE IF NOT EXISTS pins (
@@ -201,6 +201,18 @@ const MIGRATION_V7 = `
 // SMART_ROUTER_DATASET_EMBEDDINGS is unset at capture time.
 const MIGRATION_V8 = `
   ALTER TABLE dataset ADD COLUMN embedding_json TEXT;
+`;
+
+// SP-301 / #171: persist context-fit gate telemetry so router-explain and
+// exports can surface why a request overflowed after restart. Previously the
+// fields were dropped on insert and read back as null literals.
+const MIGRATION_V9 = `
+  ALTER TABLE telemetry ADD COLUMN estimated_input_tokens INTEGER;
+  ALTER TABLE telemetry ADD COLUMN context_fit_viable_count INTEGER;
+  ALTER TABLE telemetry ADD COLUMN context_fit_rejected_json TEXT;
+  ALTER TABLE telemetry ADD COLUMN context_overflow_pin_break INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE telemetry ADD COLUMN selected_model_max_input_tokens INTEGER;
+  ALTER TABLE telemetry ADD COLUMN context_fit_reason_code TEXT;
 `;
 
 // ─── Token bucket result ────────────────────────────────────────────────────
@@ -708,14 +720,20 @@ export class SqliteStore implements StorePort {
           estimated_cost_usd, routing_latency_ms, pin_reason,
           actual_cost_usd, actual_input_tokens, actual_output_tokens,
           actual_cache_read_tokens, actual_cache_write_tokens,
-          reasoning_level_requested, reasoning_level_applied, reasoning_reason_code
+          reasoning_level_requested, reasoning_level_applied, reasoning_reason_code,
+          estimated_input_tokens, context_fit_viable_count,
+          context_fit_rejected_json, context_overflow_pin_break,
+          selected_model_max_input_tokens, context_fit_reason_code
         ) VALUES (
           @timestamp, @session_id, @request_id, @turn_type,
           @stage, @reason_code, @selected_model_id,
           @estimated_cost_usd, @routing_latency_ms, @pin_reason,
           @actual_cost_usd, @actual_input_tokens, @actual_output_tokens,
           @actual_cache_read_tokens, @actual_cache_write_tokens,
-          @reasoning_level_requested, @reasoning_level_applied, @reasoning_reason_code
+          @reasoning_level_requested, @reasoning_level_applied, @reasoning_reason_code,
+          @estimated_input_tokens, @context_fit_viable_count,
+          @context_fit_rejected_json, @context_overflow_pin_break,
+          @selected_model_max_input_tokens, @context_fit_reason_code
         )`,
       )
       .run({
@@ -737,6 +755,12 @@ export class SqliteStore implements StorePort {
         reasoning_level_requested: entry.reasoning_level_requested ?? null,
         reasoning_level_applied: entry.reasoning_level_applied ?? null,
         reasoning_reason_code: entry.reasoning_reason_code ?? null,
+        estimated_input_tokens: entry.estimated_input_tokens ?? null,
+        context_fit_viable_count: entry.context_fit_viable_count ?? null,
+        context_fit_rejected_json: entry.context_fit_rejected_json ?? null,
+        context_overflow_pin_break: entry.context_overflow_pin_break ? 1 : 0,
+        selected_model_max_input_tokens: entry.selected_model_max_input_tokens ?? null,
+        context_fit_reason_code: entry.context_fit_reason_code ?? null,
       });
   }
 
@@ -935,6 +959,12 @@ export class SqliteStore implements StorePort {
     if (version < 8) {
       this.db.exec(MIGRATION_V8);
       version = 8;
+      this.db.pragma(`user_version = ${version}`);
+    }
+
+    if (version < 9) {
+      this.db.exec(MIGRATION_V9);
+      version = 9;
       this.db.pragma(`user_version = ${CURRENT_SCHEMA_VERSION}`);
     }
   }
@@ -1033,6 +1063,12 @@ interface TelemetryRow {
   reasoning_level_requested: string | null;
   reasoning_level_applied: string | null;
   reasoning_reason_code: string | null;
+  estimated_input_tokens: number | null;
+  context_fit_viable_count: number | null;
+  context_fit_rejected_json: string | null;
+  context_overflow_pin_break: number;
+  selected_model_max_input_tokens: number | null;
+  context_fit_reason_code: string | null;
 }
 
 interface DatasetRow {
@@ -1142,12 +1178,12 @@ function telemetryRowToEntity(row: TelemetryRow): RoutingTelemetry {
     estimated_cost_usd: row.estimated_cost_usd,
     routing_latency_ms: row.routing_latency_ms,
     pin_reason: row.pin_reason,
-    estimated_input_tokens: null,
-    context_fit_viable_count: null,
-    context_fit_rejected_json: null,
-    context_overflow_pin_break: false,
-    selected_model_max_input_tokens: null,
-    context_fit_reason_code: null,
+    estimated_input_tokens: row.estimated_input_tokens,
+    context_fit_viable_count: row.context_fit_viable_count,
+    context_fit_rejected_json: row.context_fit_rejected_json,
+    context_overflow_pin_break: row.context_overflow_pin_break === 1,
+    selected_model_max_input_tokens: row.selected_model_max_input_tokens,
+    context_fit_reason_code: row.context_fit_reason_code,
     cluster_id: null,
     cluster_similarity: null,
     cluster_margin: null,

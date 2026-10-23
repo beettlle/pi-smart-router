@@ -153,7 +153,7 @@ describe('SqliteStore', () => {
       store2.close();
     });
 
-    it('migrates to schema v8 with outcomes table, dataset privacy columns, context_overflow pin_reason, usage actuals columns (SP-241), and dataset embedding column (SP-285)', () => {
+    it('migrates to schema v9 with outcomes table, dataset privacy columns, context_overflow pin_reason, usage actuals columns (SP-241), dataset embedding column (SP-285), and context-fit telemetry columns (SP-301)', () => {
       const dir = mkdtempSync(join(tmpdir(), 'sqlite-store-'));
       const dbPath = join(dir, 'router.db');
       let store: SqliteStore | undefined;
@@ -164,7 +164,7 @@ describe('SqliteStore', () => {
         db = new Database(dbPath);
 
         const version = db.pragma('user_version', { simple: true });
-        expect(version).toBe(8);
+        expect(version).toBe(9);
 
         const telemetryColumns = db.prepare('PRAGMA table_info(telemetry)').all() as Array<{ name: string }>;
         const telemetryColumnNames = telemetryColumns.map((column) => column.name);
@@ -177,6 +177,12 @@ describe('SqliteStore', () => {
         expect(telemetryColumnNames).toContain('reasoning_level_applied');
         expect(telemetryColumnNames).toContain('reasoning_reason_code');
         expect(telemetryColumnNames).toContain('estimated_cost_usd');
+        expect(telemetryColumnNames).toContain('estimated_input_tokens');
+        expect(telemetryColumnNames).toContain('context_fit_viable_count');
+        expect(telemetryColumnNames).toContain('context_fit_rejected_json');
+        expect(telemetryColumnNames).toContain('context_overflow_pin_break');
+        expect(telemetryColumnNames).toContain('selected_model_max_input_tokens');
+        expect(telemetryColumnNames).toContain('context_fit_reason_code');
 
         const datasetColumns = db.prepare('PRAGMA table_info(dataset)').all() as Array<{ name: string }>;
         const datasetColumnNames = datasetColumns.map((column) => column.name);

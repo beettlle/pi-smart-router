@@ -51,4 +51,30 @@ describe('MemoryStore telemetry', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.request_id).toBe('req-a');
   });
+
+  it('round-trips context-fit fields (parity with SqliteStore, SP-301)', async () => {
+    const store = new MemoryStore();
+
+    store.appendTelemetry(
+      makeTelemetry({
+        request_id: 'req-fit',
+        estimated_input_tokens: 45000,
+        context_fit_viable_count: 2,
+        context_fit_rejected_json: '[{"model_id":"granite-local"}]',
+        context_overflow_pin_break: true,
+        selected_model_max_input_tokens: 128000,
+        context_fit_reason_code: 'pin_break_context_overflow',
+      }),
+    );
+
+    const rows = await store.listTelemetry({ limit: 5 });
+    expect(rows).toHaveLength(1);
+    const row = rows[0]!;
+    expect(row.estimated_input_tokens).toBe(45000);
+    expect(row.context_fit_viable_count).toBe(2);
+    expect(row.context_fit_rejected_json).toBe('[{"model_id":"granite-local"}]');
+    expect(row.context_overflow_pin_break).toBe(true);
+    expect(row.selected_model_max_input_tokens).toBe(128000);
+    expect(row.context_fit_reason_code).toBe('pin_break_context_overflow');
+  });
 });
