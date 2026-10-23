@@ -1,8 +1,8 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-10-19
+**Last Updated:** 2026-10-22
 **Status:** Active
-**Next Task ID:** SP-300
+**Next Task ID:** SP-304
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** **v1.2.0** on npm (`latest`, tag `v1.2.0`, 2026-09-13). Theme: long-context encoder path — #173 cascade (SP-291–294) + #167 Granite opt-in runbook (SP-295 Partial — human dogfood remaining) + non-quota #174 (SP-290). Closed: #173, #174. Left open: #167 (Partial), #110 (deferred — no embeddings / session-holdout ECE), #95, #96 (not flipped), #172 (P3). Note: accidental empty `1.3.0` git bump was never published; tag deleted; `main` reverted to package `1.2.0` (`ff28a0c`). Prior: **v1.1.0** verifier-grade train. Train SP-289–SP-295 `.DONE`. Next-train slate: #110, #95, #162/#163, #172, #96, #157, hardware #1/#25/#26 parked.
@@ -974,6 +974,23 @@
 **Scope ID:** `SP-296,SP-297,SP-298,SP-299`
 
 **Authoring notes:** `spine-tasks/_authoring/release-v1.2.1/manifest.md`
+
+### Phase 62 — Release v1.2.2 glm Runaway Hardening (SP-300–SP-303)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-300 | strip Cursor lifecycle thinking on cross-provider delegation | M | — | Closes #180 |
+| SP-301 | persist context-fit telemetry fields | S | — | Partial #178 |
+| SP-302 | input-token estimate gaps (tool args, thinking, last usage) | M | — | Closes #178 |
+| SP-303 | HyDRA loop flag shares loop-escalation failure detection | S | — | Closes #186 |
+
+**Source:** Operator-approved **v1.2.2** (2026-10-22, patch profile). Theme: glm-5.3-flash runaway hardening (epic #182).
+
+**Status:** Packets authored; awaiting Phase 4 batch execution.
+
+**Scope ID:** `SP-300,SP-301,SP-302,SP-303`
+
+**Authoring notes:** `spine-tasks/_authoring/release-v1.2.2/manifest.md`
 
 ---
 
