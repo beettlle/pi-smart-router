@@ -565,7 +565,6 @@ describe('stripCursorLifecycleThinking (SP-300, #180)', () => {
     expect(result.strippedThinkingChars).toBe(
       'Cursor shell: npm test'.length + 'Cursor read stdout: src/index.ts'.length,
     );
-    expect(result.droppedMessages).toBe(0);
     expect(collectReplayableText(result.context)).not.toContain('Cursor shell:');
     expect(collectReplayableText(result.context)).not.toContain('Cursor read');
 
@@ -596,7 +595,6 @@ describe('stripCursorLifecycleThinking (SP-300, #180)', () => {
 
     expect(result.context).toEqual(context);
     expect(result.strippedThinkingBlocks).toBe(0);
-    expect(result.droppedMessages).toBe(0);
   });
 
   it('leaves non-Cursor thinking unchanged (Gemini origin → GLM target)', () => {
@@ -651,10 +649,9 @@ describe('stripCursorLifecycleThinking (SP-300, #180)', () => {
     expect(assistant.content).toEqual([
       { type: 'toolCall', id: 'call-keep-1', name: 'read', arguments: { path: 'README.md' } },
     ]);
-    expect(result.droppedMessages).toBe(0);
   });
 
-  it('drops Cursor messages that held nothing but lifecycle thinking', () => {
+  it('keeps Cursor messages left with empty content so turn pairing stays intact', () => {
     const context: Context = {
       messages: [
         makeCursorLifecycleAssistant({
@@ -669,10 +666,13 @@ describe('stripCursorLifecycleThinking (SP-300, #180)', () => {
 
     const result = stripCursorLifecycleThinking(context, glmTarget, { env: {} });
 
-    expect(result.droppedMessages).toBe(1);
     expect(result.strippedThinkingBlocks).toBe(2);
-    expect(result.context.messages).toHaveLength(1);
-    expect((result.context.messages[0] as AssistantMessage).provider).toBe('openai');
+    expect(result.context.messages).toHaveLength(2);
+
+    const strippedCursor = result.context.messages[0] as AssistantMessage;
+    expect(strippedCursor.provider).toBe('cursor');
+    expect(strippedCursor.content).toEqual([]);
+    expect((result.context.messages[1] as AssistantMessage).provider).toBe('openai');
   });
 
   it('catches virtual-tagged history resolved to a Cursor session execution', () => {

@@ -1,11 +1,11 @@
 # SP-300: strip Cursor lifecycle thinking on cross-provider delegation — Status
 
-**Current Step:** Step 2: Testing & Verification (complete; worker-verify + .DONE next)
-**Status:** In Progress
+**Current Step:** Done — revision 1 addressed, verified, `.DONE` recreated
+**Status:** Complete
 **Last Updated:** 2026-10-23
 **Review Level:** 2
-**Review Counter:** 0
-**Iteration:** 0
+**Review Counter:** 1
+**Iteration:** 1
 **Size:** M
 
 ---
@@ -41,10 +41,14 @@
 
 ## Summary of Changes
 
-- `src/domain/delegation/delegation-context.ts`: added `stripCursorLifecycleThinking` (SP-300 / issue #180, Option A) — drops `thinking` blocks from Cursor-origin (`provider === 'cursor'`) assistant messages when the delegation target is non-Cursor; drops messages left with only lifecycle thinking; preserves text/toolCall blocks; returns strip counts (`strippedThinkingBlocks/Chars`, `droppedMessages`). Env gate `SMART_ROUTER_STRIP_CURSOR_LIFECYCLE=0` disables (default on). Also exported `isCursorDelegationTarget`, `isCursorOriginAssistantMessage`, `STRIP_CURSOR_LIFECYCLE_ENV`.
+- `src/domain/delegation/delegation-context.ts`: added `stripCursorLifecycleThinking` (SP-300 / issue #180, Option A) — drops `thinking` blocks from Cursor-origin (`provider === 'cursor'`) assistant messages when the delegation target is non-Cursor; never drops messages — a message left with an empty `content` array is kept so tool-call/result pairing stays intact; preserves text/toolCall blocks; returns strip counts (`strippedThinkingBlocks/Chars`). Env gate `SMART_ROUTER_STRIP_CURSOR_LIFECYCLE=0` disables (default on). Also exported `isCursorDelegationTarget`, `isCursorOriginAssistantMessage`, `STRIP_CURSOR_LIFECYCLE_ENV`.
 - `.pi/extensions/smart-router/delegation-runtime.ts`: wired the strip into `buildDelegationContext` after `normalizeDelegationContext` (so virtual-tagged history resolved to a Cursor session execution is caught) and before Gemini replay repair.
 - `src/index.ts`: export-only additions for the new sanitizer and helpers.
-- `tests/unit/delegation-context.test.ts`: 8 new tests (23 total in file) — strip for GLM + Gemini targets, Cursor target unchanged, non-Cursor (Gemini) thinking unchanged, env gate on/off, toolCall preservation, thinking-only message drop, virtual-tagged Cursor session execution.
+- `tests/unit/delegation-context.test.ts`: 8 new tests (23 total in file) — strip for GLM + Gemini targets, Cursor target unchanged, non-Cursor (Gemini) thinking unchanged, env gate on/off, toolCall preservation, thinking-only message kept with empty content, virtual-tagged Cursor session execution.
+
+## Revision 1 (code review REVISE → fixed)
+
+Engine code review (`/.reviews/2-20261023T002811.md`) flagged that dropping messages with an empty `content` array violated the PROMPT requirement to preserve tool-call/result turn pairing. Fixed: messages are never dropped; `{ ...message, content: kept }` is pushed unconditionally, and `droppedMessages` was removed from `CursorLifecycleStripResult` (reviewer suggestion). Test updated to assert the message is preserved with `content: []`.
 
 ## Verification
 

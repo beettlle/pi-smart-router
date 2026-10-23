@@ -272,8 +272,6 @@ export interface CursorLifecycleStripResult {
   readonly strippedThinkingBlocks: number;
   /** Total characters of removed thinking text (observability for #180). */
   readonly strippedThinkingChars: number;
-  /** Assistant messages dropped because they held only lifecycle thinking. */
-  readonly droppedMessages: number;
 }
 
 /**
@@ -290,8 +288,9 @@ export interface CursorLifecycleStripResult {
  * Scope guardrails:
  * - Cursor targets are returned unchanged (Cursor→Cursor replay is native).
  * - Non-Cursor thinking (Gemini, Anthropic, …) is never touched.
- * - Text, toolCall, and other blocks are preserved; a message is only dropped
- *   when it held nothing but lifecycle thinking.
+ * - Text, toolCall, and other blocks are preserved; messages are never
+ *   dropped — a message left with an empty content array is kept so
+ *   tool-call/result pairing stays intact.
  * - Disabled via `SMART_ROUTER_STRIP_CURSOR_LIFECYCLE=0`.
  *
  * Call after {@link normalizeDelegationContext} so virtual-tagged messages
@@ -306,7 +305,6 @@ export function stripCursorLifecycleThinking<TApi extends Api>(
     context,
     strippedThinkingBlocks: 0,
     strippedThinkingChars: 0,
-    droppedMessages: 0,
   };
 
   const env = options?.env ?? process.env;
@@ -320,7 +318,6 @@ export function stripCursorLifecycleThinking<TApi extends Api>(
 
   let strippedThinkingBlocks = 0;
   let strippedThinkingChars = 0;
-  let droppedMessages = 0;
   let changed = false;
 
   const messages: Message[] = [];
@@ -346,11 +343,9 @@ export function stripCursorLifecycleThinking<TApi extends Api>(
       continue;
     }
 
-    if (kept.length === 0) {
-      droppedMessages += 1;
-      continue;
-    }
-
+    // Never drop messages: keep the message with its remaining blocks (an
+    // empty content array is fine) so user/toolResult turn pairings stay
+    // intact in the delegated history.
     messages.push({ ...message, content: kept });
   }
 
@@ -362,6 +357,5 @@ export function stripCursorLifecycleThinking<TApi extends Api>(
     context: { ...context, messages },
     strippedThinkingBlocks,
     strippedThinkingChars,
-    droppedMessages,
   };
 }
