@@ -85,8 +85,10 @@ function estimateContextChars(context: Context): number {
 
 /**
  * SP-302 (#178): the last assistant message's provider-reported input tokens
- * are a lower bound for the next turn (the provider counted them). Returns
- * undefined when no assistant message reports a positive input count.
+ * are a lower bound for the next turn (the provider counted them). Sums
+ * `usage.input + usage.cacheRead + usage.cacheWrite` — cache tokens are part
+ * of the billed input the provider saw. Returns undefined when no assistant
+ * message reports a positive combined count.
  */
 function lastReportedInputTokens(
   messages: readonly Message[],
@@ -96,9 +98,20 @@ function lastReportedInputTokens(
     if (message?.role !== 'assistant') {
       continue;
     }
-    const input = message.usage?.input;
-    if (typeof input === 'number' && Number.isFinite(input) && input > 0) {
-      return Math.floor(input);
+    const usage = message.usage;
+    if (!usage) {
+      continue;
+    }
+    let total = 0;
+    let sawPositive = false;
+    for (const value of [usage.input, usage.cacheRead, usage.cacheWrite]) {
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        total += value;
+        sawPositive = true;
+      }
+    }
+    if (sawPositive) {
+      return Math.floor(total);
     }
   }
   return undefined;

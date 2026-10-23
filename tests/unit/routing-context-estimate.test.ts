@@ -14,13 +14,18 @@ import { STRIP_CURSOR_LIFECYCLE_ENV } from '../../src/index.js';
 
 const STRIP_ENV = STRIP_CURSOR_LIFECYCLE_ENV;
 
-function makeUsage(input: number, output = 0): Usage {
+function makeUsage(
+  input: number,
+  output = 0,
+  cacheRead = 0,
+  cacheWrite = 0,
+): Usage {
   return {
     input,
     output,
-    cacheRead: 0,
-    cacheWrite: 0,
-    totalTokens: input + output,
+    cacheRead,
+    cacheWrite,
+    totalTokens: input + output + cacheRead + cacheWrite,
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
   };
 }
@@ -161,6 +166,30 @@ describe('estimateInputTokens (SP-302, #178)', () => {
     ]);
 
     expect(estimateInputTokens(context)).toBe(148_508);
+  });
+
+  it('includes usage.cacheRead and usage.cacheWrite in the last-usage floor', () => {
+    const context = makeContext([
+      userMessage('tiny'),
+      assistantMessage({
+        content: [{ type: 'text', text: 'ok' }],
+        usage: makeUsage(60_000, 900, 80_000, 8_508),
+      }),
+    ]);
+
+    expect(estimateInputTokens(context)).toBe(148_508);
+  });
+
+  it('floors on cache tokens even when usage.input is zero', () => {
+    const context = makeContext([
+      userMessage('tiny'),
+      assistantMessage({
+        content: [{ type: 'text', text: 'ok' }],
+        usage: makeUsage(0, 0, 120_000),
+      }),
+    ]);
+
+    expect(estimateInputTokens(context)).toBe(120_000);
   });
 
   it('keeps the chars/4 estimate when it exceeds reported usage', () => {
