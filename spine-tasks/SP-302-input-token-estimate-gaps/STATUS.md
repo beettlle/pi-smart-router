@@ -1,7 +1,7 @@
 # SP-302: input-token estimate counts tool-call args, replayed thinking, and last usage — Status
 
-**Current Step:** Step 2: Testing & Verification — complete, pending review
-**Status:** In Progress
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-10-23
 **Review Level:** 2
 **Review Counter:** 0
