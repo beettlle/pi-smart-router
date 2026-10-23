@@ -96,6 +96,57 @@ describe('RouterPipeline', () => {
       expect(decision.features?.candidates ?? []).toEqual([]);
       expect(decision.selected_model_id).toBe('mid-window');
     });
+
+    it('rejects undersized models when toolCall args push the estimate over the window (#178)', async () => {
+      // Regression: the pre-SP-302 estimator only counted text blocks, so a
+      // turn like this admitted a model whose effective limit the *actual*
+      // input blew past. buildRoutingRequest now sizes serialized toolCall
+      // arguments, so the gate sees the real magnitude.
+      const { buildRoutingRequest } = await import(
+        '../../.pi/extensions/smart-router/routing-context.js'
+      );
+      const args = { patch: 'x'.repeat(140_000) };
+      const request = buildRoutingRequest(
+        {
+          messages: [
+            { role: 'user', content: 'apply this patch', timestamp: 1 },
+            {
+              role: 'assistant',
+              content: [
+                { type: 'text', text: 'applying' },
+                { type: 'toolCall', id: 'call-1', name: 'edit', arguments: args },
+              ],
+              api: 'openai-responses',
+              provider: 'openai',
+              model: 'gpt-4o-mini',
+              usage: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                totalTokens: 0,
+                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+              },
+              stopReason: 'toolUse',
+              timestamp: 2,
+            },
+          ],
+        },
+        undefined,
+      );
+
+      // Text-only chars/4 would be tiny; with args the estimate clears the
+      // 32K window's effective limit (floor(32768 * 0.9) = 29_491).
+      expect(request.estimated_input_tokens).toBeGreaterThan(29_491);
+
+      const pipeline = new RouterPipeline(contextFleet);
+      const decision = await pipeline.route(request);
+
+      expect(decision.selected_model_id).toBe('large-window');
+      expect(decision.features?.candidates?.some(
+        (c) => c.model_id === 'small-window' && c.rejected_reason === CONTEXT_FIT_EXCEEDED,
+      )).toBe(true);
+    });
   });
 
   describe('context overflow fallback (SP-095)', () => {
