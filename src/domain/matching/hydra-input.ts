@@ -8,18 +8,7 @@
 
 import type { Message, RoutingRequest } from '../types/index.js';
 import type { TriageResult } from '../triage/triage-engine.js';
-
-const FAILURE_PATTERNS = [
-  'error',
-  'fail',
-  'exception',
-  'timed out',
-  'timeout',
-  'econnrefused',
-  'enotfound',
-  'econnreset',
-  'epipe',
-] as const;
+import { isToolFailure } from '../pinning/tool-failure.js';
 
 function resolveMessageCount(request: RoutingRequest): number {
   return request.messages?.length ?? 0;
@@ -45,14 +34,10 @@ function resolveCompactionFlag(request: RoutingRequest): 0 | 1 {
   return request.compaction_flag ? 1 : 0;
 }
 
-function looksLikeToolFailure(content: string): boolean {
-  const lower = content.toLowerCase();
-  return FAILURE_PATTERNS.some((pattern) => lower.includes(pattern));
-}
-
 /**
  * Observational loop-pressure flag: 1 when the latest tool message looks
- * like a failure. Mirrors loop-escalation heuristics without session pin state.
+ * like a failure. Uses the shared loop-escalation failure detection
+ * (`is_error` → `status` → tightened body heuristic; SP-303 / #186).
  */
 function resolveLoopPressure(request: RoutingRequest): 0 | 1 {
   const messages = request.messages;
@@ -63,7 +48,7 @@ function resolveLoopPressure(request: RoutingRequest): 0 | 1 {
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i]!;
     if (message.role === 'tool') {
-      return looksLikeToolFailure(message.content) ? 1 : 0;
+      return isToolFailure(message) ? 1 : 0;
     }
   }
 
