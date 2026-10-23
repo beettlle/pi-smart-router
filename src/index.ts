@@ -190,8 +190,14 @@ export {
 } from './domain/delegation/adaptive-reasoning.js';
 export {
   isGoogleDelegationTarget,
+  isCursorDelegationTarget,
+  isCursorOriginAssistantMessage,
   normalizeDelegationContext,
   repairGeminiReplayContext,
+  stripCursorLifecycleThinking,
+  STRIP_CURSOR_LIFECYCLE_ENV,
+  type CursorLifecycleStripResult,
+  type StripCursorLifecycleOptions,
 } from './domain/delegation/delegation-context.js';
 export { ExecutionLedger } from './domain/delegation/execution-ledger.js';
 export {
