@@ -1,8 +1,8 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-10-22
+**Last Updated:** 2026-10-24
 **Status:** Active
-**Next Task ID:** SP-304
+**Next Task ID:** SP-313
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
 **Released:** **v1.2.0** on npm (`latest`, tag `v1.2.0`, 2026-09-13). Theme: long-context encoder path — #173 cascade (SP-291–294) + #167 Granite opt-in runbook (SP-295 Partial — human dogfood remaining) + non-quota #174 (SP-290). Closed: #173, #174. Left open: #167 (Partial), #110 (deferred — no embeddings / session-holdout ECE), #95, #96 (not flipped), #172 (P3). Note: accidental empty `1.3.0` git bump was never published; tag deleted; `main` reverted to package `1.2.0` (`ff28a0c`). Prior: **v1.1.0** verifier-grade train. Train SP-289–SP-295 `.DONE`. Next-train slate: #110, #95, #162/#163, #172, #96, #157, hardware #1/#25/#26 parked.
@@ -991,6 +991,28 @@
 **Scope ID:** `SP-300,SP-301,SP-302,SP-303`
 
 **Authoring notes:** `spine-tasks/_authoring/release-v1.2.2/manifest.md`
+
+### Phase 63 — Release v1.3.0 Typed-Judgment Foundation (SP-304–SP-309)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-304 | TypedJudgmentPort + `typed_judgment` operator config | S | — | Partial #184 |
+| SP-305 | Jev-compatible HTTP adapter + fail-closed factory | M | SP-304 | Closes #184 |
+| SP-306 | readable judge state + six-question schema + answer mapper | M | SP-303, SP-304 | Closes #185 |
+| SP-307 | `typed_judgment` pipeline stage (non-deciding, fail-open) | M | SP-304, SP-306 | Partial #187 |
+| SP-308 | typed-judgment feature sidecar + composition-root wiring | M | SP-305, SP-307 | Closes #187 |
+| SP-309 | operator docs: typed judgment setup, privacy, stage table | S | SP-305, SP-307 | Partial #183 |
+| SP-310 | family rules for Claude 5.x and Gemini 4 | S | — | Partial #193 |
+| SP-311 | benchmark grounding + aliases for Claude 5.x and Gemini 3.1/4 | M | SP-310 | Partial #193 |
+| SP-312 | mixed capability-source fairness within a tier | M | SP-311 | Closes #193 |
+
+**Source:** **v1.3.0** (2026-10-24, minor profile). Theme: typed-judgment foundation (epic #183 Sprint 1) plus current-frontier fleet profiles (#193, operator-approved fourth enhancement exception 2026-10-24). Scope pending operator approval.
+
+**Status:** Packets authored; awaiting operator approval, then Phase 4. Precondition: v1.2.2 batch `20261023T001303-b036` integrated (SP-306 needs SP-303).
+
+**Scope ID:** `SP-304,SP-305,SP-306,SP-307,SP-308,SP-309,SP-310,SP-311,SP-312`
+
+**Authoring notes:** `spine-tasks/_authoring/release-v1.3.0/manifest.md`
 
 ---
 
