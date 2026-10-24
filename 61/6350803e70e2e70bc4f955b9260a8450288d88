@@ -1,0 +1,59 @@
+spine-tasks/CONTEXT.md
+  s_96477c3d74b96c::t_906ede36f68153 3,5,995-1016
+spine-tasks/SP-304-typed-judgment-port-config/PROMPT.md
+  s_96477c3d74b96c::t_a69bec6b38de1c 1-106
+spine-tasks/SP-304-typed-judgment-port-config/STATUS.md
+  s_96477c3d74b96c::t_1bb145995bbb6e 1-42
+spine-tasks/SP-305-jev-http-adapter/PROMPT.md
+  s_96477c3d74b96c::t_3011e374688ffa 1-99
+spine-tasks/SP-305-jev-http-adapter/STATUS.md
+  s_96477c3d74b96c::t_6c4eebf22bbcdf 1-41
+spine-tasks/SP-306-judge-state-questions-mapper/PROMPT.md
+  s_96477c3d74b96c::t_9f24509ee276e4 1-111
+spine-tasks/SP-306-judge-state-questions-mapper/STATUS.md
+  s_96477c3d74b96c::t_ebb280be40edcf 1-42
+spine-tasks/SP-307-typed-judgment-stage/PROMPT.md
+  s_96477c3d74b96c::t_136bc7ff623ef0 1-100
+spine-tasks/SP-307-typed-judgment-stage/STATUS.md
+  s_96477c3d74b96c::t_7b81a5b7a04691 1-41
+spine-tasks/SP-308-typed-judgment-sidecar-wiring/PROMPT.md
+  s_96477c3d74b96c::t_52d2a1bba91d88 1-93
+spine-tasks/SP-308-typed-judgment-sidecar-wiring/STATUS.md
+  s_96477c3d74b96c::t_8355690d4cc788 1-40
+spine-tasks/SP-309-typed-judgment-operator-docs/PROMPT.md
+  s_96477c3d74b96c::t_e2fd2c20a522dc 1-92
+spine-tasks/SP-309-typed-judgment-operator-docs/STATUS.md
+  s_96477c3d74b96c::t_2e391e16982c74 1-38
+spine-tasks/SP-310-claude5-gemini4-family-rules/PROMPT.md
+  s_96477c3d74b96c::t_62c2d0fb7d16c4 1-87
+spine-tasks/SP-310-claude5-gemini4-family-rules/STATUS.md
+  s_96477c3d74b96c::t_a4ac567bbc164a 1-32
+spine-tasks/SP-311-benchmark-grounding-claude5-gemini/PROMPT.md
+  s_96477c3d74b96c::t_033dab2e249e49 1-90
+spine-tasks/SP-311-benchmark-grounding-claude5-gemini/STATUS.md
+  s_96477c3d74b96c::t_5586f472bd991a 1-40
+spine-tasks/SP-312-mixed-capability-source-fairness/PROMPT.md
+  s_96477c3d74b96c::t_fde7f5de06cd5d 1-93
+spine-tasks/SP-312-mixed-capability-source-fairness/STATUS.md
+  s_96477c3d74b96c::t_e44ecaa1d6c9f8 1-33
+spine-tasks/_authoring/release-v1.3.0/manifest.md
+  s_96477c3d74b96c::t_9ab6e5c1cdece3 1-177
+spine-tasks/dependencies.json
+  s_96477c3d74b96c::t_29b98260df558c 818-845
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "616350803e70e2e70bc4f955b9260a8450288d88",
+  "prompts": {},
+  "sessions": {
+    "s_96477c3d74b96c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4baaf7f4-22ec-4bcd-8bb0-57f54155499d",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
