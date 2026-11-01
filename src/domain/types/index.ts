@@ -54,4 +54,5 @@ export type { StorePort } from './store-port.js';
 export type {
   AdaptiveReasoningConfig,
   AdaptiveReasoningLevel,
+  TypedJudgmentConfig,
 } from './schemas.js';

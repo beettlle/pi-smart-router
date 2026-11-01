@@ -1,7 +1,7 @@
 # SP-304: TypedJudgmentPort + typed_judgment operator config — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 3: Testing & Verification
+**Status:** In Progress
 **Last Updated:** 2026-10-24
 **Review Level:** 2
 **Review Counter:** 0
@@ -11,32 +11,32 @@
 ---
 
 ### Step 0: Preflight
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Read config/env resolver pattern
+- [x] Read config/env resolver pattern
 
 ---
 
 ### Step 1: Port and types
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Create typed-judgment-port.ts
+- [x] Create typed-judgment-port.ts
 
 ---
 
 ### Step 2: Config
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] TypedJudgmentConfigSchema + loopback superRefine + defaults
-- [ ] Env resolver wired
+- [x] TypedJudgmentConfigSchema + loopback superRefine + defaults
+- [x] Env resolver wired
 
 ---
 
 ### Step 3: Testing & Verification
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Defaults parse disabled
-- [ ] Loopback endpoints accepted
-- [ ] Remote endpoint gated by allow_remote
-- [ ] Invalid env override keeps base config
+- [x] Defaults parse disabled
+- [x] Loopback endpoints accepted
+- [x] Remote endpoint gated by allow_remote
+- [x] Invalid env override keeps base config
 - [ ] Run Contract testCommand

@@ -998,6 +998,167 @@ export const RoutingClustersFileSchema = z
     }
   });
 
+// ─── Typed judgment (SP-304, #184) ──────────────────────────────────────────
+
+/** Loopback hosts accepted for `typed_judgment.endpoint` without `allow_remote`. */
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
+
+/** Parse an endpoint URL and return its normalized hostname (brackets stripped). */
+function parseEndpointHostname(endpoint: string): string | undefined {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return undefined;
+  }
+  const hostname = url.hostname;
+  return hostname.startsWith('[') && hostname.endsWith(']')
+    ? hostname.slice(1, -1)
+    : hostname;
+}
+
+/**
+ * Typed judgment (Jev-compatible "systemone") operator knobs (SP-304, #184).
+ *
+ * The router can ask a calibrated, schema-safe semantic judge about a turn
+ * via `TypedJudgmentPort` (src/domain/ports/typed-judgment-port.ts). Default
+ * OFF: existing installs pay zero added cost and no network call is made.
+ *
+ * Fail closed on remote endpoints: `superRefine` rejects any non-loopback
+ * `endpoint` host unless the operator explicitly sets `allow_remote: true`
+ * (local OpenJev is the intended default; remote hosted Jev is opt-in).
+ *
+ * The schema never holds an API key value — only the name of the env var
+ * (`api_key_env`) the adapter reads the key from at call time.
+ */
+export const TypedJudgmentConfigSchema = z
+  .object({
+    /** When false (default), no typed-judgment calls are made. */
+    enabled: z.boolean().default(false),
+    /** Judge endpoint. Loopback-only unless `allow_remote` is true. */
+    endpoint: z.string().min(1).default('http://127.0.0.1:8080/v1/systemone'),
+    /** Judge model id (hosted Jev ignores this; OpenJev uses it). */
+    model: z.string().min(1).default('openjev-latest'),
+    /**
+     * Per-call timeout (ms), sized for user-prompt turns: local OpenJev runs
+     * ~385–990 ms per judgment (epic #183), so 1500 ms covers p99 with
+     * headroom without stalling interactive routing.
+     */
+    timeout_ms: z.number().int().positive().default(1500),
+    /**
+     * Judge samples per question (OpenJev extension for self-consistency
+     * voting). The adapter omits this field for hosted Jev.
+     */
+    samples: z.number().int().positive().default(1),
+    /**
+     * Name of the env var holding the API key (never the key itself).
+     * Domain code and config never read or store key material.
+     */
+    api_key_env: z.string().min(1).default('TYPESAFE_API_KEY'),
+    /**
+     * Opt-in escape hatch allowing non-loopback endpoints (hosted Jev).
+     * Default false = fail closed to local judge only.
+     */
+    allow_remote: z.boolean().default(false),
+    /**
+     * Minimum answer confidence (0–1) for a judgment to influence routing.
+     * Consumed by later trains (#188); defined now to stabilize the config
+     * shape.
+     */
+    min_confidence: z.number().min(0).max(1).default(0.6),
+  })
+  .superRefine((value, ctx) => {
+    const hostname = parseEndpointHostname(value.endpoint);
+    if (hostname === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'typed_judgment.endpoint must be a valid URL',
+        path: ['endpoint'],
+      });
+      return;
+    }
+    if (!value.allow_remote && !LOOPBACK_HOSTS.has(hostname)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'typed_judgment.endpoint must be loopback (127.0.0.1, ::1, or localhost) ' +
+          'unless allow_remote is true (fail closed: remote judges are opt-in)',
+        path: ['endpoint'],
+      });
+    }
+  });
+
+export type TypedJudgmentConfig = z.infer<typeof TypedJudgmentConfigSchema>;
+
+/** Typed judgment defaults per #184 (SP-304): disabled, loopback-only. */
+export const DEFAULT_TYPED_JUDGMENT_CONFIG: Readonly<TypedJudgmentConfig> = {
+  enabled: false,
+  endpoint: 'http://127.0.0.1:8080/v1/systemone',
+  model: 'openjev-latest',
+  timeout_ms: 1500,
+  samples: 1,
+  api_key_env: 'TYPESAFE_API_KEY',
+  allow_remote: false,
+  min_confidence: 0.6,
+} as const;
+
+/** Env: SMART_ROUTER_TYPED_JUDGMENT_ENABLED — master switch (default false). */
+const ENV_TYPED_JUDGMENT_ENABLED = 'SMART_ROUTER_TYPED_JUDGMENT_ENABLED';
+/** Env: SMART_ROUTER_TYPED_JUDGMENT_ENDPOINT — judge endpoint (loopback-only unless allow_remote). */
+const ENV_TYPED_JUDGMENT_ENDPOINT = 'SMART_ROUTER_TYPED_JUDGMENT_ENDPOINT';
+/** Env: SMART_ROUTER_TYPED_JUDGMENT_MODEL — judge model id (default openjev-latest). */
+const ENV_TYPED_JUDGMENT_MODEL = 'SMART_ROUTER_TYPED_JUDGMENT_MODEL';
+/** Env: SMART_ROUTER_TYPED_JUDGMENT_TIMEOUT_MS — per-call timeout ms (default 1500). */
+const ENV_TYPED_JUDGMENT_TIMEOUT_MS = 'SMART_ROUTER_TYPED_JUDGMENT_TIMEOUT_MS';
+/** Env: SMART_ROUTER_TYPED_JUDGMENT_SAMPLES — OpenJev samples per question (default 1). */
+const ENV_TYPED_JUDGMENT_SAMPLES = 'SMART_ROUTER_TYPED_JUDGMENT_SAMPLES';
+/** Env: SMART_ROUTER_TYPED_JUDGMENT_API_KEY_ENV — name of the env var holding the API key. */
+const ENV_TYPED_JUDGMENT_API_KEY_ENV = 'SMART_ROUTER_TYPED_JUDGMENT_API_KEY_ENV';
+/** Env: SMART_ROUTER_TYPED_JUDGMENT_ALLOW_REMOTE — permit non-loopback endpoints (default false). */
+const ENV_TYPED_JUDGMENT_ALLOW_REMOTE = 'SMART_ROUTER_TYPED_JUDGMENT_ALLOW_REMOTE';
+/** Env: SMART_ROUTER_TYPED_JUDGMENT_MIN_CONFIDENCE — min answer confidence 0–1 (default 0.6). */
+const ENV_TYPED_JUDGMENT_MIN_CONFIDENCE = 'SMART_ROUTER_TYPED_JUDGMENT_MIN_CONFIDENCE';
+
+function readNonEmptyStringEnv(name: string): string | undefined {
+  const raw = process.env[name];
+  if (raw === undefined) {
+    return undefined;
+  }
+  const trimmed = raw.trim();
+  return trimmed === '' ? undefined : trimmed;
+}
+
+/**
+ * Merge typed judgment env overrides onto defaults (invalid scalar env values
+ * are ignored). An env `endpoint` override is re-validated against the same
+ * loopback rule as the schema: if the merged result fails validation (e.g. a
+ * remote endpoint without `allow_remote`), fall back to the base config and
+ * keep `enabled: false` (fail closed — never route judgments to an endpoint
+ * the operator did not explicitly clear).
+ */
+export function resolveTypedJudgmentConfigFromEnv(
+  base: TypedJudgmentConfig = DEFAULT_TYPED_JUDGMENT_CONFIG,
+): TypedJudgmentConfig {
+  const candidate: TypedJudgmentConfig = {
+    enabled: readBooleanEnv(ENV_TYPED_JUDGMENT_ENABLED) ?? base.enabled,
+    endpoint: readNonEmptyStringEnv(ENV_TYPED_JUDGMENT_ENDPOINT) ?? base.endpoint,
+    model: readNonEmptyStringEnv(ENV_TYPED_JUDGMENT_MODEL) ?? base.model,
+    timeout_ms: readPositiveIntEnv(ENV_TYPED_JUDGMENT_TIMEOUT_MS) ?? base.timeout_ms,
+    samples: readPositiveIntEnv(ENV_TYPED_JUDGMENT_SAMPLES) ?? base.samples,
+    api_key_env: readNonEmptyStringEnv(ENV_TYPED_JUDGMENT_API_KEY_ENV) ?? base.api_key_env,
+    allow_remote: readBooleanEnv(ENV_TYPED_JUDGMENT_ALLOW_REMOTE) ?? base.allow_remote,
+    min_confidence:
+      readUnitIntervalEnv(ENV_TYPED_JUDGMENT_MIN_CONFIDENCE) ?? base.min_confidence,
+  };
+  const parsed = TypedJudgmentConfigSchema.safeParse(candidate);
+  if (parsed.success) {
+    return parsed.data;
+  }
+  // Fail closed: invalid env override (e.g. remote endpoint without
+  // allow_remote) leaves the base config intact and disabled.
+  return { ...base, enabled: false };
+}
+
 export const OperatorConfigSchema = z.object({
   frugality: FrugalityConfigSchema,
   loop_escalation: LoopEscalationConfigSchema,
@@ -1019,6 +1180,8 @@ export const OperatorConfigSchema = z.object({
   speculative_prewarm: SpeculativePrewarmConfigSchema.optional(),
   /** Adaptive reasoning (thinking-level) policy knobs (SP-246, #166). Default on. */
   adaptive_reasoning: AdaptiveReasoningConfigSchema.optional(),
+  /** Typed judgment (Jev systemone) knobs (SP-304, #184). Default off; loopback-only unless allow_remote. */
+  typed_judgment: TypedJudgmentConfigSchema.optional(),
   /**
    * Emergency pin-on-first-turn fallback (#83, SP-161).
    * When true, subsequent turns use the session pin only — multi-stage routing
