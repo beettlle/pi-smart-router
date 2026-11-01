@@ -1,0 +1,30 @@
+config/benchmark-profiles.json
+  h_ae151c586ac6c5 11-25,28,30,32,39,44,49,70,78,80-82,86-87,90-93,97-136,138-139,150-152,156-157,160-161,164-165,176-178,182-183,186-187,190-191,199-216,220-222,225-232,234-235
+scripts/ingest-benchmark-profiles.ts
+  h_ae151c586ac6c5 3,139-140,203-216,219-249,252-273,297-298,547-550,557,581-595,608-619,628,690-691,853-855,861-866,911-914
+spine-tasks/SP-305-jev-http-adapter/.reviews/0-20261101T214930.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-305-jev-http-adapter/.reviews/3-20261101T215002.md
+  h_ae151c586ac6c5 1-13
+spine-tasks/SP-305-jev-http-adapter/.reviews/contract-fail-2026-11-01T21-54-01-110Z.log
+  h_ae151c586ac6c5 1-39
+spine-tasks/SP-305-jev-http-adapter/.reviews/contract-fail-2026-11-01T21-54-13-261Z.log
+  h_ae151c586ac6c5 1-40
+spine-tasks/SP-311-benchmark-grounding-claude5-gemini/STATUS.md
+  h_ae151c586ac6c5 3-5,14-16,18-23,28,35-37,39-43
+tests/fixtures/benchmark-leaderboards/bfcl.json
+  h_ae151c586ac6c5 4,10-12
+tests/fixtures/benchmark-leaderboards/swebench_verified.json
+  h_ae151c586ac6c5 4,10-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a312d53deb230affff673495df0ad3909798f9b1",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
