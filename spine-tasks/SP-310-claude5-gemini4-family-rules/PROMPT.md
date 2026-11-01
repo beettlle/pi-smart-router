@@ -22,7 +22,7 @@ Operator scoped fleet (2026-10-24, `~/.pi/agent/settings.json` `enabledModels`):
 Update `MODEL_PATTERN_RULES` in `src/config/pi-model-mapper.ts` (first match wins — order matters):
 
 - `claude-fable-*` → `FRONTIER_DEFAULTS`.
-- Any other `claude-*` id that is not Haiku → `FRONTIER_DEFAULTS` (future Claude families should not drop to unknown). Haiku stays `ECONOMICAL_DEFAULTS`; keep the Haiku rule ahead of the generic Claude rule.
+- Any other `claude-*` id that is not Haiku → `FRONTIER_DEFAULTS` (future Claude families should not drop to unknown). Haiku stays `ECONOMICAL_DEFAULTS`; keep the Haiku rule ahead of the generic Claude rule. Anchor the generic rule to a leading `claude` token (start of id or after `/`, followed by `-`, `_`, or `.`), e.g. `/(?:^|\/)claude[-_.]/i` — a bare `/claude/i` also matches ids like `openai-claude-bridge` (stet finding on the first attempt). Add a test that `openai-claude-bridge` does not get `FRONTIER_DEFAULTS` from the Claude rule.
 - Gemini major version ≥ 4 (e.g. `gemini-4-argon`, `gemini-4-pro`) → `FRONTIER_DEFAULTS`, **unless** the id contains `flash` or `lite` → `ECONOMICAL_DEFAULTS`. Place the flash/lite rule before the generic Gemini 4+ rule.
 - `gemini-*-customtools` resolves exactly like its base id (strip the suffix before matching or rely on the existing `gemini.*pro` rule — test it either way).
 - `gemini-flash-lite-latest` stays economical.
