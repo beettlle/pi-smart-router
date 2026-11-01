@@ -29,7 +29,7 @@ Implement `TypedJudgmentPort` (SP-304) over global `fetch` (Node ≥ 22.19). **N
   - Combine the caller's `AbortSignal` with the timeout via `AbortSignal.any`; distinguish `timeout` from `aborted`.
   - Never include prompt or state text in thrown errors or logs; pass messages through `redactPromptFromError` (`src/domain/pipeline/stage-helpers.ts`).
 - Factory `createTypedJudgmentPort(config, env = process.env)`: returns `{ port: TypedJudgmentPort } | { port: null, reason }`. Returns `null` with reason `typed_judgment_disabled` when disabled and `typed_judgment_remote_key_missing` when the endpoint is remote and the env key is empty (fail closed).
-- Recorded OpenJev response fixtures under `tests/fixtures/typed-judgment/` (success for each answer type, 400, 422, 401). Fixtures may be hand-authored from the OpenJev README shapes; record provenance in each fixture with a `"_source"` field (e.g. `"openjev README shape"` or `"recorded openjev-0.1 2026-10-xx"`).
+- Recorded OpenJev response fixtures under `tests/fixtures/typed-judgment/` (success for each answer type, 400, 422, 401). Fixtures may be hand-authored from the OpenJev README shapes; record provenance in each fixture with a `"_source"` field (e.g. `"openjev README shape"` or `"recorded openjev-0.1 2026-10-xx"`). Load fixtures relative to the test file (`fileURLToPath(new URL('../fixtures/typed-judgment/...', import.meta.url))`), not a CWD-relative `'tests/fixtures/...'` string — repo convention and a stet finding on the first attempt.
 
 ## Dependencies
 
