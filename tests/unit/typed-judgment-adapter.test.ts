@@ -8,6 +8,7 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
@@ -26,7 +27,7 @@ import type { TypedJudgmentConfig } from '../../src/domain/types/index.js';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-const FIXTURES_DIR = join('tests', 'fixtures', 'typed-judgment');
+const FIXTURES_DIR = fileURLToPath(new URL('../fixtures/typed-judgment', import.meta.url));
 
 interface Fixture {
   _source: string;
