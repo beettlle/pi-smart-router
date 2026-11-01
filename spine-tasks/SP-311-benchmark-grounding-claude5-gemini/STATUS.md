@@ -25,9 +25,15 @@
 ---
 
 ### Step 1: Ingest refresh
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Live + record or fixture fallback; adapter name normalization
+- [x] Live + record or fixture fallback; adapter name normalization
+
+Done in a312d53d (verified 2026-11-01 on resume): live preflight recorded above;
+scoped grounding rows entered via checked-in curated fixtures (fixture fallback
+per PROMPT — no scoped id appears on any live leaderboard); adapter name
+normalization not needed (adapters out of scope — new ids deliberately live in
+fixtures, see Discoveries "Release-refresh interplay").
 
 ---
 
@@ -56,6 +62,10 @@ All green: `npm run typecheck`, full `npx vitest run` (149 files / 2481 tests),
 `npm run routing:verify-benchmark-profiles`, `npm run coverage:check` (91.76% lines,
 exit 0), `npm run lint`. Issue #193 verification block satisfied.
 
+Round 3 re-verification (2026-11-01, post-triage): contract `testCommand` green
+end-to-end — typecheck OK; scoped files 105/105; verify gate 1/1; stet contract
+**0 active findings** (13 dismissed); `coverage:check` exit 0 (91.76% lines).
+
 ## Discoveries
 
 - **Out-of-scope test touch (documented, forced by contract):**
@@ -75,6 +85,25 @@ exit 0), `npm run lint`. Issue #193 verification block satisfied.
   are listed in `provenance.ungrounded_fleet_ids` instead of being aliased onto
   wrong-generation rows (SP-254 policy). `claude-fable-5-1` likewise has no
   Fable-family row; cross-family collapse is forbidden by SP-208 policy.
+- **Stet round-3 triage (2026-11-01, contract re-run after engine re-invoke):**
+  review surfaced 13 findings. Fixed in bbd05312: deterministic code-unit sorts
+  for `ungrounded_fleet_ids` (localeCompare is ICU/locale-dependent) at both
+  SP-311-added sort sites; CWD-independent checked-in artifact path in the ingest
+  test (`CHECKED_IN_PROFILES_PATH` via `import.meta.url`, matching the fdc20cad
+  precedent); JSDoc on `loadUngroundedFleetIdsFromBenchmarkProfilesFile` pinning
+  the `undefined` = "nothing preserved" contract; sharpened serialize comment;
+  new disjointness guard (no fleet alias may target an ungrounded id).
+  Dismissed with reasons (all recorded in stet session): the two `:861`/`:136`
+  ERRORs claiming `ungroundedFleetIds` is missing from
+  `IngestBenchmarkProfilesOptions` are false positives (property defined at line
+  298; `tsc --noEmit` green in the same run); `expectedBenchmarkCaps` already
+  resolves aliases via `resolveBenchmarkModelId`; file-level `afterEach` already
+  resets the mapper cache; `provenance` const is consumed by `ordered`;
+  the option is consumed (defaults + `runIngestCli` merge); byte-exact
+  artifact-parity string compare is the completion criterion, not brittleness;
+  `|| '(none)'` edge impossible (`z.string().min(1)`); code-unit-vs-locale
+  inconsistency is the documented intent; pi-extension redundancy assertion is
+  out-of-scope and harmless.
 - **Release-refresh interplay:** a future live refresh (`release:check`) regenerates
   the artifact from recorded/live adapter output, whose unchanged adapter catalogs
   do not emit `claude-haiku-4-5` / `gemini-3-pro-preview`; the artifact would flip
