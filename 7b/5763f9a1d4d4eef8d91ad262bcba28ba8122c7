@@ -1,0 +1,16 @@
+src/config/pi-model-mapper.ts
+  h_ae151c586ac6c5 344-347
+tests/unit/pi-model-mapper.test.ts
+  h_ae151c586ac6c5 256-280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b5763f9a1d4d4eef8d91ad262bcba28ba8122c7",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
