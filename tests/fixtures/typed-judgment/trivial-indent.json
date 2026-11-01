@@ -1,0 +1,29 @@
+{
+  "name": "trivial-indent",
+  "description": "Trivial single-line edit; no session metadata beyond the turn itself.",
+  "request": {
+    "request_id": "req-trivial-indent",
+    "session_id": "sess-indent",
+    "prompt_text": "fix the indentation on line 12 of src/app.ts",
+    "messages": [
+      {
+        "role": "user",
+        "content": "fix the indentation on line 12 of src/app.ts"
+      }
+    ],
+    "turn_type": "main_loop",
+    "estimated_input_tokens": 2200
+  },
+  "expected": {
+    "latest_user_message": "fix the indentation on line 12 of src/app.ts",
+    "session": {
+      "messages": 1,
+      "tool_calls": 0,
+      "compactions": false,
+      "context_tokens": 2200,
+      "turn_type": "main_loop",
+      "last_tool_failed": false
+    },
+    "recent_activity": []
+  }
+}

@@ -33,10 +33,10 @@
 ---
 
 ### Step 3: Testing & Verification
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Golden incident state snapshots
-- [ ] Token cap and no cost keys
-- [ ] Mapper normalization and rejection
-- [ ] Deep-session "continue" not an acknowledgement
+- [x] Golden incident state snapshots — six fixtures under `tests/fixtures/typed-judgment/` (#97 cleanup, #179 deep continuation, #23 planning, trivial indent, thanks!, subtle debug); loop test asserts parsed state equals golden, cap holds, no cost keys
+- [x] Token cap and no cost keys — unit tests: 5,000-char message + 2,000-char activity stays ≤500 est. tokens; recursive key scan against forbidden key set; activity lines ≤2, each truncated with ellipsis
+- [x] Mapper normalization and rejection — `typed-judgment-questions.test.ts` (normalize by `levels − 1`; unknown choice, kind mismatch, out-of-range score/confidence → `invalid_response`; missing → null)
+- [x] Deep-session "continue" not an acknowledgement — depth-guard test with a 1,201-message request
 - [ ] Run Contract testCommand
