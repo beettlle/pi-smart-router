@@ -1,0 +1,14 @@
+spine-tasks/SP-311-benchmark-grounding-claude5-gemini/STATUS.md
+  h_ae151c586ac6c5 28-30,32-36,65-68,88-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "503b6a1f41ec1a1ce0762e21acb31564a8a74ebc",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
