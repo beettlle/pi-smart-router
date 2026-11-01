@@ -1,0 +1,14 @@
+src/domain/judgment/judge-state.ts
+  h_ae151c586ac6c5 1-294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2439d6f4876aa0feebd1cc80d62f90d19245b54",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
