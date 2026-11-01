@@ -1,0 +1,19 @@
+spine-tasks/SP-305-jev-http-adapter/PROMPT.md
+  s_163668b472df17::t_bfd3e3e6f3bc34 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "351af26c9ca298a30973bdeef68c3f9c382e9e18",
+  "prompts": {},
+  "sessions": {
+    "s_163668b472df17": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bfb8b955-11e0-4d1b-b35d-3fce8247e71c",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
