@@ -1,7 +1,7 @@
 # SP-310: Family rules for Claude 5.x and Gemini 4 — Status
 
-**Current Step:** Step 2: Testing & Verification
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Completed
 **Last Updated:** 2026-11-01
 **Review Level:** 1
 **Review Counter:** 0
@@ -36,3 +36,13 @@
 - [x] Run Contract testCommand
   - `npm run typecheck` ✓; `npx vitest run tests/unit/pi-model-mapper.test.ts tests/unit/pi-model-mapper-coverage.test.ts` ✓ (68 passed); `bash scripts/spine-stet-contract-run.sh lenient SP-310` ✓ (0 findings).
   - Adjacent consumer suites also green: price-broker, smart-router-extension, pi-extension integration, index-exports (176 passed).
+
+---
+
+### Completion summary (2026-11-01)
+- Every id in the operator scoped fleet maps to the intended tier; no Claude or Gemini 4 id falls to UNKNOWN_DEFAULTS (pinned by the no-UNKNOWN fingerprint test).
+- Existing mapper tests unchanged and green; full suite `SPINE_WORKER_STUB=1 npm test` green (147 files / 2407 tests) plus `npm run typecheck`.
+- File scope respected: only `src/config/pi-model-mapper.ts` and `tests/unit/pi-model-mapper.test.ts` changed (plus this STATUS). No changes to `package.json`, `config/benchmark-profiles.json`, `src/domain/`, `scripts/`, or `.review/`.
+- GitNexus detect-changes: 0 affected processes, risk low. Note: gitnexus MCP `impact`/`query`/`context` string params arrived mangled in this session; used `detect_changes` + text search (`rg`) for caller analysis instead.
+- Plan review (RL 1) was engine-skipped per SP-195 (`spine_review_step` returned skipped=true).
+- #193 family-rule items met; grounding remains SP-311, mixed-source fairness SP-312 (out of scope here).
