@@ -544,9 +544,10 @@ export function aggregateBenchmarkProfiles(
       ? { ...options.aliases }
       : { ...DEFAULT_FLEET_BENCHMARK_ALIASES };
 
+  // Deterministic code-unit sort (ids are ASCII); localeCompare varies with ICU/locale.
   const ungroundedFleetIds = [
     ...new Set(options.ungroundedFleetIds ?? DEFAULT_UNGROUNDED_FLEET_IDS),
-  ].sort((a, b) => a.localeCompare(b));
+  ].sort();
 
   const artifact: BenchmarkProfilesArtifact = {
     version: BENCHMARK_PROFILES_VERSION,
@@ -578,7 +579,12 @@ export function loadAliasesFromBenchmarkProfilesFile(
   }
 }
 
-/** Load ungrounded fleet ids from an existing artifact file (SP-311 preserve). */
+/**
+ * Load ungrounded fleet ids from an existing artifact file (SP-311 preserve).
+ * Returns `undefined` when the file is missing, unreadable, invalid, or the
+ * optional `provenance.ungrounded_fleet_ids` field is absent. Callers treat
+ * `undefined` uniformly as "nothing preserved to merge" (SP-311 re-ingest).
+ */
 export function loadUngroundedFleetIdsFromBenchmarkProfilesFile(
   filePath: string,
 ): readonly string[] | undefined {
@@ -606,14 +612,13 @@ export function serializeBenchmarkProfilesArtifact(
 ): string {
   const validated = parseBenchmarkProfilesArtifact(artifact);
   // Stable key order: version, provenance, aliases (sorted), models.
-  // provenance keeps schema key order; ungrounded_fleet_ids sorted for diffs.
+  // provenance keeps schema key order; the ungrounded_fleet_ids *values* are
+  // re-sorted (deterministic code-unit order, not localeCompare) for stable diffs.
   const provenance = {
     ...validated.provenance,
     ...(validated.provenance.ungrounded_fleet_ids !== undefined
       ? {
-          ungrounded_fleet_ids: [...validated.provenance.ungrounded_fleet_ids].sort((a, b) =>
-            a.localeCompare(b),
-          ),
+          ungrounded_fleet_ids: [...validated.provenance.ungrounded_fleet_ids].sort(),
         }
       : {}),
   };

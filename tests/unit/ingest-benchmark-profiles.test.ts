@@ -1,6 +1,7 @@
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
@@ -36,6 +37,11 @@ import {
   getLeaderboardAdapter,
   LEADERBOARD_ADAPTERS,
 } from '../../scripts/lib/leaderboard-adapters/index.js';
+
+// CWD-independent: resolved from this file, not the vitest working directory.
+const CHECKED_IN_PROFILES_PATH = fileURLToPath(
+  new URL('../../config/benchmark-profiles.json', import.meta.url),
+);
 
 function fixture(
   benchmark: BenchmarkLeaderboardFixture['benchmark'],
@@ -127,7 +133,7 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
   it('checked-in artifact matches fixture ingest', () => {
     // After live refresh, committed profiles come from recorded snapshots (not fixtures).
     // Accept either source so PR fixture edits and release live refreshes both verify.
-    const checkedIn = readFileSync(join('config', 'benchmark-profiles.json'), 'utf8');
+    const checkedIn = readFileSync(CHECKED_IN_PROFILES_PATH, 'utf8');
     const parsed = parseBenchmarkProfilesArtifact(JSON.parse(checkedIn));
     const options = {
       catalogFreezeDate: parsed.provenance.catalog_freeze_date,
@@ -344,10 +350,15 @@ describe('SP-311 scoped fleet grounding (#193)', () => {
     for (const id of DEFAULT_UNGROUNDED_FLEET_IDS) {
       expect(DEFAULT_FLEET_BENCHMARK_ALIASES[id], id).toBeUndefined();
     }
+    // And no fleet alias may target an ungrounded id — an alias pointing at a
+    // deliberately ungrounded id would ground nothing (constant-drift guard).
+    for (const target of Object.values(DEFAULT_FLEET_BENCHMARK_ALIASES)) {
+      expect(DEFAULT_UNGROUNDED_FLEET_IDS, `alias target ${target}`).not.toContain(target);
+    }
   });
 
   it('checked-in artifact partitions every scoped id: aliased or listed ungrounded', () => {
-    const artifactPath = join('config', 'benchmark-profiles.json');
+    const artifactPath = CHECKED_IN_PROFILES_PATH;
     const artifact = parseBenchmarkProfilesArtifact(
       JSON.parse(readFileSync(artifactPath, 'utf8')),
     );
