@@ -1,7 +1,7 @@
 # SP-305: Jev-compatible HTTP adapter + fail-closed factory — Status
 
-**Current Step:** Step 3: Testing & Verification
-**Status:** In Progress
+**Current Step:** Complete (all steps done)
+**Status:** Complete
 **Last Updated:** 2026-11-01
 **Review Level:** 2
 **Review Counter:** 0
@@ -32,13 +32,13 @@
 ---
 
 ### Step 3: Testing & Verification
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Fixture success/error matrix
-- [ ] Timeout, abort, unknown choice
-- [ ] Remote key gating; loopback body/headers
-- [ ] No state text in errors
-- [ ] Run Contract testCommand
+- [x] Fixture success/error matrix
+- [x] Timeout, abort, unknown choice
+- [x] Remote key gating; loopback body/headers
+- [x] No state text in errors
+- [x] Run Contract testCommand
 
 ---
 
@@ -60,3 +60,8 @@
   `{id, kind, prompt, …}` → Jev `{type, instructions, criteria}` keyed by question id
   (choice criteria map each option to itself; score criteria are the anchor descriptions in
   ascending order; noul criteria are `{true, false}`).
+- **Stet contract triage:** finding 844efc1 (stale `noul` JSDoc after the boolean→number
+  fix) fixed by rewriting the `TypedJudgmentNoulQuestion` doc; finding 606c860 dismissed
+  as false_positive — `redact()` only touches error/log messages; the request body
+  intentionally carries state and question prompts as judge inputs, and the privacy
+  requirement is about errors/logs, which tests assert.
