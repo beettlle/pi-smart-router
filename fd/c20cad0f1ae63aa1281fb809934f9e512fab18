@@ -1,0 +1,14 @@
+tests/unit/typed-judgment-adapter.test.ts
+  h_ae151c586ac6c5 11,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fdc20cad0f1ae63aa1281fb809934f9e512fab18",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
