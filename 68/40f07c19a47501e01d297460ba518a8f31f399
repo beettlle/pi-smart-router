@@ -1,0 +1,18 @@
+spine-tasks/SP-306-judge-state-questions-mapper/.reviews/0-20261101T215232.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-306-judge-state-questions-mapper/.reviews/3-20261101T215304.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-306-judge-state-questions-mapper/.reviews/final-20261101T215424.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6840f07c19a47501e01d297460ba518a8f31f399",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
