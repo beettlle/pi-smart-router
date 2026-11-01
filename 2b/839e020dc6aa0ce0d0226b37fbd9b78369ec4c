@@ -1,0 +1,19 @@
+spine-tasks/SP-310-claude5-gemini4-family-rules/PROMPT.md
+  s_266a2ce85cd64f::t_03e93521dd8012 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b839e020dc6aa0ce0d0226b37fbd9b78369ec4c",
+  "prompts": {},
+  "sessions": {
+    "s_266a2ce85cd64f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-482bfb23-dae5-45c7-a093-afd989be6209",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
