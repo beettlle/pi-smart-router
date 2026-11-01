@@ -1,0 +1,29 @@
+{
+  "name": "subtle-debug",
+  "description": "Subtle debugging report: rare cent-level drift under concurrency — high reasoning, no obvious error text in the turn.",
+  "request": {
+    "request_id": "req-subtle-debug",
+    "session_id": "sess-debug",
+    "prompt_text": "the totals occasionally drift by a cent under concurrent refunds",
+    "messages": [
+      {
+        "role": "user",
+        "content": "the totals occasionally drift by a cent under concurrent refunds"
+      }
+    ],
+    "turn_type": "main_loop",
+    "estimated_input_tokens": 8900
+  },
+  "expected": {
+    "latest_user_message": "the totals occasionally drift by a cent under concurrent refunds",
+    "session": {
+      "messages": 1,
+      "tool_calls": 0,
+      "compactions": false,
+      "context_tokens": 8900,
+      "turn_type": "main_loop",
+      "last_tool_failed": false
+    },
+    "recent_activity": []
+  }
+}
