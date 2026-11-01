@@ -1,0 +1,98 @@
+Contract testCommand failure log
+Command: npm run typecheck && npx vitest run tests/unit/ingest-benchmark-profiles.test.ts tests/unit/benchmark-leaderboard-fetch.test.ts tests/unit/pi-model-mapper.test.ts && npm run routing:verify-benchmark-profiles && bash scripts/spine-stet-contract-run.sh default SP-311
+Exit code: 1
+Attempt: 1 of 2
+Timestamp: 2026-11-01T22:33:32.530Z
+Buffer overflow: no
+---
+
+> pi-smart-router@1.2.2 typecheck
+> tsc --noEmit
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20261101T213121-1248/lane-1
+
+ ✓ tests/unit/pi-model-mapper.test.ts (67 tests) 32ms
+ ✓ tests/unit/benchmark-leaderboard-fetch.test.ts (5 tests) 9ms
+ ✓ tests/unit/ingest-benchmark-profiles.test.ts (33 tests) 42ms
+
+ Test Files  3 passed (3)
+      Tests  105 passed (105)
+   Start at  14:23:36
+   Duration  409ms (transform 150ms, setup 0ms, collect 366ms, tests 82ms, environment 0ms, prepare 109ms)
+
+
+> pi-smart-router@1.2.2 routing:verify-benchmark-profiles
+> vitest run tests/unit/ingest-benchmark-profiles.test.ts -t "checked-in artifact matches fixture ingest"
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20261101T213121-1248/lane-1
+
+ ✓ tests/unit/ingest-benchmark-profiles.test.ts (33 tests | 32 skipped) 15ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 32 skipped (33)
+   Start at  14:23:38
+   Duration  366ms (transform 75ms, setup 0ms, collect 115ms, tests 15ms, environment 0ms, prepare 35ms)
+
+
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > checked-in artifact matches fixture ingest
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > skips models missing a capability dimension; rejects duplicate benchmark rows
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip incomplete-model (missing code_gen)
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > skips malformed tool_call_snippet rows on tool-use benchmarks with reason codes
+ingest-benchmark-profiles: skipped 1 tool-use row(s) after AST validation
+  skip terminal_bench/model-a: invalid_arguments_json (Tool-call arguments string is not valid JSON)
+  note: AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > SP-311 scoped fleet grounding (#193) > CLI merges seed aliases under operator-preserved aliases on re-ingest
+ingest-benchmark-profiles: wrote v1 (7 model(s), 48 alias(es)) to /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/benchmark-cli-alias-merge-1o4ImO/benchmark-profiles.json [mode=fixtures]
+  catalog_freeze_date=2026-11-01, scrape_date=2026-11-01
+  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows
+  fleet aliases: seed defaults merged under operator-preserved aliases (SP-174 / SP-311)
+  ungrounded fleet ids (pattern_default by design): anthropic/claude-fable-5-1, claude-fable-5-1, gemini-3.1-pro-preview, gemini-3.1-pro-preview-customtools, gemini-4-argon, gemini-flash-latest, gemini-flash-lite-latest, google/gemini-3.1-pro-preview, google/gemini-3.1-pro-preview-customtools, google/gemini-4-argon, google/gemini-flash-latest, google/gemini-flash-lite-latest
+  AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles live/recorded (SP-179 / SP-181) > replays checked-in recorded live snapshots offline with provenance
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles live/recorded (SP-179 / SP-181) > HTML live falls back to recorded/fixtures without corrupting output when all live fails
+ingest-benchmark-profiles: swebench_verified source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20261101T213121-1248/lane-1/tests/fixtures/benchmark-leaderboards/recorded/swebench_verified.json)
+ingest-benchmark-profiles: terminal_bench source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20261101T213121-1248/lane-1/tests/fixtures/benchmark-leaderboards/recorded/terminal_bench.json)
+ingest-benchmark-profiles: livecodebench source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20261101T213121-1248/lane-1/tests/fixtures/benchmark-leaderboards/recorded/livecodebench.json)
+ingest-benchmark-profiles: bfcl source=recorded (/Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20261101T213121-1248/lane-1/tests/fixtures/benchmark-leaderboards/recorded/bfcl.json)
+ingest-benchmark-profiles: recorded 4 snapshot(s) under /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-html-fallback-e0g0yU/recorded
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+ingest-benchmark-profiles: wrote v1 (4 model(s), 47 alias(es)) to /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-html-fallback-e0g0yU/benchmark-profiles.json [mode=live+record]
+  catalog_freeze_date=2026-07-10, scrape_date=2026-07-10
+  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows
+  fleet aliases: seed defaults merged under operator-preserved aliases (SP-174 / SP-311)
+  ungrounded fleet ids (pattern_default by design): anthropic/claude-fable-5-1, claude-fable-5-1, gemini-3.1-pro-preview, gemini-3.1-pro-preview-customtools, gemini-4-argon, gemini-flash-latest, gemini-flash-lite-latest, google/gemini-3.1-pro-preview, google/gemini-3.1-pro-preview-customtools, google/gemini-4-argon, google/gemini-flash-latest, google/gemini-flash-lite-latest
+  AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles live/recorded (SP-179 / SP-181) > live with --live-url records snapshots; empty fallback dirs fail without corrupting output
+ingest-benchmark-profiles: swebench_verified source=live (https://mirror.example/leaderboards/swebench_verified.json)
+ingest-benchmark-profiles: terminal_bench source=live (https://mirror.example/leaderboards/terminal_bench.json)
+ingest-benchmark-profiles: livecodebench source=live (https://mirror.example/leaderboards/livecodebench.json)
+ingest-benchmark-profiles: bfcl source=live (https://mirror.example/leaderboards/bfcl.json)
+ingest-benchmark-profiles: recorded 4 snapshot(s) under /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-live-2iRBa5/recorded
+ingest-benchmark-profiles: wrote v1 (2 model(s), 47 alias(es)) to /var/folders/4d/0c_5g4r10yb2yh0tkx3x1c0h0000gn/T/sp181-live-2iRBa5/benchmark-profiles.json [mode=live+record]
+  catalog_freeze_date=2026-07-10, scrape_date=2026-07-10
+  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows
+  fleet aliases: seed defaults merged under operator-preserved aliases (SP-174 / SP-311)
+  ungrounded fleet ids (pattern_default by design): anthropic/claude-fable-5-1, claude-fable-5-1, gemini-3.1-pro-preview, gemini-3.1-pro-preview-customtools, gemini-4-argon, gemini-flash-latest, gemini-flash-lite-latest, google/gemini-3.1-pro-preview, google/gemini-3.1-pro-preview-customtools, google/gemini-4-argon, google/gemini-flash-latest, google/gemini-flash-lite-latest
+  AST validation checks function name and argument key/type shape only; semantically invalid but structurally valid calls may pass (false negatives possible).
+
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+stderr | tests/unit/ingest-benchmark-profiles.test.ts > ingest-benchmark-profiles (SP-134) > checked-in artifact matches fixture ingest
+ingest-benchmark-profiles: skipped 1 model(s) with incomplete capability coverage:
+  skip claude-3.5-haiku (missing code_gen)
+

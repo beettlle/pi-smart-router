@@ -252,7 +252,7 @@ describe('typed judgment port types (SP-304, #184)', () => {
             probabilities: { '1': 0.2, '2': 0.6, '3': 0.2 },
             confidence: 0.6,
           },
-          'q-noul': { kind: 'noul', noul: true },
+          'q-noul': { kind: 'noul', noul: 0.9 },
         } satisfies Record<string, TypedJudgmentAnswer>;
         return Promise.resolve(answers);
       },

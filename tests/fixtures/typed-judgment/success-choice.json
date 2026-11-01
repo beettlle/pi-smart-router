@@ -1,0 +1,16 @@
+{
+  "_source": "openjev README shape",
+  "status": 200,
+  "body": {
+    "model": "openjev-0.1",
+    "answers": {
+      "q-choice": {
+        "type": "choice",
+        "choice": "implement",
+        "probabilities": { "plan": 0.1, "implement": 0.8, "debug": 0.1 },
+        "confidence": 0.86
+      }
+    },
+    "usage": { "input_tokens": 412, "output_tokens": 0 }
+  }
+}

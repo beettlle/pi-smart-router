@@ -1,0 +1,10 @@
+{
+  "_source": "openjev README shape",
+  "status": 429,
+  "body": {
+    "detail": {
+      "error_type": "rate_limit_error",
+      "message": "Rate limit exceeded. Please try again later."
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "_source": "openjev README shape",
+  "status": 200,
+  "body": {
+    "model": "openjev-0.1",
+    "answers": {
+      "q-noul": { "type": "noul", "noul": 0.93 }
+    },
+    "usage": { "input_tokens": 356, "output_tokens": 0 }
+  }
+}

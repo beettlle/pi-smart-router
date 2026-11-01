@@ -82,11 +82,13 @@ describe('mapPiModelToProfile', () => {
       );
 
       expect(profile.tier).toBe('economical-cloud');
-      // Live mix may omit haiku (incomplete dims) → pattern defaults, not invented scores
-      expect(profile.capability_source).toBe('pattern_default');
-      expect(profile.capabilities.reasoning).toBe(0.7);
-      expect(profile.capabilities.code_gen).toBe(0.75);
-      expect(profile.capabilities.tool_use).toBe(0.7);
+      // SP-311: checked-in artifact matches fixture ingest, which carries a
+      // complete claude-3.5-haiku row → benchmark-grounded capabilities.
+      const expected = expectedBenchmarkCaps('claude-3.5-haiku');
+      expect(profile.capability_source).toBe('benchmark');
+      expect(profile.capabilities.reasoning).toBeCloseTo(expected.reasoning, 4);
+      expect(profile.capabilities.code_gen).toBeCloseTo(expected.code_gen, 4);
+      expect(profile.capabilities.tool_use).toBeCloseTo(expected.tool_use, 4);
       expect(profile.pricing.fallback_cost_per_1m).toBe(0.8);
     });
   });
@@ -238,9 +240,12 @@ describe('mapPiModelToProfile', () => {
       );
 
       expect(profile.tier).toBe('economical-cloud');
-      expect(profile.capabilities.reasoning).toBe(0.7);
-      expect(profile.capabilities.code_gen).toBe(0.75);
-      expect(profile.capabilities.tool_use).toBe(0.7);
+      // SP-311: claude-haiku-5-5 aliases onto the grounded claude-haiku-4-5 row.
+      const expected = expectedBenchmarkCaps('claude-haiku-5-5');
+      expect(profile.capability_source).toBe('benchmark');
+      expect(profile.capabilities.reasoning).toBeCloseTo(expected.reasoning, 4);
+      expect(profile.capabilities.code_gen).toBeCloseTo(expected.code_gen, 4);
+      expect(profile.capabilities.tool_use).toBeCloseTo(expected.tool_use, 4);
     });
 
     it('maps a hypothetical future Claude family to frontier (claude-newfamily-6)', () => {
@@ -329,6 +334,81 @@ describe('mapPiModelToProfile', () => {
       );
 
       expect(profile.tier).toBe('economical-cloud');
+    });
+  });
+
+  describe('SP-311 scoped fleet grounding (#193)', () => {
+    it('grounds scoped Claude 5.x ids via same-family aliases', () => {
+      setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
+
+      const cases = [
+        { id: 'claude-opus-5-5', tier: 'frontier-cloud' },
+        { id: 'claude-sonnet-5-5', tier: 'frontier-cloud' },
+        { id: 'claude-haiku-5-5', tier: 'economical-cloud' },
+      ] as const;
+      for (const { id, tier } of cases) {
+        const expected = expectedBenchmarkCaps(id);
+        const profile = mapPiModelToProfile(makeInput({ provider: 'anthropic', id }));
+
+        expect(profile.tier, id).toBe(tier);
+        expect(profile.capability_source, id).toBe('benchmark');
+        expect(profile.capabilities.reasoning, id).toBeCloseTo(expected.reasoning, 4);
+        expect(profile.capabilities.code_gen, id).toBeCloseTo(expected.code_gen, 4);
+        expect(profile.capabilities.tool_use, id).toBeCloseTo(expected.tool_use, 4);
+      }
+
+      // Grounded scores differentiate the 5.x family instead of collapsing onto 0.95.
+      const opus = mapPiModelToProfile(makeInput({ provider: 'anthropic', id: 'claude-opus-5-5' }));
+      expect(opus.capabilities.reasoning).not.toBe(0.95);
+      expect(resolveBenchmarkModelId('claude-haiku-5-5')).toBe('claude-haiku-4-5');
+    });
+
+    it('keeps ungrounded scoped ids on SP-310 pattern defaults', () => {
+      setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
+
+      const fable = mapPiModelToProfile(
+        makeInput({ provider: 'anthropic', id: 'claude-fable-5-1' }),
+      );
+      expect(fable.tier).toBe('frontier-cloud');
+      expect(fable.capability_source).toBe('pattern_default');
+      expect(fable.capabilities.reasoning).toBe(0.95);
+
+      const argon = mapPiModelToProfile(makeInput({ provider: 'google', id: 'gemini-4-argon' }));
+      expect(argon.tier).toBe('frontier-cloud');
+      expect(argon.capability_source).toBe('pattern_default');
+
+      // 3.1 preview ids stay pattern_default (coverage test pins this); customtools
+      // parity keeps the variant on the same source as its base id.
+      for (const id of ['gemini-3.1-pro-preview', 'gemini-3.1-pro-preview-customtools']) {
+        const profile = mapPiModelToProfile(makeInput({ provider: 'google', id }));
+        expect(profile.tier, id).toBe('frontier-cloud');
+        expect(profile.capability_source, id).toBe('pattern_default');
+      }
+
+      for (const id of ['gemini-flash-latest', 'gemini-flash-lite-latest']) {
+        const profile = mapPiModelToProfile(makeInput({ provider: 'google', id }));
+        expect(profile.tier, id).toBe('economical-cloud');
+        expect(profile.capability_source, id).toBe('pattern_default');
+      }
+    });
+
+    it('documents ungrounded scoped ids in artifact provenance', () => {
+      setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
+      const artifact = parseBenchmarkProfilesArtifact(
+        JSON.parse(readFileSync(DEFAULT_BENCHMARK_PROFILES_PATH, 'utf8')),
+      );
+      const ungrounded = new Set(artifact.provenance.ungrounded_fleet_ids ?? []);
+
+      for (const id of [
+        'claude-fable-5-1',
+        'gemini-4-argon',
+        'gemini-3.1-pro-preview',
+        'gemini-flash-latest',
+        'gemini-flash-lite-latest',
+      ]) {
+        expect(ungrounded.has(id), `${id} listed in provenance.ungrounded_fleet_ids`).toBe(true);
+        expect(getCapabilitySource(id), id).toBe('pattern_default');
+      }
     });
   });
 
