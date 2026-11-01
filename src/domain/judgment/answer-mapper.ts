@@ -5,12 +5,12 @@
  * types) onto the normalized {@link TypedJudgment} signal consumed by the
  * routing pipeline:
  * - score answers are normalized by `(levels - 1)` onto 0–1;
- * - noul answers become probabilities (1/0 — the wire type carries no
- *   per-branch probability);
+ * - noul answers pass through as the calibrated P(yes) from the wire;
  * - a missing answer maps its fields to `null` (no signal);
  * - malformed answers are **rejected** with `TypedJudgmentError`
  *   (`kind: 'invalid_response'`): unknown choice, answer/question kind
- *   mismatch, out-of-range or non-finite scores, out-of-range confidence.
+ *   mismatch, out-of-range or non-finite scores, out-of-range confidence,
+ *   out-of-range or non-finite noul probability.
  */
 
 import {
@@ -40,13 +40,13 @@ export interface TypedJudgment {
   readonly taskKindConfidence: number | null;
   /** `capability_deserved` normalized to 0–1 (`score / (levels - 1)`), or `null`. */
   readonly capabilityDeserved: number | null;
-  /** Probability the task needs deep reasoning (noul → 1/0), or `null`. */
+  /** Probability the task needs deep reasoning (noul P(yes)), or `null`. */
   readonly deepReasoningP: number | null;
   /** `code_gen` normalized to 0–1, or `null`. */
   readonly codeGen: number | null;
   /** `tool_use` normalized to 0–1, or `null`. */
   readonly toolUse: number | null;
-  /** Probability the request is destructive (noul → 1/0), or `null`. */
+  /** Probability the request is destructive (noul P(yes)), or `null`. */
   readonly destructiveP: number | null;
   /**
    * Judge confidence (0–1) per answered question that carries one (choice
@@ -125,7 +125,11 @@ function mapNoulAnswer(
       `question '${questionId}': expected a noul answer, got '${answer.kind}'`,
     );
   }
-  return (answer as TypedJudgmentNoulAnswer).noul ? 1 : 0;
+  const probability = (answer as TypedJudgmentNoulAnswer).noul;
+  if (!Number.isFinite(probability) || probability < 0 || probability > 1) {
+    invalid(`question '${questionId}': noul probability out of range 0–1`);
+  }
+  return probability;
 }
 
 /**

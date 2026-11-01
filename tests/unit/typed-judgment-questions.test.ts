@@ -49,7 +49,7 @@ function scoreAnswer(score: number, confidence = 0.8): TypedJudgmentScoreAnswer 
   return { kind: 'score', score, legend: {}, probabilities: {}, confidence };
 }
 
-function noulAnswer(noul: boolean): TypedJudgmentNoulAnswer {
+function noulAnswer(noul: number): TypedJudgmentNoulAnswer {
   return { kind: 'noul', noul };
 }
 
@@ -162,10 +162,10 @@ describe('mapTypedJudgment', () => {
   const fullAnswers: TypedJudgmentAnswers = {
     task_kind: choiceAnswer('debug', 0.92),
     capability_deserved: scoreAnswer(3, 0.7),
-    needs_deep_reasoning: noulAnswer(true),
+    needs_deep_reasoning: noulAnswer(0.83),
     code_gen: scoreAnswer(1, 0.6),
     tool_use: scoreAnswer(2, 0.55),
-    destructive: noulAnswer(false),
+    destructive: noulAnswer(0.04),
   };
 
   it('maps a complete answer set, normalizing scores by (levels - 1)', () => {
@@ -174,10 +174,10 @@ describe('mapTypedJudgment', () => {
     expect(judgment.taskKind).toBe('debug');
     expect(judgment.taskKindConfidence).toBe(0.92);
     expect(judgment.capabilityDeserved).toBe(1); // 3 / (4 - 1)
-    expect(judgment.deepReasoningP).toBe(1);
+    expect(judgment.deepReasoningP).toBe(0.83);
     expect(judgment.codeGen).toBeCloseTo(1 / 3);
     expect(judgment.toolUse).toBeCloseTo(2 / 3);
-    expect(judgment.destructiveP).toBe(0);
+    expect(judgment.destructiveP).toBe(0.04);
     expect(judgment.confidences).toEqual({
       task_kind: 0.92,
       capability_deserved: 0.7,
@@ -209,9 +209,9 @@ describe('mapTypedJudgment', () => {
 
   it('maps a partial answer set, leaving the rest null', () => {
     const judgment = mapTypedJudgment({
-      destructive: noulAnswer(true),
+      destructive: noulAnswer(0.9),
     });
-    expect(judgment.destructiveP).toBe(1);
+    expect(judgment.destructiveP).toBe(0.9);
     expect(judgment.taskKind).toBeNull();
     expect(judgment.capabilityDeserved).toBeNull();
   });
@@ -227,7 +227,7 @@ describe('mapTypedJudgment', () => {
 
   it('rejects an answer/question kind mismatch', () => {
     expect(() =>
-      mapTypedJudgment({ capability_deserved: noulAnswer(true) }),
+      mapTypedJudgment({ capability_deserved: noulAnswer(0.9) }),
     ).toThrowError(/expected a score answer/);
     expect(() =>
       mapTypedJudgment({ destructive: scoreAnswer(1) }),
@@ -239,6 +239,22 @@ describe('mapTypedJudgment', () => {
       expect(() =>
         mapTypedJudgment({ code_gen: scoreAnswer(bad) }),
       ).toThrowError(TypedJudgmentError);
+    }
+  });
+
+  it('passes noul probabilities through, including the 0 and 1 bounds', () => {
+    for (const p of [0, 0.2, 0.5, 1]) {
+      expect(
+        mapTypedJudgment({ needs_deep_reasoning: noulAnswer(p) }).deepReasoningP,
+      ).toBe(p);
+    }
+  });
+
+  it('rejects out-of-range and non-finite noul probabilities', () => {
+    for (const bad of [-0.1, 1.01, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() =>
+        mapTypedJudgment({ destructive: noulAnswer(bad) }),
+      ).toThrowError(/noul probability out of range/);
     }
   });
 
