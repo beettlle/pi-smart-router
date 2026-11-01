@@ -1,0 +1,20 @@
+spine-tasks/SP-305-jev-http-adapter/STATUS.md
+  h_ae151c586ac6c5 3-5,14,16,21,23,28,30,35,42-62
+src/domain/ports/typed-judgment-port.ts
+  h_ae151c586ac6c5 107-113
+src/infrastructure/judgment/jev-typed-judgment-adapter.ts
+  h_ae151c586ac6c5 1-564
+tests/unit/typed-judgment-config.test.ts
+  h_ae151c586ac6c5 255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91f32ef4993a48162b97e649bfe017360dba664f",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
