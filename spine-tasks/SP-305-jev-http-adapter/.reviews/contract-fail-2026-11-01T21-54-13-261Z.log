@@ -1,0 +1,40 @@
+Contract testCommand failure log
+Command: npm run typecheck && npx vitest run tests/unit/typed-judgment-adapter.test.ts && bash scripts/spine-stet-contract-run.sh default SP-305
+Exit code: 1
+Attempt: 2 of 2
+Timestamp: 2026-11-01T21:54:13.261Z
+Buffer overflow: no
+---
+
+> pi-smart-router@1.2.2 typecheck
+> tsc --noEmit
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20261101T213121-1248/lane-1
+
+ ✓ tests/unit/typed-judgment-adapter.test.ts (41 tests) 1816ms
+   ✓ retry, timeout, abort > gives up after 2 retries on persistent 429 (rate_limited)  755ms
+   ✓ retry, timeout, abort > gives up after 2 retries on persistent 529 (overloaded)  754ms
+
+ Test Files  1 passed (1)
+      Tests  41 passed (41)
+   Start at  13:54:10
+   Duration  2.17s (transform 67ms, setup 0ms, collect 124ms, tests 1.82s, environment 0ms, prepare 38ms)
+
+14b7623  tests/unit/typed-judgment-adapter.test.ts:30  WARNING  The fixture path is constructed using a relative path ('tests/fixtures/...') which is resolved against the current working directory (CWD) rather than the test file's location. If the test runner is executed from a directory other than the project root (e.g., a specific package directory in a monorepo), `readFileSync` will fail with ENOENT. Use `import.meta.url` and `fileURLToPath` to construct an absolute path relative to the test file.
+1 finding.
+
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+warning: no new hunks to review; --strictness had no effect (pass them to "stet start" or use "stet rerun")
+stet: contract review found 1 active finding(s). Triage, then re-run the contract:
+
+  stet list
+  stet dismiss <id> <reason>
+
+Dismiss reasons: false_positive, already_correct, wrong_suggestion, out_of_scope.
+Fix real defects in this task's diff. If a finding exposes a stet reviewer bug (bad prompt,
+parser, critic), dismiss it with a reason and record it under Discoveries in STATUS.md.
+Never dismiss a real defect without fixing it.
+Project code defects → file issues on beettlle/pi-smart-router (label stet); stet reviewer bugs →
+https://github.com/beettlle/stet/issues.

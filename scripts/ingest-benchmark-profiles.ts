@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Benchmark capability profile ingest — SP-134 / SP-179, GitHub #75 / #100.
+ * Benchmark capability profile ingest — SP-134 / SP-179 / SP-311, GitHub #75 / #100 / #193.
  *
  * Modes:
  * 1. Fixtures (default, CI-safe) — checked-in leaderboard snapshots, no network.
@@ -136,6 +136,8 @@ const provenanceSchema = z.object({
   source_urls: z.record(z.enum(BENCHMARK_IDS), z.string().url()),
   scrape_date: z.string().regex(ISO_DATE_PATTERN),
   catalog_freeze_date: z.string().regex(ISO_DATE_PATTERN),
+  /** Scoped fleet ids deliberately left on pattern defaults (SP-311 / #193). */
+  ungrounded_fleet_ids: z.array(z.string().min(1)).optional(),
 });
 
 /**
@@ -198,17 +200,77 @@ export const DEFAULT_FLEET_BENCHMARK_ALIASES: Readonly<Record<string, string>> =
   'composer-1': 'gpt-5.3-codex',
   'cursor/composer-latest': 'gpt-5.3-codex',
   default: 'gpt-5.3-codex',
+  // SP-311 / #193 — scoped Claude 5.x fleet ids → closest grounded same-family
+  // row (precedent: gpt-5.5 → gpt-5.3-codex). Public leaderboards carry no
+  // Claude 5.x scores as of the 2026-11-01 scrape; aliasing to the newest
+  // grounded row of the same family differentiates Opus/Sonnet/Haiku instead
+  // of collapsing all three onto identical frontier pattern defaults.
+  'claude-opus-5-5': 'claude-opus-4-5',
+  'claude-sonnet-5-5': 'claude-sonnet-4-6',
+  'claude-haiku-5-5': 'claude-haiku-4-5',
+  'anthropic/claude-opus-5-5': 'claude-opus-4-5',
+  'anthropic/claude-sonnet-5-5': 'claude-sonnet-4-6',
+  'anthropic/claude-haiku-5-5': 'claude-haiku-4-5',
+  // SP-311 / #193 — Gemini 3 Pro Preview has public SWE-bench Verified + BFCL
+  // scores (curated fixture row). Provider-prefixed form resolves to the row.
+  'google/gemini-3-pro-preview': 'gemini-3-pro-preview',
 };
+
+/**
+ * Scoped operator fleet ids intentionally left on SP-310 pattern defaults
+ * (SP-311 / #193): no public leaderboard scores for these ids (or their
+ * family) as of the 2026-11-01 scrape, and repo policy forbids inventing
+ * scores or cross-family collapse. Listed in artifact provenance so
+ * operators can see the gap is deliberate, not a mapping bug.
+ * - claude-fable-5-1: no Fable-family leaderboard row exists.
+ * - gemini-3.1-pro-preview(-customtools): no 3.1 scores; pinned
+ *   pattern_default by tests/unit/pi-model-mapper-coverage.test.ts and the
+ *   customtools/base parity rule.
+ * - gemini-4-argon: no Gemini 4 scores anywhere.
+ * - gemini-flash-latest / gemini-flash-lite-latest: rolling ids tracking
+ *   post-2.5 generations (SP-254); the only current-gen flash row
+ *   (gemini-3-flash-preview, SWE-bench only) lacks tool_use coverage, so no
+ *   complete grounded row exists to alias onto.
+ */
+export const DEFAULT_UNGROUNDED_FLEET_IDS: readonly string[] = [
+  'claude-fable-5-1',
+  'anthropic/claude-fable-5-1',
+  'gemini-3.1-pro-preview',
+  'gemini-3.1-pro-preview-customtools',
+  'google/gemini-3.1-pro-preview',
+  'google/gemini-3.1-pro-preview-customtools',
+  'gemini-4-argon',
+  'google/gemini-4-argon',
+  'gemini-flash-latest',
+  'gemini-flash-lite-latest',
+  'google/gemini-flash-latest',
+  'google/gemini-flash-lite-latest',
+];
 
 const fleetAliasesSchema = z.record(z.string().min(1), z.string().min(1));
 
-const benchmarkProfilesArtifactSchema = z.object({
-  version: z.literal(BENCHMARK_PROFILES_VERSION),
-  provenance: provenanceSchema,
-  /** Optional fleet-id → canonical model_id map (SP-174). */
-  aliases: fleetAliasesSchema.optional(),
-  models: z.array(modelProfileSchema).min(1),
-});
+const benchmarkProfilesArtifactSchema = z
+  .object({
+    version: z.literal(BENCHMARK_PROFILES_VERSION),
+    provenance: provenanceSchema,
+    /** Optional fleet-id → canonical model_id map (SP-174). */
+    aliases: fleetAliasesSchema.optional(),
+    models: z.array(modelProfileSchema).min(1),
+  })
+  .superRefine((artifact, ctx) => {
+    // SP-311: an id cannot be both grounded (alias) and listed ungrounded.
+    const ungrounded = artifact.provenance.ungrounded_fleet_ids ?? [];
+    const aliases = artifact.aliases ?? {};
+    for (const id of ungrounded) {
+      if (aliases[id] !== undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `ungrounded_fleet_ids id is also present in aliases: ${id}`,
+          path: ['provenance', 'ungrounded_fleet_ids'],
+        });
+      }
+    }
+  });
 
 export type BenchmarkLeaderboardEntry = z.infer<typeof leaderboardEntrySchema>;
 export type BenchmarkLeaderboardFixture = z.infer<typeof leaderboardFixtureSchema>;
@@ -232,6 +294,8 @@ export interface IngestBenchmarkProfilesOptions {
   readonly scrapeDate?: string;
   /** Fleet-id aliases preserved across re-ingest (SP-174). */
   readonly aliases?: Readonly<Record<string, string>>;
+  /** Scoped fleet ids documented as ungrounded in provenance (SP-311 / #193). */
+  readonly ungroundedFleetIds?: readonly string[];
   readonly onSkippedToolCallEntry?: (entry: SkippedToolCallEntry) => void;
 }
 
@@ -480,12 +544,17 @@ export function aggregateBenchmarkProfiles(
       ? { ...options.aliases }
       : { ...DEFAULT_FLEET_BENCHMARK_ALIASES };
 
+  const ungroundedFleetIds = [
+    ...new Set(options.ungroundedFleetIds ?? DEFAULT_UNGROUNDED_FLEET_IDS),
+  ].sort((a, b) => a.localeCompare(b));
+
   const artifact: BenchmarkProfilesArtifact = {
     version: BENCHMARK_PROFILES_VERSION,
     provenance: {
       source_urls: { ...BENCHMARK_SOURCE_URLS },
       scrape_date: scrapeDate,
       catalog_freeze_date: catalogFreezeDate,
+      ...(ungroundedFleetIds.length > 0 ? { ungrounded_fleet_ids: ungroundedFleetIds } : {}),
     },
     aliases,
     models,
@@ -509,6 +578,21 @@ export function loadAliasesFromBenchmarkProfilesFile(
   }
 }
 
+/** Load ungrounded fleet ids from an existing artifact file (SP-311 preserve). */
+export function loadUngroundedFleetIdsFromBenchmarkProfilesFile(
+  filePath: string,
+): readonly string[] | undefined {
+  if (!existsSync(filePath)) {
+    return undefined;
+  }
+  try {
+    const parsed = parseBenchmarkProfilesArtifact(JSON.parse(readFileSync(filePath, 'utf8')));
+    return parsed.provenance.ungrounded_fleet_ids;
+  } catch {
+    return undefined;
+  }
+}
+
 export function parseBenchmarkProfilesArtifact(value: unknown): BenchmarkProfilesArtifact {
   const result = benchmarkProfilesArtifactSchema.safeParse(value);
   if (!result.success) {
@@ -521,7 +605,18 @@ export function serializeBenchmarkProfilesArtifact(
   artifact: BenchmarkProfilesArtifact,
 ): string {
   const validated = parseBenchmarkProfilesArtifact(artifact);
-  // Stable key order: version, provenance, aliases (sorted), models
+  // Stable key order: version, provenance, aliases (sorted), models.
+  // provenance keeps schema key order; ungrounded_fleet_ids sorted for diffs.
+  const provenance = {
+    ...validated.provenance,
+    ...(validated.provenance.ungrounded_fleet_ids !== undefined
+      ? {
+          ungrounded_fleet_ids: [...validated.provenance.ungrounded_fleet_ids].sort((a, b) =>
+            a.localeCompare(b),
+          ),
+        }
+      : {}),
+  };
   const aliases =
     validated.aliases !== undefined
       ? Object.fromEntries(
@@ -530,7 +625,7 @@ export function serializeBenchmarkProfilesArtifact(
       : undefined;
   const ordered = {
     version: validated.version,
-    provenance: validated.provenance,
+    provenance,
     ...(aliases !== undefined ? { aliases } : {}),
     models: validated.models,
   };
@@ -592,6 +687,8 @@ export function buildUsageText(): string {
     'HTML pages fail the live attempt for that benchmark only, then fall back — scores',
     'are never invented. If every source fails for a benchmark, the profiles output',
     'file is left unchanged.',
+    'provenance.ungrounded_fleet_ids documents scoped fleet ids intentionally kept on',
+    'SP-310 pattern defaults (SP-311 / #193).',
   ].join('\n');
 }
 
@@ -753,12 +850,20 @@ export async function runIngestCli(
 ): Promise<BenchmarkProfilesArtifact> {
   const parsed = parseIngestCliArgs(args);
   const preservedAliases = loadAliasesFromBenchmarkProfilesFile(parsed.outputPath);
+  const preservedUngrounded = loadUngroundedFleetIdsFromBenchmarkProfilesFile(
+    parsed.outputPath,
+  );
   const ingestOptions: IngestBenchmarkProfilesOptions = {
     ...(parsed.catalogFreezeDate !== undefined
       ? { catalogFreezeDate: parsed.catalogFreezeDate }
       : {}),
     ...(parsed.scrapeDate !== undefined ? { scrapeDate: parsed.scrapeDate } : {}),
-    aliases: preservedAliases ?? DEFAULT_FLEET_BENCHMARK_ALIASES,
+    // Operator-preserved aliases win on conflict; new seed defaults land on
+    // re-ingest so scoped-fleet additions (SP-311) reach existing artifacts.
+    aliases: { ...DEFAULT_FLEET_BENCHMARK_ALIASES, ...(preservedAliases ?? {}) },
+    ungroundedFleetIds: [
+      ...new Set([...DEFAULT_UNGROUNDED_FLEET_IDS, ...(preservedUngrounded ?? [])]),
+    ],
   };
 
   let artifact: BenchmarkProfilesArtifact;
@@ -803,7 +908,10 @@ export async function runIngestCli(
     '  tool-call validation: Switchcraft-style AST checks on optional tool_call_snippet for terminal_bench/bfcl rows',
   );
   console.error(
-    '  fleet aliases: preserved from existing artifact when present; else DEFAULT_FLEET_BENCHMARK_ALIASES (SP-174)',
+    '  fleet aliases: seed defaults merged under operator-preserved aliases (SP-174 / SP-311)',
+  );
+  console.error(
+    `  ungrounded fleet ids (pattern_default by design): ${(artifact.provenance.ungrounded_fleet_ids ?? []).join(', ') || '(none)'}`,
   );
   console.error(`  ${AST_VALIDATION_FALSE_NEGATIVE_NOTE}`);
   return artifact;
