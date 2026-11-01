@@ -253,6 +253,31 @@ describe('mapPiModelToProfile', () => {
       expect(profile.capability_source).toBe('pattern_default');
     });
 
+    it('does not promote non-Anthropic ids that merely contain "claude" as a substring', () => {
+      // Stet contract finding 7a99d4a: the generic Claude rule is anchored to
+      // the id start (or provider/ prefix) — 'openai-claude-bridge' is not a
+      // Claude model and must not inherit frontier defaults.
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'openai', id: 'openai-claude-bridge' }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+      expect(profile.capabilities.reasoning).toBe(0.6);
+      expect(profile.capabilities.code_gen).toBe(0.65);
+      expect(profile.capabilities.tool_use).toBe(0.6);
+      expect(profile.capability_source).toBe('pattern_default');
+    });
+
+    it('still maps provider-prefixed Claude ids to frontier (anthropic/claude-newfamily-6)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'anthropic', id: 'anthropic/claude-newfamily-6' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.reasoning).toBe(0.95);
+      expect(profile.capability_source).toBe('pattern_default');
+    });
+
     it('resolves gemini-3.1-pro-preview-customtools exactly like its base id', () => {
       const base = mapPiModelToProfile(
         makeInput({ provider: 'google', id: 'gemini-3.1-pro-preview' }),

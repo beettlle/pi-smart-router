@@ -341,8 +341,10 @@ const MODEL_PATTERN_RULES: readonly ModelPatternRule[] = [
   { pattern: /claude[-_.]?haiku|haiku/i, defaults: ECONOMICAL_DEFAULTS },
   // SP-310 / #193: any other Claude id is a current/future flagship family —
   // frontier, not UNKNOWN_DEFAULTS. Must stay after the Haiku rule so
-  // claude-haiku-* keeps economical defaults.
-  { pattern: /claude/i, defaults: FRONTIER_DEFAULTS },
+  // claude-haiku-* keeps economical defaults. Anchored to the start of the id
+  // (or a provider/ prefix) so unrelated ids merely containing 'claude'
+  // (e.g. openai-claude-bridge) do not inherit frontier defaults.
+  { pattern: /(?:^|\/)claude/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /gpt[-_.]?5\.(?:[5-9]|\d{2,})|gpt-5-[5-9]/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /gpt[-_.]?5\.1|gpt[-_.]?5[-_.]?mini|gpt[-_.]?mini/i, defaults: ECONOMICAL_DEFAULTS },
   { pattern: /gemini[-_.]?2\.5[-_.]?pro|gemini-2-5-pro/i, defaults: FRONTIER_DEFAULTS },
