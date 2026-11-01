@@ -11,10 +11,12 @@ import {
   DEFAULT_PLANNING_DELEGATE_CONFIG,
   DEFAULT_SAAR_CONFIG,
   DEFAULT_SPECULATIVE_PREWARM_CONFIG,
+  DEFAULT_TYPED_JUDGMENT_CONFIG,
   DEFAULT_WORKLOAD_HEAT_CONFIG,
   resolveAdaptiveReasoningConfigFromEnv,
   resolvePlanningDelegateConfigFromEnv,
   resolveSaarConfigFromEnv,
+  resolveTypedJudgmentConfigFromEnv,
   type OperatorConfig,
 } from '../domain/types/schemas.js';
 import { DEFAULT_LOW_INTENSITY_WEIGHTS } from '../domain/routing/tier-features.js';
@@ -25,13 +27,15 @@ export {
   DEFAULT_PLANNING_DELEGATE_CONFIG,
   DEFAULT_SAAR_CONFIG,
   DEFAULT_SPECULATIVE_PREWARM_CONFIG,
+  DEFAULT_TYPED_JUDGMENT_CONFIG,
   DEFAULT_WORKLOAD_HEAT_CONFIG,
   resolveAdaptiveReasoningConfigFromEnv,
   resolvePlanningDelegateConfigFromEnv,
   resolveSaarConfigFromEnv,
+  resolveTypedJudgmentConfigFromEnv,
 } from '../domain/types/schemas.js';
 
-/** Merge operator env overrides onto defaults (adaptive reasoning, SAAR and planning delegate sections). */
+/** Merge operator env overrides onto defaults (adaptive reasoning, SAAR, planning delegate and typed judgment sections). */
 export function resolveOperatorConfigFromEnv(
   base: OperatorConfig = DEFAULT_OPERATOR_CONFIG,
 ): OperatorConfig {
@@ -40,6 +44,7 @@ export function resolveOperatorConfigFromEnv(
     adaptive_reasoning: resolveAdaptiveReasoningConfigFromEnv(base.adaptive_reasoning),
     saar: resolveSaarConfigFromEnv(base.saar),
     planning_delegate: resolvePlanningDelegateConfigFromEnv(base.planning_delegate),
+    typed_judgment: resolveTypedJudgmentConfigFromEnv(base.typed_judgment),
   };
 }
 
@@ -83,5 +88,7 @@ export const DEFAULT_OPERATOR_CONFIG: Readonly<OperatorConfig> = {
   speculative_prewarm: DEFAULT_SPECULATIVE_PREWARM_CONFIG,
   /** Adaptive reasoning (SP-246, #166): default ON, no floor/ceiling bounds. */
   adaptive_reasoning: DEFAULT_ADAPTIVE_REASONING_CONFIG,
+  /** Typed judgment (SP-304, #184): default OFF, loopback-only unless allow_remote. */
+  typed_judgment: DEFAULT_TYPED_JUDGMENT_CONFIG,
   pin_only_fallback: false,
 } as const;
