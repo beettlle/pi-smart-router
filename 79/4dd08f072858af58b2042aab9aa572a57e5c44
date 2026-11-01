@@ -1,0 +1,18 @@
+spine-tasks/SP-304-typed-judgment-port-config/.reviews/0-20261101T190431.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-304-typed-judgment-port-config/.reviews/3-20261101T190456.md
+  h_ae151c586ac6c5 1-9
+spine-tasks/SP-304-typed-judgment-port-config/.reviews/final-20261101T190602.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "794dd08f072858af58b2042aab9aa572a57e5c44",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
