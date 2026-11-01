@@ -1,0 +1,20 @@
+spine-tasks/SP-307-typed-judgment-stage/STATUS.md
+  h_ae151c586ac6c5 3,23,25,30,32,37
+src/domain/pipeline/router-pipeline.ts
+  h_ae151c586ac6c5 226-228
+tests/unit/router-pipeline-stage-order.test.ts
+  h_ae151c586ac6c5 19-33
+tests/unit/typed-judgment-stage.test.ts
+  h_ae151c586ac6c5 1-521
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "767a5eae8eee79e326d1b0ff833ebeb0a2d7565e",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
