@@ -1,0 +1,20 @@
+spine-tasks/SP-311-benchmark-grounding-claude5-gemini/STATUS.md
+  h_ae151c586ac6c5 48-84,86
+tests/integration/pi-extension.test.ts
+  h_ae151c586ac6c5 253-256
+tests/unit/ingest-benchmark-profiles.test.ts
+  h_ae151c586ac6c5 15,17,136-138,305-466
+tests/unit/pi-model-mapper.test.ts
+  h_ae151c586ac6c5 85-91,243-248,340-414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "188aa34f81c53dd3c8f96159e3cbebaa19aba424",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
