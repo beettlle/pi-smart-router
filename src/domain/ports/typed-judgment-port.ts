@@ -104,8 +104,13 @@ export interface TypedJudgmentScoreAnswer {
 /** Answer to a {@link TypedJudgmentNoulQuestion}. */
 export interface TypedJudgmentNoulAnswer {
   readonly kind: 'noul';
-  /** Binary judgment against the question's criteria. */
-  readonly noul: boolean;
+  /**
+   * Calibrated probability that the true-criterion holds — P(yes) ∈ [0,1],
+   * as returned on the Jev wire (`{noul: P(yes)}`). Kept as a probability
+   * (not a thresholded boolean) so callers can apply their own confidence
+   * gates; SP-305 corrected this from `boolean` to match the wire contract.
+   */
+  readonly noul: number;
 }
 
 export type TypedJudgmentAnswer =
