@@ -1,0 +1,18 @@
+src/config/pi-model-mapper.ts
+  h_ae151c586ac6c5 11-25,80-86,139-143,167-173,180,186-237,260-261,265-274,278,476-506
+tests/unit/pi-model-mapper-capability-scale.test.ts
+  h_ae151c586ac6c5 1-407
+tests/unit/pi-model-mapper.test.ts
+  h_ae151c586ac6c5 6,12,33-49,62-66,76,89,108,119,180,265,366-368,370-371,461,477,490,524,617,633,635-638,644,646-647,702-705,858,867-868,871
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eebe4d1cce913a48c45a0a03a585dfc02e818ab4",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
