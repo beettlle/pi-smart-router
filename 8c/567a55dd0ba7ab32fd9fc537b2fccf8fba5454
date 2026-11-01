@@ -1,0 +1,18 @@
+spine-tasks/SP-307-typed-judgment-stage/STATUS.md
+  h_ae151c586ac6c5 3-5,14,16-18,23
+src/domain/pipeline/pipeline-stage.ts
+  h_ae151c586ac6c5 28,123-135,176-178
+src/domain/pipeline/typed-judgment-stage.ts
+  h_ae151c586ac6c5 1-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8c567a55dd0ba7ab32fd9fc537b2fccf8fba5454",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
