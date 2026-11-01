@@ -1,0 +1,14 @@
+tests/unit/typed-judgment-questions.test.ts
+  h_ae151c586ac6c5 19,56-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "734b9231cf94b93ea800b90397182fd4c98cecb9",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
