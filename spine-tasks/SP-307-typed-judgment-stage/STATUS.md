@@ -1,6 +1,6 @@
 # SP-307: typed_judgment pipeline stage (non-deciding, fail-open) — Status
 
-**Current Step:** Step 1: Context and stage module
+**Current Step:** Step 3: Testing & Verification
 **Status:** In Progress
 **Last Updated:** 2026-11-01
 **Review Level:** 2
@@ -20,21 +20,21 @@
 ---
 
 ### Step 1: Context and stage module
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] RoutingContext fields + typed-judgment-stage.ts
+- [x] RoutingContext fields + typed-judgment-stage.ts
 
 ---
 
 ### Step 2: Orchestrator wiring and stage enum
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] PipelineOptions, stage order, schema + contract enum sync
+- [x] PipelineOptions, stage order, schema + contract enum sync
 
 ---
 
 ### Step 3: Testing & Verification
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Stage order test
 - [ ] Success / timeout / error / abort

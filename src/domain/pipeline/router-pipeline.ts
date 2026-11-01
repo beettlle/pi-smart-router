@@ -223,8 +223,9 @@ export interface PipelineOptions {
   readonly patternPack?: CompiledPatternPack;
   /**
    * Typed judgment port (SP-304, #184; consumed by SP-307, #187). Injected by
-   * the composition root in SP-308; missing port → the typed_judgment stage
-   * skips with `typed_judgment_disabled` (fail open).
+   * the composition root in SP-308; missing port OR missing/disabled
+   * `typedJudgmentConfig` → the typed_judgment stage skips with
+   * `typed_judgment_disabled` (fail open).
    */
   readonly typedJudgmentPort?: TypedJudgmentPort;
   /**

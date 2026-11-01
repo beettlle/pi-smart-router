@@ -16,6 +16,21 @@ describe('RouterPipeline', () => {
 
       expect(registered).toEqual([...PIPELINE_STAGE_ORDER]);
     });
+
+    it('inserts typed_judgment directly after turn_envelope (SP-307, #187)', () => {
+      const pipeline = new RouterPipeline(fleet);
+      const registered = (pipeline as unknown as { stages: { name: string }[] }).stages.map(
+        (stage) => stage.name,
+      );
+
+      expect(registered).toContain('typed_judgment');
+      expect(registered.indexOf('typed_judgment')).toBe(
+        registered.indexOf('turn_envelope') + 1,
+      );
+      expect(registered.indexOf('typed_judgment')).toBe(
+        registered.indexOf('context_fit') - 1,
+      );
+    });
   });
 
   describe('stage chain with placeholders', () => {
