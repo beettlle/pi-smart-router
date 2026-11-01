@@ -2,7 +2,7 @@
 
 **Current Step:** Complete (all steps done)
 **Status:** Complete
-**Last Updated:** 2026-11-01
+**Last Updated:** 2026-11-01 (resumed: stet contract triage round 2)
 **Review Level:** 2
 **Review Counter:** 0
 **Iteration:** 0
@@ -65,3 +65,15 @@
   as false_positive — `redact()` only touches error/log messages; the request body
   intentionally carries state and question prompts as judge inputs, and the privacy
   requirement is about errors/logs, which tests assert.
+- **Stet contract triage (resume round 2, 2026-11-01):** the scoped-baseline mechanism
+  (`spine-stet-contract-run.sh default SP-305`) could not exclude SP-311's later commits on this
+  shared lane, so the re-review produced 13 findings spanning both tasks. Triage:
+  - `970fb6d` (CWD-relative fixture path in `tests/unit/typed-judgment-adapter.test.ts:30`) —
+    fixed: `FIXTURES_DIR` now resolves via `fileURLToPath(new URL('../fixtures/typed-judgment', import.meta.url))`;
+    suite verified green when invoked from a CWD outside the project root. Dismissed `already_correct`.
+  - `606c860` — re-dismissed `false_positive` (same reasoning as round 1, recorded above).
+  - 11 findings on SP-311-owned files (`scripts/ingest-benchmark-profiles.ts`,
+    `tests/unit/ingest-benchmark-profiles.test.ts`, `tests/unit/pi-model-mapper.test.ts`,
+    `tests/integration/pi-extension.test.ts`) — dismissed `out_of_scope`; they belong to SP-311's
+    own contract review.
+  Contract re-run: 0 active findings, exit 0.
