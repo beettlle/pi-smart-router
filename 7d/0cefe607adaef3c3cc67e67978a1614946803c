@@ -1,0 +1,14 @@
+spine-tasks/SP-305-jev-http-adapter/STATUS.md
+  h_ae151c586ac6c5 5,68-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d0cefe607adaef3c3cc67e67978a1614946803c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
