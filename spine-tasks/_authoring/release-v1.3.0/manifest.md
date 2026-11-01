@@ -7,7 +7,7 @@
 **Profile:** minor
 **Theme:** Typed-judgment foundation (epic #183) — an opt-in, fail-open, non-deciding `typed_judgment` stage that asks a local Jev-compatible judge six typed questions per user turn and records the answers for later consumers.
 **Operator exception (2026-10-24):** fourth enhancement added outside the theme — current-frontier fleet profiles for Claude 5.x and Gemini 4 (#193), approved by the operator for customer impact ("Anthropic models are widely used, and Google is catching up").
-**Operator approved scope:** no — packets authored on operator request (2026-10-24); implementation waits for approval
+**Operator approved scope:** yes (2026-10-24) — includes #193 exception; Claude Fable 5.1 and Gemini 4 Argon confirmed frontier tier; v1.2.2 publishes on its own before v1.3.0 waves start
 
 ---
 

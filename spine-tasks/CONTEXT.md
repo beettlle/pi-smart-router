@@ -1006,9 +1006,9 @@
 | SP-311 | benchmark grounding + aliases for Claude 5.x and Gemini 3.1/4 | M | SP-310 | Partial #193 |
 | SP-312 | mixed capability-source fairness within a tier | M | SP-311 | Closes #193 |
 
-**Source:** **v1.3.0** (2026-10-24, minor profile). Theme: typed-judgment foundation (epic #183 Sprint 1) plus current-frontier fleet profiles (#193, operator-approved fourth enhancement exception 2026-10-24). Scope pending operator approval.
+**Source:** **v1.3.0** (2026-10-24, minor profile). Theme: typed-judgment foundation (epic #183 Sprint 1) plus current-frontier fleet profiles (#193, operator-approved fourth enhancement exception 2026-10-24). Scope approved 2026-10-24.
 
-**Status:** Packets authored; awaiting operator approval, then Phase 4. Precondition: v1.2.2 batch `20261023T001303-b036` integrated (SP-306 needs SP-303).
+**Status:** Scope approved; Phase 4 starts after v1.2.2 publishes. Precondition: v1.2.2 batch `20261023T001303-b036` integrated (SP-306 needs SP-303).
 
 **Scope ID:** `SP-304,SP-305,SP-306,SP-307,SP-308,SP-309,SP-310,SP-311,SP-312`
 
