@@ -1,0 +1,19 @@
+tests/unit/sqlite-store-context-fit-telemetry.test.ts
+  s_b56f86b80c0f60::t_6960dbba421323 220-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e90dd91a81954f48e6ce068a334479635acbc774",
+  "prompts": {},
+  "sessions": {
+    "s_b56f86b80c0f60": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a8fc7d78-8a8e-4631-80b9-ec1a9a73a88b",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
