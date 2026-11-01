@@ -15,9 +15,11 @@ import type { ModelRegistry } from '@earendil-works/pi-coding-agent';
 
 import {
   applyConcisenessHint,
+  isCursorDelegationTarget,
   isGoogleDelegationTarget,
   normalizeDelegationContext,
   repairGeminiReplayContext,
+  stripCursorLifecycleThinking,
   computeOutputHeadroom,
   formatGeminiThoughtSignatureErrorMessage,
   formatProviderErrorMessage,
@@ -166,9 +168,17 @@ export function buildDelegationContext(
     sessionExecution,
   });
 
+  // SP-300 (#180): drop Cursor lifecycle thinking before cross-provider replay.
+  // Runs after normalize so virtual-tagged history resolved to a Cursor session
+  // execution is caught as Cursor-origin; no-ops for Cursor targets and when
+  // SMART_ROUTER_STRIP_CURSOR_LIFECYCLE=0.
+  const stripped = isCursorDelegationTarget(targetModel)
+    ? normalized
+    : stripCursorLifecycleThinking(normalized, targetModel).context;
+
   const repaired = isGoogleDelegationTarget(targetModel)
-    ? repairGeminiReplayContext(normalized, targetModel, sessionExecution)
-    : normalized;
+    ? repairGeminiReplayContext(stripped, targetModel, sessionExecution)
+    : stripped;
 
   // SP-245 (#166): light conciseness nudge only when the policy resolved a
   // low/minimal effective level on a high-verbosity (GLM-class) profile.

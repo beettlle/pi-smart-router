@@ -9,6 +9,8 @@ import {
 
 import {
   LifecycleHookState,
+  STRIP_CURSOR_LIFECYCLE_ENV,
+  isCursorOriginAssistantMessage,
 } from '../../../src/index.js';
 import type {
   Message as RoutingMessage,
@@ -40,31 +42,103 @@ function readOptionalTokenEstimate(source: unknown): number | undefined {
   return undefined;
 }
 
-function estimateInputTokens(
+/**
+ * SP-302 (#178): chars/4 estimate inputs. Tool-call arguments are serialized
+ * (hosts send them verbatim) and thinking blocks are counted because pi's
+ * transformMessages replays foreign thinking as plain text cross-provider.
+ * Cursor-origin thinking is excluded while SP-300's lifecycle strip is enabled
+ * (default) since that text is dropped before replay; setting
+ * SMART_ROUTER_STRIP_CURSOR_LIFECYCLE=0 disables the strip, so the estimate
+ * counts Cursor thinking again.
+ */
+function estimateContextChars(context: Context): number {
+  let charCount = context.systemPrompt?.length ?? 0;
+  const excludeCursorThinking = process.env[STRIP_CURSOR_LIFECYCLE_ENV] !== '0';
+
+  for (const message of context.messages) {
+    if (message.role === 'assistant') {
+      const countThinking = !(
+        excludeCursorThinking && isCursorOriginAssistantMessage(message)
+      );
+      for (const block of message.content) {
+        if (block.type === 'text') {
+          charCount += block.text.length;
+        } else if (block.type === 'thinking') {
+          if (countThinking) {
+            charCount += block.thinking.length;
+          }
+        } else if (block.type === 'toolCall') {
+          charCount +=
+            block.name.length +
+            JSON.stringify(block.arguments).length +
+            (block.argumentsError?.length ?? 0);
+        }
+      }
+      continue;
+    }
+
+    charCount += messageContentToString(message.content).length;
+  }
+
+  return charCount;
+}
+
+/**
+ * SP-302 (#178): the last assistant message's provider-reported input tokens
+ * are a lower bound for the next turn (the provider counted them). Sums
+ * `usage.input + usage.cacheRead + usage.cacheWrite` — cache tokens are part
+ * of the billed input the provider saw. Returns undefined when no assistant
+ * message reports a positive combined count.
+ */
+function lastReportedInputTokens(
+  messages: readonly Message[],
+): number | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message?.role !== 'assistant') {
+      continue;
+    }
+    const usage = message.usage;
+    if (!usage) {
+      continue;
+    }
+    let total = 0;
+    let sawPositive = false;
+    for (const value of [usage.input, usage.cacheRead, usage.cacheWrite]) {
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        total += value;
+        sawPositive = true;
+      }
+    }
+    if (sawPositive) {
+      return Math.floor(total);
+    }
+  }
+  return undefined;
+}
+
+export function estimateInputTokens(
   context: Context,
   options?: SimpleStreamOptions,
 ): number {
+  const usageFloor = lastReportedInputTokens(context.messages) ?? 0;
+
   const fromOptions = readOptionalTokenEstimate(options);
   if (fromOptions !== undefined) {
-    return fromOptions;
+    return Math.max(fromOptions, usageFloor);
   }
 
   const fromContext = readOptionalTokenEstimate(context);
   if (fromContext !== undefined) {
-    return fromContext;
-  }
-
-  const mapped = mapContextMessages(context.messages);
-  let charCount = mapped.reduce((sum, message) => sum + message.content.length, 0);
-  if (context.systemPrompt) {
-    charCount += context.systemPrompt.length;
+    return Math.max(fromContext, usageFloor);
   }
 
   if (context.messages.length === 0 && !context.systemPrompt) {
-    return 0;
+    return usageFloor;
   }
 
-  return Math.max(1, Math.ceil(charCount / 4));
+  const estimate = Math.max(1, Math.ceil(estimateContextChars(context) / 4));
+  return Math.max(estimate, usageFloor);
 }
 
 function messageContentToString(content: string | readonly (TextContent | { type: string })[]): string {
