@@ -1,0 +1,14 @@
+spine-tasks/SP-306-judge-state-questions-mapper/STATUS.md
+  h_ae151c586ac6c5 3-4,28,36,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "59b9f210ef56e24f34870acf69ff883aa75eb60b",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
