@@ -1,0 +1,38 @@
+Contract testCommand failure log
+Command: npm run typecheck && npx vitest run tests/unit/pi-model-mapper.test.ts tests/unit/pi-model-mapper-coverage.test.ts && bash scripts/spine-stet-contract-run.sh lenient SP-310
+Exit code: 1
+Attempt: 1 of 2
+Timestamp: 2026-11-01T18:54:45.994Z
+Buffer overflow: no
+---
+
+> pi-smart-router@1.2.2 typecheck
+> tsc --noEmit
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20261101T184223-36cb/lane-2
+
+ ✓ tests/unit/pi-model-mapper-coverage.test.ts (6 tests) 6ms
+ ✓ tests/unit/pi-model-mapper.test.ts (62 tests) 29ms
+
+ Test Files  2 passed (2)
+      Tests  68 passed (68)
+   Start at  10:52:09
+   Duration  392ms (transform 82ms, setup 0ms, collect 184ms, tests 35ms, environment 0ms, prepare 70ms)
+
+7a99d4a  src/config/pi-model-mapper.ts:347  WARNING  The generic pattern /claude/i will match any model ID containing the substring 'claude', including non-Anthropic models like 'claude-3-5-sonnet-20241022' (if hosted elsewhere) or hypothetical models like 'openai-claude-bridge'. This is overly broad and may incorrectly assign FRONTIER_DEFAULTS to models that are not actually Claude models. The pattern should be anchored or more specific to avoid false positives.
+1 finding at 122.0 tokens/sec.
+
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+stet: contract review found 1 active finding(s). Triage, then re-run the contract:
+
+  stet list
+  stet dismiss <id> <reason>
+
+Dismiss reasons: false_positive, already_correct, wrong_suggestion, out_of_scope.
+Fix real defects in this task's diff. If a finding exposes a stet reviewer bug (bad prompt,
+parser, critic), dismiss it with a reason and record it under Discoveries in STATUS.md.
+Never dismiss a real defect without fixing it.
+Project code defects → file issues on beettlle/pi-smart-router (label stet); stet reviewer bugs →
+https://github.com/beettlle/stet/issues.
