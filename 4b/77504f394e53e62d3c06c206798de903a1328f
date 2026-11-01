@@ -1,0 +1,30 @@
+spine-tasks/SP-306-judge-state-questions-mapper/STATUS.md
+  h_ae151c586ac6c5 36,38-41
+tests/fixtures/typed-judgment/179-deep-continuation.json
+  h_ae151c586ac6c5 1-52
+tests/fixtures/typed-judgment/23-planning.json
+  h_ae151c586ac6c5 1-30
+tests/fixtures/typed-judgment/97-cleanup.json
+  h_ae151c586ac6c5 1-35
+tests/fixtures/typed-judgment/subtle-debug.json
+  h_ae151c586ac6c5 1-29
+tests/fixtures/typed-judgment/thanks.json
+  h_ae151c586ac6c5 1-34
+tests/fixtures/typed-judgment/trivial-indent.json
+  h_ae151c586ac6c5 1-29
+tests/unit/typed-judgment-questions.test.ts
+  h_ae151c586ac6c5 1-247
+tests/unit/typed-judgment-state.test.ts
+  h_ae151c586ac6c5 1-383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b77504f394e53e62d3c06c206798de903a1328f",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
