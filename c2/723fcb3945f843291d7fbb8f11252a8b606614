@@ -1,0 +1,14 @@
+src/domain/ports/typed-judgment-port.ts
+  h_ae151c586ac6c5 1-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2723fcb3945f843291d7fbb8f11252a8b606614",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
