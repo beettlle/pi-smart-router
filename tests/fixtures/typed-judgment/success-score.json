@@ -1,0 +1,17 @@
+{
+  "_source": "openjev README shape",
+  "status": 200,
+  "body": {
+    "model": "openjev-0.1",
+    "answers": {
+      "q-score": {
+        "type": "score",
+        "score": 0.8,
+        "legend": { "0": "vague", "1": "fully specified" },
+        "probabilities": { "0": 0.2, "1": 0.8 },
+        "confidence": 0.71
+      }
+    },
+    "usage": { "input_tokens": 388, "output_tokens": 0 }
+  }
+}

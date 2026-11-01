@@ -1,0 +1,14 @@
+{
+  "_source": "openjev README shape",
+  "status": 422,
+  "body": {
+    "detail": [
+      {
+        "type": "missing",
+        "loc": ["body", "questions"],
+        "msg": "Field required",
+        "input": { "model": "openjev-latest" }
+      }
+    ]
+  }
+}

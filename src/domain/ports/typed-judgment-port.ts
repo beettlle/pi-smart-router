@@ -59,13 +59,15 @@ export interface TypedJudgmentScoreQuestion extends TypedJudgmentQuestionBase {
 
 /**
  * Binary ("noul") question: yes/no judged against explicit true/false
- * criteria so the judge cannot free-style the boundary.
+ * criteria so the judge cannot free-style the boundary. The answer is the
+ * calibrated probability that the true-criterion holds (P(yes) ∈ [0,1]),
+ * not a thresholded boolean — see {@link TypedJudgmentNoulAnswer}.
  */
 export interface TypedJudgmentNoulQuestion extends TypedJudgmentQuestionBase {
   readonly kind: 'noul';
-  /** Criterion under which the answer is `true`. */
+  /** Criterion describing the event whose probability (P(yes)) is estimated. */
   readonly criteria_true: string;
-  /** Criterion under which the answer is `false`. */
+  /** Criterion describing the complement event (probability 1 − P(yes)). */
   readonly criteria_false: string;
 }
 
