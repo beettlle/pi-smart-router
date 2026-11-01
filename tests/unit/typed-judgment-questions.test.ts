@@ -16,6 +16,7 @@ import {
   mapTypedJudgment,
   type TypedJudgment,
 } from '../../src/domain/judgment/answer-mapper.js';
+import * as judgmentBarrel from '../../src/domain/judgment/index.js';
 import {
   CAPABILITY_DESERVED_QUESTION,
   CODE_GEN_QUESTION,
@@ -51,6 +52,18 @@ function scoreAnswer(score: number, confidence = 0.8): TypedJudgmentScoreAnswer 
 function noulAnswer(noul: boolean): TypedJudgmentNoulAnswer {
   return { kind: 'noul', noul };
 }
+
+describe('judgment module barrel', () => {
+  it('re-exports the state builder, question set, and mapper', () => {
+    expect(typeof judgmentBarrel.buildJudgeState).toBe('function');
+    expect(typeof judgmentBarrel.isAcknowledgement).toBe('function');
+    expect(typeof judgmentBarrel.mapTypedJudgment).toBe('function');
+    expect(judgmentBarrel.TYPED_JUDGMENT_QUESTIONS).toHaveLength(6);
+    expect(judgmentBarrel.TYPED_JUDGMENT_QUESTION_SET_VERSION).toBe(
+      TYPED_JUDGMENT_QUESTION_SET_VERSION,
+    );
+  });
+});
 
 describe('question set', () => {
   it('defines exactly the six questions, in canonical order, in one module', () => {
