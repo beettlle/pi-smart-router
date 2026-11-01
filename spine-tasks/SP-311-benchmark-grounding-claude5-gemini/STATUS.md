@@ -1,7 +1,7 @@
 # SP-311: Benchmark grounding + aliases for Claude 5.x and Gemini 3.1/4 — Status
 
-**Current Step:** Step 1: Ingest refresh
-**Status:** In Progress
+**Current Step:** Complete — awaiting .DONE
+**Status:** Complete
 **Last Updated:** 2026-11-01
 **Review Level:** 2
 **Review Counter:** 0
