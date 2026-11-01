@@ -1,0 +1,20 @@
+spine-tasks/SP-304-typed-judgment-port-config/STATUS.md
+  h_ae151c586ac6c5 3-4,14,16,21,23,28,30-31,36,38-41
+src/config/defaults.ts
+  h_ae151c586ac6c5 14,19,30,35,38,47,91-92
+src/domain/types/index.ts
+  h_ae151c586ac6c5 57
+src/domain/types/schemas.ts
+  h_ae151c586ac6c5 1001-1161,1183-1184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7305a2b79e453405f01e9a9a0704910862d0899",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
