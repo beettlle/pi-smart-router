@@ -1,0 +1,19 @@
+tests/unit/typed-judgment-state.test.ts
+  s_04c6cdf98a620f::t_2d9c90c66ac3aa 9,26-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b597166c39603e84a33b228af1a35067c4500f59",
+  "prompts": {},
+  "sessions": {
+    "s_04c6cdf98a620f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bd94b5ea-3352-4335-b607-050d8ba880e8",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
