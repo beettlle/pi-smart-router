@@ -336,13 +336,26 @@ const COMPOSER_DEFAULTS: ModelFamilyDefaults = {
 /** Ordered rules — first match wins. */
 const MODEL_PATTERN_RULES: readonly ModelPatternRule[] = [
   { pattern: /claude[-_.]?opus|claude[-_.]?sonnet|opus|sonnet/i, defaults: FRONTIER_DEFAULTS },
+  // SP-310 / #193: Fable is a frontier Claude family (claude-fable-5-1).
+  { pattern: /claude[-_.]?fable/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /claude[-_.]?haiku|haiku/i, defaults: ECONOMICAL_DEFAULTS },
+  // SP-310 / #193: any other Claude id is a current/future flagship family —
+  // frontier, not UNKNOWN_DEFAULTS. Must stay after the Haiku rule so
+  // claude-haiku-* keeps economical defaults.
+  { pattern: /claude/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /gpt[-_.]?5\.(?:[5-9]|\d{2,})|gpt-5-[5-9]/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /gpt[-_.]?5\.1|gpt[-_.]?5[-_.]?mini|gpt[-_.]?mini/i, defaults: ECONOMICAL_DEFAULTS },
   { pattern: /gemini[-_.]?2\.5[-_.]?pro|gemini-2-5-pro/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /gemini[-_.]?3.*pro/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /gemini.*pro/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /gemini.*flash|gemini-flash/i, defaults: ECONOMICAL_DEFAULTS },
+  // SP-310 / #193: lite variants stay economical even at major >= 4 — keep
+  // ahead of the generic Gemini 4+ frontier rule.
+  { pattern: /gemini.*lite/i, defaults: ECONOMICAL_DEFAULTS },
+  // SP-310 / #193: Gemini major version >= 4 (gemini-4-argon, gemini-4-pro)
+  // is frontier. Placed after the flash/lite rules so gemini-4-flash and
+  // gemini-4-lite stay economical.
+  { pattern: /gemini[-_.]?(?:[4-9]|\d{2,})/i, defaults: FRONTIER_DEFAULTS },
   // Peak-pricing vendor families (SP-244 / #165) — recognize Z.ai GLM and
   // DeepSeek ids explicitly instead of UNKNOWN_DEFAULTS so the peak/off-peak
   // adapters (SP-243) pair with sensible economical-tier capability defaults.
