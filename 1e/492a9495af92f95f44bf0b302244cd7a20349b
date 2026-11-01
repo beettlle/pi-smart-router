@@ -1,0 +1,22 @@
+specs/001-build-smart-router/contracts/routing-decision.schema.json
+  h_ae151c586ac6c5 323
+src/domain/pipeline/router-pipeline.ts
+  h_ae151c586ac6c5 5-11,35-41,93,129,224-235,255,293,681-685
+src/domain/types/entities.ts
+  h_ae151c586ac6c5 40
+src/domain/types/schemas.ts
+  h_ae151c586ac6c5 48
+tests/unit/pipeline-stage.test.ts
+  h_ae151c586ac6c5 73-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e492a9495af92f95f44bf0b302244cd7a20349b",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
