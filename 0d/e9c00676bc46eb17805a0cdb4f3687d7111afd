@@ -1,0 +1,14 @@
+spine-tasks/SP-311-benchmark-grounding-claude5-gemini/.reviews/final-20261101T233351.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0de9c00676bc46eb17805a0cdb4f3687d7111afd",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
