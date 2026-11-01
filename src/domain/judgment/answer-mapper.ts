@@ -96,6 +96,11 @@ function mapScoreAnswer(
   const scoreAnswer = answer as TypedJudgmentScoreAnswer;
   const levels = question.anchors.length;
   const max = levels - 1;
+  if (max < 1) {
+    invalid(
+      `question '${question.id}': score scale needs at least two anchors`,
+    );
+  }
   if (
     !Number.isFinite(scoreAnswer.score) ||
     !Number.isInteger(scoreAnswer.score) ||
