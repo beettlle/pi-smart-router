@@ -1,0 +1,32 @@
+src/domain/ports/typed-judgment-port.ts
+  h_ae151c586ac6c5 62-64,68,70
+tests/fixtures/typed-judgment/error-400.json
+  h_ae151c586ac6c5 1-7
+tests/fixtures/typed-judgment/error-401.json
+  h_ae151c586ac6c5 1-10
+tests/fixtures/typed-judgment/error-422.json
+  h_ae151c586ac6c5 1-14
+tests/fixtures/typed-judgment/error-429.json
+  h_ae151c586ac6c5 1-10
+tests/fixtures/typed-judgment/error-529.json
+  h_ae151c586ac6c5 1-10
+tests/fixtures/typed-judgment/success-choice.json
+  h_ae151c586ac6c5 1-16
+tests/fixtures/typed-judgment/success-noul.json
+  h_ae151c586ac6c5 1-11
+tests/fixtures/typed-judgment/success-score.json
+  h_ae151c586ac6c5 1-17
+tests/unit/typed-judgment-adapter.test.ts
+  h_ae151c586ac6c5 1-647
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fefbc621cb216d24ef17890d935fb8b413524c15",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
