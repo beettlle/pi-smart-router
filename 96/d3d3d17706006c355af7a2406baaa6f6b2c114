@@ -1,0 +1,16 @@
+package-lock.json
+  h_ae151c586ac6c5 3,9
+package.json
+  h_ae151c586ac6c5 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "96d3d3d17706006c355af7a2406baaa6f6b2c114",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
