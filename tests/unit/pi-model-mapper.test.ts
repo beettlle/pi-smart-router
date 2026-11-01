@@ -261,6 +261,10 @@ describe('mapPiModelToProfile', () => {
         makeInput({ provider: 'openai', id: 'openai-claude-bridge' }),
       );
 
+      // Assert the fix directly: this id must NOT inherit the frontier
+      // Claude defaults, and specifically falls back to UNKNOWN_DEFAULTS.
+      expect(profile.tier).not.toBe('frontier-cloud');
+      expect(profile.capabilities.reasoning).not.toBe(0.95);
       expect(profile.tier).toBe('economical-cloud');
       expect(profile.capabilities.reasoning).toBe(0.6);
       expect(profile.capabilities.code_gen).toBe(0.65);
