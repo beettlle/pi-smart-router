@@ -1,0 +1,34 @@
+{
+  "name": "thanks",
+  "description": "Acknowledgement-only turn (chat). The stage skips the judge call via isAcknowledgement; if judged, state must still be readable.",
+  "request": {
+    "request_id": "req-thanks",
+    "session_id": "sess-thanks",
+    "prompt_text": "thanks!",
+    "messages": [
+      { "role": "user", "content": "can you summarize the file" },
+      {
+        "role": "assistant",
+        "content": "The file implements a retry wrapper around HTTP fetches with exponential backoff."
+      },
+      { "role": "user", "content": "thanks!" }
+    ],
+    "turn_type": "main_loop",
+    "estimated_input_tokens": 3400
+  },
+  "expected": {
+    "latest_user_message": "thanks!",
+    "session": {
+      "messages": 3,
+      "tool_calls": 0,
+      "compactions": false,
+      "context_tokens": 3400,
+      "turn_type": "main_loop",
+      "last_tool_failed": false
+    },
+    "recent_activity": [
+      "user: can you summarize the file",
+      "assistant: The file implements a retry wrapper around HTTP fetches with exponential backoff."
+    ]
+  }
+}

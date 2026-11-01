@@ -1,0 +1,35 @@
+{
+  "name": "97-cleanup",
+  "issue": "https://github.com/beettlle/pi-smart-router/issues/97",
+  "description": "Incident replay: shallow cleanup request (operate/implement boundary).",
+  "request": {
+    "request_id": "req-97-cleanup",
+    "session_id": "sess-97",
+    "prompt_text": "clean up the temp files in ./tmp and commit the .gitignore update",
+    "messages": [
+      { "role": "user", "content": "hi" },
+      { "role": "assistant", "content": "Hello! What can I do for you?" },
+      {
+        "role": "user",
+        "content": "clean up the temp files in ./tmp and commit the .gitignore update"
+      }
+    ],
+    "turn_type": "main_loop",
+    "estimated_input_tokens": 42
+  },
+  "expected": {
+    "latest_user_message": "clean up the temp files in ./tmp and commit the .gitignore update",
+    "session": {
+      "messages": 3,
+      "tool_calls": 0,
+      "compactions": false,
+      "context_tokens": 42,
+      "turn_type": "main_loop",
+      "last_tool_failed": false
+    },
+    "recent_activity": [
+      "user: hi",
+      "assistant: Hello! What can I do for you?"
+    ]
+  }
+}

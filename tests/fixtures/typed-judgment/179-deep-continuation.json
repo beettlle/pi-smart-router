@@ -1,0 +1,52 @@
+{
+  "name": "179-deep-continuation",
+  "issue": "https://github.com/beettlle/pi-smart-router/issues/179",
+  "description": "Incident replay: deep agentic session whose latest turn is a bare \"continue\" after a failed tool call. The judge must see the tool failure and the deep session, not a chat ack.",
+  "request": {
+    "request_id": "req-179-continue",
+    "session_id": "sess-179",
+    "prompt_text": "continue",
+    "messages": [
+      { "role": "user", "content": "port the importer to the new schema" },
+      {
+        "role": "assistant",
+        "content": "I'll start by reading the importer and the schema definitions."
+      },
+      {
+        "role": "tool",
+        "content": "ok: wrote 128 rows",
+        "tool_call_id": "call-1",
+        "status": 200
+      },
+      {
+        "role": "assistant",
+        "content": "Retrying the remaining batch with the fallback config."
+      },
+      {
+        "role": "tool",
+        "content": "Error: connect ECONNREFUSED 127.0.0.1:5432",
+        "tool_call_id": "call-2",
+        "is_error": true,
+        "status": 503
+      },
+      { "role": "user", "content": "continue" }
+    ],
+    "turn_type": "main_loop",
+    "estimated_input_tokens": 128400
+  },
+  "expected": {
+    "latest_user_message": "continue",
+    "session": {
+      "messages": 6,
+      "tool_calls": 2,
+      "compactions": false,
+      "context_tokens": 128400,
+      "turn_type": "main_loop",
+      "last_tool_failed": true
+    },
+    "recent_activity": [
+      "assistant: Retrying the remaining batch with the fallback config.",
+      "tool: Error: connect ECONNREFUSED 127.0.0.1:5432"
+    ]
+  }
+}
