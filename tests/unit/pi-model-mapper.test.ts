@@ -185,6 +185,124 @@ describe('mapPiModelToProfile', () => {
     });
   });
 
+  describe('SP-310 scoped fleet family rules (#193)', () => {
+    // Operator scoped fleet (2026-10-24, ~/.pi/agent/settings.json enabledModels).
+    const SCOPED_FLEET_CASES: ReadonlyArray<{
+      readonly provider: string;
+      readonly id: string;
+      readonly tier: string;
+    }> = [
+      { provider: 'anthropic', id: 'claude-fable-5-1', tier: 'frontier-cloud' },
+      { provider: 'anthropic', id: 'claude-haiku-5-5', tier: 'economical-cloud' },
+      { provider: 'anthropic', id: 'claude-opus-5-5', tier: 'frontier-cloud' },
+      { provider: 'anthropic', id: 'claude-sonnet-5-5', tier: 'frontier-cloud' },
+      { provider: 'google', id: 'gemini-4-argon', tier: 'frontier-cloud' },
+      { provider: 'google', id: 'gemini-3.1-pro-preview', tier: 'frontier-cloud' },
+      { provider: 'google', id: 'gemini-3.1-pro-preview-customtools', tier: 'frontier-cloud' },
+      { provider: 'google', id: 'gemini-flash-latest', tier: 'economical-cloud' },
+      { provider: 'google', id: 'gemini-flash-lite-latest', tier: 'economical-cloud' },
+    ];
+
+    it.each(SCOPED_FLEET_CASES)('maps $provider/$id to $tier', ({ provider, id, tier }) => {
+      const profile = mapPiModelToProfile(makeInput({ provider, id }));
+
+      expect(profile.tier).toBe(tier);
+    });
+
+    it('no scoped Claude or Gemini id falls to UNKNOWN_DEFAULTS', () => {
+      for (const { provider, id } of SCOPED_FLEET_CASES) {
+        const profile = mapPiModelToProfile(makeInput({ provider, id }));
+
+        // UNKNOWN_DEFAULTS fingerprint: 0.6 / 0.65 / 0.6
+        const isUnknown =
+          profile.capabilities.reasoning === 0.6 &&
+          profile.capabilities.code_gen === 0.65 &&
+          profile.capabilities.tool_use === 0.6;
+        expect(isUnknown, `${provider}/${id} must not use UNKNOWN_DEFAULTS`).toBe(false);
+      }
+    });
+
+    it('maps claude-fable-* to frontier with pattern defaults', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'anthropic', id: 'claude-fable-5-1' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.reasoning).toBe(0.95);
+      expect(profile.capability_source).toBe('pattern_default');
+    });
+
+    it('keeps claude-haiku-* economical ahead of the generic Claude rule', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'anthropic', id: 'claude-haiku-5-5' }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+      expect(profile.capabilities.reasoning).toBe(0.7);
+      expect(profile.capabilities.code_gen).toBe(0.75);
+      expect(profile.capabilities.tool_use).toBe(0.7);
+    });
+
+    it('maps a hypothetical future Claude family to frontier (claude-newfamily-6)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'anthropic', id: 'claude-newfamily-6' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.reasoning).toBe(0.95);
+      expect(profile.capability_source).toBe('pattern_default');
+    });
+
+    it('resolves gemini-3.1-pro-preview-customtools exactly like its base id', () => {
+      const base = mapPiModelToProfile(
+        makeInput({ provider: 'google', id: 'gemini-3.1-pro-preview' }),
+      );
+      const customtools = mapPiModelToProfile(
+        makeInput({ provider: 'google', id: 'gemini-3.1-pro-preview-customtools' }),
+      );
+
+      expect(customtools.tier).toBe(base.tier);
+      expect(customtools.capabilities).toEqual(base.capabilities);
+      expect(customtools.capability_source).toBe(base.capability_source);
+    });
+
+    it('maps gemini-4-argon to frontier with pattern defaults', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'google', id: 'gemini-4-argon' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities.reasoning).toBe(0.95);
+      expect(profile.capability_source).toBe('pattern_default');
+    });
+
+    it('maps gemini-4-flash to economical (flash rule ahead of Gemini 4+ rule)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'google', id: 'gemini-4-flash' }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+      expect(profile.capabilities.reasoning).toBe(0.7);
+    });
+
+    it('maps gemini-4-lite to economical (lite rule ahead of Gemini 4+ rule)', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'google', id: 'gemini-4-lite' }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+      expect(profile.capabilities.reasoning).toBe(0.7);
+    });
+
+    it('keeps gemini-flash-lite-latest economical', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'google', id: 'gemini-flash-lite-latest' }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+    });
+  });
+
   describe('local providers', () => {
     it('maps lmstudio provider to zero-tier', () => {
       const profile = mapPiModelToProfile(

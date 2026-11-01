@@ -27,8 +27,12 @@
 ---
 
 ### Step 2: Testing & Verification
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Scoped-fleet table test
-- [ ] Haiku, future Claude, gemini-4-flash edge cases
-- [ ] Run Contract testCommand
+- [x] Scoped-fleet table test
+  - `tests/unit/pi-model-mapper.test.ts` — new `SP-310 scoped fleet family rules (#193)` describe: `it.each` over all nine operator scoped ids asserting tiers (fable/opus/sonnet/gemini-4-argon/gemini-3.1-pro±customtools → frontier; haiku/flash/flash-lite → economical), plus a no-UNKNOWN_DEFAULTS fingerprint guard (0.6/0.65/0.6).
+- [x] Haiku, future Claude, gemini-4-flash edge cases
+  - haiku-5-5 stays 0.7/0.75/0.7 economical; `claude-newfamily-6` → frontier 0.95 pattern_default; `gemini-4-flash` and `gemini-4-lite` → economical (flash/lite rules ahead of Gemini 4+ rule); customtools parity test vs base id; `gemini-flash-lite-latest` stays economical.
+- [x] Run Contract testCommand
+  - `npm run typecheck` ✓; `npx vitest run tests/unit/pi-model-mapper.test.ts tests/unit/pi-model-mapper-coverage.test.ts` ✓ (68 passed); `bash scripts/spine-stet-contract-run.sh lenient SP-310` ✓ (0 findings).
+  - Adjacent consumer suites also green: price-broker, smart-router-extension, pi-extension integration, index-exports (176 passed).
