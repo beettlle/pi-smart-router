@@ -1,0 +1,16 @@
+spine-tasks/SP-310-claude5-gemini4-family-rules/STATUS.md
+  h_ae151c586ac6c5 30,32-38
+tests/unit/pi-model-mapper.test.ts
+  h_ae151c586ac6c5 188-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "05e09cce5ad9fdd891b81530e45922a217dd541c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
