@@ -217,7 +217,8 @@ describe('SqliteStore context-fit telemetry (SP-301)', () => {
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
-          '2026-10-20T00:00:00.000Z',
+          // Must stay inside TELEMETRY_WINDOW_MS or appendTelemetry evicts it.
+          new Date().toISOString(),
           'sess-legacy',
           'req-legacy',
           'main_loop',
