@@ -12,7 +12,9 @@ import {
   BenchmarkIngestError,
   buildUsageText,
   DEFAULT_BENCHMARK_FIXTURES_DIR,
+  DEFAULT_FLEET_BENCHMARK_ALIASES,
   DEFAULT_RECORDED_LEADERBOARDS_DIR,
+  DEFAULT_UNGROUNDED_FLEET_IDS,
   ingestBenchmarkProfilesFromDir,
   isToolUseBenchmark,
   normalizeBenchmarkScore,
@@ -131,6 +133,9 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
       catalogFreezeDate: parsed.provenance.catalog_freeze_date,
       scrapeDate: parsed.provenance.scrape_date,
       ...(parsed.aliases !== undefined ? { aliases: parsed.aliases } : {}),
+      ...(parsed.provenance.ungrounded_fleet_ids !== undefined
+        ? { ungroundedFleetIds: parsed.provenance.ungrounded_fleet_ids }
+        : {}),
     };
     const fromFixtures = serializeBenchmarkProfilesArtifact(
       ingestBenchmarkProfilesFromDir(DEFAULT_BENCHMARK_FIXTURES_DIR, options),
@@ -294,6 +299,168 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
     expect(() =>
       aggregateBenchmarkProfiles(fixtures, { catalogFreezeDate: '2026-07-09' }),
     ).not.toThrow();
+  });
+});
+
+describe('SP-311 scoped fleet grounding (#193)', () => {
+  /** Scoped ids grounded via same-family / same-row aliases. */
+  const SCOPED_GROUNDED_ALIASES: Readonly<Record<string, string>> = {
+    'claude-opus-5-5': 'claude-opus-4-5',
+    'claude-sonnet-5-5': 'claude-sonnet-4-6',
+    'claude-haiku-5-5': 'claude-haiku-4-5',
+    'anthropic/claude-opus-5-5': 'claude-opus-4-5',
+    'anthropic/claude-sonnet-5-5': 'claude-sonnet-4-6',
+    'anthropic/claude-haiku-5-5': 'claude-haiku-4-5',
+    'google/gemini-3-pro-preview': 'gemini-3-pro-preview',
+  };
+
+  /** Scoped ids with no public leaderboard scores — SP-310 defaults by design. */
+  const SCOPED_UNGROUNDED_IDS: readonly string[] = [
+    'claude-fable-5-1',
+    'anthropic/claude-fable-5-1',
+    'gemini-3.1-pro-preview',
+    'gemini-3.1-pro-preview-customtools',
+    'google/gemini-3.1-pro-preview',
+    'google/gemini-3.1-pro-preview-customtools',
+    'gemini-4-argon',
+    'google/gemini-4-argon',
+    'gemini-flash-latest',
+    'gemini-flash-lite-latest',
+    'google/gemini-flash-latest',
+    'google/gemini-flash-lite-latest',
+  ];
+
+  it('default aliases cover the grounded scoped Claude 5.x / Gemini 3 ids', () => {
+    for (const [alias, target] of Object.entries(SCOPED_GROUNDED_ALIASES)) {
+      expect(DEFAULT_FLEET_BENCHMARK_ALIASES[alias], alias).toBe(target);
+    }
+  });
+
+  it('default ungrounded list covers the scoped ids without public scores', () => {
+    for (const id of SCOPED_UNGROUNDED_IDS) {
+      expect(DEFAULT_UNGROUNDED_FLEET_IDS, id).toContain(id);
+    }
+    // No overlap: an id is either grounded (alias) or ungrounded, never both.
+    for (const id of DEFAULT_UNGROUNDED_FLEET_IDS) {
+      expect(DEFAULT_FLEET_BENCHMARK_ALIASES[id], id).toBeUndefined();
+    }
+  });
+
+  it('checked-in artifact partitions every scoped id: aliased or listed ungrounded', () => {
+    const artifactPath = join('config', 'benchmark-profiles.json');
+    const artifact = parseBenchmarkProfilesArtifact(
+      JSON.parse(readFileSync(artifactPath, 'utf8')),
+    );
+    const aliases = artifact.aliases ?? {};
+    const ungrounded = new Set(artifact.provenance.ungrounded_fleet_ids ?? []);
+
+    const scopedIds = [...Object.keys(SCOPED_GROUNDED_ALIASES), ...SCOPED_UNGROUNDED_IDS];
+    for (const id of scopedIds) {
+      const grounded = aliases[id] !== undefined;
+      const listed = ungrounded.has(id);
+      expect(grounded || listed, `${id} must be aliased or listed ungrounded`).toBe(true);
+      expect(grounded && listed, `${id} cannot be both aliased and ungrounded`).toBe(false);
+    }
+  });
+
+  it('ingests curated claude-haiku-4-5 and gemini-3-pro-preview rows from fixtures', () => {
+    const artifact = ingestBenchmarkProfilesFromDir(DEFAULT_BENCHMARK_FIXTURES_DIR, {
+      catalogFreezeDate: '2026-11-01',
+      scrapeDate: '2026-11-01',
+    });
+
+    const haiku = artifact.models.find((model) => model.model_id === 'claude-haiku-4-5');
+    expect(haiku).toBeDefined();
+    // SWE-bench Verified 66.6 (best Verified row) + BFCL 68.70 (best Overall Acc).
+    expect(haiku!.benchmark_sources.swebench_verified?.raw_score).toBe(66.6);
+    expect(haiku!.benchmark_sources.bfcl?.raw_score).toBe(68.7);
+    expect(haiku!.capabilities.reasoning).toBeCloseTo(0.666, 4);
+    expect(haiku!.capabilities.code_gen).toBeCloseTo(0.666, 4);
+    expect(haiku!.capabilities.tool_use).toBeCloseTo(0.687, 4);
+
+    const gemini = artifact.models.find((model) => model.model_id === 'gemini-3-pro-preview');
+    expect(gemini).toBeDefined();
+    // SWE-bench Verified 77.4 (best row) + BFCL 72.51 (best Overall Acc).
+    expect(gemini!.benchmark_sources.swebench_verified?.raw_score).toBe(77.4);
+    expect(gemini!.benchmark_sources.bfcl?.raw_score).toBe(72.51);
+    expect(gemini!.capabilities.reasoning).toBeCloseTo(0.774, 4);
+    expect(gemini!.capabilities.code_gen).toBeCloseTo(0.774, 4);
+    expect(gemini!.capabilities.tool_use).toBeCloseTo(0.7251, 4);
+  });
+
+  it('emits default ungrounded fleet ids in provenance when none are supplied', () => {
+    const artifact = aggregateBenchmarkProfiles(fullFixtureSet(), {
+      catalogFreezeDate: '2026-07-09',
+    });
+
+    expect(artifact.provenance.ungrounded_fleet_ids).toEqual(
+      [...DEFAULT_UNGROUNDED_FLEET_IDS].sort((a, b) => a.localeCompare(b)),
+    );
+  });
+
+  it('serializes ungrounded_fleet_ids inside provenance (stable round-trip)', () => {
+    const artifact = aggregateBenchmarkProfiles(fullFixtureSet(), {
+      catalogFreezeDate: '2026-07-09',
+    });
+    const serialized = serializeBenchmarkProfilesArtifact(artifact);
+    const parsed = parseBenchmarkProfilesArtifact(JSON.parse(serialized));
+
+    expect(parsed.provenance.ungrounded_fleet_ids).toEqual(
+      [...DEFAULT_UNGROUNDED_FLEET_IDS].sort((a, b) => a.localeCompare(b)),
+    );
+    // Serialize twice → identical bytes (stable ordering for checked-in diffs).
+    expect(serializeBenchmarkProfilesArtifact(parsed)).toBe(serialized);
+  });
+
+  it('rejects artifacts where an ungrounded id is also aliased', () => {
+    const artifact = aggregateBenchmarkProfiles(fullFixtureSet(), {
+      catalogFreezeDate: '2026-07-09',
+    });
+    const bad = {
+      ...JSON.parse(serializeBenchmarkProfilesArtifact(artifact)),
+      provenance: {
+        ...artifact.provenance,
+        // claude-opus-4 is a default alias key — overlap must fail closed.
+        ungrounded_fleet_ids: ['claude-opus-4'],
+      },
+    };
+
+    expect(() => parseBenchmarkProfilesArtifact(bad)).toThrow(/ungrounded_fleet_ids/);
+  });
+
+  it('CLI merges seed aliases under operator-preserved aliases on re-ingest', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'benchmark-cli-alias-merge-'));
+    const outputPath = join(dir, 'benchmark-profiles.json');
+    try {
+      // Pre-existing artifact with one operator alias (wins on conflict).
+      const existing = aggregateBenchmarkProfiles(fullFixtureSet(), {
+        catalogFreezeDate: '2026-07-09',
+        aliases: { 'my-fleet-id': 'claude-opus-4-5' },
+      });
+      writeFileSync(outputPath, serializeBenchmarkProfilesArtifact(existing), 'utf8');
+
+      await runIngestCli([
+        '--output',
+        outputPath,
+        '--catalog-freeze-date',
+        '2026-11-01',
+        '--scrape-date',
+        '2026-11-01',
+      ]);
+
+      const artifact = parseBenchmarkProfilesArtifact(
+        JSON.parse(readFileSync(outputPath, 'utf8')),
+      );
+      expect(artifact.aliases?.['my-fleet-id']).toBe('claude-opus-4-5');
+      // New SP-311 seed aliases land when re-ingesting an older artifact.
+      expect(artifact.aliases?.['claude-opus-5-5']).toBe('claude-opus-4-5');
+      expect(artifact.aliases?.['claude-haiku-5-5']).toBe('claude-haiku-4-5');
+      // Ungrounded defaults are unioned with any preserved list.
+      expect(artifact.provenance.ungrounded_fleet_ids).toContain('gemini-4-argon');
+      expect(artifact.provenance.ungrounded_fleet_ids).toContain('claude-fable-5-1');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

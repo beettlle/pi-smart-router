@@ -250,9 +250,10 @@ describe('Pi extension integration (SP-043)', () => {
       const sonnet = mapPiModelToProfile({ provider: 'anthropic', id: 'claude-3.5-sonnet' });
       const flash = mapPiModelToProfile({ provider: 'google', id: 'gemini-2.5-flash' });
 
-      // Live mix may omit haiku (incomplete dims) → pattern defaults, not invented scores
-      expect(haiku.capability_source).toBe('pattern_default');
-      expect(haiku.capabilities.reasoning).toBe(0.7);
+      // SP-311: checked-in artifact matches fixture ingest, which carries a
+      // complete claude-3.5-haiku row → benchmark-grounded, below pattern defaults.
+      expect(haiku.capability_source).toBe('benchmark');
+      expect(haiku.capabilities.reasoning).toBeLessThan(0.7);
       expect(haiku.capabilities.reasoning).not.toBe(0.95);
       // SP-174: sonnet fleet id aliases to claude-sonnet-4-6 grounded row
       expect(sonnet.capability_source).toBe('benchmark');

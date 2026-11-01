@@ -45,9 +45,42 @@ scrape/catalog-freeze 2026-11-01). New same-family aliases: `claude-{opus,sonnet
 ---
 
 ### Step 3: Testing & Verification
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Grounded scoped ids report benchmark source
-- [ ] Ungrounded ids keep SP-310 defaults
-- [ ] verify-benchmark-profiles green
-- [ ] Run Contract testCommand
+- [x] Grounded scoped ids report benchmark source
+- [x] Ungrounded ids keep SP-310 defaults
+- [x] verify-benchmark-profiles green
+- [x] Run Contract testCommand
+
+All green: `npm run typecheck`, full `npx vitest run` (149 files / 2481 tests),
+`npm run routing:verify-benchmark-profiles`, `npm run coverage:check` (91.76% lines,
+exit 0), `npm run lint`. Issue #193 verification block satisfied.
+
+## Discoveries
+
+- **Out-of-scope test touch (documented, forced by contract):**
+  `tests/integration/pi-extension.test.ts` asserted `claude-3.5-haiku` stays
+  `pattern_default` because the previous checked-in artifact matched the *recorded*
+  live mix (haiku = Terminal-Bench-only → skipped as incomplete). The completion
+  criterion "checked-in artifact matches fixture ingest" makes the artifact
+  fixture-matched; fixtures carry a complete 4-benchmark `claude-3.5-haiku` row, so
+  the id is now legitimately `benchmark`-grounded. Updated that one assertion block
+  (plus the same assumption in `tests/unit/pi-model-mapper.test.ts`, which is in
+  May-change scope). No production code changed.
+- **Scoped Gemini ids stay ungrounded by design:**
+  `tests/unit/pi-model-mapper-coverage.test.ts` (out of scope) pins
+  `gemini-3.1-pro-preview`, `gemini-flash-latest`, `gemini-flash-lite-latest` to
+  `pattern_default`, and the mapper parity rule pins `-customtools` to its base id.
+  Live leaderboards (2026-11-01) carry no Gemini 3.1/4 scores at all, so these ids
+  are listed in `provenance.ungrounded_fleet_ids` instead of being aliased onto
+  wrong-generation rows (SP-254 policy). `claude-fable-5-1` likewise has no
+  Fable-family row; cross-family collapse is forbidden by SP-208 policy.
+- **Release-refresh interplay:** a future live refresh (`release:check`) regenerates
+  the artifact from recorded/live adapter output, whose unchanged adapter catalogs
+  do not emit `claude-haiku-4-5` / `gemini-3-pro-preview`; the artifact would flip
+  back to the recorded mix (verify test accepts either branch). Adapter catalog
+  updates are the durable fix (SP-182+ follow-up), out of SP-311 scope.
+
+## Blockers
+
+None.
