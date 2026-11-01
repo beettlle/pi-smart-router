@@ -1,0 +1,22 @@
+spine-tasks/SP-305-jev-http-adapter/.reviews/final-20261101T230148.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-311-benchmark-grounding-claude5-gemini/.reviews/0-20261101T221920.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-311-benchmark-grounding-claude5-gemini/.reviews/3-20261101T221927.md
+  h_ae151c586ac6c5 1-13
+spine-tasks/SP-311-benchmark-grounding-claude5-gemini/.reviews/contract-fail-2026-11-01T22-33-32-530Z.log
+  h_ae151c586ac6c5 1-98
+spine-tasks/SP-311-benchmark-grounding-claude5-gemini/.reviews/contract-fail-2026-11-01T22-37-23-793Z.log
+  h_ae151c586ac6c5 1-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "58e7b64a1543cfe5bbd7bc1af23f5e48c74ea1fa",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
