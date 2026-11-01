@@ -6,7 +6,7 @@
  * the absence of cost/budget keys, `last_tool_failed` precedence via the
  * shared SP-303 `isToolFailure`, truncated `recent_activity`, the
  * acknowledgement detector's session-depth rule (#179), and the golden
- * incident fixtures under `tests/fixtures/typed-judgment/`.
+ * incident fixtures under `tests/fixtures/typed-judgment/incidents/`.
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
@@ -23,7 +23,8 @@ import {
 import { estimatePromptTokens } from '../../src/domain/matching/encoder-gate.js';
 import type { RoutingRequest } from '../../src/domain/types/index.js';
 
-const FIXTURE_DIR = join(__dirname, '..', 'fixtures', 'typed-judgment');
+// Own subdirectory: the parent dir also holds SP-305 Jev wire fixtures.
+const FIXTURE_DIR = join(__dirname, '..', 'fixtures', 'typed-judgment', 'incidents');
 
 /** Keys that must never appear anywhere in the judge state (#185). */
 const FORBIDDEN_KEYS = new Set([
