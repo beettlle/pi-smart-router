@@ -1,0 +1,28 @@
+.claude/skills/gitnexus-cli/SKILL.md
+  h_ae151c586ac6c5 1-110
+.claude/skills/gitnexus-debugging/SKILL.md
+  h_ae151c586ac6c5 1-131
+.claude/skills/gitnexus-exploring/SKILL.md
+  h_ae151c586ac6c5 1-100
+.claude/skills/gitnexus-guide/SKILL.md
+  h_ae151c586ac6c5 1-138
+.claude/skills/gitnexus-impact-analysis/SKILL.md
+  h_ae151c586ac6c5 1-167
+.claude/skills/gitnexus-refactoring/SKILL.md
+  h_ae151c586ac6c5 1-164
+AGENTS.md
+  h_ae151c586ac6c5 4,6,10-14,19-20,22,27,36-42
+CLAUDE.md
+  h_ae151c586ac6c5 4,6,10-14,19-20,22,27,36-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0640f05dc5c25a95c6ff9d527fe871b4fd8d18b3",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
