@@ -1,0 +1,21 @@
+src/domain/judgment/answer-mapper.ts
+  s_04c6cdf98a620f::t_dc74209c6aa57c 8,12-13,43,49,128-132
+tests/unit/typed-judgment-questions.test.ts
+  s_04c6cdf98a620f::t_e64acdd90569af 52,165,168,177,180,212,214,230,245-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "14115809ae0acffc176a2780ee75372b96949e20",
+  "prompts": {},
+  "sessions": {
+    "s_04c6cdf98a620f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bd94b5ea-3352-4335-b607-050d8ba880e8",
+        "model": "unknown"
+      },
+      "human_author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
