@@ -986,7 +986,7 @@
 
 **Source:** Operator-approved **v1.2.2** (2026-10-22, patch profile). Theme: glm-5.3-flash runaway hardening (epic #182).
 
-**Status:** Packets authored; awaiting Phase 4 batch execution.
+**Status:** Released **v1.2.2** on npm (`latest`, 2026-11-01). Batch `20261023T001303-b036` integrated (`c2f3a6c6`); published via npm trusted publishing (stage-only) after operator 2FA approval.
 
 **Scope ID:** `SP-300,SP-301,SP-302,SP-303`
 
@@ -1008,7 +1008,7 @@
 
 **Source:** **v1.3.0** (2026-10-24, minor profile). Theme: typed-judgment foundation (epic #183 Sprint 1) plus current-frontier fleet profiles (#193, operator-approved fourth enhancement exception 2026-10-24). Scope approved 2026-10-24.
 
-**Status:** Scope approved; Phase 4 starts after v1.2.2 publishes. Precondition: v1.2.2 batch `20261023T001303-b036` integrated (SP-306 needs SP-303).
+**Status:** Scope approved; Phase 4 in progress (v1.2.2 published 2026-11-01). Precondition: v1.2.2 batch `20261023T001303-b036` integrated (SP-306 needs SP-303).
 
 **Scope ID:** `SP-304,SP-305,SP-306,SP-307,SP-308,SP-309,SP-310,SP-311,SP-312`
 
