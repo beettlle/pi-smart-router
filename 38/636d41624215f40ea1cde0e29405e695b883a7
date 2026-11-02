@@ -1,0 +1,14 @@
+spine-tasks/SP-309-typed-judgment-operator-docs/STATUS.md
+  h_ae151c586ac6c5 3-4,35,37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "38636d41624215f40ea1cde0e29405e695b883a7",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
