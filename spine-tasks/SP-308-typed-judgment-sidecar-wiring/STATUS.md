@@ -1,10 +1,10 @@
 # SP-308: Typed-judgment feature sidecar + composition-root wiring — Status
 
-**Current Step:** Step 3: Testing & Verification
-**Status:** In Progress
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-11-02
 **Review Level:** 2
-**Review Counter:** 0
+**Review Counter:** 3
 **Iteration:** 0
 **Size:** M
 
@@ -32,12 +32,12 @@
 ---
 
 ### Step 3: Testing & Verification
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Judged and skipped turn sidecars; no text fields
 - [x] Disabled → byte-identical fixtures
 - [x] Wiring: loopback port bound; remote without key fails closed
-- [ ] Run Contract testCommand
+- [x] Run Contract testCommand
 
 ---
 
