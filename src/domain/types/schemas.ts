@@ -313,6 +313,45 @@ export type Encoder = z.infer<typeof EncoderSchema>;
 export const DEFAULT_ENCODER: Encoder = 'minilm';
 
 /**
+ * Task-kind labels for the typed-judgment sidecar (SP-308, #187). Inlined to
+ * mirror `TASK_KIND_OPTIONS` in src/domain/judgment/questions.ts without an
+ * import cycle (schemas.ts stays domain-judgment-free).
+ */
+export const TypedJudgmentTaskKindSchema = z.enum([
+  'plan',
+  'implement',
+  'debug',
+  'refactor',
+  'review',
+  'research',
+  'explain',
+  'operate',
+  'write',
+  'chat',
+]);
+
+/**
+ * Normalized typed-judgment signal sidecar (SP-308, #187). Privacy-safe:
+ * categorical labels, calibrated 0–1 scores, machine reason codes only — no
+ * prompt text or judge-state text. Mirrors {@link TypedJudgmentSidecar} in
+ * entities.ts.
+ */
+export const TypedJudgmentSidecarSchema = z
+  .object({
+    task_kind: TypedJudgmentTaskKindSchema.nullable(),
+    task_kind_confidence: z.number().min(0).max(1).nullable(),
+    capability_deserved: z.number().min(0).max(1).nullable(),
+    deep_reasoning_p: z.number().min(0).max(1).nullable(),
+    code_gen: z.number().min(0).max(1).nullable(),
+    tool_use: z.number().min(0).max(1).nullable(),
+    destructive_p: z.number().min(0).max(1).nullable(),
+    confidences: z.record(z.string(), z.number().min(0).max(1)),
+    skip_reason: z.string().nullable(),
+    latency_ms: z.number().nonnegative().nullable(),
+  })
+  .strict();
+
+/**
  * Privacy-safe routing feature sidecar attached to live decisions (SP-057).
  * Mirrors {@link RoutingFeatureSidecar} in entities.ts.
  */
@@ -346,6 +385,9 @@ export const RoutingFeatureSidecarSchema = z
     token_estimate: z.number().nullable().optional(),
     cascade_threshold: z.number().nullable().optional(),
     cascade_fallback_reason: z.string().nullable().optional(),
+    // Typed-judgment signal sidecar (SP-308, #187); present only when the
+    // typed_judgment stage is wired and enabled, absent when disabled.
+    typed_judgment: TypedJudgmentSidecarSchema.optional(),
   })
   .strict();
 

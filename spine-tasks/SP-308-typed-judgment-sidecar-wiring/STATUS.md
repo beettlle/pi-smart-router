@@ -18,9 +18,9 @@
 ---
 
 ### Step 1: Sidecar
-**Status:** In Progress
+**Status:** In Progress (work done, review pending)
 
-- [ ] Types + strict zod + contract JSON; populate; omit when disabled
+- [x] Types + strict zod + contract JSON; populate; omit when disabled
 
 ---
 

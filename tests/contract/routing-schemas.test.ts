@@ -187,6 +187,24 @@ function liveFeatureSidecar(): Record<string, unknown> {
     prewarm_attempted: false,
     prewarm_accepted: null,
     prewarm_disabled_reason: 'low_acceptance_rate',
+    // SP-308 / #187: typed-judgment signal sidecar (judged turn shape).
+    typed_judgment: typedJudgmentSidecarFixture(),
+  };
+}
+
+/** Judged-turn typed_judgment sidecar (SP-308, #187). */
+function typedJudgmentSidecarFixture() {
+  return {
+    task_kind: 'implement' as const,
+    task_kind_confidence: 0.8,
+    capability_deserved: 1,
+    deep_reasoning_p: 0.7,
+    code_gen: 0,
+    tool_use: 0.5,
+    destructive_p: 0.1,
+    confidences: { task_kind: 0.8, capability_deserved: 0.9 },
+    skip_reason: null,
+    latency_ms: 412,
   };
 }
 
@@ -392,6 +410,53 @@ describe('routing-decision.schema.json', () => {
       const payload = { ...fullRoutingDecision(), features: liveFeatureSidecar() };
       expect(validate(payload)).toBe(true);
       expect(RoutingDecisionSchema.safeParse(payload).success).toBe(true);
+    });
+
+    it('accepts a skipped typed_judgment sidecar (SP-308)', () => {
+      const features = {
+        ...liveFeatureSidecar(),
+        typed_judgment: {
+          task_kind: null,
+          task_kind_confidence: null,
+          capability_deserved: null,
+          deep_reasoning_p: null,
+          code_gen: null,
+          tool_use: null,
+          destructive_p: null,
+          confidences: {},
+          skip_reason: 'typed_judgment_tool_result',
+          latency_ms: null,
+        },
+      };
+      const payload = { ...fullRoutingDecision(), features };
+      expect(validate(payload)).toBe(true);
+      expect(RoutingDecisionSchema.safeParse(payload).success).toBe(true);
+    });
+
+    it('rejects an out-of-range typed_judgment sidecar probability (SP-308)', () => {
+      const features = {
+        ...liveFeatureSidecar(),
+        typed_judgment: {
+          ...typedJudgmentSidecarFixture(),
+          deep_reasoning_p: 1.5,
+        },
+      };
+      const payload = { ...fullRoutingDecision(), features };
+      expect(validate(payload)).toBe(false);
+      expect(RoutingDecisionSchema.safeParse(payload).success).toBe(false);
+    });
+
+    it('rejects unknown keys inside the typed_judgment sidecar (SP-308)', () => {
+      const features = {
+        ...liveFeatureSidecar(),
+        typed_judgment: {
+          ...typedJudgmentSidecarFixture(),
+          prompt_text: 'must never appear',
+        },
+      };
+      const payload = { ...fullRoutingDecision(), features };
+      expect(validate(payload)).toBe(false);
+      expect(RoutingDecisionSchema.safeParse(payload).success).toBe(false);
     });
 
     it('accepts null pin_reason', () => {
