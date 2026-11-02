@@ -1,0 +1,14 @@
+spine-tasks/SP-312-mixed-capability-source-fairness/STATUS.md
+  h_ae151c586ac6c5 3-4,25-27,29,34,36-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78183ebf858b0be326bea54cf891e91518cc96fe",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
