@@ -1,0 +1,26 @@
+specs/001-build-smart-router/contracts/routing-decision.schema.json
+  h_ae151c586ac6c5 299-350
+spine-tasks/SP-308-typed-judgment-sidecar-wiring/STATUS.md
+  h_ae151c586ac6c5 21,23
+src/domain/pipeline/router-pipeline.ts
+  h_ae151c586ac6c5 34-37,96-99,430,480-485,501-530
+src/domain/types/entities.ts
+  h_ae151c586ac6c5 358-402,468-475
+src/domain/types/schemas.ts
+  h_ae151c586ac6c5 315-353,388-390
+tests/contract/routing-schemas.test.ts
+  h_ae151c586ac6c5 190-207,415-461
+tests/unit/typed-judgment-stage.test.ts
+  h_ae151c586ac6c5 474-483
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "659ef01c149c3a9332d6283c89c3a1aa8ff316c3",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
