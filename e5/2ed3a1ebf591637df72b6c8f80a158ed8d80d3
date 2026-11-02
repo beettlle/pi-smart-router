@@ -1,0 +1,18 @@
+spine-tasks/SP-308-typed-judgment-sidecar-wiring/.reviews/0-20261102T012003.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-308-typed-judgment-sidecar-wiring/.reviews/3-20261102T012020.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-308-typed-judgment-sidecar-wiring/.reviews/final-20261102T012149.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e52ed3a1ebf591637df72b6c8f80a158ed8d80d3",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
