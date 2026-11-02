@@ -1,7 +1,7 @@
 # SP-307: typed_judgment pipeline stage (non-deciding, fail-open) — Status
 
-**Current Step:** Step 3: Testing & Verification
-**Status:** In Progress
+**Current Step:** Done
+**Status:** Complete
 **Last Updated:** 2026-11-01
 **Review Level:** 2
 **Review Counter:** 0
@@ -38,10 +38,10 @@
 - stet reviewer re-raised finding cfc5766 after the doc fix (quoted the pre-fix comment text while `last_reviewed_at` pointed at the fix commit 43e43983) — stale-quote reviewer bug; dismissed as false_positive. Candidate stet issue (https://github.com/beettlle/stet/issues) if it recurs.
 
 ### Step 3: Testing & Verification
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Stage order test
-- [ ] Success / timeout / error / abort
-- [ ] tool_result, acknowledgement, force-model skips
-- [ ] Disabled → byte-identical decisions
-- [ ] Run Contract testCommand
+- [x] Stage order test (`typed_judgment` directly after `turn_envelope`, before `context_fit`)
+- [x] Success / timeout / error / abort (22 tests in tests/unit/typed-judgment-stage.test.ts)
+- [x] tool_result, acknowledgement, force-model skips (port never invoked; deep-session continuations still judged per #179)
+- [x] Disabled → byte-identical decisions (also enabled-success byte-identical; `routing_latency_ms` excluded as wall-clock)
+- [x] Run Contract testCommand — typecheck + 74 tests green; stet contract exit 0 (9 false-positive dismissals recorded; 2 real doc-nit fixes landed)
