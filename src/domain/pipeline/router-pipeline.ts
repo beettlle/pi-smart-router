@@ -482,7 +482,9 @@ export class RouterPipeline {
       // signal; skipped turns carry the skip reason). Absent when unwired or
       // disabled so the wire decision stays byte-identical (mirrors the
       // embedding/cascade opt-in pattern).
-      ...(typedJudgmentSidecar ? { typed_judgment: typedJudgmentSidecar } : {}),
+      ...(typedJudgmentSidecar !== undefined
+        ? { typed_judgment: typedJudgmentSidecar }
+        : {}),
     };
 
     const withBaseFeatures = { ...decision, features };

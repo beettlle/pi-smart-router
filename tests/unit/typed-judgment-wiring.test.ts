@@ -200,12 +200,13 @@ describe('typed_judgment feature sidecar (SP-308)', () => {
     });
     const baseline = await new RouterPipeline(fleet).route(request);
 
-    const { port } = makeFakePort();
+    const { port, calls } = makeFakePort();
     const disabled = await new RouterPipeline(fleet, {
       typedJudgmentPort: port,
       typedJudgmentConfig: { ...DEFAULT_TYPED_JUDGMENT_CONFIG },
     }).route(request);
 
+    expect(calls).toHaveLength(0);
     expect(disabled.features).toBeDefined();
     expect('typed_judgment' in disabled.features!).toBe(false);
     expect(JSON.stringify(disabled.features)).not.toContain('typed_judgment');
