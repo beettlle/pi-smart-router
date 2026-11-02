@@ -3,11 +3,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   DEFAULT_BENCHMARK_PROFILES_PATH,
   DEFAULT_CURSOR_QUOTA_COST_PER_1M,
+  getBenchmarkFamilyCohortMax,
   getCapabilitySource,
   mapFleetFromRegistry,
   mapPiModelToProfile,
   resetBenchmarkProfilesCacheForTests,
   resolveBenchmarkModelId,
+  scaleBenchmarkCapabilitiesToFamily,
   setBenchmarkProfilesPathForTests,
   type PiModelInput,
 } from '../../src/config/pi-model-mapper.js';
@@ -28,8 +30,23 @@ function makeInput(overrides: PiModelInput): PiModelInput {
   return overrides;
 }
 
-/** Capabilities from committed live/fixture artifact — avoids hardcoding scores that drift on refresh. */
-function expectedBenchmarkCaps(modelOrAlias: string): {
+/** Pattern-family capability defaults mirrored from the mapper for SP-312 expectations. */
+const FRONTIER_CAPS = { reasoning: 0.95, code_gen: 0.95, tool_use: 0.95 } as const;
+const ECONOMICAL_CAPS = { reasoning: 0.7, code_gen: 0.75, tool_use: 0.7 } as const;
+const CURSOR_AUTO_CAPS = { reasoning: 0.9, code_gen: 0.9, tool_use: 0.95 } as const;
+const COMPOSER_CAPS = { reasoning: 0.85, code_gen: 0.95, tool_use: 0.9 } as const;
+
+/**
+ * Expected capabilities from the committed live/fixture artifact after the
+ * SP-312 fairness rescale (`scaleBenchmarkCapabilitiesToFamily`) anchored at
+ * the caller's pattern-family default — avoids hardcoding scores that drift on
+ * refresh. The rescale invariants themselves are pinned with hand-computed
+ * numbers in pi-model-mapper-capability-scale.test.ts.
+ */
+function expectedBenchmarkCaps(
+  modelOrAlias: string,
+  familyDefault: { reasoning: number; code_gen: number; tool_use: number },
+): {
   reasoning: number;
   code_gen: number;
   tool_use: number;
@@ -42,7 +59,11 @@ function expectedBenchmarkCaps(modelOrAlias: string): {
   if (row === undefined) {
     throw new Error(`missing benchmark row for ${modelOrAlias} (canonical ${canonical})`);
   }
-  return row.capabilities;
+  const cohortMax = getBenchmarkFamilyCohortMax(modelOrAlias);
+  if (cohortMax === undefined) {
+    throw new Error(`missing family cohort max for ${modelOrAlias}`);
+  }
+  return scaleBenchmarkCapabilitiesToFamily(row.capabilities, familyDefault, cohortMax);
 }
 
 afterEach(() => {
@@ -52,7 +73,7 @@ afterEach(() => {
 describe('mapPiModelToProfile', () => {
   describe('Claude family', () => {
     it('maps claude-opus to frontier tier', () => {
-      const expected = expectedBenchmarkCaps('claude-opus-4');
+      const expected = expectedBenchmarkCaps('claude-opus-4', FRONTIER_CAPS);
       const profile = mapPiModelToProfile(
         makeInput({ provider: 'anthropic', id: 'claude-opus-4' }),
       );
@@ -65,7 +86,7 @@ describe('mapPiModelToProfile', () => {
     });
 
     it('maps claude-sonnet to frontier tier', () => {
-      const expected = expectedBenchmarkCaps('claude-3.5-sonnet');
+      const expected = expectedBenchmarkCaps('claude-3.5-sonnet', FRONTIER_CAPS);
       const profile = mapPiModelToProfile(
         makeInput({ provider: 'anthropic', id: 'claude-3.5-sonnet' }),
       );
@@ -84,7 +105,7 @@ describe('mapPiModelToProfile', () => {
       expect(profile.tier).toBe('economical-cloud');
       // SP-311: checked-in artifact matches fixture ingest, which carries a
       // complete claude-3.5-haiku row → benchmark-grounded capabilities.
-      const expected = expectedBenchmarkCaps('claude-3.5-haiku');
+      const expected = expectedBenchmarkCaps('claude-3.5-haiku', ECONOMICAL_CAPS);
       expect(profile.capability_source).toBe('benchmark');
       expect(profile.capabilities.reasoning).toBeCloseTo(expected.reasoning, 4);
       expect(profile.capabilities.code_gen).toBeCloseTo(expected.code_gen, 4);
@@ -95,7 +116,7 @@ describe('mapPiModelToProfile', () => {
 
   describe('GPT family', () => {
     it('maps gpt-5.5 to frontier tier', () => {
-      const expected = expectedBenchmarkCaps('gpt-5.5');
+      const expected = expectedBenchmarkCaps('gpt-5.5', FRONTIER_CAPS);
       const profile = mapPiModelToProfile(
         makeInput({ provider: 'openai', id: 'gpt-5.5' }),
       );
@@ -156,7 +177,7 @@ describe('mapPiModelToProfile', () => {
     });
 
     it('maps gemini-flash to economical tier', () => {
-      const expected = expectedBenchmarkCaps('gemini-2.5-flash');
+      const expected = expectedBenchmarkCaps('gemini-2.5-flash', ECONOMICAL_CAPS);
       const profile = mapPiModelToProfile(
         makeInput({ provider: 'google', id: 'gemini-2.5-flash' }),
       );
@@ -241,7 +262,7 @@ describe('mapPiModelToProfile', () => {
 
       expect(profile.tier).toBe('economical-cloud');
       // SP-311: claude-haiku-5-5 aliases onto the grounded claude-haiku-4-5 row.
-      const expected = expectedBenchmarkCaps('claude-haiku-5-5');
+      const expected = expectedBenchmarkCaps('claude-haiku-5-5', ECONOMICAL_CAPS);
       expect(profile.capability_source).toBe('benchmark');
       expect(profile.capabilities.reasoning).toBeCloseTo(expected.reasoning, 4);
       expect(profile.capabilities.code_gen).toBeCloseTo(expected.code_gen, 4);
@@ -342,12 +363,12 @@ describe('mapPiModelToProfile', () => {
       setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
 
       const cases = [
-        { id: 'claude-opus-5-5', tier: 'frontier-cloud' },
-        { id: 'claude-sonnet-5-5', tier: 'frontier-cloud' },
-        { id: 'claude-haiku-5-5', tier: 'economical-cloud' },
+        { id: 'claude-opus-5-5', tier: 'frontier-cloud', family: FRONTIER_CAPS },
+        { id: 'claude-sonnet-5-5', tier: 'frontier-cloud', family: FRONTIER_CAPS },
+        { id: 'claude-haiku-5-5', tier: 'economical-cloud', family: ECONOMICAL_CAPS },
       ] as const;
-      for (const { id, tier } of cases) {
-        const expected = expectedBenchmarkCaps(id);
+      for (const { id, tier, family } of cases) {
+        const expected = expectedBenchmarkCaps(id, family);
         const profile = mapPiModelToProfile(makeInput({ provider: 'anthropic', id }));
 
         expect(profile.tier, id).toBe(tier);
@@ -437,7 +458,7 @@ describe('mapPiModelToProfile', () => {
 
   describe('Cursor family (SP-086)', () => {
     it('maps cursor/auto to frontier tier with benchmark-grounded capabilities (SP-174)', () => {
-      const expected = expectedBenchmarkCaps('cursor/auto');
+      const expected = expectedBenchmarkCaps('cursor/auto', CURSOR_AUTO_CAPS);
       const profile = mapPiModelToProfile(
         makeInput({ provider: 'cursor', id: 'cursor/auto' }),
       );
@@ -453,7 +474,7 @@ describe('mapPiModelToProfile', () => {
     });
 
     it('maps composer-latest to frontier tier with benchmark-grounded code_gen (SP-174)', () => {
-      const expected = expectedBenchmarkCaps('composer-latest');
+      const expected = expectedBenchmarkCaps('composer-latest', COMPOSER_CAPS);
       const profile = mapPiModelToProfile(
         makeInput({ provider: 'cursor', id: 'composer-latest' }),
       );
@@ -466,7 +487,7 @@ describe('mapPiModelToProfile', () => {
     });
 
     it('maps cursor/composer-latest via cursor/* rule with alias grounding', () => {
-      const expected = expectedBenchmarkCaps('cursor/composer-latest');
+      const expected = expectedBenchmarkCaps('cursor/composer-latest', CURSOR_AUTO_CAPS);
       const profile = mapPiModelToProfile(
         makeInput({ provider: 'cursor', id: 'cursor/composer-latest' }),
       );
@@ -500,7 +521,7 @@ describe('mapPiModelToProfile', () => {
     });
 
     it('maps opaque fleet id default to frontier tier with virtual quota cost (SP-098)', () => {
-      const expected = expectedBenchmarkCaps('default');
+      const expected = expectedBenchmarkCaps('default', CURSOR_AUTO_CAPS);
       const profile = mapPiModelToProfile(
         makeInput({ provider: 'cursor', id: 'default' }),
       );
@@ -593,7 +614,7 @@ describe('mapPiModelToProfile', () => {
   describe('benchmark-grounded capabilities (SP-136 / SP-174)', () => {
     it('uses ingest artifact scores for known benchmark model ids', () => {
       setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
-      const expected = expectedBenchmarkCaps('claude-opus-4-5');
+      const expected = expectedBenchmarkCaps('claude-opus-4-5', FRONTIER_CAPS);
 
       const profile = mapPiModelToProfile(
         makeInput({ provider: 'anthropic', id: 'claude-opus-4-5' }),
@@ -609,18 +630,21 @@ describe('mapPiModelToProfile', () => {
 
     it('resolves scoped-fleet alias to benchmark row (not pattern-default-only)', () => {
       setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
-      const expected = expectedBenchmarkCaps('cursor/auto');
+      const expected = expectedBenchmarkCaps('cursor/auto', CURSOR_AUTO_CAPS);
 
-      // Real dogfood Cursor fleet id — must not stay on CURSOR_AUTO pattern defaults
+      // Real dogfood Cursor fleet id — resolves to the gpt-5.3-codex row.
+      // SP-312: that row is the cohort best of its pattern family, so the
+      // fairness rescale anchors it exactly at the family default; what marks
+      // the id as grounded is capability_source, not a raw-score delta.
       const profile = mapPiModelToProfile(
         makeInput({ provider: 'cursor', id: 'cursor/auto' }),
       );
 
       expect(profile.capability_source).toBe('benchmark');
+      expect(resolveBenchmarkModelId('cursor/auto')).toBe('gpt-5.3-codex');
       expect(profile.capabilities.reasoning).toBeCloseTo(expected.reasoning, 4);
-      expect(profile.capabilities.reasoning).not.toBe(0.9);
-      expect(profile.capabilities.code_gen).not.toBe(0.9);
-      expect(profile.capabilities.tool_use).not.toBe(0.95);
+      expect(profile.capabilities.code_gen).toBeCloseTo(expected.code_gen, 4);
+      expect(profile.capabilities.tool_use).toBeCloseTo(expected.tool_use, 4);
     });
 
     it('falls back to regex defaults when benchmark row and alias are missing', () => {
@@ -675,7 +699,10 @@ describe('mapPiModelToProfile', () => {
           makeInput({ provider: 'anthropic', id: 'claude-3.5-haiku' }),
         );
 
-        expect(profile.capabilities.reasoning).toBeCloseTo(0.5685, 4);
+        // SP-312: grounded row is rescaled onto the economical family default
+        // (raw 0.5685 lifted by 0.7/cohortMax) — compare via the override cache
+        const expected = expectedBenchmarkCaps('claude-3.5-haiku', ECONOMICAL_CAPS);
+        expect(profile.capabilities.reasoning).toBeCloseTo(expected.reasoning, 4);
         expect(profile.capability_source).toBe('benchmark');
       } finally {
         rmSync(dir, { recursive: true, force: true });
@@ -828,7 +855,7 @@ describe('fleet benchmark aliases (SP-174)', () => {
 describe('ingested fleet floors smoke (SP-180)', () => {
   it('scoped fleet ID frontier/tool_use floors reflect ingested benchmark scores', () => {
     setBenchmarkProfilesPathForTests(DEFAULT_BENCHMARK_PROFILES_PATH);
-    const expected = expectedBenchmarkCaps('cursor/auto');
+    const expected = expectedBenchmarkCaps('cursor/auto', CURSOR_AUTO_CAPS);
 
     // cursor/auto aliases → gpt-5.3-codex row in config/benchmark-profiles.json
     const profile = mapPiModelToProfile(
@@ -837,12 +864,11 @@ describe('ingested fleet floors smoke (SP-180)', () => {
 
     expect(profile.tier).toBe('frontier-cloud');
     expect(profile.capability_source).toBe('benchmark');
-    // Pattern-default frontier floors are 0.95 / 0.9 — ingested scores must differ
+    // SP-312: cohort-best rows anchor at the family default — floors now
+    // reflect the SP-312 rescale of ingested scores (see capability-scale tests)
     expect(profile.capabilities.tool_use).toBeCloseTo(expected.tool_use, 4);
-    expect(profile.capabilities.tool_use).not.toBe(0.95);
     expect(profile.capabilities.reasoning).toBeCloseTo(expected.reasoning, 4);
-    expect(profile.capabilities.reasoning).not.toBe(0.9);
-    expect(profile.capabilities.code_gen).not.toBe(0.9);
+    expect(profile.capabilities.code_gen).toBeCloseTo(expected.code_gen, 4);
     expect(resolveBenchmarkModelId('cursor/auto')).toBe('gpt-5.3-codex');
   });
 });

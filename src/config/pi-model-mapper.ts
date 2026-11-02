@@ -8,6 +8,21 @@
  * scores instead of regex defaults. Unknown models or missing benchmark rows
  * receive conservative pattern defaults. Mapped profiles include
  * `capability_source` (`benchmark` | `pattern_default`) for explain/telemetry.
+ *
+ * Mixed capability-source fairness (SP-312 / #193): raw ingest scores live on a
+ * compressed scale (~0.5–0.85) while pattern defaults sit at 0.7–0.95, so a
+ * benchmark-grounded model ranked below every ungrounded same-tier model purely
+ * because of its capability source. Grounded vectors are therefore rescaled per
+ * dimension against the max of their own pattern-family cohort, anchored at the
+ * matched family default: the best-measured grounded model in a family ties the
+ * ungrounded family default, and every other grounded model ranks below it in
+ * proportion to its measured distance from the best — remaining differences are
+ * explained by benchmark standing, not capability source. The transform is
+ * strictly monotonic per dimension, so grounded relative order is preserved.
+ * The rescale is lift-only: a grounded model is never pushed below its measured
+ * scores, so families whose pattern default sits below the measured cohort
+ * scale (e.g. UNKNOWN_DEFAULTS rows like gpt-5.3-codex) keep their raw scores
+ * instead of regressing. See `withBenchmarkCapabilities`.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -62,6 +77,13 @@ const benchmarkProfilesArtifactSchema = z.object({
 interface BenchmarkProfilesCache {
   readonly capabilitiesByModelId: ReadonlyMap<string, ModelCapabilities>;
   readonly aliases: ReadonlyMap<string, string>;
+  /**
+   * SP-312: canonical model_id → per-dimension max across the pattern-family
+   * cohort its benchmark row belongs to (family = first matching
+   * `MODEL_PATTERN_RULES` entry, else UNKNOWN_DEFAULTS). Anchors the fairness
+   * rescale in `withBenchmarkCapabilities`.
+   */
+  readonly cohortMaxByModelId: ReadonlyMap<string, ModelCapabilities>;
 }
 
 let benchmarkProfilesPathOverride: string | null | undefined;
@@ -114,7 +136,11 @@ function loadBenchmarkProfilesCache(): BenchmarkProfilesCache | null {
     const aliases = new Map<string, string>(
       Object.entries(result.data.aliases ?? {}),
     );
-    benchmarkProfilesCache = { capabilitiesByModelId, aliases };
+    benchmarkProfilesCache = {
+      capabilitiesByModelId,
+      aliases,
+      cohortMaxByModelId: computeFamilyCohortMax(result.data.models),
+    };
     return benchmarkProfilesCache;
   } catch (err: unknown) {
     console.warn('benchmark profiles artifact invalid; using regex capability defaults', {
@@ -138,20 +164,77 @@ export function resolveBenchmarkModelId(modelId: string): string {
   return cache.aliases.get(modelId) ?? modelId;
 }
 
-function lookupBenchmarkCapabilities(modelId: string): ModelCapabilities | undefined {
+/** A resolved benchmark row: capabilities plus the canonical row id (SP-312). */
+interface GroundedBenchmarkRow {
+  readonly capabilities: ModelCapabilities;
+  readonly rowId: string;
+}
+
+function lookupBenchmarkRow(modelId: string): GroundedBenchmarkRow | undefined {
   const cache = loadBenchmarkProfilesCache();
   if (cache === null) {
     return undefined;
   }
   const direct = cache.capabilitiesByModelId.get(modelId);
   if (direct !== undefined) {
-    return direct;
+    return { capabilities: direct, rowId: modelId };
   }
   const canonical = cache.aliases.get(modelId);
   if (canonical === undefined) {
     return undefined;
   }
-  return cache.capabilitiesByModelId.get(canonical);
+  const capabilities = cache.capabilitiesByModelId.get(canonical);
+  return capabilities === undefined ? undefined : { capabilities, rowId: canonical };
+}
+
+function lookupBenchmarkCapabilities(modelId: string): ModelCapabilities | undefined {
+  return lookupBenchmarkRow(modelId)?.capabilities;
+}
+
+/**
+ * Per-dimension max of the pattern-family cohort the model's benchmark row
+ * belongs to (SP-312). Exported for fairness audits and tests.
+ */
+export function getBenchmarkFamilyCohortMax(modelId: string): ModelCapabilities | undefined {
+  const cache = loadBenchmarkProfilesCache();
+  if (cache === null) {
+    return undefined;
+  }
+  const row = lookupBenchmarkRow(modelId);
+  if (row === undefined) {
+    return undefined;
+  }
+  const max = cache.cohortMaxByModelId.get(row.rowId);
+  return max === undefined ? undefined : { ...max };
+}
+
+/**
+ * SP-312 / #193 — rescale a grounded capability vector onto the pattern-default
+ * scale of its model family. Per dimension:
+ * `score × max(1, familyDefault / cohortMax)`, where `cohortMax` is the max
+ * across the pattern-family cohort the benchmark row belongs to. Properties:
+ * - Strictly monotonic in the raw score → grounded relative order preserved.
+ * - The cohort-best grounded model reaches the family default exactly (ties
+ *   ungrounded same-tier models) whenever the family default sits above the
+ *   measured cohort scale.
+ * - Lift-only: never pushes a grounded model below its measured scores, so
+ *   rows whose family default is below the cohort scale (e.g. UNKNOWN_DEFAULTS
+ *   rows) are not penalized for being benchmarked.
+ * A degenerate cohort (max ≤ 0) cannot differentiate — keep the raw score
+ * rather than divide by zero.
+ */
+export function scaleBenchmarkCapabilitiesToFamily(
+  grounded: ModelCapabilities,
+  familyDefault: ModelCapabilities,
+  familyCohortMax: ModelCapabilities,
+): ModelCapabilities {
+  const scale = (score: number, defaultScore: number, cohortMaxScore: number): number =>
+    cohortMaxScore > 0 ? score * Math.max(1, defaultScore / cohortMaxScore) : score;
+  return {
+    reasoning: scale(grounded.reasoning, familyDefault.reasoning, familyCohortMax.reasoning),
+    code_gen: scale(grounded.code_gen, familyDefault.code_gen, familyCohortMax.code_gen),
+    tool_use: scale(grounded.tool_use, familyDefault.tool_use, familyCohortMax.tool_use),
+  };
 }
 
 /**
@@ -174,15 +257,25 @@ function withBenchmarkCapabilities(
   defaults: ModelFamilyDefaults,
   modelId: string,
 ): { readonly defaults: ModelFamilyDefaults; readonly capability_source: CapabilitySource } {
-  const grounded = lookupBenchmarkCapabilities(modelId);
-  if (grounded === undefined) {
+  const row = lookupBenchmarkRow(modelId);
+  if (row === undefined) {
     return { defaults, capability_source: 'pattern_default' };
   }
+
+  // SP-312 / #193: rescale grounded scores onto the family-default scale so a
+  // benchmark-grounded model no longer loses to an ungrounded same-tier model
+  // purely because of capability source (see header comment).
+  const cache = loadBenchmarkProfilesCache();
+  const cohortMax = cache?.cohortMaxByModelId.get(row.rowId);
+  const capabilities =
+    cohortMax === undefined
+      ? { ...row.capabilities }
+      : scaleBenchmarkCapabilitiesToFamily(row.capabilities, defaults.capabilities, cohortMax);
 
   return {
     defaults: {
       ...defaults,
-      capabilities: { ...grounded },
+      capabilities,
     },
     capability_source: 'benchmark',
   };
@@ -378,6 +471,37 @@ function matchPatternRules(id: string): ModelFamilyDefaults | undefined {
     }
   }
   return undefined;
+}
+
+/**
+ * SP-312: group benchmark rows by their matched pattern family (UNKNOWN_DEFAULTS
+ * when no rule matches) and return, per canonical row id, the per-dimension max
+ * across that family cohort. Called lazily from `loadBenchmarkProfilesCache`,
+ * so the pattern-rule consts are already initialized at call time.
+ */
+function computeFamilyCohortMax(
+  models: readonly { readonly model_id: string; readonly capabilities: ModelCapabilities }[],
+): ReadonlyMap<string, ModelCapabilities> {
+  const cohortMaxByFamily = new Map<ModelFamilyDefaults, ModelCapabilities>();
+  const familyByModelId = new Map<string, ModelFamilyDefaults>();
+  for (const row of models) {
+    const family = matchPatternRules(row.model_id) ?? UNKNOWN_DEFAULTS;
+    familyByModelId.set(row.model_id, family);
+    const existing = cohortMaxByFamily.get(family);
+    cohortMaxByFamily.set(family, {
+      reasoning: Math.max(existing?.reasoning ?? 0, row.capabilities.reasoning),
+      code_gen: Math.max(existing?.code_gen ?? 0, row.capabilities.code_gen),
+      tool_use: Math.max(existing?.tool_use ?? 0, row.capabilities.tool_use),
+    });
+  }
+  const cohortMaxByModelId = new Map<string, ModelCapabilities>();
+  for (const [modelId, family] of familyByModelId) {
+    const max = cohortMaxByFamily.get(family);
+    if (max !== undefined) {
+      cohortMaxByModelId.set(modelId, max);
+    }
+  }
+  return cohortMaxByModelId;
 }
 
 /**
