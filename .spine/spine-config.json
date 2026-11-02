@@ -15,7 +15,7 @@
   },
   "agents": {
     "worker": {
-      "model": "kimi-coding/k3",
+      "model": "kimi-coding/k3.1-pro",
       "thinking": "high"
     },
     "reviewer": {
@@ -45,7 +45,7 @@
     "profiles": {
       "default": {
         "worker": {
-          "model": "kimi-coding/k3",
+          "model": "kimi-coding/k3.1-pro",
           "thinking": "high"
         },
         "reviewer": {
@@ -71,7 +71,7 @@
       },
       "allegretto": {
         "worker": {
-          "model": "kimi-coding/k3",
+          "model": "kimi-coding/k3.1-pro",
           "thinking": "high"
         },
         "reviewer": {
