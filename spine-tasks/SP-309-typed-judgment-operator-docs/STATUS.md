@@ -1,8 +1,8 @@
 # SP-309: Operator docs: typed judgment setup, privacy, stage table — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
-**Last Updated:** 2026-10-24
+**Current Step:** Complete
+**Status:** Complete
+**Last Updated:** 2026-11-02
 **Review Level:** 1
 **Review Counter:** 0
 **Iteration:** 0
@@ -11,28 +11,28 @@
 ---
 
 ### Step 0: Preflight
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Read merged config keys, env names, reason codes
+- [x] Read merged config keys, env names, reason codes
 
 ---
 
 ### Step 1: README
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Stage table + typed judgment section + privacy + attribution
+- [x] Stage table + typed judgment section + privacy + attribution
 
 ---
 
 ### Step 2: Docs sync
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] migration-v1.md stage order; roadmap row
+- [x] migration-v1.md stage order; roadmap row
 
 ---
 
 ### Step 3: Testing & Verification
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Names match source
-- [ ] Run Contract testCommand
+- [x] Names match source
+- [x] Run Contract testCommand
