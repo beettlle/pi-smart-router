@@ -1,7 +1,7 @@
 # SP-309: Operator docs: typed judgment setup, privacy, stage table — Status
 
-**Current Step:** Step 3: Testing & Verification
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-11-02
 **Review Level:** 1
 **Review Counter:** 0
@@ -32,7 +32,7 @@
 ---
 
 ### Step 3: Testing & Verification
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Names match source
-- [ ] Run Contract testCommand
+- [x] Names match source
+- [x] Run Contract testCommand
