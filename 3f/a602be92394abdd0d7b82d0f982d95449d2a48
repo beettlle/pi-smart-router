@@ -1,0 +1,18 @@
+spine-tasks/SP-312-mixed-capability-source-fairness/.reviews/0-20261102T003200.md
+  h_ae151c586ac6c5 1-8
+spine-tasks/SP-312-mixed-capability-source-fairness/.reviews/2-20261102T003214.md
+  h_ae151c586ac6c5 1-13
+spine-tasks/SP-312-mixed-capability-source-fairness/.reviews/final-20261102T003315.md
+  h_ae151c586ac6c5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3fa602be92394abdd0d7b82d0f982d95449d2a48",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
