@@ -1008,7 +1008,7 @@
 
 **Source:** **v1.3.0** (2026-10-24, minor profile). Theme: typed-judgment foundation (epic #183 Sprint 1) plus current-frontier fleet profiles (#193, operator-approved fourth enhancement exception 2026-10-24). Scope approved 2026-10-24.
 
-**Status:** Scope approved; Phase 4 in progress (v1.2.2 published 2026-11-01). Precondition: v1.2.2 batch `20261023T001303-b036` integrated (SP-306 needs SP-303).
+**Status:** Released **v1.3.0** on npm (`latest`, 2026-11-02). Waves 0–3 integrated (batches `20261101T184223-36cb`, `20261101T213121-1248`, `20261101T233944-5e65`, `20261102T003651-b174`); published via npm trusted publishing (stage-only) after operator 2FA approval. Post-integrate fixes on main for parallel-lane collisions: `14115809` (noul mapped as P(yes) after SP-305 wire change), `b597166c` (incident fixtures moved to `typed-judgment/incidents/`). Waves 1–3 gated with `SMART_ROUTER_SKIP_LIVE_BENCHMARK_REFRESH=1` because live refresh drops SP-311 curated rows (#199).
 
 **Scope ID:** `SP-304,SP-305,SP-306,SP-307,SP-308,SP-309,SP-310,SP-311,SP-312`
 
