@@ -229,9 +229,10 @@ export interface PipelineOptions {
    */
   readonly typedJudgmentPort?: TypedJudgmentPort;
   /**
-   * Typed judgment operator knobs (SP-304). Missing config or
-   * `enabled: false` → the typed_judgment stage skips with
-   * `typed_judgment_disabled` and routing is byte-identical to today.
+   * Typed judgment operator knobs (SP-304). Missing config, missing
+   * `typedJudgmentPort`, or `enabled: false` → the typed_judgment stage
+   * skips with `typed_judgment_disabled` and routing is byte-identical
+   * to today.
    */
   readonly typedJudgmentConfig?: TypedJudgmentConfig;
 }
