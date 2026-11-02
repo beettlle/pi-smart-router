@@ -1,0 +1,18 @@
+docs/migration-v1.md
+  h_ae151c586ac6c5 88
+docs/routing-roadmap.md
+  h_ae151c586ac6c5 131
+spine-tasks/SP-309-typed-judgment-operator-docs/STATUS.md
+  h_ae151c586ac6c5 3,28,30,35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d2decdd73a76bb42111b88ffaaf98fe49ccd2b7",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
