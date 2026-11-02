@@ -1,6 +1,6 @@
 # SP-309: Operator docs: typed judgment setup, privacy, stage table — Status
 
-**Current Step:** Step 2: Docs sync
+**Current Step:** Step 3: Testing & Verification
 **Status:** In Progress
 **Last Updated:** 2026-11-02
 **Review Level:** 1
@@ -25,14 +25,14 @@
 ---
 
 ### Step 2: Docs sync
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] migration-v1.md stage order; roadmap row
+- [x] migration-v1.md stage order; roadmap row
 
 ---
 
 ### Step 3: Testing & Verification
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Names match source
 - [ ] Run Contract testCommand
