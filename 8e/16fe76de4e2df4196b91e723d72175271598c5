@@ -1,0 +1,14 @@
+spine-tasks/SP-308-typed-judgment-sidecar-wiring/STATUS.md
+  h_ae151c586ac6c5 3-4,7,35,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8e16fe76de4e2df4196b91e723d72175271598c5",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
