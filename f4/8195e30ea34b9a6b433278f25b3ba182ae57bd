@@ -1,0 +1,14 @@
+tests/unit/typed-judgment-wiring.test.ts
+  h_ae151c586ac6c5 1-271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f48195e30ea34b9a6b433278f25b3ba182ae57bd",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
