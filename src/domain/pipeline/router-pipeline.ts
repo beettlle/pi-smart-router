@@ -2,10 +2,13 @@
  * Pipeline stage orchestrator — FR-001, FR-006, FR-022.
  *
  * Runs stages sequentially with early-exit on decision.
- * Documented order (SP-119, #69):
- *   hardware_probe → loop_escalation → turn_envelope → context_fit → low_intensity
- *   → session_pin → triage → local_zero → triage_cloud_fallback → hydra_match
- *   → safe_default → context_overflow_fallback
+ * Documented order (SP-119, #69; typed_judgment inserted by SP-307, #187):
+ *   hardware_probe → loop_escalation → turn_envelope → typed_judgment → context_fit
+ *   → low_intensity → session_pin → triage → local_zero → triage_cloud_fallback
+ *   → hydra_match → safe_default → context_overflow_fallback
+ * typed_judgment never decides (fail open, SP-307); route() is serialized per
+ * pipeline (SP-230), so judge latency adds to user-turn routing latency only —
+ * tool_result turns pay nothing.
  * Any stage failure falls back to safeCloudDefault(); never throws to host.
  *
  * SP-273 + SP-274 / #143: every stage now lives in a focused module behind
@@ -29,7 +32,13 @@ import type {
   SaarConfig,
 } from '../types/index.js';
 import type { QuotaWindowPosition } from '../types/entities.js';
-import type { LowIntensityConfig, LocalZeroConfig, VirtualCostV2Config } from '../types/schemas.js';
+import type {
+  LowIntensityConfig,
+  LocalZeroConfig,
+  TypedJudgmentConfig,
+  VirtualCostV2Config,
+} from '../types/schemas.js';
+import type { TypedJudgmentPort } from '../ports/typed-judgment-port.js';
 import type {
   HardwareProbeConfig,
   HardwareProbePort,
@@ -81,6 +90,7 @@ import {
 import { createHydraMatchStage } from './hydra-match-stage.js';
 import { createHardwareProbeStage } from './hardware-probe-stage.js';
 import { createTurnEnvelopeStage } from './turn-envelope-stage.js';
+import { createTypedJudgmentStage } from './typed-judgment-stage.js';
 import { createContextFitStage } from './context-fit-stage.js';
 import { createLowIntensityStage } from './low-intensity-stage.js';
 import { createLocalZeroStage } from './local-zero-stage.js';
@@ -116,6 +126,7 @@ export const PIPELINE_STAGE_ORDER = [
   'hardware_probe',
   'loop_escalation',
   'turn_envelope',
+  'typed_judgment',
   'context_fit',
   'low_intensity',
   'session_pin',
@@ -210,6 +221,20 @@ export interface PipelineOptions {
   readonly learnedRouteStore?: LearnedRouteStore;
   /** Compiled operator pattern pack overlay for the degraded sandwich (SP-212, #119). */
   readonly patternPack?: CompiledPatternPack;
+  /**
+   * Typed judgment port (SP-304, #184; consumed by SP-307, #187). Injected by
+   * the composition root in SP-308; missing port OR missing/disabled
+   * `typedJudgmentConfig` → the typed_judgment stage skips with
+   * `typed_judgment_disabled` (fail open).
+   */
+  readonly typedJudgmentPort?: TypedJudgmentPort;
+  /**
+   * Typed judgment operator knobs (SP-304). Missing config, missing
+   * `typedJudgmentPort`, or `enabled: false` → the typed_judgment stage
+   * skips with `typed_judgment_disabled` and routing is byte-identical
+   * to today.
+   */
+  readonly typedJudgmentConfig?: TypedJudgmentConfig;
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -229,6 +254,7 @@ export class RouterPipeline {
   private readonly hardwareProbePipelineStage: PipelineStage = createHardwareProbeStage();
   private readonly loopEscalationPipelineStage: PipelineStage = createLoopEscalationStage();
   private readonly turnEnvelopePipelineStage: PipelineStage = createTurnEnvelopeStage();
+  private readonly typedJudgmentPipelineStage: PipelineStage = createTypedJudgmentStage();
   private readonly contextFitPipelineStage: PipelineStage = createContextFitStage();
   private readonly lowIntensityPipelineStage: PipelineStage = createLowIntensityStage();
   private readonly sessionPinPipelineStage: PipelineStage = createSessionPinStage();
@@ -266,6 +292,7 @@ export class RouterPipeline {
       { name: 'hardware_probe', run: this.hardwareProbeStage.bind(this) },
       { name: 'loop_escalation', run: this.loopEscalation.bind(this) },
       { name: 'turn_envelope', run: this.turnEnvelope.bind(this) },
+      { name: 'typed_judgment', run: this.typedJudgment.bind(this) },
       { name: 'context_fit', run: this.contextFitStage.bind(this) },
       { name: 'low_intensity', run: this.lowIntensityGate.bind(this) },
       { name: 'session_pin', run: this.sessionPin.bind(this) },
@@ -651,6 +678,11 @@ export class RouterPipeline {
   private async turnEnvelope(request: RoutingRequest): Promise<StageResult> {
     void request;
     return this.runStageWithContext(this.turnEnvelopePipelineStage);
+  }
+
+  private async typedJudgment(request: RoutingRequest): Promise<StageResult> {
+    void request;
+    return this.runStageWithContext(this.typedJudgmentPipelineStage);
   }
 
   private async contextFitStage(request: RoutingRequest): Promise<StageResult> {

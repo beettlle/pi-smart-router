@@ -45,6 +45,7 @@ export const RoutingStageSchema = z.enum([
   'hardware_probe',
   'loop_escalation',
   'turn_envelope',
+  'typed_judgment',
   'context_fit',
   'low_intensity',
   'session_pin',

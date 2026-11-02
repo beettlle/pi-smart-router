@@ -70,6 +70,9 @@ function makeRoutingContext(overrides?: Partial<RoutingContext>): RoutingContext
     routePath: null,
     routePathConfidence: null,
     prewarmOutcome: null,
+    typedJudgment: null,
+    typedJudgmentSkipReason: null,
+    typedJudgmentLatencyMs: null,
     ...overrides,
   };
 }

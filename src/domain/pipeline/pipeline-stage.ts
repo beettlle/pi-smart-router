@@ -25,6 +25,7 @@ import type { MatchResult } from '../matching/hydra-matcher.js';
 import type { ClusterMatchResult } from '../matching/cluster-matcher.js';
 import type { ExpectedCostBreakdown } from '../routing/expected-cost.js';
 import type { PrewarmOutcome } from '../routing/speculative-prewarm.js';
+import type { TypedJudgment } from '../judgment/answer-mapper.js';
 import type {
   PipelineOptions,
   PipelineStageName,
@@ -119,6 +120,19 @@ export interface RoutingContext {
 
   /** Speculative prewarm outcome for explain/telemetry (SP-217, #117). */
   prewarmOutcome: PrewarmOutcome | null;
+
+  /**
+   * typed_judgment output for the current user-prompt turn (SP-307, #187).
+   * `null` when the stage skipped or the judge call failed (fail open) —
+   * later stages must behave exactly as if the field were absent.
+   */
+  typedJudgment: TypedJudgment | null;
+
+  /** Why typed_judgment skipped/failed (`typed_judgment_*` codes), or null on success. */
+  typedJudgmentSkipReason: string | null;
+
+  /** Wall-clock judge-call latency in ms; null when the port was not called. */
+  typedJudgmentLatencyMs: number | null;
 }
 
 /**
@@ -159,6 +173,9 @@ export function createRoutingContext(args: {
     routePath: null,
     routePathConfidence: null,
     prewarmOutcome: null,
+    typedJudgment: null,
+    typedJudgmentSkipReason: null,
+    typedJudgmentLatencyMs: null,
   };
 }
 
