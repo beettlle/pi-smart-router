@@ -1,8 +1,8 @@
 # SP-308: Typed-judgment feature sidecar + composition-root wiring — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
-**Last Updated:** 2026-10-24
+**Current Step:** Step 1: Sidecar
+**Status:** In Progress
+**Last Updated:** 2026-11-02
 **Review Level:** 2
 **Review Counter:** 0
 **Iteration:** 0
@@ -11,14 +11,14 @@
 ---
 
 ### Step 0: Preflight
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Confirm SP-305/SP-307 on main; read sidecar fixtures
+- [x] Confirm SP-305/SP-307 on main; read sidecar fixtures
 
 ---
 
 ### Step 1: Sidecar
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Types + strict zod + contract JSON; populate; omit when disabled
 
@@ -38,3 +38,14 @@
 - [ ] Disabled → byte-identical fixtures
 - [ ] Wiring: loopback port bound; remote without key fails closed
 - [ ] Run Contract testCommand
+
+---
+
+## Discoveries
+
+- `PipelineOptions` (SP-307) already declares `typedJudgmentPort` / `typedJudgmentConfig`;
+  `GatewayDispatchOptions extends PipelineOptions` and `GatewayDispatch` spreads options into
+  `RouterPipeline`, so no gateway-dispatch.ts change is needed (forwarding is structural).
+- SP-307 `tests/unit/typed-judgment-stage.test.ts` "byte-identical when enabled" compares full
+  decision objects; the SP-308 sidecar intentionally changes the enabled-path features payload,
+  so that test needs a minimal update (exclude the new sidecar key) — flagged for reviewers.
