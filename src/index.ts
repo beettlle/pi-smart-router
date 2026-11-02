@@ -171,8 +171,19 @@ export type {
   TurnType,
 } from './domain/types/index.js';
 export type { QuotaWindowPosition } from './domain/types/entities.js';
-export type { OperatorConfig } from './domain/types/schemas.js';
-export { DEFAULT_PLANNING_DELEGATE_CONFIG } from './domain/types/schemas.js';
+export type { OperatorConfig, TypedJudgmentConfig } from './domain/types/schemas.js';
+export {
+  DEFAULT_PLANNING_DELEGATE_CONFIG,
+  DEFAULT_TYPED_JUDGMENT_CONFIG,
+  resolveTypedJudgmentConfigFromEnv,
+} from './domain/types/schemas.js';
+
+// Typed judgment (SP-308, #187): composition-root adapter binding
+export {
+  createTypedJudgmentPort,
+  type CreateTypedJudgmentPortResult,
+} from './infrastructure/judgment/jev-typed-judgment-adapter.js';
+export type { TypedJudgmentPort } from './domain/ports/typed-judgment-port.js';
 
 // Config
 export {

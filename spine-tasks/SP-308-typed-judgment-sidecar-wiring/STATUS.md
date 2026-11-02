@@ -34,9 +34,9 @@
 ### Step 3: Testing & Verification
 **Status:** In Progress
 
-- [ ] Judged and skipped turn sidecars; no text fields
-- [ ] Disabled → byte-identical fixtures
-- [ ] Wiring: loopback port bound; remote without key fails closed
+- [x] Judged and skipped turn sidecars; no text fields
+- [x] Disabled → byte-identical fixtures
+- [x] Wiring: loopback port bound; remote without key fails closed
 - [ ] Run Contract testCommand
 
 ---
@@ -49,3 +49,11 @@
 - SP-307 `tests/unit/typed-judgment-stage.test.ts` "byte-identical when enabled" compares full
   decision objects; the SP-308 sidecar intentionally changes the enabled-path features payload,
   so that test needs a minimal update (exclude the new sidecar key) — flagged for reviewers.
+- Scope extension (lint-forced): `no-restricted-imports` forbids deep `src/**` imports from
+  `.pi/extensions/`, so `src/index.ts` gained additive facade re-exports
+  (`createTypedJudgmentPort`, `CreateTypedJudgmentPortResult`, `TypedJudgmentPort`,
+  `DEFAULT_TYPED_JUDGMENT_CONFIG`, `resolveTypedJudgmentConfigFromEnv`, `TypedJudgmentConfig`).
+  Facade section contract is additive-only; no existing export renamed or removed.
+- End-to-end, `tool_result` turns are decided by `turn_envelope` before `typed_judgment` runs,
+  so the skipped-turn sidecar test uses `force_model_id` (skip reason
+  `typed_judgment_force_model`) which does reach the stage.

@@ -20,6 +20,9 @@ import {
   RoutingTelemetryEmitter,
   applyCatalogPricesToFleet,
   createRouterFromFleet,
+  createTypedJudgmentPort,
+  DEFAULT_TYPED_JUDGMENT_CONFIG,
+  resolveTypedJudgmentConfigFromEnv,
 } from '../../../src/index.js';
 import type {
   QuotaWindowAdapter,
@@ -32,12 +35,6 @@ import type {
   GatewayDispatchOptions,
   PiExtensionHooks,
 } from '../../../src/index.js';
-
-import { createTypedJudgmentPort } from '../../../src/infrastructure/judgment/jev-typed-judgment-adapter.js';
-import {
-  DEFAULT_TYPED_JUDGMENT_CONFIG,
-  resolveTypedJudgmentConfigFromEnv,
-} from '../../../src/domain/types/schemas.js';
 
 import { resolveModelScope } from './pi-model-scope.js';
 import type { FleetMode, SmartRouterRuntime } from './types.js';
