@@ -1,6 +1,6 @@
 # SP-308: Typed-judgment feature sidecar + composition-root wiring — Status
 
-**Current Step:** Step 1: Sidecar
+**Current Step:** Step 3: Testing & Verification
 **Status:** In Progress
 **Last Updated:** 2026-11-02
 **Review Level:** 2
@@ -18,21 +18,21 @@
 ---
 
 ### Step 1: Sidecar
-**Status:** In Progress (work done, review pending)
+**Status:** Complete
 
 - [x] Types + strict zod + contract JSON; populate; omit when disabled
 
 ---
 
 ### Step 2: Composition root
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] createDispatchOptions binds port; GatewayDispatch forwards
+- [x] createDispatchOptions binds port; GatewayDispatch forwards
 
 ---
 
 ### Step 3: Testing & Verification
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Judged and skipped turn sidecars; no text fields
 - [ ] Disabled → byte-identical fixtures

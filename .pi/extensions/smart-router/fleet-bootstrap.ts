@@ -33,6 +33,12 @@ import type {
   PiExtensionHooks,
 } from '../../../src/index.js';
 
+import { createTypedJudgmentPort } from '../../../src/infrastructure/judgment/jev-typed-judgment-adapter.js';
+import {
+  DEFAULT_TYPED_JUDGMENT_CONFIG,
+  resolveTypedJudgmentConfigFromEnv,
+} from '../../../src/domain/types/schemas.js';
+
 import { resolveModelScope } from './pi-model-scope.js';
 import type { FleetMode, SmartRouterRuntime } from './types.js';
 import { resolveRateLimiter } from './utils.js';
@@ -239,6 +245,21 @@ export function createDispatchOptions(
   });
   const rateLimiter = resolveRateLimiter(store);
 
+  // SP-308 / #187: bind the typed-judgment adapter from config. Fail closed:
+  // when the factory returns no port (disabled, or a remote endpoint without
+  // an API key in env), routing continues without typed judgment and the
+  // reason code is logged — key material is never read here or logged.
+  const typedJudgmentConfig = resolveTypedJudgmentConfigFromEnv(
+    operatorConfig.typed_judgment ?? DEFAULT_TYPED_JUDGMENT_CONFIG,
+  );
+  const typedJudgmentBinding = createTypedJudgmentPort(typedJudgmentConfig);
+  if (typedJudgmentBinding.port === null && typedJudgmentConfig.enabled) {
+    console.warn(
+      'typed_judgment enabled but no port bound; continuing without typed judgment',
+      { reason: typedJudgmentBinding.reason },
+    );
+  }
+
   return {
     sessionPinner,
     hardwareConfig: operatorConfig.local,
@@ -254,6 +275,10 @@ export function createDispatchOptions(
       : {}),
     ...(hydraMatcher ? { hydraMatcher } : {}),
     ...(rateLimiter ? { rateLimiter } : {}),
+    typedJudgmentConfig,
+    ...(typedJudgmentBinding.port
+      ? { typedJudgmentPort: typedJudgmentBinding.port }
+      : {}),
     telemetryEmitter,
   };
 }
