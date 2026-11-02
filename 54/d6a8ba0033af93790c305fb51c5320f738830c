@@ -1,0 +1,18 @@
+.pi/extensions/smart-router/fleet-bootstrap.ts
+  h_ae151c586ac6c5 23-25
+spine-tasks/SP-308-typed-judgment-sidecar-wiring/STATUS.md
+  h_ae151c586ac6c5 37-39,52-59
+src/index.ts
+  h_ae151c586ac6c5 174-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "54d6a8ba0033af93790c305fb51c5320f738830c",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
