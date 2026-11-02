@@ -31,7 +31,10 @@ import type {
   RoutingRequest,
   SaarConfig,
 } from '../types/index.js';
-import type { QuotaWindowPosition } from '../types/entities.js';
+import type {
+  QuotaWindowPosition,
+  TypedJudgmentSidecar,
+} from '../types/entities.js';
 import type {
   LowIntensityConfig,
   LocalZeroConfig,
@@ -90,7 +93,10 @@ import {
 import { createHydraMatchStage } from './hydra-match-stage.js';
 import { createHardwareProbeStage } from './hardware-probe-stage.js';
 import { createTurnEnvelopeStage } from './turn-envelope-stage.js';
-import { createTypedJudgmentStage } from './typed-judgment-stage.js';
+import {
+  createTypedJudgmentStage,
+  TYPED_JUDGMENT_DISABLED,
+} from './typed-judgment-stage.js';
 import { createContextFitStage } from './context-fit-stage.js';
 import { createLowIntensityStage } from './low-intensity-stage.js';
 import { createLocalZeroStage } from './local-zero-stage.js';
@@ -421,6 +427,7 @@ export class RouterPipeline {
     decision: RoutingDecision,
   ): RoutingDecision {
     const ctx = this.requireRouteContext();
+    const typedJudgmentSidecar = this.buildTypedJudgmentSidecar(ctx);
     const features: RoutingFeatureSidecar = {
       triage: ctx.triageResult
         ? {
@@ -470,6 +477,14 @@ export class RouterPipeline {
               : ctx.prewarmOutcome.reason,
           }
         : {}),
+      // SP-308 / #187: typed-judgment signal sidecar. Present only when the
+      // stage was wired and enabled (judged turns carry the normalized
+      // signal; skipped turns carry the skip reason). Absent when unwired or
+      // disabled so the wire decision stays byte-identical (mirrors the
+      // embedding/cascade opt-in pattern).
+      ...(typedJudgmentSidecar !== undefined
+        ? { typed_judgment: typedJudgmentSidecar }
+        : {}),
     };
 
     const withBaseFeatures = { ...decision, features };
@@ -483,6 +498,36 @@ export class RouterPipeline {
       enrichRoutingDecisionWithTierSelection(withContextFit),
       ctx,
     );
+  }
+
+  /**
+   * Map the SP-307 typed_judgment stage context onto the SP-308 sidecar, or
+   * return undefined when the stage was unwired/disabled (skip reason
+   * `typed_judgment_disabled`) so the wire decision stays byte-identical.
+   */
+  private buildTypedJudgmentSidecar(
+    ctx: RoutingContext,
+  ): TypedJudgmentSidecar | undefined {
+    if (
+      ctx.typedJudgment === null &&
+      (ctx.typedJudgmentSkipReason === null ||
+        ctx.typedJudgmentSkipReason === TYPED_JUDGMENT_DISABLED)
+    ) {
+      return undefined;
+    }
+    const judgment = ctx.typedJudgment;
+    return {
+      task_kind: judgment?.taskKind ?? null,
+      task_kind_confidence: judgment?.taskKindConfidence ?? null,
+      capability_deserved: judgment?.capabilityDeserved ?? null,
+      deep_reasoning_p: judgment?.deepReasoningP ?? null,
+      code_gen: judgment?.codeGen ?? null,
+      tool_use: judgment?.toolUse ?? null,
+      destructive_p: judgment?.destructiveP ?? null,
+      confidences: judgment?.confidences ?? {},
+      skip_reason: ctx.typedJudgmentSkipReason,
+      latency_ms: ctx.typedJudgmentLatencyMs,
+    };
   }
 
   /** Merge pipeline-recorded local_zero gate skip reasons into tier_selection (SP-164). */

@@ -356,6 +356,51 @@ export interface RequirementVector {
 }
 
 /**
+ * Normalized typed-judgment signal sidecar (SP-308, #187).
+ * Mirrors the SP-306 `TypedJudgment` signal plus stage observability
+ * (skip reason, judge latency). Privacy-safe: categorical labels, calibrated
+ * 0–1 scores, and machine reason codes only — no prompt text, judge-state
+ * text, or question prompts. The `task_kind` union mirrors `TaskKind` in
+ * src/domain/judgment/questions.ts (entities.ts is import-free).
+ */
+export interface TypedJudgmentSidecar {
+  /** Selected task kind, or null when unanswered or the stage skipped. */
+  readonly task_kind:
+    | 'plan'
+    | 'implement'
+    | 'debug'
+    | 'refactor'
+    | 'review'
+    | 'research'
+    | 'explain'
+    | 'operate'
+    | 'write'
+    | 'chat'
+    | null;
+  /** Judge confidence in `task_kind` (0–1), or null. */
+  readonly task_kind_confidence: number | null;
+  /** `capability_deserved` normalized to 0–1, or null. */
+  readonly capability_deserved: number | null;
+  /** P(needs deep reasoning) — noul calibrated probability, or null. */
+  readonly deep_reasoning_p: number | null;
+  /** `code_gen` normalized to 0–1, or null. */
+  readonly code_gen: number | null;
+  /** `tool_use` normalized to 0–1, or null. */
+  readonly tool_use: number | null;
+  /** P(destructive) — noul calibrated probability, or null. */
+  readonly destructive_p: number | null;
+  /**
+   * Judge confidence (0–1) per answered question id (choice/score answers
+   * only). Empty record when the stage skipped or no answer carried one.
+   */
+  readonly confidences: Readonly<Record<string, number>>;
+  /** Why the stage skipped/failed (`typed_judgment_*` code), or null on success. */
+  readonly skip_reason: string | null;
+  /** Judge call latency in ms; null when the port was never invoked. */
+  readonly latency_ms: number | null;
+}
+
+/**
  * Privacy-safe routing feature sidecar for dataset capture (SP-057).
  * Metadata and routing signals only — no prompt text, messages, or tool arguments.
  */
@@ -420,6 +465,14 @@ export interface RoutingFeatureSidecar {
    * encoder (degrade, never mix; SP-292, #173). Null when no fallback fired.
    */
   readonly cascade_fallback_reason?: string | null;
+  /**
+   * Typed-judgment signal sidecar (SP-308, #187). Present only when the
+   * typed_judgment stage was wired and enabled (judged turns carry the
+   * normalized signal; skipped turns carry the skip reason). Absent (not
+   * null) when the stage is unwired or disabled so the wire decision stays
+   * byte-identical (mirrors the embedding/cascade opt-in pattern).
+   */
+  readonly typed_judgment?: TypedJudgmentSidecar;
 }
 
 export interface RoutingDecision {

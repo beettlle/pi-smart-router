@@ -471,7 +471,16 @@ describe('typed_judgment stage — pipeline integration', () => {
       typedJudgmentConfig: enabledConfig(),
     }).route(request);
 
-    expect({ ...enabled, routing_latency_ms: 0 }).toEqual({
+    // SP-308: the enabled path intentionally carries the typed_judgment
+    // feature sidecar; strip it to compare the routing-decision payload.
+    expect(enabled.features?.typed_judgment).toBeDefined();
+    const enabledFeatures = { ...enabled.features };
+    delete enabledFeatures.typed_judgment;
+    expect({
+      ...enabled,
+      features: enabledFeatures,
+      routing_latency_ms: 0,
+    }).toEqual({
       ...baseline,
       routing_latency_ms: 0,
     });
