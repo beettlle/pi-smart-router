@@ -16,7 +16,7 @@ pi-smart-router intercepts every LLM inference request and dynamically routes it
 ## How it works
 
 ```text
-request → hardware probe → loop escalation → turn envelope → context-fit gate
+request → hardware probe → loop escalation → turn envelope → typed judgment* → context-fit gate
         → low-intensity tier gate → session pin → deterministic triage
         → local zero-tier → triage cloud fallback → HyDRA embedding matcher
         → safe cloud default → context overflow fallback
@@ -24,11 +24,14 @@ request → hardware probe → loop escalation → turn envelope → context-fit
 
 The pipeline runs **12 stages sequentially with early exit** — the moment any stage reaches a routing decision, subsequent stages are skipped. Every decision includes the stage name, reason code, candidates considered, estimated cost, and routing latency for full observability.
 
+\* `typed_judgment` is an additional **opt-in, non-deciding** stage (default off) that runs between turn envelope and the context-fit gate when enabled — it records judge answers for later consumers and never decides. See [Typed judgment (opt-in)](#typed-judgment-opt-in-183).
+
 | Stage | Budget | What it does |
 |-------|--------|--------------|
 | Hardware Probe | — | Checks platform/RAM/battery to gate local inference |
 | Loop Escalation | — | Detects repeated identical tool failures; escalates session to frontier |
 | Turn Envelope | <2ms | Classifies turn type: tool_result, planning, subagent, main_loop |
+| Typed Judgment (opt-in) | ~385–990ms per judged user turn when enabled; 0 otherwise | **Non-deciding** (default off): asks a Jev-compatible judge six questions about the turn and records the answers — never decides |
 | Context-Fit Gate | — | Filters fleet to models whose context window fits estimated input tokens |
 | Low-Intensity Gate | — | Structural tier hint, cluster match, and P(success) expected-cost scoring |
 | Session Pin | <1ms | Returns pinned model if session has one; breaks pin on compaction or overflow |
@@ -563,6 +566,49 @@ Floor/ceiling bind only what the policy itself derives. An explicit operator `/t
 **Fail-open behavior:** models that do not support reasoning options (`reasoning: false`, or a `thinkingLevelMap` mapping every relevant level to `null`) pass caller options through unchanged — telemetry records `reasoning_reason_code: reasoning_unsupported` and the route never fails. Providers that ignore reasoning options degrade to a no-op.
 
 **Telemetry:** each routed delegation records `reasoning_level_requested` (the session/caller level), `reasoning_level_applied` (the effective delegated level), and `reasoning_reason_code` (e.g. `turn_envelope_main_loop`, `operator_thinking_floor`, `operator_floor_applied`, `operator_ceiling_applied`, `reasoning_unsupported`) on the routing telemetry row — enriched post-delegation like usage actuals ([SP-241](https://github.com/beettlle/pi-smart-router/issues/164)). Inspect via `/smart-router history`.
+
+### Typed judgment (opt-in) (#183)
+
+Typed judgment is an **opt-in, non-deciding** pipeline stage (`typed_judgment`, directly after `turn_envelope` and before `context_fit`) that asks a Jev-compatible “systemone” semantic judge six structured questions about each user-prompt turn and records the normalized answers on the routing context. **In v1.3.0 the answers are recorded only — they do not change routing decisions.** Downstream consumers (tier hints, capability gating, adaptive reasoning) land in later trains ([#188](https://github.com/beettlle/pi-smart-router/issues/188)–[#190](https://github.com/beettlle/pi-smart-router/issues/190)); do not expect any routing behavior change from enabling the stage today.
+
+The six questions (stable ids):
+
+| Question id | Kind | What it asks |
+|-------------|------|--------------|
+| `task_kind` | choice (10 anchored options) | The single kind of work the user message asks for: `plan`, `implement`, `debug`, `refactor`, `review`, `research`, `explain`, `operate`, `write`, `chat` |
+| `capability_deserved` | score 0–3 | Setting price aside, how much model capability the request deserves |
+| `needs_deep_reasoning` | noul (yes/no) | Whether the turn needs extended multi-step reasoning rather than recall, lookup, or a short direct edit |
+| `code_gen` | score 0–3 | How much code or configuration must be written or modified |
+| `tool_use` | score 0–3 | How much tool execution (shell, file, search, agentic calls) the turn requires |
+| `destructive` | noul (yes/no) | Whether satisfying the request could destroy, overwrite, or irreversibly modify data, state, or history |
+
+**Default off.** `typed_judgment.enabled` defaults to `false` — existing installs make no judge call and pay zero added latency. When enabled, the stage runs only on user-prompt turns: `tool_result` turns, acknowledgement-only turns, and explicit `force_model_id` turns skip it, and any timeout or judge error **fails open** — routing proceeds exactly as if the stage were unwired. Skip/failure reason codes recorded on the routing context: `typed_judgment_disabled`, `typed_judgment_tool_result`, `typed_judgment_acknowledgement`, `typed_judgment_force_model`, `typed_judgment_timeout`, `typed_judgment_error` (plus `typed_judgment_remote_key_missing` when a remote endpoint has no API key available — see privacy note below).
+
+**Running the judge locally (OpenJev).** The intended default is a local [OpenJev](https://github.com/beettlle/pi-smart-router/issues/183) server — no turn text leaves the machine:
+
+- Endpoint: `http://127.0.0.1:8080/v1/systemone` (default)
+- Model: `openjev-latest` (default)
+
+**Latency.** Measured on local OpenJev on Apple silicon: **~385–990 ms per judged user turn**; `timeout_ms` defaults to `1500` to cover p99 with headroom. `route()` is serialized per pipeline, so judge latency adds to user-turn routing latency only — `tool_result` turns never invoke the judge and pay nothing.
+
+**Config keys and env overrides** (SP-304):
+
+| Config key (`typed_judgment.*`) | Env var | Default | Effect |
+|---------------------------------|---------|---------|--------|
+| `enabled` | `SMART_ROUTER_TYPED_JUDGMENT_ENABLED` | `false` | Master switch — no judge calls when off |
+| `endpoint` | `SMART_ROUTER_TYPED_JUDGMENT_ENDPOINT` | `http://127.0.0.1:8080/v1/systemone` | Judge endpoint; must be loopback (`127.0.0.1`, `::1`, or `localhost`) unless `allow_remote` is true |
+| `model` | `SMART_ROUTER_TYPED_JUDGMENT_MODEL` | `openjev-latest` | Judge model id (OpenJev uses it; hosted Jev ignores it) |
+| `timeout_ms` | `SMART_ROUTER_TYPED_JUDGMENT_TIMEOUT_MS` | `1500` | Per-call timeout; on expiry the stage fails open with `typed_judgment_timeout` |
+| `samples` | `SMART_ROUTER_TYPED_JUDGMENT_SAMPLES` | `1` | Judge samples per question (OpenJev self-consistency extension; omitted for hosted Jev) |
+| `api_key_env` | `SMART_ROUTER_TYPED_JUDGMENT_API_KEY_ENV` | `TYPESAFE_API_KEY` | **Name** of the env var holding the API key — never the key itself |
+| `allow_remote` | `SMART_ROUTER_TYPED_JUDGMENT_ALLOW_REMOTE` | `false` | Permit non-loopback (hosted) endpoints; default false = fail closed to local judge only |
+| `min_confidence` | `SMART_ROUTER_TYPED_JUDGMENT_MIN_CONFIDENCE` | `0.6` | Minimum answer confidence for a judgment to influence routing (consumed by later trains; defined now to stabilize the config shape) |
+
+Invalid env overrides (e.g. a remote endpoint without `allow_remote`) fail closed: the base config stays intact and disabled, and no judge call is made.
+
+**Privacy note ([#184](https://github.com/beettlle/pi-smart-router/issues/184)).** With the default **local OpenJev** setup, turn text never leaves the machine — the judge state (token-capped, with no spend/budget keys) is sent only to the loopback endpoint. Pointing `endpoint` at a **hosted judge** (TypeSafe Jev or Codiv) sends turn text off-machine: that requires the explicit opt-in `allow_remote: true`, and the adapter reads the API key at call time from the environment variable named by `api_key_env` (default `TYPESAFE_API_KEY`). **API keys are never read from, or stored in, config files** — config carries only the env var *name*. If a remote endpoint is configured but the key env var is unset, the judge adapter is not created (`typed_judgment_remote_key_missing`) and routing proceeds without judgments. Prompt and judge-state text is never logged; errors are redacted before logging.
+
+**Attribution.** The question rubrics — level descriptions and criteria for `task_kind`, `capability_deserved`, and `needs_deep_reasoning` — are adapted from [pi-jev-model-router](https://github.com/da-vinci-noob/pi-jev-model-router) (MIT License, © 2026 Shah Rukh).
 
 ### Degraded neural failover sandwich (#119)
 
