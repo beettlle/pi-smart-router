@@ -33,6 +33,10 @@
 
 ---
 
+## Discoveries
+
+- stet reviewer re-raised finding cfc5766 after the doc fix (quoted the pre-fix comment text while `last_reviewed_at` pointed at the fix commit 43e43983) — stale-quote reviewer bug; dismissed as false_positive. Candidate stet issue (https://github.com/beettlle/stet/issues) if it recurs.
+
 ### Step 3: Testing & Verification
 **Status:** In Progress
 
