@@ -1,0 +1,16 @@
+src/domain/pipeline/router-pipeline.ts
+  h_ae151c586ac6c5 485-487
+tests/unit/typed-judgment-wiring.test.ts
+  h_ae151c586ac6c5 203,209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da5668828d447a07c20b816a34e838236a15da2f",
+  "prompts": {},
+  "humans": {
+    "h_ae151c586ac6c5": {
+      "author": "Test User <beettlle@gmail.com>"
+    }
+  }
+}
