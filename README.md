@@ -1608,7 +1608,7 @@ Named profiles (`agents.profiles` + `agents.activeProfile`) and `agents.escalate
 
 | Role | Model | Thinking |
 |------|--------|----------|
-| Worker | `kimi-coding/k3` | `high` |
+| Worker | `kimi-coding/k3.1-pro` | `high` |
 | Plan review | `zai/glm-5.3-flash` | `low` |
 | Code review | `kimi-coding/kimi-for-coding` | `high` |
 | Final review | `google/gemini-3.1-pro-preview` | `high` |
@@ -1637,8 +1637,8 @@ spine settings set agents.activeProfile default
 
 | Role | Model | Thinking |
 |------|--------|----------|
-| Worker | `kimi-coding/k3` | `high` |
-| Plan | `kimi-coding/kimi-for-coding` | `medium` |
+| Worker | `anthropic/claude-opus-5-5` | `high` |
+| Plan | `google/gemini-flash-latest` | `medium` |
 | Code | `google/gemini-3.1-pro-preview` | `high` |
 | Final | `google/gemini-3.1-pro-preview` | `high` |
 
