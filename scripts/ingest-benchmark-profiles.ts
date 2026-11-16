@@ -564,19 +564,25 @@ export function aggregateBenchmarkProfiles(
   return parseBenchmarkProfilesArtifact(artifact);
 }
 
-/** Load aliases from an existing artifact file (for re-ingest preserve). */
-export function loadAliasesFromBenchmarkProfilesFile(
+/** Load an existing artifact for re-ingest preservation; invalid/missing files are ignored. */
+export function loadBenchmarkProfilesFile(
   filePath: string,
-): Readonly<Record<string, string>> | undefined {
+): BenchmarkProfilesArtifact | undefined {
   if (!existsSync(filePath)) {
     return undefined;
   }
   try {
-    const parsed = parseBenchmarkProfilesArtifact(JSON.parse(readFileSync(filePath, 'utf8')));
-    return parsed.aliases;
+    return parseBenchmarkProfilesArtifact(JSON.parse(readFileSync(filePath, 'utf8')));
   } catch {
     return undefined;
   }
+}
+
+/** Load aliases from an existing artifact file (for re-ingest preserve). */
+export function loadAliasesFromBenchmarkProfilesFile(
+  filePath: string,
+): Readonly<Record<string, string>> | undefined {
+  return loadBenchmarkProfilesFile(filePath)?.aliases;
 }
 
 /**
@@ -588,15 +594,27 @@ export function loadAliasesFromBenchmarkProfilesFile(
 export function loadUngroundedFleetIdsFromBenchmarkProfilesFile(
   filePath: string,
 ): readonly string[] | undefined {
-  if (!existsSync(filePath)) {
-    return undefined;
+  return loadBenchmarkProfilesFile(filePath)?.provenance.ungrounded_fleet_ids;
+}
+
+/**
+ * Preserve existing curated rows when a live/recorded mix omits their model.
+ * Fresh rows always win for ids present in both artifacts.
+ */
+export function preserveCuratedBenchmarkRows(
+  refreshed: BenchmarkProfilesArtifact,
+  existing: BenchmarkProfilesArtifact,
+): BenchmarkProfilesArtifact {
+  const refreshedIds = new Set(refreshed.models.map((model) => model.model_id));
+  const preserved = existing.models.filter((model) => !refreshedIds.has(model.model_id));
+  if (preserved.length === 0) {
+    return refreshed;
   }
-  try {
-    const parsed = parseBenchmarkProfilesArtifact(JSON.parse(readFileSync(filePath, 'utf8')));
-    return parsed.provenance.ungrounded_fleet_ids;
-  } catch {
-    return undefined;
-  }
+
+  const models = [...refreshed.models, ...preserved].sort((a, b) =>
+    a.model_id < b.model_id ? -1 : a.model_id > b.model_id ? 1 : 0,
+  );
+  return { ...refreshed, models };
 }
 
 export function parseBenchmarkProfilesArtifact(value: unknown): BenchmarkProfilesArtifact {
@@ -854,10 +872,9 @@ export async function runIngestCli(
   options: RunIngestCliOptions = {},
 ): Promise<BenchmarkProfilesArtifact> {
   const parsed = parseIngestCliArgs(args);
-  const preservedAliases = loadAliasesFromBenchmarkProfilesFile(parsed.outputPath);
-  const preservedUngrounded = loadUngroundedFleetIdsFromBenchmarkProfilesFile(
-    parsed.outputPath,
-  );
+  const existingArtifact = loadBenchmarkProfilesFile(parsed.outputPath);
+  const preservedAliases = existingArtifact?.aliases;
+  const preservedUngrounded = existingArtifact?.provenance.ungrounded_fleet_ids;
   const ingestOptions: IngestBenchmarkProfilesOptions = {
     ...(parsed.catalogFreezeDate !== undefined
       ? { catalogFreezeDate: parsed.catalogFreezeDate }
@@ -895,6 +912,9 @@ export async function runIngestCli(
       `ingest-benchmark-profiles: recorded ${written.length} snapshot(s) under ${parsed.recordDir}`,
     );
     artifact = ingestBenchmarkProfilesFromFixtures(liveFixtures, ingestOptions);
+    if (existingArtifact !== undefined) {
+      artifact = preserveCuratedBenchmarkRows(artifact, existingArtifact);
+    }
   } else {
     artifact = ingestBenchmarkProfilesFromDir(parsed.fixturesDir, ingestOptions);
   }
