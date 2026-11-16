@@ -5,7 +5,7 @@
 **Next Task ID:** SP-320
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v1.3.0** on npm (`latest`, tag `v1.3.0`, 2026-11-02). Theme: typed-judgment foundation (#183) + frontier fleet (#193). In flight: **v1.4.0** new-model coverage (SP-313–SP-319). Prior: **v1.2.0** long-context encoder path.
+**Released:** **v1.4.0** git tag + GitHub Release (2026-11-16); npm `latest` pending maintainer 2FA approval of staged publish `7912cbfd-6d1e-4326-afef-bac438a9eef1` (trusted publishing stage-only). Theme: new-model coverage (Kimi K3/K3.1 + Gemini 4 carbon/hydrogen + curated live refresh). Prior: **v1.3.0** typed-judgment foundation.
 
 ---
 
@@ -1028,7 +1028,7 @@
 
 **Source:** **v1.4.0** (2026-11-15, minor profile). Theme: new model coverage — Kimi K3 / K3.1 Pro + Gemini 4 carbon/hydrogen + curated grounding on live refresh. Scope approved 2026-11-15.
 
-**Status:** All SP-313–SP-319 `.DONE` on `main` (2026-11-16). Phase 5 gates green locally (`release:check`, `release:assert-content`); awaiting operator **approve publish** for `npm version minor` → v1.4.0.
+**Status:** Published tag `v1.4.0` (`54bee53d`); release.yml success; npm staged — approve 2FA so `latest` becomes 1.4.0. Do **not** run a second `npm version`.
 
 **Scope ID:** `SP-313,SP-314,SP-315,SP-316,SP-317,SP-318,SP-319`
 
