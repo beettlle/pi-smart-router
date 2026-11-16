@@ -5,7 +5,7 @@
 **Next Task ID:** SP-320
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v1.4.0** git tag + GitHub Release (2026-11-16); npm `latest` pending maintainer 2FA approval of staged publish `7912cbfd-6d1e-4326-afef-bac438a9eef1` (trusted publishing stage-only). Theme: new-model coverage (Kimi K3/K3.1 + Gemini 4 carbon/hydrogen + curated live refresh). Prior: **v1.3.0** typed-judgment foundation.
+**Released:** **v1.4.0** on npm (`latest`, tag `v1.4.0`, 2026-11-16) after staged publish `7912cbfd-6d1e-4326-afef-bac438a9eef1` + maintainer 2FA. Theme: new-model coverage (Kimi K3/K3.1 + Gemini 4 carbon/hydrogen + curated live refresh). Prior: **v1.3.0** typed-judgment foundation.
 
 ---
 
@@ -1028,7 +1028,7 @@
 
 **Source:** **v1.4.0** (2026-11-15, minor profile). Theme: new model coverage — Kimi K3 / K3.1 Pro + Gemini 4 carbon/hydrogen + curated grounding on live refresh. Scope approved 2026-11-15.
 
-**Status:** Published tag `v1.4.0` (`54bee53d`); release.yml success; npm staged — approve 2FA so `latest` becomes 1.4.0. Do **not** run a second `npm version`.
+**Status:** Released **v1.4.0** on npm (`latest`, tag `v1.4.0` @ `54bee53d`, 2026-11-16). Release run https://github.com/beettlle/pi-smart-router/actions/runs/43946873712; staged id `7912cbfd-6d1e-4326-afef-bac438a9eef1` approved + published. Issues #195/#196/#197/#199/#200 closed.
 
 **Scope ID:** `SP-313,SP-314,SP-315,SP-316,SP-317,SP-318,SP-319`
 
