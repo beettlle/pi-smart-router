@@ -1,6 +1,6 @@
 # SP-314: Kimi K3 / K3.1 frontier pattern rule — Status
 
-**Current Step:** Step 1: Implementation
+**Current Step:** Step 2: Testing & Verification
 **Status:** In Progress
 **Last Updated:** 2026-11-15
 **Review Level:** 1
@@ -19,14 +19,14 @@
 ---
 
 ### Step 1: Implementation
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Add K3 family FRONTIER_DEFAULTS rule
+- [x] Add K3 family FRONTIER_DEFAULTS rule
 
 ---
 
 ### Step 2: Testing & Verification
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Smoke + negative assertions
 - [ ] Run Contract testCommand
