@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { KIMI_CODING_MODELS } from '@earendil-works/pi-ai/providers/kimi-coding.models';
 
 import {
   DEFAULT_BENCHMARK_PROFILES_PATH,
@@ -597,14 +598,49 @@ describe('mapPiModelToProfile', () => {
   });
 
   describe('Kimi K3 family (SP-314 / #195)', () => {
-    it('maps k3.1-pro to frontier with pattern defaults', () => {
+    it.each([
+      { id: 'k3', fallbackCost: 9, maxInputTokens: 1_048_576 },
+      { id: 'k3-256k', fallbackCost: 9, maxInputTokens: 262_144 },
+      { id: 'k3.1-pro', fallbackCost: 6, maxInputTokens: 1_048_576 },
+      { id: 'k3.1-pro-highspeed', fallbackCost: 12, maxInputTokens: 1_048_576 },
+    ] as const)(
+      'maps $id to frontier pattern defaults with installed registry cost and limits',
+      ({ id, fallbackCost, maxInputTokens }) => {
+        const model = KIMI_CODING_MODELS[id];
+        const profile = mapPiModelToProfile(
+          makeInput({
+            provider: model.provider,
+            id: model.id,
+            cost: model.cost,
+            contextWindow: model.contextWindow,
+            maxTokens: model.maxTokens,
+          }),
+        );
+
+        expect(profile.tier).toBe('frontier-cloud');
+        expect(profile.capabilities).toEqual(FRONTIER_CAPS);
+        expect(profile.capability_source).toBe('pattern_default');
+        expect(profile.pricing.fallback_cost_per_1m).toBe(
+          (model.cost.input + model.cost.output) / 2,
+        );
+        expect(profile.pricing.fallback_cost_per_1m).toBe(fallbackCost);
+        expect(profile.pi_registry_limits).toEqual({
+          max_input_tokens: maxInputTokens,
+          max_output_tokens: 131_072,
+        });
+      },
+    );
+
+    it('maps the optional kimi- prefix in kimi-k3 to frontier pattern defaults', () => {
       const profile = mapPiModelToProfile(
-        makeInput({ provider: 'kimi-coding', id: 'k3.1-pro' }),
+        makeInput({ provider: 'kimi-coding', id: 'kimi-k3' }),
       );
 
       expect(profile.tier).toBe('frontier-cloud');
       expect(profile.capabilities).toEqual(FRONTIER_CAPS);
       expect(profile.capability_source).toBe('pattern_default');
+      expect(profile.pricing.fallback_cost_per_1m).toBe(3.0);
+      expect(profile.pi_registry_limits).toBeUndefined();
     });
 
     it.each(['foo-k30', 'k30'])('keeps non-K3 id %s on UNKNOWN_DEFAULTS', (id) => {
@@ -615,6 +651,32 @@ describe('mapPiModelToProfile', () => {
       expect(profile.tier).toBe('economical-cloud');
       expect(profile.capabilities).toEqual({ reasoning: 0.6, code_gen: 0.65, tool_use: 0.6 });
       expect(profile.capability_source).toBe('pattern_default');
+    });
+
+    it.each([
+      { id: 'kimi-for-coding', fallbackCost: 2.475, maxInputTokens: 1_048_576 },
+      { id: 'kimi-for-coding-highspeed', fallbackCost: 4.95, maxInputTokens: 262_144 },
+    ] as const)('keeps legacy id $id on UNKNOWN_DEFAULTS', ({ id, fallbackCost, maxInputTokens }) => {
+      const model = KIMI_CODING_MODELS[id];
+      const profile = mapPiModelToProfile(
+        makeInput({
+          provider: model.provider,
+          id: model.id,
+          cost: model.cost,
+          contextWindow: model.contextWindow,
+          maxTokens: model.maxTokens,
+        }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+      expect(profile.capabilities).toEqual({ reasoning: 0.6, code_gen: 0.65, tool_use: 0.6 });
+      expect(profile.capability_source).toBe('pattern_default');
+      expect(profile.pricing.fallback_cost_per_1m).toBe((model.cost.input + model.cost.output) / 2);
+      expect(profile.pricing.fallback_cost_per_1m).toBe(fallbackCost);
+      expect(profile.pi_registry_limits).toEqual({
+        max_input_tokens: maxInputTokens,
+        max_output_tokens: model.maxTokens,
+      });
     });
   });
 
