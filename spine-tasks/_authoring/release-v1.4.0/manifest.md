@@ -176,7 +176,7 @@ Open-issue count must **not** raise this release’s enhancement or total-task c
 - [x] `npm run release:assert-content` green (substantive delta vs last release tag)
 - [x] Manifest target == expected next version from `package.json` + bump type (`1.3.0` + minor → `1.4.0`)
 - [x] No existing git tag `v1.4.0`
-- [ ] CI workflow green on `HEAD` (poll before publish)
+- [x] CI workflow green on `HEAD` (https://github.com/beettlle/pi-smart-router/actions/runs/43789506550)
 - [x] `git status` clean (at Phase 5 freeze; CONTEXT/manifest note commits OK)
 - [ ] Operator approved publish bump type: minor
 - [ ] **Exactly one** `npm version minor` then `git push && git push --tags` — then **STOP**
