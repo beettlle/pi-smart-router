@@ -1,7 +1,7 @@
 # SP-316: benchmark-grounded capability row for Kimi K3.1 Pro — Status
 
-**Current Step:** Step 3: Testing & Verification
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-11-15
 **Review Level:** 2
 **Review Counter:** 0
@@ -32,7 +32,7 @@
 ---
 
 ### Step 3: Testing & Verification
-**Status:** In Progress
+**Status:** Complete (plan review engine-owned; worker spawn skipped)
 
 - [x] Alias/resolution tests + verify-benchmark-profiles
 - [x] Run Contract testCommand
@@ -48,3 +48,4 @@
 - K3 has public Terminal-Bench results but no complete public source set for this artifact; leave K3/K3-256K on pattern defaults and document their scoped IDs as ungrounded.
 - **STET triage:** dismissed `95af93f` as `wrong_suggestion` because bumping the artifact version would break the version-1 runtime mapper that this task explicitly forbids changing; the K3.1 row is an additive data/source expansion. Dismissed `d3ad6c8` as `wrong_suggestion` because the vendor announcement is the accurate provenance for the vendor-run SWE-Marathon score and replacing it with the official leaderboard (which has no K3.1 row) would falsify provenance.
 - **STET false positives:** dismissed `9ec644b`, `8753121`, `45d75de`, `268e00f`, `806a89a`, `a71772f`, `420104f`, `a493300`, and `a724b5a`. Typecheck confirms `BenchmarkId` derives from the updated constant; tests confirm direct canonical-row lookup, four native adapters plus one curated stub, no default stub live URL, CLI snapshot creation, generic live mirror payloads, and per-benchmark fallback. The code_gen comment is specifically about K3/K3-256K, and ungrounded IDs are intentionally not alias-resolved.
+- **Final verification:** exact Contract `testCommand` green, including STET with zero findings. Full worker fallback passed 154 files / 2,618 tests. `npm run coverage:check` passed with 91.98% lines and 88.5% branches. No forbidden file paths changed.
