@@ -1,7 +1,7 @@
 # SP-317: live refresh preserves curated Claude/Gemini grounding rows — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 0: Preflight
+**Status:** In Progress
 **Last Updated:** 2026-11-15
 **Review Level:** 2
 **Review Counter:** 0
@@ -11,9 +11,11 @@
 ---
 
 ### Step 0: Preflight
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] List curated rows that live refresh currently drops
+- [x] List curated rows that live refresh currently drops
+
+Dropped by recorded/live ingest: `claude-haiku-4-5` (SWE-bench + BFCL) and `gemini-3-pro-preview` (SWE-bench + BFCL). Both are absent from `tests/fixtures/benchmark-leaderboards/recorded/`; the existing aggregate therefore omits them.
 
 ---
 
