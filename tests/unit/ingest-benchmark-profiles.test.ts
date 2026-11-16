@@ -482,6 +482,20 @@ describe('SP-311 scoped fleet grounding (#193)', () => {
 });
 
 describe('SP-316 Kimi K3.1 Pro grounding (#197)', () => {
+  const k31Aliases = [
+    'k3.1-pro-highspeed',
+    'kimi-k3.1-pro',
+    'kimi-k3.1-pro-highspeed',
+    'kimi-coding/k3.1-pro',
+    'kimi-coding/k3.1-pro-highspeed',
+    'kimi-coding/kimi-k3.1-pro',
+    'kimi-coding/kimi-k3.1-pro-highspeed',
+    'moonshotai/k3.1-pro',
+    'moonshotai/k3.1-pro-highspeed',
+    'moonshotai/kimi-k3.1-pro',
+    'moonshotai/kimi-k3.1-pro-highspeed',
+  ] as const;
+
   it('ingests independent Terminal-Bench and vendor-reported SWE-Marathon scores', () => {
     const artifact = ingestBenchmarkProfilesFromDir(DEFAULT_BENCHMARK_FIXTURES_DIR, {
       catalogFreezeDate: '2026-11-16',
@@ -507,6 +521,43 @@ describe('SP-316 Kimi K3.1 Pro grounding (#197)', () => {
     );
     expect(sweMarathonFixture.source_url).toBe('https://www.kimi.ai/blog/kimi-k3-1-pro');
     expect(artifact.provenance.source_urls.swe_marathon).toBe(sweMarathonFixture.source_url);
+  });
+
+  it.each(k31Aliases)('resolves K3.1 Pro alias %s to the canonical row', (alias) => {
+    expect(DEFAULT_FLEET_BENCHMARK_ALIASES[alias]).toBe('k3.1-pro');
+  });
+
+  it('ships every K3.1 Pro alias in the checked-in artifact', () => {
+    const artifact = parseBenchmarkProfilesArtifact(
+      JSON.parse(readFileSync(join(process.cwd(), 'config/benchmark-profiles.json'), 'utf8')),
+    );
+
+    for (const alias of k31Aliases) {
+      expect(artifact.aliases?.[alias], alias).toBe('k3.1-pro');
+      expect(artifact.provenance.ungrounded_fleet_ids, alias).not.toContain(alias);
+    }
+    expect(artifact.aliases?.['k3.1-pro']).toBeUndefined();
+    expect(artifact.models.some((model) => model.model_id === 'k3.1-pro')).toBe(true);
+  });
+
+  it('documents K3 ids as ungrounded without aliasing them to K3.1 Pro', () => {
+    const k3Ids = [
+      'k3',
+      'k3-256k',
+      'kimi-k3',
+      'kimi-coding/k3',
+      'kimi-coding/k3-256k',
+      'kimi-coding/kimi-k3',
+    ] as const;
+    const artifact = parseBenchmarkProfilesArtifact(
+      JSON.parse(readFileSync(join(process.cwd(), 'config/benchmark-profiles.json'), 'utf8')),
+    );
+
+    for (const id of k3Ids) {
+      expect(DEFAULT_UNGROUNDED_FLEET_IDS, id).toContain(id);
+      expect(artifact.provenance.ungrounded_fleet_ids, id).toContain(id);
+      expect(artifact.aliases?.[id], id).toBeUndefined();
+    }
   });
 });
 

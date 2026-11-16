@@ -219,6 +219,18 @@ export const DEFAULT_FLEET_BENCHMARK_ALIASES: Readonly<Record<string, string>> =
   // SP-311 / #193 — Gemini 3 Pro Preview has public SWE-bench Verified + BFCL
   // scores (curated fixture row). Provider-prefixed form resolves to the row.
   'google/gemini-3-pro-preview': 'gemini-3-pro-preview',
+  // SP-316 / #197 — highspeed is the same K3.1 Pro model served faster.
+  'k3.1-pro-highspeed': 'k3.1-pro',
+  'kimi-k3.1-pro': 'k3.1-pro',
+  'kimi-k3.1-pro-highspeed': 'k3.1-pro',
+  'kimi-coding/k3.1-pro': 'k3.1-pro',
+  'kimi-coding/k3.1-pro-highspeed': 'k3.1-pro',
+  'kimi-coding/kimi-k3.1-pro': 'k3.1-pro',
+  'kimi-coding/kimi-k3.1-pro-highspeed': 'k3.1-pro',
+  'moonshotai/k3.1-pro': 'k3.1-pro',
+  'moonshotai/k3.1-pro-highspeed': 'k3.1-pro',
+  'moonshotai/kimi-k3.1-pro': 'k3.1-pro',
+  'moonshotai/kimi-k3.1-pro-highspeed': 'k3.1-pro',
 };
 
 /**
@@ -236,6 +248,8 @@ export const DEFAULT_FLEET_BENCHMARK_ALIASES: Readonly<Record<string, string>> =
  *   post-2.5 generations (SP-254); the only current-gen flash row
  *   (gemini-3-flash-preview, SWE-bench only) lacks tool_use coverage, so no
  *   complete grounded row exists to alias onto.
+ * - k3 / k3-256k: Terminal-Bench has public K3 results, but no public
+ *   code_gen-capable source completes this artifact's capability vector.
  */
 export const DEFAULT_UNGROUNDED_FLEET_IDS: readonly string[] = [
   'claude-fable-5-1',
@@ -250,6 +264,12 @@ export const DEFAULT_UNGROUNDED_FLEET_IDS: readonly string[] = [
   'gemini-flash-lite-latest',
   'google/gemini-flash-latest',
   'google/gemini-flash-lite-latest',
+  'k3',
+  'k3-256k',
+  'kimi-k3',
+  'kimi-coding/k3',
+  'kimi-coding/k3-256k',
+  'kimi-coding/kimi-k3',
 ];
 
 const fleetAliasesSchema = z.record(z.string().min(1), z.string().min(1));
