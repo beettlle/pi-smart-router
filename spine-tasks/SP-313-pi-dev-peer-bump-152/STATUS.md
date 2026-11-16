@@ -1,7 +1,7 @@
 # SP-313: bump dev pi packages to ^1.5.2 — Status
 
-**Current Step:** Step 2: Testing & Verification
-**Status:** In Progress
+**Current Step:** All steps complete
+**Status:** Complete
 **Last Updated:** 2026-11-15
 **Review Level:** 1
 **Review Counter:** 0
@@ -26,7 +26,7 @@
 ---
 
 ### Step 2: Testing & Verification
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Run Contract testCommand
 - [x] Record pi.minPiVersion decision
