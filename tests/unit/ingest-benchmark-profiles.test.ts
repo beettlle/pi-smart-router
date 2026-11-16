@@ -219,12 +219,25 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
   });
 
   it('requires every registered benchmark fixture in a directory ingest', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'sp134-fixtures-'));
-    try {
-      writeFileSync(join(dir, 'swebench_verified.json'), JSON.stringify(fullFixtureSet()[0]));
-      expect(() => ingestBenchmarkProfilesFromDir(dir)).toThrow(/Missing fixture for benchmark/);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
+    for (const missing of BENCHMARK_IDS) {
+      const dir = mkdtempSync(join(tmpdir(), `sp134-fixtures-${missing}-`));
+      try {
+        for (const benchmark of BENCHMARK_IDS) {
+          if (benchmark === missing) continue;
+          const fixture = fullFixtureSet().find((candidate) => candidate.benchmark === benchmark) ?? {
+            benchmark,
+            source_url: BENCHMARK_SOURCE_URLS[benchmark],
+            scrape_date: '2026-07-10',
+            entries: [{ model_id: 'model-a', score: 0.5 }],
+          };
+          writeFileSync(join(dir, `${benchmark}.json`), JSON.stringify(fixture));
+        }
+        expect(() => ingestBenchmarkProfilesFromDir(dir)).toThrow(
+          new RegExp(`Missing fixture for benchmark: ${missing}`),
+        );
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
     }
   });
 
@@ -529,7 +542,12 @@ describe('SP-316 Kimi K3.1 Pro grounding (#197)', () => {
 
   it('ships every K3.1 Pro alias in the checked-in artifact', () => {
     const artifact = parseBenchmarkProfilesArtifact(
-      JSON.parse(readFileSync(join(process.cwd(), 'config/benchmark-profiles.json'), 'utf8')),
+      JSON.parse(
+        readFileSync(
+          fileURLToPath(new URL('../../config/benchmark-profiles.json', import.meta.url)),
+          'utf8',
+        ),
+      ),
     );
 
     for (const alias of k31Aliases) {
@@ -550,7 +568,12 @@ describe('SP-316 Kimi K3.1 Pro grounding (#197)', () => {
       'kimi-coding/kimi-k3',
     ] as const;
     const artifact = parseBenchmarkProfilesArtifact(
-      JSON.parse(readFileSync(join(process.cwd(), 'config/benchmark-profiles.json'), 'utf8')),
+      JSON.parse(
+        readFileSync(
+          fileURLToPath(new URL('../../config/benchmark-profiles.json', import.meta.url)),
+          'utf8',
+        ),
+      ),
     );
 
     for (const id of k3Ids) {
@@ -898,7 +921,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
         },
       });
 
-      expect(result.fixtures).toHaveLength(5);
+      expect(result.fixtures).toHaveLength(BENCHMARK_IDS.length);
       expect(result.loads.map((load) => load.benchmark).sort()).toEqual([...BENCHMARK_IDS].sort());
 
       const byId = Object.fromEntries(
@@ -939,7 +962,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
         entries: [{ model_id: 'gpt-5.3-codex', score: 80 }],
       }));
       const written = writeRecordedLeaderboardSnapshots(fixtures, dir);
-      expect(written).toHaveLength(5);
+      expect(written).toHaveLength(BENCHMARK_IDS.length);
       const parsed = parseBenchmarkLeaderboardFixture(
         readFileSync(join(dir, 'terminal_bench.json'), 'utf8'),
         'terminal_bench.json',

@@ -599,13 +599,18 @@ describe('mapPiModelToProfile', () => {
 
   describe('Kimi K3 family (SP-314 / #195)', () => {
     it.each([
-      { id: 'k3', fallbackCost: 9, maxInputTokens: 1_048_576 },
-      { id: 'k3-256k', fallbackCost: 9, maxInputTokens: 262_144 },
-      { id: 'k3.1-pro', fallbackCost: 6, maxInputTokens: 1_048_576 },
-      { id: 'k3.1-pro-highspeed', fallbackCost: 12, maxInputTokens: 1_048_576 },
+      { id: 'k3', fallbackCost: 9, maxInputTokens: 1_048_576, grounded: false },
+      { id: 'k3-256k', fallbackCost: 9, maxInputTokens: 262_144, grounded: false },
+      { id: 'k3.1-pro', fallbackCost: 6, maxInputTokens: 1_048_576, grounded: true },
+      {
+        id: 'k3.1-pro-highspeed',
+        fallbackCost: 12,
+        maxInputTokens: 1_048_576,
+        grounded: true,
+      },
     ] as const)(
-      'maps $id to frontier pattern defaults with installed registry cost and limits',
-      ({ id, fallbackCost, maxInputTokens }) => {
+      'maps $id to frontier tier with installed registry cost and limits',
+      ({ id, fallbackCost, maxInputTokens, grounded }) => {
         const model = KIMI_CODING_MODELS[id];
         const profile = mapPiModelToProfile(
           makeInput({
@@ -618,8 +623,15 @@ describe('mapPiModelToProfile', () => {
         );
 
         expect(profile.tier).toBe('frontier-cloud');
-        expect(profile.capabilities).toEqual(FRONTIER_CAPS);
-        expect(profile.capability_source).toBe('pattern_default');
+        if (grounded) {
+          const expected = expectedBenchmarkCaps(id, FRONTIER_CAPS);
+          expect(profile.capabilities.reasoning).toBeCloseTo(expected.reasoning, 10);
+          expect(profile.capabilities.code_gen).toBeCloseTo(expected.code_gen, 10);
+          expect(profile.capabilities.tool_use).toBeCloseTo(expected.tool_use, 10);
+        } else {
+          expect(profile.capabilities).toEqual(FRONTIER_CAPS);
+        }
+        expect(profile.capability_source).toBe(grounded ? 'benchmark' : 'pattern_default');
         expect(profile.pricing.fallback_cost_per_1m).toBe(
           (model.cost.input + model.cost.output) / 2,
         );
@@ -630,6 +642,23 @@ describe('mapPiModelToProfile', () => {
         });
       },
     );
+
+    it.each([
+      'k3.1-pro-highspeed',
+      'kimi-k3.1-pro',
+      'kimi-k3.1-pro-highspeed',
+      'kimi-coding/k3.1-pro',
+      'kimi-coding/k3.1-pro-highspeed',
+      'kimi-coding/kimi-k3.1-pro',
+      'kimi-coding/kimi-k3.1-pro-highspeed',
+      'moonshotai/k3.1-pro',
+      'moonshotai/k3.1-pro-highspeed',
+      'moonshotai/kimi-k3.1-pro',
+      'moonshotai/kimi-k3.1-pro-highspeed',
+    ])('resolves K3.1 Pro fleet alias %s to benchmark capabilities', (id) => {
+      expect(resolveBenchmarkModelId(id)).toBe('k3.1-pro');
+      expect(getCapabilitySource(id)).toBe('benchmark');
+    });
 
     it('maps the optional kimi- prefix in kimi-k3 to frontier pattern defaults', () => {
       const profile = mapPiModelToProfile(
