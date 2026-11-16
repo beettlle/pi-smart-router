@@ -144,13 +144,15 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
         ? { ungroundedFleetIds: parsed.provenance.ungrounded_fleet_ids }
         : {}),
     };
-    const fromFixtures = serializeBenchmarkProfilesArtifact(
-      ingestBenchmarkProfilesFromDir(DEFAULT_BENCHMARK_FIXTURES_DIR, options),
+    const fixtureArtifact = ingestBenchmarkProfilesFromDir(
+      DEFAULT_BENCHMARK_FIXTURES_DIR,
+      options,
     );
+    const fromFixtures = serializeBenchmarkProfilesArtifact(fixtureArtifact);
     const fromRecorded = serializeBenchmarkProfilesArtifact(
       preserveCuratedBenchmarkRows(
         ingestBenchmarkProfilesFromDir(DEFAULT_RECORDED_LEADERBOARDS_DIR, options),
-        parsed,
+        fixtureArtifact,
       ),
     );
 
@@ -641,9 +643,15 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
         );
       }
       expect(refreshed.models.some((model) => model.model_id === 'gpt-5.3-codex')).toBe(true);
-      expect(refreshed.models.map((model) => model.model_id)).toEqual(
-        [...refreshed.models.map((model) => model.model_id)].sort(),
-      );
+      expect(refreshed.models.map((model) => model.model_id)).toEqual([
+        'claude-3.5-haiku',
+        'claude-haiku-4-5',
+        'claude-opus-4-5',
+        'claude-sonnet-4-6',
+        'gemini-2.5-flash',
+        'gemini-3-pro-preview',
+        'gpt-5.3-codex',
+      ]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

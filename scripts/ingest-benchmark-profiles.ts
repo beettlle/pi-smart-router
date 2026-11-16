@@ -614,7 +614,7 @@ export function preserveCuratedBenchmarkRows(
   const models = [...refreshed.models, ...preserved].sort((a, b) =>
     a.model_id < b.model_id ? -1 : a.model_id > b.model_id ? 1 : 0,
   );
-  return parseBenchmarkProfilesArtifact({ ...refreshed, models });
+  return { ...refreshed, models };
 }
 
 export function parseBenchmarkProfilesArtifact(value: unknown): BenchmarkProfilesArtifact {

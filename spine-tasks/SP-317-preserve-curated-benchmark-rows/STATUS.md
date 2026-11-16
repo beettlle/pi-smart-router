@@ -1,6 +1,6 @@
 # SP-317: live refresh preserves curated Claude/Gemini grounding rows — Status
 
-**Current Step:** Step 1: Preserve/merge implementation
+**Current Step:** Step 2: Regression test
 **Status:** In Progress
 **Last Updated:** 2026-11-15
 **Review Level:** 2
@@ -20,7 +20,7 @@ Dropped by recorded/live ingest: `claude-haiku-4-5` (SWE-bench + BFCL) and `gemi
 ---
 
 ### Step 1: Preserve/merge implementation
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Implement curated-row merge over live ingest
 
@@ -29,9 +29,11 @@ Live ingest preserves existing rows absent from the refreshed mix; fresh rows wi
 ---
 
 ### Step 2: Regression test
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Add live/mocked preserve regression test
+- [x] Add live/mocked preserve regression test
+
+`preserves curated Claude/Gemini rows omitted by a mocked live refresh (SP-317)` passes along with all 34 ingest tests and 5 leaderboard-fetch tests.
 
 ---
 
