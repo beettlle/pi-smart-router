@@ -47,7 +47,7 @@ Do not raise `pi.minPiVersion` unless a 1.5.x-only API is now required; if raise
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run typecheck && npm run lint && npm run release:check && bash scripts/spine-stet-contract-run.sh lenient SP-313` |
+| testCommand | `npm run typecheck && npm run lint && SMART_ROUTER_SKIP_LIVE_BENCHMARK_REFRESH=1 npm run release:check && bash scripts/spine-stet-contract-run.sh lenient SP-313` |
 | fileScopeMustChange | `package.json`, `package-lock.json` |
 | fileScopeMustNotChange | `src/config/pi-model-mapper.ts`, `config/benchmark-profiles.json`, `.review/` |
 | completionCriteria | dev pi-ai / pi-coding-agent at ^1.5.2; typecheck/lint/release:check green; minPiVersion decision recorded |
