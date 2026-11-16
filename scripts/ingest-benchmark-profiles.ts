@@ -243,7 +243,7 @@ export const DEFAULT_FLEET_BENCHMARK_ALIASES: Readonly<Record<string, string>> =
  * - gemini-3.1-pro-preview(-customtools): no 3.1 scores; pinned
  *   pattern_default by tests/unit/pi-model-mapper-coverage.test.ts and the
  *   customtools/base parity rule.
- * - gemini-4-argon: no Gemini 4 scores anywhere.
+ * - gemini-4-argon / gemini-4-carbon / gemini-4-hydrogen: no Gemini 4 scores anywhere.
  * - gemini-flash-latest / gemini-flash-lite-latest: rolling ids tracking
  *   post-2.5 generations (SP-254); the only current-gen flash row
  *   (gemini-3-flash-preview, SWE-bench only) lacks tool_use coverage, so no
@@ -260,6 +260,10 @@ export const DEFAULT_UNGROUNDED_FLEET_IDS: readonly string[] = [
   'google/gemini-3.1-pro-preview-customtools',
   'gemini-4-argon',
   'google/gemini-4-argon',
+  'gemini-4-carbon',
+  'google/gemini-4-carbon',
+  'gemini-4-hydrogen',
+  'google/gemini-4-hydrogen',
   'gemini-flash-latest',
   'gemini-flash-lite-latest',
   'google/gemini-flash-latest',

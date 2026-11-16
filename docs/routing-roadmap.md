@@ -1,10 +1,12 @@
 # Routing Quality Roadmap
 
-**Last updated:** 2026-08-22 (synced with 0.16.2 runtime; closes [#152](https://github.com/beettlle/pi-smart-router/issues/152))  
+**Last updated:** 2026-11-15 (synced with **v1.4.0** new-model coverage train)  
 **Purpose:** Prioritized implementation backlog for pre-generation routing quality (task success per dollar), ordered by impact.  
 **Audience:** Implementers and spine task authors.  
 **Companion docs:** [PRD](PRD.md) (pipeline contract), [deep-research](deep-research.md) (architecture survey), [constitution](constitution.md) (non-negotiables), [research/README.md](research/README.md) (provenance index).  
 **Provenance:** [research/routing-quality-2026-07.json](research/routing-quality-2026-07.json) (parallel deep-research, run `trun_7b47ebd495b54ca1947d8f81226bce7c`, 2026-07-07); [gemini-research.md](gemini-research.md) (second-source report, 2026-07).
+
+**v1.4.0 landed (new-model theme):** [#195](https://github.com/beettlle/pi-smart-router/issues/195) / [#196](https://github.com/beettlle/pi-smart-router/issues/196) / [#197](https://github.com/beettlle/pi-smart-router/issues/197) (Kimi K3 / K3.1 Pro mapping + grounding), [#199](https://github.com/beettlle/pi-smart-router/issues/199) (live refresh preserves curated Claude/Gemini rows), [#200](https://github.com/beettlle/pi-smart-router/issues/200) (Gemini 4 carbon/hydrogen coverage). See [capability-profile-coverage.md](capability-profile-coverage.md).
 
 This document is the **authoritative actionable backlog**. Research sources inform it; they are not substitutes for it.
 

@@ -221,6 +221,8 @@ describe('mapPiModelToProfile', () => {
       { provider: 'anthropic', id: 'claude-opus-5-5', tier: 'frontier-cloud' },
       { provider: 'anthropic', id: 'claude-sonnet-5-5', tier: 'frontier-cloud' },
       { provider: 'google', id: 'gemini-4-argon', tier: 'frontier-cloud' },
+      { provider: 'google', id: 'gemini-4-carbon', tier: 'frontier-cloud' },
+      { provider: 'google', id: 'gemini-4-hydrogen', tier: 'frontier-cloud' },
       { provider: 'google', id: 'gemini-3.1-pro-preview', tier: 'frontier-cloud' },
       { provider: 'google', id: 'gemini-3.1-pro-preview-customtools', tier: 'frontier-cloud' },
       { provider: 'google', id: 'gemini-flash-latest', tier: 'economical-cloud' },
@@ -331,6 +333,17 @@ describe('mapPiModelToProfile', () => {
       expect(profile.capabilities.reasoning).toBe(0.95);
       expect(profile.capability_source).toBe('pattern_default');
     });
+
+    it.each(['gemini-4-carbon', 'gemini-4-hydrogen'] as const)(
+      'maps %s to frontier with pattern defaults (SP-318 / #200)',
+      (id) => {
+        const profile = mapPiModelToProfile(makeInput({ provider: 'google', id }));
+
+        expect(profile.tier).toBe('frontier-cloud');
+        expect(profile.capabilities.reasoning).toBe(0.95);
+        expect(profile.capability_source).toBe('pattern_default');
+      },
+    );
 
     it('maps gemini-4-flash to economical (flash rule ahead of Gemini 4+ rule)', () => {
       const profile = mapPiModelToProfile(
