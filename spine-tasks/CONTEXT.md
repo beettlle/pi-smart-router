@@ -1,11 +1,11 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-10-24
+**Last Updated:** 2026-11-15
 **Status:** Active
-**Next Task ID:** SP-313
+**Next Task ID:** SP-320
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v1.2.0** on npm (`latest`, tag `v1.2.0`, 2026-09-13). Theme: long-context encoder path — #173 cascade (SP-291–294) + #167 Granite opt-in runbook (SP-295 Partial — human dogfood remaining) + non-quota #174 (SP-290). Closed: #173, #174. Left open: #167 (Partial), #110 (deferred — no embeddings / session-holdout ECE), #95, #96 (not flipped), #172 (P3). Note: accidental empty `1.3.0` git bump was never published; tag deleted; `main` reverted to package `1.2.0` (`ff28a0c`). Prior: **v1.1.0** verifier-grade train. Train SP-289–SP-295 `.DONE`. Next-train slate: #110, #95, #162/#163, #172, #96, #157, hardware #1/#25/#26 parked.
+**Released:** **v1.3.0** on npm (`latest`, tag `v1.3.0`, 2026-11-02). Theme: typed-judgment foundation (#183) + frontier fleet (#193). In flight: **v1.4.0** new-model coverage (SP-313–SP-319). Prior: **v1.2.0** long-context encoder path.
 
 ---
 
@@ -1013,6 +1013,26 @@
 **Scope ID:** `SP-304,SP-305,SP-306,SP-307,SP-308,SP-309,SP-310,SP-311,SP-312`
 
 **Authoring notes:** `spine-tasks/_authoring/release-v1.3.0/manifest.md`
+
+### Phase 64 — Release v1.4.0 New Model Coverage (SP-313–SP-319)
+
+| Task | Summary | Size | Deps | GitHub |
+|------|---------|------|------|--------|
+| SP-313 | bump dev pi packages to ^1.5.2 | S | — | peer drift |
+| SP-314 | Kimi K3 / K3.1 frontier pattern rule | S | — | Closes #195 |
+| SP-315 | unit coverage for Kimi K3 / K3.1 mapper ids | S | SP-314 | Closes #196 |
+| SP-316 | benchmark-grounded capability row for Kimi K3.1 Pro | M | SP-314, SP-317 | Closes #197 |
+| SP-317 | live refresh preserves curated Claude/Gemini rows | M | — | Closes #199 |
+| SP-318 | cover gemini-4-carbon and gemini-4-hydrogen | S | SP-316 | Closes #200 |
+| SP-319 | operator docs: Kimi K3.1 + Gemini 4 carbon/hydrogen | S | SP-314, SP-316, SP-318 | theme docs |
+
+**Source:** **v1.4.0** (2026-11-15, minor profile). Theme: new model coverage — Kimi K3 / K3.1 Pro + Gemini 4 carbon/hydrogen + curated grounding on live refresh. Scope approved 2026-11-15.
+
+**Status:** Packets authored; waves pending.
+
+**Scope ID:** `SP-313,SP-314,SP-315,SP-316,SP-317,SP-318,SP-319`
+
+**Authoring notes:** `spine-tasks/_authoring/release-v1.4.0/manifest.md`
 
 ---
 
