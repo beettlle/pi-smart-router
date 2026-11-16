@@ -218,7 +218,7 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
     expect(parsed.models).toEqual(artifact.models);
   });
 
-  it('requires all four benchmark fixtures in a directory ingest', () => {
+  it('requires every registered benchmark fixture in a directory ingest', () => {
     const dir = mkdtempSync(join(tmpdir(), 'sp134-fixtures-'));
     try {
       writeFileSync(join(dir, 'swebench_verified.json'), JSON.stringify(fullFixtureSet()[0]));
@@ -481,6 +481,35 @@ describe('SP-311 scoped fleet grounding (#193)', () => {
   });
 });
 
+describe('SP-316 Kimi K3.1 Pro grounding (#197)', () => {
+  it('ingests independent Terminal-Bench and vendor-reported SWE-Marathon scores', () => {
+    const artifact = ingestBenchmarkProfilesFromDir(DEFAULT_BENCHMARK_FIXTURES_DIR, {
+      catalogFreezeDate: '2026-11-16',
+      scrapeDate: '2026-11-16',
+    });
+    const row = artifact.models.find((model) => model.model_id === 'k3.1-pro');
+
+    expect(row).toBeDefined();
+    // Official Terminal-Bench 4.0 (2026-10-24), preferred over Moonshot's 65.7.
+    expect(row!.benchmark_sources.terminal_bench?.raw_score).toBe(59.7);
+    // Moonshot announcement, Claude Code harness; no third-party row was available.
+    expect(row!.benchmark_sources.swe_marathon?.raw_score).toBe(51.7);
+    expect(row!.benchmark_sources.swebench_verified).toBeUndefined();
+    expect(row!.benchmark_sources.livecodebench).toBeUndefined();
+    expect(row!.benchmark_sources.bfcl).toBeUndefined();
+    expect(row!.capabilities.reasoning).toBeCloseTo((0.597 + 0.517) / 2, 10);
+    expect(row!.capabilities.code_gen).toBeCloseTo(0.517, 10);
+    expect(row!.capabilities.tool_use).toBeCloseTo(0.597, 10);
+
+    const sweMarathonFixture = parseBenchmarkLeaderboardFixture(
+      readFileSync(join(DEFAULT_BENCHMARK_FIXTURES_DIR, 'swe_marathon.json'), 'utf8'),
+      'swe_marathon.json',
+    );
+    expect(sweMarathonFixture.source_url).toBe('https://www.kimi.ai/blog/kimi-k3-1-pro');
+    expect(artifact.provenance.source_urls.swe_marathon).toBe(sweMarathonFixture.source_url);
+  });
+});
+
 describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
   it('documents --live, --recorded, and --record-dir in CLI help', () => {
     const help = buildUsageText();
@@ -532,7 +561,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
     }
   });
 
-  it('registry has four native adapters; terminal_bench omits default live URL', () => {
+  it('registry has four native adapters plus the curated SWE-Marathon mirror', () => {
     expect(Object.keys(LEADERBOARD_ADAPTERS).sort()).toEqual([...BENCHMARK_IDS].sort());
     expect(getDefaultLiveFetchUrls()).toEqual({
       swebench_verified:
@@ -595,6 +624,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
       expect(recordedFiles).toEqual([
         'bfcl.json',
         'livecodebench.json',
+        'swe_marathon.json',
         'swebench_verified.json',
         'terminal_bench.json',
       ]);
@@ -651,6 +681,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
         'gemini-2.5-flash',
         'gemini-3-pro-preview',
         'gpt-5.3-codex',
+        'k3.1-pro',
       ]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -763,6 +794,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
       expect(recordedFiles).toEqual([
         'bfcl.json',
         'livecodebench.json',
+        'swe_marathon.json',
         'swebench_verified.json',
         'terminal_bench.json',
       ]);
@@ -815,7 +847,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
         },
       });
 
-      expect(result.fixtures).toHaveLength(4);
+      expect(result.fixtures).toHaveLength(5);
       expect(result.loads.map((load) => load.benchmark).sort()).toEqual([...BENCHMARK_IDS].sort());
 
       const byId = Object.fromEntries(
@@ -829,7 +861,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
       expect(byId.livecodebench?.fixture.entries.length).toBeGreaterThan(0);
 
       writeRecordedLeaderboardSnapshots(result.fixtures, recordDir);
-      expect(readdirSync(recordDir).filter((n) => n.endsWith('.json'))).toHaveLength(4);
+      expect(readdirSync(recordDir).filter((n) => n.endsWith('.json'))).toHaveLength(5);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -856,7 +888,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
         entries: [{ model_id: 'gpt-5.3-codex', score: 80 }],
       }));
       const written = writeRecordedLeaderboardSnapshots(fixtures, dir);
-      expect(written).toHaveLength(4);
+      expect(written).toHaveLength(5);
       const parsed = parseBenchmarkLeaderboardFixture(
         readFileSync(join(dir, 'terminal_bench.json'), 'utf8'),
         'terminal_bench.json',

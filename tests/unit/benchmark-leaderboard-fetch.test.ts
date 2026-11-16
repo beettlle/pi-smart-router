@@ -34,7 +34,7 @@ function loadsById(
 
 describe('benchmark-leaderboard-fetch (SP-181)', () => {
   it('exposes adapter registry; swebench + LCB + bfcl have default live URLs', () => {
-    expect(Object.keys(LEADERBOARD_ADAPTERS)).toHaveLength(4);
+    expect(Object.keys(LEADERBOARD_ADAPTERS)).toHaveLength(5);
     expect(getDefaultLiveFetchUrls()).toEqual({
       swebench_verified:
         'https://raw.githubusercontent.com/SWE-bench/swe-bench.github.io/master/data/leaderboards.json',
@@ -113,7 +113,7 @@ describe('benchmark-leaderboard-fetch (SP-181)', () => {
       expect(byId.bfcl?.fixture.entries[0]?.model_id).toBe('recorded-bfcl');
       expect(byId.livecodebench?.source).toBe('fixture');
       expect(byId.terminal_bench?.source).toBe('fixture');
-      expect(result.fixtures).toHaveLength(4);
+      expect(result.fixtures).toHaveLength(5);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

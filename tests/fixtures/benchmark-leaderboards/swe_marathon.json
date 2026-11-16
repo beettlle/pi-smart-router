@@ -1,0 +1,11 @@
+{
+  "benchmark": "swe_marathon",
+  "source_url": "https://www.kimi.ai/blog/kimi-k3-1-pro",
+  "scrape_date": "2026-11-16",
+  "entries": [
+    {
+      "model_id": "k3.1-pro",
+      "score": 51.7
+    }
+  ]
+}

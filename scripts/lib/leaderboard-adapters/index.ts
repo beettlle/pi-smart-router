@@ -7,10 +7,12 @@
 
 import {
   BENCHMARK_IDS,
+  BENCHMARK_SOURCE_URLS,
   type BenchmarkId,
 } from '../../ingest-benchmark-profiles.js';
 
 import { bfclAdapter } from './bfcl.js';
+import { createFixtureShapedStubAdapter } from './fixture-shaped-stub.js';
 import { livecodebenchAdapter } from './livecodebench.js';
 import { swebenchVerifiedAdapter } from './swebench-verified.js';
 import { terminalBenchAdapter } from './terminal-bench.js';
@@ -25,11 +27,16 @@ export type {
 
 /**
  * Registry of adapters keyed by benchmark id.
- * All four benchmarks use native adapters (SP-182–SP-185).
- * terminal_bench has no default liveFetchUrl (operator `--live-url` only).
+ * The original four benchmarks use native adapters (SP-182–SP-185).
+ * terminal_bench and swe_marathon have no default liveFetchUrl (operator
+ * `--live-url` only); SWE-Marathon currently carries curated vendor results.
  */
 export const LEADERBOARD_ADAPTERS: Readonly<Record<BenchmarkId, LeaderboardAdapter>> = {
   swebench_verified: swebenchVerifiedAdapter,
+  swe_marathon: createFixtureShapedStubAdapter({
+    id: 'swe_marathon',
+    provenanceUrl: BENCHMARK_SOURCE_URLS.swe_marathon,
+  }),
   livecodebench: livecodebenchAdapter,
   bfcl: bfclAdapter,
   terminal_bench: terminalBenchAdapter,

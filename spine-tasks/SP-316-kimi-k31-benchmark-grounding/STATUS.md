@@ -1,6 +1,6 @@
 # SP-316: benchmark-grounded capability row for Kimi K3.1 Pro — Status
 
-**Current Step:** Step 0: Preflight
+**Current Step:** Step 1: Ingest / curated row
 **Status:** In Progress
 **Last Updated:** 2026-11-15
 **Review Level:** 2
@@ -11,16 +11,16 @@
 ---
 
 ### Step 0: Preflight
-**Status:** In Progress
+**Status:** Complete (plan review engine-owned; worker spawn skipped)
 
 - [x] Check leaderboard availability for K3.1 Pro scores
 
 ---
 
 ### Step 1: Ingest / curated row
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Add row and/or fixture data
+- [x] Add row and/or fixture data
 
 ---
 

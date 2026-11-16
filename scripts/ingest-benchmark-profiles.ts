@@ -35,6 +35,7 @@ export const BENCHMARK_PROFILES_VERSION = 1 as const;
 
 export const BENCHMARK_IDS = [
   'swebench_verified',
+  'swe_marathon',
   'terminal_bench',
   'livecodebench',
   'bfcl',
@@ -68,6 +69,9 @@ export const DEFAULT_BENCHMARK_PROFILES_PATH = resolve('config', 'benchmark-prof
  */
 export const BENCHMARK_SOURCE_URLS: Readonly<Record<BenchmarkId, string>> = {
   swebench_verified: 'https://www.swebench.com/',
+  // K3.1 Pro's SWE-Marathon score is vendor-reported; cite the announcement
+  // until the official leaderboard carries a third-party row for this model.
+  swe_marathon: 'https://www.kimi.ai/blog/kimi-k3-1-pro',
   terminal_bench: 'https://www.tbench.ai/leaderboard',
   livecodebench: 'https://livecodebench.github.io/leaderboard.html',
   bfcl: 'https://gorilla.cs.berkeley.edu/leaderboard.html',
@@ -88,6 +92,7 @@ export const BENCHMARK_CAPABILITY_WEIGHTS: Readonly<
   Record<BenchmarkId, Readonly<Partial<Record<CapabilityDimension, number>>>>
 > = {
   swebench_verified: { reasoning: 1, code_gen: 0.5 },
+  swe_marathon: { reasoning: 1, code_gen: 1 },
   terminal_bench: { tool_use: 1, reasoning: 0.3 },
   livecodebench: { code_gen: 1 },
   bfcl: { tool_use: 1 },

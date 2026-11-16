@@ -22,6 +22,10 @@
     {
       "model_id": "gemini-2.5-flash",
       "score": 47.8
+    },
+    {
+      "model_id": "k3.1-pro",
+      "score": 59.7
     }
   ]
 }

@@ -3,6 +3,7 @@
   "provenance": {
     "source_urls": {
       "swebench_verified": "https://www.swebench.com/",
+      "swe_marathon": "https://www.kimi.ai/blog/kimi-k3-1-pro",
       "terminal_bench": "https://www.tbench.ai/leaderboard",
       "livecodebench": "https://livecodebench.github.io/leaderboard.html",
       "bfcl": "https://gorilla.cs.berkeley.edu/leaderboard.html"
@@ -229,6 +230,24 @@
         "terminal_bench": {
           "raw_score": 74.2,
           "normalized": 0.742
+        }
+      }
+    },
+    {
+      "model_id": "k3.1-pro",
+      "capabilities": {
+        "reasoning": 0.557,
+        "code_gen": 0.517,
+        "tool_use": 0.597
+      },
+      "benchmark_sources": {
+        "swe_marathon": {
+          "raw_score": 51.7,
+          "normalized": 0.517
+        },
+        "terminal_bench": {
+          "raw_score": 59.7,
+          "normalized": 0.597
         }
       }
     }
