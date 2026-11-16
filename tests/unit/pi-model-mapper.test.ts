@@ -596,6 +596,28 @@ describe('mapPiModelToProfile', () => {
     });
   });
 
+  describe('Kimi K3 family (SP-314 / #195)', () => {
+    it('maps k3.1-pro to frontier with pattern defaults', () => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'kimi-coding', id: 'k3.1-pro' }),
+      );
+
+      expect(profile.tier).toBe('frontier-cloud');
+      expect(profile.capabilities).toEqual(FRONTIER_CAPS);
+      expect(profile.capability_source).toBe('pattern_default');
+    });
+
+    it.each(['foo-k30', 'k30'])('keeps non-K3 id %s on UNKNOWN_DEFAULTS', (id) => {
+      const profile = mapPiModelToProfile(
+        makeInput({ provider: 'custom-vendor', id }),
+      );
+
+      expect(profile.tier).toBe('economical-cloud');
+      expect(profile.capabilities).toEqual({ reasoning: 0.6, code_gen: 0.65, tool_use: 0.6 });
+      expect(profile.capability_source).toBe('pattern_default');
+    });
+  });
+
   describe('unknown models', () => {
     it('assigns conservative economical-cloud defaults', () => {
       const profile = mapPiModelToProfile(

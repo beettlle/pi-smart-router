@@ -456,6 +456,9 @@ const MODEL_PATTERN_RULES: readonly ModelPatternRule[] = [
   // adapters (SP-243) pair with sensible economical-tier capability defaults.
   { pattern: /^glm[-_.]?\d/i, defaults: ECONOMICAL_DEFAULTS },
   { pattern: /deepseek/i, defaults: ECONOMICAL_DEFAULTS },
+  // SP-314 / #195: Kimi K3 / K3.1 are frontier models; require a version or
+  // suffix boundary so substring-only ids such as foo-k30 stay unknown.
+  { pattern: /^(kimi[-_.]?)?k3(\.\d+)?(-|$)/i, defaults: FRONTIER_DEFAULTS },
   { pattern: /^composer[-_]/i, defaults: COMPOSER_DEFAULTS },
   { pattern: /^cursor\//i, defaults: CURSOR_AUTO_DEFAULTS },
 ];
