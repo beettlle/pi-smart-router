@@ -218,13 +218,26 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
     expect(parsed.models).toEqual(artifact.models);
   });
 
-  it('requires all four benchmark fixtures in a directory ingest', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'sp134-fixtures-'));
-    try {
-      writeFileSync(join(dir, 'swebench_verified.json'), JSON.stringify(fullFixtureSet()[0]));
-      expect(() => ingestBenchmarkProfilesFromDir(dir)).toThrow(/Missing fixture for benchmark/);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
+  it('requires every registered benchmark fixture in a directory ingest', () => {
+    for (const missing of BENCHMARK_IDS) {
+      const dir = mkdtempSync(join(tmpdir(), `sp134-fixtures-${missing}-`));
+      try {
+        for (const benchmark of BENCHMARK_IDS) {
+          if (benchmark === missing) continue;
+          const fixture = fullFixtureSet().find((candidate) => candidate.benchmark === benchmark) ?? {
+            benchmark,
+            source_url: BENCHMARK_SOURCE_URLS[benchmark],
+            scrape_date: '2026-07-10',
+            entries: [{ model_id: 'model-a', score: 0.5 }],
+          };
+          writeFileSync(join(dir, `${benchmark}.json`), JSON.stringify(fixture));
+        }
+        expect(() => ingestBenchmarkProfilesFromDir(dir)).toThrow(
+          new RegExp(`Missing fixture for benchmark: ${missing}`),
+        );
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
     }
   });
 
@@ -481,6 +494,96 @@ describe('SP-311 scoped fleet grounding (#193)', () => {
   });
 });
 
+describe('SP-316 Kimi K3.1 Pro grounding (#197)', () => {
+  const k31Aliases = [
+    'k3.1-pro-highspeed',
+    'kimi-k3.1-pro',
+    'kimi-k3.1-pro-highspeed',
+    'kimi-coding/k3.1-pro',
+    'kimi-coding/k3.1-pro-highspeed',
+    'kimi-coding/kimi-k3.1-pro',
+    'kimi-coding/kimi-k3.1-pro-highspeed',
+    'moonshotai/k3.1-pro',
+    'moonshotai/k3.1-pro-highspeed',
+    'moonshotai/kimi-k3.1-pro',
+    'moonshotai/kimi-k3.1-pro-highspeed',
+  ] as const;
+
+  it('ingests independent Terminal-Bench and vendor-reported SWE-Marathon scores', () => {
+    const artifact = ingestBenchmarkProfilesFromDir(DEFAULT_BENCHMARK_FIXTURES_DIR, {
+      catalogFreezeDate: '2026-11-16',
+      scrapeDate: '2026-11-16',
+    });
+    const row = artifact.models.find((model) => model.model_id === 'k3.1-pro');
+
+    expect(row).toBeDefined();
+    // Official Terminal-Bench 4.0 (2026-10-24), preferred over Moonshot's 65.7.
+    expect(row!.benchmark_sources.terminal_bench?.raw_score).toBe(59.7);
+    // Moonshot announcement, Claude Code harness; no third-party row was available.
+    expect(row!.benchmark_sources.swe_marathon?.raw_score).toBe(51.7);
+    expect(row!.benchmark_sources.swebench_verified).toBeUndefined();
+    expect(row!.benchmark_sources.livecodebench).toBeUndefined();
+    expect(row!.benchmark_sources.bfcl).toBeUndefined();
+    expect(row!.capabilities.reasoning).toBeCloseTo((0.597 + 0.517) / 2, 10);
+    expect(row!.capabilities.code_gen).toBeCloseTo(0.517, 10);
+    expect(row!.capabilities.tool_use).toBeCloseTo(0.597, 10);
+
+    const sweMarathonFixture = parseBenchmarkLeaderboardFixture(
+      readFileSync(join(DEFAULT_BENCHMARK_FIXTURES_DIR, 'swe_marathon.json'), 'utf8'),
+      'swe_marathon.json',
+    );
+    expect(sweMarathonFixture.source_url).toBe('https://www.kimi.ai/blog/kimi-k3-1-pro');
+    expect(artifact.provenance.source_urls.swe_marathon).toBe(sweMarathonFixture.source_url);
+  });
+
+  it.each(k31Aliases)('resolves K3.1 Pro alias %s to the canonical row', (alias) => {
+    expect(DEFAULT_FLEET_BENCHMARK_ALIASES[alias]).toBe('k3.1-pro');
+  });
+
+  it('ships every K3.1 Pro alias in the checked-in artifact', () => {
+    const artifact = parseBenchmarkProfilesArtifact(
+      JSON.parse(
+        readFileSync(
+          fileURLToPath(new URL('../../config/benchmark-profiles.json', import.meta.url)),
+          'utf8',
+        ),
+      ),
+    );
+
+    for (const alias of k31Aliases) {
+      expect(artifact.aliases?.[alias], alias).toBe('k3.1-pro');
+      expect(artifact.provenance.ungrounded_fleet_ids, alias).not.toContain(alias);
+    }
+    expect(artifact.aliases?.['k3.1-pro']).toBeUndefined();
+    expect(artifact.models.some((model) => model.model_id === 'k3.1-pro')).toBe(true);
+  });
+
+  it('documents K3 ids as ungrounded without aliasing them to K3.1 Pro', () => {
+    const k3Ids = [
+      'k3',
+      'k3-256k',
+      'kimi-k3',
+      'kimi-coding/k3',
+      'kimi-coding/k3-256k',
+      'kimi-coding/kimi-k3',
+    ] as const;
+    const artifact = parseBenchmarkProfilesArtifact(
+      JSON.parse(
+        readFileSync(
+          fileURLToPath(new URL('../../config/benchmark-profiles.json', import.meta.url)),
+          'utf8',
+        ),
+      ),
+    );
+
+    for (const id of k3Ids) {
+      expect(DEFAULT_UNGROUNDED_FLEET_IDS, id).toContain(id);
+      expect(artifact.provenance.ungrounded_fleet_ids, id).toContain(id);
+      expect(artifact.aliases?.[id], id).toBeUndefined();
+    }
+  });
+});
+
 describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
   it('documents --live, --recorded, and --record-dir in CLI help', () => {
     const help = buildUsageText();
@@ -532,7 +635,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
     }
   });
 
-  it('registry has four native adapters; terminal_bench omits default live URL', () => {
+  it('registry has four native adapters plus the curated SWE-Marathon mirror', () => {
     expect(Object.keys(LEADERBOARD_ADAPTERS).sort()).toEqual([...BENCHMARK_IDS].sort());
     expect(getDefaultLiveFetchUrls()).toEqual({
       swebench_verified:
@@ -595,6 +698,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
       expect(recordedFiles).toEqual([
         'bfcl.json',
         'livecodebench.json',
+        'swe_marathon.json',
         'swebench_verified.json',
         'terminal_bench.json',
       ]);
@@ -651,6 +755,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
         'gemini-2.5-flash',
         'gemini-3-pro-preview',
         'gpt-5.3-codex',
+        'k3.1-pro',
       ]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -763,6 +868,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
       expect(recordedFiles).toEqual([
         'bfcl.json',
         'livecodebench.json',
+        'swe_marathon.json',
         'swebench_verified.json',
         'terminal_bench.json',
       ]);
@@ -815,7 +921,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
         },
       });
 
-      expect(result.fixtures).toHaveLength(4);
+      expect(result.fixtures).toHaveLength(BENCHMARK_IDS.length);
       expect(result.loads.map((load) => load.benchmark).sort()).toEqual([...BENCHMARK_IDS].sort());
 
       const byId = Object.fromEntries(
@@ -829,7 +935,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
       expect(byId.livecodebench?.fixture.entries.length).toBeGreaterThan(0);
 
       writeRecordedLeaderboardSnapshots(result.fixtures, recordDir);
-      expect(readdirSync(recordDir).filter((n) => n.endsWith('.json'))).toHaveLength(4);
+      expect(readdirSync(recordDir).filter((n) => n.endsWith('.json'))).toHaveLength(5);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -856,7 +962,7 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
         entries: [{ model_id: 'gpt-5.3-codex', score: 80 }],
       }));
       const written = writeRecordedLeaderboardSnapshots(fixtures, dir);
-      expect(written).toHaveLength(4);
+      expect(written).toHaveLength(BENCHMARK_IDS.length);
       const parsed = parseBenchmarkLeaderboardFixture(
         readFileSync(join(dir, 'terminal_bench.json'), 'utf8'),
         'terminal_bench.json',

@@ -7,6 +7,7 @@
     { "model_id": "claude-sonnet-4-6", "score": 68.0 },
     { "model_id": "gpt-5.3-codex", "score": 74.2 },
     { "model_id": "claude-3.5-haiku", "score": 51.3 },
-    { "model_id": "gemini-2.5-flash", "score": 47.8 }
+    { "model_id": "gemini-2.5-flash", "score": 47.8 },
+    { "model_id": "k3.1-pro", "score": 59.7 }
   ]
 }

@@ -3,6 +3,7 @@
   "provenance": {
     "source_urls": {
       "swebench_verified": "https://www.swebench.com/",
+      "swe_marathon": "https://www.kimi.ai/blog/kimi-k3-1-pro",
       "terminal_bench": "https://www.tbench.ai/leaderboard",
       "livecodebench": "https://livecodebench.github.io/leaderboard.html",
       "bfcl": "https://gorilla.cs.berkeley.edu/leaderboard.html"
@@ -21,7 +22,13 @@
       "google/gemini-3.1-pro-preview-customtools",
       "google/gemini-4-argon",
       "google/gemini-flash-latest",
-      "google/gemini-flash-lite-latest"
+      "google/gemini-flash-lite-latest",
+      "k3",
+      "k3-256k",
+      "kimi-coding/k3",
+      "kimi-coding/k3-256k",
+      "kimi-coding/kimi-k3",
+      "kimi-k3"
     ]
   },
   "aliases": {
@@ -71,7 +78,18 @@
     "gpt-5": "gpt-5.3-codex",
     "gpt-5-codex": "gpt-5.3-codex",
     "gpt-5.3": "gpt-5.3-codex",
-    "gpt-5.5": "gpt-5.3-codex"
+    "gpt-5.5": "gpt-5.3-codex",
+    "k3.1-pro-highspeed": "k3.1-pro",
+    "kimi-coding/k3.1-pro": "k3.1-pro",
+    "kimi-coding/k3.1-pro-highspeed": "k3.1-pro",
+    "kimi-coding/kimi-k3.1-pro": "k3.1-pro",
+    "kimi-coding/kimi-k3.1-pro-highspeed": "k3.1-pro",
+    "kimi-k3.1-pro": "k3.1-pro",
+    "kimi-k3.1-pro-highspeed": "k3.1-pro",
+    "moonshotai/k3.1-pro": "k3.1-pro",
+    "moonshotai/k3.1-pro-highspeed": "k3.1-pro",
+    "moonshotai/kimi-k3.1-pro": "k3.1-pro",
+    "moonshotai/kimi-k3.1-pro-highspeed": "k3.1-pro"
   },
   "models": [
     {
@@ -229,6 +247,24 @@
         "terminal_bench": {
           "raw_score": 74.2,
           "normalized": 0.742
+        }
+      }
+    },
+    {
+      "model_id": "k3.1-pro",
+      "capabilities": {
+        "reasoning": 0.557,
+        "code_gen": 0.517,
+        "tool_use": 0.597
+      },
+      "benchmark_sources": {
+        "swe_marathon": {
+          "raw_score": 51.7,
+          "normalized": 0.517
+        },
+        "terminal_bench": {
+          "raw_score": 59.7,
+          "normalized": 0.597
         }
       }
     }
