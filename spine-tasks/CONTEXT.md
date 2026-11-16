@@ -1028,7 +1028,7 @@
 
 **Source:** **v1.4.0** (2026-11-15, minor profile). Theme: new model coverage — Kimi K3 / K3.1 Pro + Gemini 4 carbon/hydrogen + curated grounding on live refresh. Scope approved 2026-11-15.
 
-**Status:** Packets authored; waves pending.
+**Status:** All SP-313–SP-319 `.DONE` on `main` (2026-11-16). Phase 5 gates green locally (`release:check`, `release:assert-content`); awaiting operator **approve publish** for `npm version minor` → v1.4.0.
 
 **Scope ID:** `SP-313,SP-314,SP-315,SP-316,SP-317,SP-318,SP-319`
 

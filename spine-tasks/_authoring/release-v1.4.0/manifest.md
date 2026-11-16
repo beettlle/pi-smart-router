@@ -169,15 +169,15 @@ Open-issue count must **not** raise this release’s enhancement or total-task c
 
 ## Publish checklist (Phase 5–6)
 
-- [ ] All release-scoped tasks `.DONE` on `main`
-- [ ] Post-integrate `release:check` green after **each wave** (log paths recorded)
-- [ ] `spine preflight` green
-- [ ] `npm run release:check` green on final `HEAD` (exit 0 verified)
-- [ ] `npm run release:assert-content` green (substantive delta vs last release tag)
-- [ ] Manifest target == expected next version from `package.json` + bump type (`1.3.0` + minor → `1.4.0`)
-- [ ] No existing git tag `v1.4.0`
-- [ ] CI workflow green on `HEAD`
-- [ ] `git status` clean
+- [x] All release-scoped tasks `.DONE` on `main`
+- [x] Post-integrate `release:check` green after waves (logs under `/tmp/pi-smart-router-post-integrate-v140-*.log`; final `/tmp/pi-smart-router-release-check-v140-final.log`)
+- [x] `spine preflight` green (0 pending)
+- [x] `npm run release:check` green on final `HEAD` (exit 0 verified)
+- [x] `npm run release:assert-content` green (substantive delta vs last release tag)
+- [x] Manifest target == expected next version from `package.json` + bump type (`1.3.0` + minor → `1.4.0`)
+- [x] No existing git tag `v1.4.0`
+- [ ] CI workflow green on `HEAD` (poll before publish)
+- [x] `git status` clean (at Phase 5 freeze; CONTEXT/manifest note commits OK)
 - [ ] Operator approved publish bump type: minor
 - [ ] **Exactly one** `npm version minor` then `git push && git push --tags` — then **STOP**
 - [ ] `release.yml` succeeded; `npm view` `latest` == 1.4.0 (else Publish recovery, do not re-bump)
