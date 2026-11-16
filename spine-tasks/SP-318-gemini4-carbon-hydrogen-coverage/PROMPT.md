@@ -55,7 +55,7 @@ Serialize after SP-316 so both do not race on `config/benchmark-profiles.json`.
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/pi-model-mapper.test.ts tests/unit/pi-model-mapper-coverage.test.ts tests/unit/ingest-benchmark-profiles.test.ts && npm run routing:verify-benchmark-profiles && bash scripts/spine-stet-contract-run.sh default SP-318` |
-| fileScopeMustChange | `config/benchmark-profiles.json`, `tests/unit/pi-model-mapper.test.ts` |
+| fileScopeMustChange | `tests/unit/pi-model-mapper.test.ts`, `tests/unit/ingest-benchmark-profiles.test.ts` |
 | fileScopeMustNotChange | `package.json`, `src/domain/`, `.review/` |
 | completionCriteria | carbon/hydrogen frontier via existing rule; aliases + ungrounded (or grounded) parity with argon; tests green |
 
@@ -72,6 +72,10 @@ Serialize after SP-316 so both do not race on `config/benchmark-profiles.json`.
 ### Step 2: Testing & Verification
 
 - [ ] Run Contract `testCommand`
+
+## Amendments (2026-11-16)
+
+- `config/benchmark-profiles.json` was already refreshed on main (SP-317/SP-316). Keep it in Must change; contract `fileScopeMustChange` also requires `tests/unit/pi-model-mapper.test.ts` (and may update ingest defaults). Pre-landed artifact edits are expected — extend aliases/ungrounded for carbon/hydrogen rather than treating the file as virgin.
 
 ## Do NOT
 
