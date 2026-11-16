@@ -77,6 +77,11 @@ Negative cases:
 
 - [ ] Run Contract `testCommand`
 
+## Amendments (2026-11-15)
+
+- SP-314 already added a smoke describe in `tests/unit/pi-model-mapper.test.ts`; extend that suite rather than treating the file as virgin.
+- Id `kimi-k3` **does** match `/^(kimi[-_.]?)?k3(\.\d+)?(-|$)/i` from SP-314. If stet claims otherwise, dismiss as `false_positive` and record under Discoveries — do not weaken the assertion.
+
 ## Do NOT
 
 - Re-edit the pattern rule (SP-314)
