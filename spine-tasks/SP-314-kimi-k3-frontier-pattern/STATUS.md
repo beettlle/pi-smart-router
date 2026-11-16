@@ -1,7 +1,7 @@
 # SP-314: Kimi K3 / K3.1 frontier pattern rule — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 1: Implementation
+**Status:** In Progress
 **Last Updated:** 2026-11-15
 **Review Level:** 1
 **Review Counter:** 0
@@ -11,15 +11,15 @@
 ---
 
 ### Step 0: Preflight
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] GitNexus impact on mapPiModelToProfile / MODEL_PATTERN_RULES
-- [ ] Confirm current under-tiering for k3.1-pro
+- [x] GitNexus impact on mapPiModelToProfile / MODEL_PATTERN_RULES
+- [x] Confirm current under-tiering for k3.1-pro
 
 ---
 
 ### Step 1: Implementation
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Add K3 family FRONTIER_DEFAULTS rule
 
