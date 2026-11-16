@@ -74,17 +74,21 @@ Required:
 
 ### Step 2: Regression test
 
-- [ ] Test that live+record (or mocked live) ingest keeps curated rows
+- [ ] Add a **separate** regression test that live+record (or mocked live) ingest keeps curated rows
+- [ ] Do **not** pass `preservedModels` sourced from the checked-in artifact into the existing "checked-in artifact matches fixture ingest" / recorded-path verification — that makes the assertion tautological and fails stet (finding on SP-317 attempt 1)
+- [ ] Prefer an independent curated fixture or synthetic prior-artifact models list as the preserve source for the new test
 
 ### Step 3: Testing & Verification
 
 - [ ] Run Contract `testCommand`
+- [ ] If stet reports a finding, triage (fix or `stet dismiss` with a valid reason) until zero active findings
 - [ ] Note in STATUS that unskipped `release:check` is the intended gate after this lands
 
 ## Do NOT
 
 - Invent new benchmark scores
 - Disable live refresh permanently via skip env as the fix
+- Feed the checked-in artifact's models into itself as `preservedModels` for the recorded-path equality test
 
 ## Completion Criteria
 
