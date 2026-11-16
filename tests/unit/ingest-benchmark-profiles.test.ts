@@ -22,6 +22,7 @@ import {
   parseBenchmarkLeaderboardFixture,
   parseBenchmarkProfilesArtifact,
   parseIngestCliArgs,
+  preserveCuratedBenchmarkRows,
   runIngestCli,
   serializeBenchmarkProfilesArtifact,
   type BenchmarkLeaderboardFixture,
@@ -147,7 +148,10 @@ describe('ingest-benchmark-profiles (SP-134)', () => {
       ingestBenchmarkProfilesFromDir(DEFAULT_BENCHMARK_FIXTURES_DIR, options),
     );
     const fromRecorded = serializeBenchmarkProfilesArtifact(
-      ingestBenchmarkProfilesFromDir(DEFAULT_RECORDED_LEADERBOARDS_DIR, options),
+      preserveCuratedBenchmarkRows(
+        ingestBenchmarkProfilesFromDir(DEFAULT_RECORDED_LEADERBOARDS_DIR, options),
+        parsed,
+      ),
     );
 
     expect(
@@ -592,6 +596,54 @@ describe('ingest-benchmark-profiles live/recorded (SP-179 / SP-181)', () => {
         'swebench_verified.json',
         'terminal_bench.json',
       ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('preserves curated Claude/Gemini rows omitted by a mocked live refresh (SP-317)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sp317-curated-rows-'));
+    const outputPath = join(dir, 'benchmark-profiles.json');
+    const recordDir = join(dir, 'recorded');
+    writeFileSync(outputPath, readFileSync(CHECKED_IN_PROFILES_PATH, 'utf8'), 'utf8');
+    const existing = parseBenchmarkProfilesArtifact(
+      JSON.parse(readFileSync(outputPath, 'utf8')),
+    );
+
+    try {
+      await runIngestCli(
+        [
+          '--live',
+          '--record-dir',
+          recordDir,
+          '--output',
+          outputPath,
+          '--catalog-freeze-date',
+          '2026-11-15',
+          '--scrape-date',
+          '2026-11-15',
+        ],
+        {
+          // Force the checked-in recorded live mix, which omits both curated rows.
+          fetchFn: async () =>
+            new Response('<!DOCTYPE html><html><body>leaderboard</body></html>', {
+              status: 200,
+            }),
+        },
+      );
+
+      const refreshed = parseBenchmarkProfilesArtifact(
+        JSON.parse(readFileSync(outputPath, 'utf8')),
+      );
+      for (const modelId of ['claude-haiku-4-5', 'gemini-3-pro-preview']) {
+        expect(refreshed.models.find((model) => model.model_id === modelId)).toEqual(
+          existing.models.find((model) => model.model_id === modelId),
+        );
+      }
+      expect(refreshed.models.some((model) => model.model_id === 'gpt-5.3-codex')).toBe(true);
+      expect(refreshed.models.map((model) => model.model_id)).toEqual(
+        [...refreshed.models.map((model) => model.model_id)].sort(),
+      );
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

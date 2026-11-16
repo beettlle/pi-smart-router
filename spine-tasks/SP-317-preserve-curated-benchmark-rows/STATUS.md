@@ -1,6 +1,6 @@
 # SP-317: live refresh preserves curated Claude/Gemini grounding rows — Status
 
-**Current Step:** Step 0: Preflight
+**Current Step:** Step 1: Preserve/merge implementation
 **Status:** In Progress
 **Last Updated:** 2026-11-15
 **Review Level:** 2
@@ -11,7 +11,7 @@
 ---
 
 ### Step 0: Preflight
-**Status:** In Progress
+**Status:** Complete
 
 - [x] List curated rows that live refresh currently drops
 
@@ -20,9 +20,11 @@ Dropped by recorded/live ingest: `claude-haiku-4-5` (SWE-bench + BFCL) and `gemi
 ---
 
 ### Step 1: Preserve/merge implementation
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Implement curated-row merge over live ingest
+- [x] Implement curated-row merge over live ingest
+
+Live ingest preserves existing rows absent from the refreshed mix; fresh rows win for matching ids and output remains deterministically sorted.
 
 ---
 
