@@ -1,7 +1,7 @@
 # SP-317: live refresh preserves curated Claude/Gemini grounding rows — Status
 
-**Current Step:** Step 3: Testing & Verification
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-11-15
 **Review Level:** 2
 **Review Counter:** 0
@@ -38,7 +38,7 @@ Live ingest preserves existing rows absent from the refreshed mix; fresh rows wi
 ---
 
 ### Step 3: Testing & Verification
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Run Contract testCommand
 - [x] Document unskipped release:check path in STATUS
