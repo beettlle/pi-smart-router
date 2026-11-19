@@ -1,11 +1,11 @@
 # pi-smart-router — Context
 
-**Last Updated:** 2026-11-15
+**Last Updated:** 2026-11-19
 **Status:** Active
-**Next Task ID:** SP-320
+**Next Task ID:** SP-329
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** **v1.4.0** on npm (`latest`, tag `v1.4.0`, 2026-11-16) after staged publish `7912cbfd-6d1e-4326-afef-bac438a9eef1` + maintainer 2FA. Theme: new-model coverage (Kimi K3/K3.1 + Gemini 4 carbon/hydrogen + curated live refresh). Prior: **v1.3.0** typed-judgment foundation.
+**Released:** **v1.4.0** on npm (`latest`, tag `v1.4.0`, 2026-11-16). Queued **v1.5.0** packets SP-320–SP-328 (dogfood stability + typed-judgment consumers). Prior: **v1.3.0** typed-judgment foundation.
 
 ---
 
@@ -1033,6 +1033,28 @@
 **Scope ID:** `SP-313,SP-314,SP-315,SP-316,SP-317,SP-318,SP-319`
 
 **Authoring notes:** `spine-tasks/_authoring/release-v1.4.0/manifest.md`
+
+### Phase 65 — Release v1.5.0 Dogfood Stability + Typed-Judgment Consumers (SP-320–SP-328)
+
+| Task | Summary | Size | Deps | Maps |
+|------|---------|------|------|------|
+| SP-320 | parse status-prefix provider errors | S | — | Partial #194 |
+| SP-321 | never record failed delegation as success | S | — | Partial #194 |
+| SP-322 | model repeated failure counter + failover | M | SP-320, SP-321 | Closes #194 |
+| SP-323 | session-depth flash-class main_loop floor | M | — | Partial #179/#182 |
+| SP-324 | first tool_result re-check after provider handoff | S | SP-323 | Closes #179; Partial #182 |
+| SP-325 | degenerate output detect → failover | M | SP-322 | Closes #181; Partial #182 |
+| SP-326 | typed-judgment tier hints + planning override | M | SP-323, SP-324 | Partial #188/#183 |
+| SP-327 | typed-judgment local_zero gates | M | SP-326 | Closes #188; Partial #183 |
+| SP-328 | operator docs Sprint 2 consumers | S | SP-326, SP-327 | Partial #183 |
+
+**Source:** **v1.5.0** (2026-11-19, minor profile). Theme: dogfood stability + typed-judgment consumers — #194 failure recording, #182 guards (#179/#181), #188 consumers (Partial #183). Scope approved 2026-11-19; packets authored; **pause before batch**.
+
+**Status:** Packets pending on `main` (not yet batched).
+
+**Scope ID:** `SP-320,SP-321,SP-322,SP-323,SP-324,SP-325,SP-326,SP-327,SP-328`
+
+**Authoring notes:** `spine-tasks/_authoring/release-v1.5.0/manifest.md`
 
 ---
 
