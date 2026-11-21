@@ -1,7 +1,7 @@
 # SP-328: Operator docs: Sprint 2 consumer table + #188 enablement — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 1: Docs
+**Status:** In Progress
 **Last Updated:** 2026-11-19
 **Review Level:** 0
 **Review Counter:** 0
@@ -11,12 +11,12 @@
 ---
 
 ### Step 0: Preflight
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Diff landed knobs/reason codes
+- [x] Diff landed knobs/reason codes
 
 ### Step 1: Docs
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] README consumer table
 - [ ] Roadmap/migration sync
