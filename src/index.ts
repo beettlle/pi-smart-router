@@ -215,6 +215,17 @@ export {
   computeOutputHeadroom,
   type OutputHeadroomConfig,
 } from './domain/delegation/output-headroom.js';
+export {
+  DEGENERATE_OUTPUT,
+  DEGENERATE_OUTPUT_ERROR_CODE,
+  DEFAULT_DEGENERATE_OUTPUT_CONFIG,
+  classifyDegenerateOutput,
+  isDegenerateOutput,
+  repeatedNgramRatio,
+  type DegenerateOutputClassification,
+  type DegenerateOutputConfig,
+  type DegenerateOutputMessage,
+} from './domain/delegation/degenerate-output.js';
 
 // Domain — matching, pinning, pipeline, pricing, routing
 export {

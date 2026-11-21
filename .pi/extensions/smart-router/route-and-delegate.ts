@@ -38,7 +38,7 @@ import {
   DEGENERATE_OUTPUT,
   DEGENERATE_OUTPUT_ERROR_CODE,
   isDegenerateOutput,
-} from '../../../src/domain/delegation/degenerate-output.js';
+} from '../../../src/index.js';
 import {
   createErrorMessage,
   findFleetProfile,

@@ -13,11 +13,9 @@ import {
   parseAssistantMessageError,
   extractUsageActuals,
   resolveAdaptiveReasoning,
-} from '../../../src/index.js';
-import {
   DEGENERATE_OUTPUT_ERROR_CODE,
   isDegenerateOutput,
-} from '../../../src/domain/delegation/degenerate-output.js';
+} from '../../../src/index.js';
 import type {
   AdaptiveReasoningResult,
   AdaptiveReasoningSignal,
