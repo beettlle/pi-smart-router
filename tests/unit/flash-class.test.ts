@@ -133,6 +133,17 @@ describe('applyMainLoopCapabilityFloor', () => {
     expect(fleet).toEqual([flash, midTier, frontier]);
   });
 
+  it('does not attribute already-unhealthy flash models to floor metadata', () => {
+    const unhealthyFlash = makeModel('unhealthy-flash', { healthy: false });
+    const result = applyMainLoopCapabilityFloor(
+      makeRequest(),
+      [unhealthyFlash, flash, frontier],
+    );
+
+    expect(result.fleet.map((model) => model.id)).toEqual(['claude-opus']);
+    expect(result.excludedModelIds).toEqual(['glm-5.3-flash']);
+  });
+
   it('supports message depth below the token threshold', () => {
     const result = applyMainLoopCapabilityFloor(
       makeRequest({

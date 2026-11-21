@@ -22,7 +22,7 @@ const FLASH_CLASS_ID_PATTERN = /flash|lite|mini|nano/i;
 export interface MainLoopCapabilityFloorResult {
   /** Filtered candidates, or the original array reference when no floor applies. */
   readonly fleet: readonly ModelProfile[];
-  /** Flash-class candidates excluded by the floor, in original fleet order. */
+  /** Healthy flash-class candidates excluded by the floor, in fleet order. */
   readonly excludedModelIds: readonly string[];
 }
 
@@ -78,15 +78,17 @@ export function applyMainLoopCapabilityFloor(
     return unchanged;
   }
 
-  const excludedModelIds = fleet
-    .filter(isFlashClassModel)
-    .map((model) => model.id);
-  if (excludedModelIds.length === 0) {
+  const filteredFleet = fleet.filter((model) => !isFlashClassModel(model));
+  if (filteredFleet.length === fleet.length) {
     return unchanged;
   }
 
   return {
-    fleet: fleet.filter((model) => !isFlashClassModel(model)),
-    excludedModelIds,
+    fleet: filteredFleet,
+    // Unhealthy entries were already ineligible; do not attribute their
+    // rejection to this floor in routing explain / LOG_ROUTING metadata.
+    excludedModelIds: fleet
+      .filter((model) => model.healthy !== false && isFlashClassModel(model))
+      .map((model) => model.id),
   };
 }

@@ -25,8 +25,8 @@
 ### Step 2: Testing & Verification
 **Status:** In Progress
 
-- [ ] #179 depth AC test
-- [ ] Shallow unchanged
+- [x] #179 depth AC test
+- [x] Shallow unchanged
 - [ ] Contract
 
 ---
@@ -41,6 +41,7 @@
 
 | Date | Finding | Impact |
 |------|---------|--------|
+| 2026-11-21 | STET flagged intended downstream fleet narrowing and the isolated message-depth test as warnings; both dismissed as false positives. The unhealthy-model metadata warning was valid and fixed. | Floor behavior remains deterministic; rejection metadata now attributes only healthy flash candidates to the floor. |
 | | | |
 
 ## Execution Log
