@@ -745,7 +745,9 @@ describe('local_zero typed-judgment gates (SP-327, #188)', () => {
     });
 
     const decision = await pipeline.route(
-      makeRequest({ prompt_text: 'Format this JSON file' }),
+      makeRequest({
+        prompt_text: 'Please overwrite my scratch files with the corrected versions',
+      }),
     );
 
     expect(decision.stage).not.toBe('local_zero');
