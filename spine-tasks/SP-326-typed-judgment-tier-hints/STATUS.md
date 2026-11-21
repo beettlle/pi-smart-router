@@ -1,7 +1,7 @@
 # SP-326: Typed-judgment tier hints + planning override consumers — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 1: Tier hint + planning override
+**Status:** In Progress
 **Last Updated:** 2026-11-19
 **Review Level:** 2
 **Review Counter:** 0
@@ -11,13 +11,13 @@
 ---
 
 ### Step 0: Preflight
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Confirm stage + hooks
-- [ ] Confirm flash-class helper
+- [x] Confirm stage + hooks
+- [x] Confirm flash-class helper
 
 ### Step 1: Tier hint + planning override
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] task_kind + capability hints
 - [ ] Low-confidence + floors
