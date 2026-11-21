@@ -8,8 +8,17 @@ import {
   type RequirementVector,
 } from '../../src/domain/matching/hydra-matcher.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
-import { DEFAULT_OPERATOR_CONFIG } from '../../src/config/defaults.js';
-import type { ModelProfile } from '../../src/domain/types/index.js';
+import { createLowIntensityStage } from '../../src/domain/pipeline/low-intensity-stage.js';
+import { createRoutingContext } from '../../src/domain/pipeline/pipeline-stage.js';
+import type { TypedJudgment } from '../../src/domain/judgment/index.js';
+import {
+  DEFAULT_OPERATOR_CONFIG,
+  DEFAULT_TYPED_JUDGMENT_CONFIG,
+} from '../../src/config/defaults.js';
+import type {
+  ModelProfile,
+  RoutingRequest,
+} from '../../src/domain/types/index.js';
 import {
   fleet,
   HARDWARE_CONFIG,
@@ -243,5 +252,177 @@ describe('RouterPipeline', () => {
       expect(decision.tier).not.toBe('zero-tier');
       expect(decision.features?.local_eligible_reason).toBeNull();
     });
+  });
+});
+
+describe('low_intensity typed-judgment capability hints (SP-326)', () => {
+  function makeJudgment(
+    capabilityDeserved: number | null,
+    confidence = 0.9,
+  ): TypedJudgment {
+    return {
+      taskKind: null,
+      taskKindConfidence: null,
+      capabilityDeserved,
+      deepReasoningP: null,
+      codeGen: null,
+      toolUse: null,
+      destructiveP: null,
+      confidences:
+        capabilityDeserved === null
+          ? {}
+          : { capability_deserved: confidence },
+    };
+  }
+
+  async function runCapabilityJudgment(
+    capabilityDeserved: number | null,
+    confidence = 0.9,
+    overrides: {
+      models?: readonly ModelProfile[];
+      request?: RoutingRequest;
+      lowThreshold?: number;
+      highThreshold?: number;
+    } = {},
+  ) {
+    const models = overrides.models ?? fleet;
+    const context = createRoutingContext({
+      request:
+        overrides.request ??
+        makeRequest({
+          prompt_text: 'Hello, how are you today?',
+          turn_type: 'main_loop',
+        }),
+      options: {
+        lowIntensityConfig: {
+          ...DEFAULT_OPERATOR_CONFIG.low_intensity,
+          low_threshold: overrides.lowThreshold ?? -1,
+          high_threshold: overrides.highThreshold ?? 2,
+        },
+        pSuccessWeights: UNTRAINED_P_SUCCESS_WEIGHTS,
+        typedJudgmentConfig: {
+          ...DEFAULT_TYPED_JUDGMENT_CONFIG,
+          enabled: true,
+        },
+      },
+      fleet: models,
+    });
+    context.typedJudgment = makeJudgment(capabilityDeserved, confidence);
+    await createLowIntensityStage().run(context);
+    return context;
+  }
+
+  it('maps Minimal to zero-tier and High to frontier-cloud with typed reason codes', async () => {
+    const minimal = await runCapabilityJudgment(0, 0.9, {
+      lowThreshold: 2,
+      highThreshold: 3,
+    });
+    const high = await runCapabilityJudgment(2 / 3, 0.9);
+
+    expect(minimal.tierHint).toBe('zero-tier');
+    expect(minimal.tierHintReasonCode).toBe(
+      'typed_judgment_tier_zero-tier',
+    );
+    expect(high.tierHint).toBe('frontier-cloud');
+    expect(high.tierHintReasonCode).toBe(
+      'typed_judgment_tier_frontier-cloud',
+    );
+  });
+
+  it('maps Standard to economical-cloud and excludes zero-tier and flash-class models', async () => {
+    const models = [
+      makeModel({
+        id: 'local-capable',
+        tier: 'zero-tier',
+        capabilities: { reasoning: 0.9, code_gen: 0.9, tool_use: 0.9 },
+      }),
+      makeModel({
+        id: 'gpt-mini',
+        tier: 'economical-cloud',
+        capabilities: { reasoning: 0.9, code_gen: 0.9, tool_use: 0.9 },
+      }),
+      makeModel({
+        id: 'econ-standard',
+        tier: 'economical-cloud',
+        capabilities: { reasoning: 0.9, code_gen: 0.9, tool_use: 0.9 },
+      }),
+      makeModel({
+        id: 'frontier-capable',
+        tier: 'frontier-cloud',
+        capabilities: { reasoning: 0.9, code_gen: 0.9, tool_use: 0.9 },
+      }),
+    ];
+
+    const context = await runCapabilityJudgment(1 / 3, 0.9, { models });
+
+    expect(context.tierHint).toBe('economical-cloud');
+    expect(context.tierHintReasonCode).toBe(
+      'typed_judgment_tier_economical-cloud',
+    );
+    expect(context.fleet.map((model) => model.id)).toEqual([
+      'econ-standard',
+      'frontier-capable',
+    ]);
+  });
+
+  it.each([0, 1 / 3])(
+    'never lets low-confidence capability %s lower a frontier structural hint',
+    async (capabilityDeserved) => {
+      const context = await runCapabilityJudgment(
+        capabilityDeserved,
+        0.2,
+        { lowThreshold: 2, highThreshold: 3 },
+      );
+
+      expect(context.tierHint).toBe('frontier-cloud');
+      expect(context.tierHintReasonCode).toBe('high_intensity_structural');
+    },
+  );
+
+  it('allows low-confidence capability to raise an economical structural hint', async () => {
+    const context = await runCapabilityJudgment(2 / 3, 0.2, {
+      lowThreshold: -1,
+      highThreshold: 0,
+    });
+
+    expect(context.tierHint).toBe('frontier-cloud');
+    expect(context.tierHintReasonCode).toBe(
+      'typed_judgment_tier_frontier-cloud',
+    );
+  });
+
+  it('never lets Minimal lower the SP-323 deep-session capability floor', async () => {
+    const flash = makeModel({
+      id: 'glm-flash',
+      tier: 'economical-cloud',
+      capabilities: { reasoning: 0.7, code_gen: 0.7, tool_use: 0.7 },
+    });
+    const capablePeer = makeModel({
+      id: 'glm-standard',
+      tier: 'economical-cloud',
+      capabilities: { reasoning: 0.9, code_gen: 0.9, tool_use: 0.9 },
+    });
+    const context = await runCapabilityJudgment(0, 0.95, {
+      models: [flash, capablePeer],
+      request: makeRequest({
+        turn_type: 'main_loop',
+        estimated_input_tokens: 100_001,
+      }),
+    });
+
+    expect(context.tierHint).toBe('frontier-cloud');
+    expect(context.tierHintReasonCode).toBe(
+      'typed_judgment_tier_frontier-cloud',
+    );
+  });
+
+  it('preserves prior structural behavior when capability judgment is null', async () => {
+    const context = await runCapabilityJudgment(null, 0.9, {
+      lowThreshold: 2,
+      highThreshold: 3,
+    });
+
+    expect(context.tierHint).toBe('frontier-cloud');
+    expect(context.tierHintReasonCode).toBe('high_intensity_structural');
   });
 });
