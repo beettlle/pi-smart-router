@@ -17,7 +17,8 @@ export const DEEP_SESSION_ESTIMATED_TOKEN_THRESHOLD = 100_000;
 export const FLASH_CLASS_CAPABILITY_FLOOR = 0.7;
 export const SESSION_DEPTH_CAPABILITY_FLOOR = 'session_depth_capability_floor';
 
-const FLASH_CLASS_ID_PATTERN = /flash|lite|mini|nano/i;
+const FLASH_CLASS_ID_PATTERN =
+  /(?:^|[^a-z0-9])(?:flash|lite|mini|nano)(?=$|[^a-z0-9])/i;
 
 export interface MainLoopCapabilityFloorResult {
   /** Filtered candidates, or the original array reference when no floor applies. */

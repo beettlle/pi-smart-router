@@ -55,6 +55,13 @@ describe('isFlashClassModel', () => {
     expect(isFlashClassModel(makeModel(id))).toBe(true);
   });
 
+  it.each(['minimal-reasoner', 'nanobot', 'flashpoint'])(
+    'does not match a flash token embedded in %s',
+    (id) => {
+      expect(isFlashClassModel(makeModel(id))).toBe(false);
+    },
+  );
+
   it('uses reasoning and tool_use capability floors for neutral ids', () => {
     expect(
       isFlashClassModel(
