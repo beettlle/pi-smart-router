@@ -1,7 +1,7 @@
 # SP-327: Typed-judgment local_zero gates + low-confidence guard — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 0: Preflight
+**Status:** In Progress
 **Last Updated:** 2026-11-19
 **Review Level:** 2
 **Review Counter:** 0
@@ -11,10 +11,10 @@
 ---
 
 ### Step 0: Preflight
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Read local_zero reason plumbing
-- [ ] Confirm SP-326
+- [x] Read local_zero reason plumbing
+- [x] Confirm SP-326
 
 ### Step 1: Gates
 **Status:** Not Started
