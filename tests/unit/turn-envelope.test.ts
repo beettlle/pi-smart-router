@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { classifyTurnEnvelope } from '../../src/domain/triage/turn-envelope.js';
 import { evaluateSubRoutePolicy } from '../../src/domain/pinning/sub-route-policy.js';
 import { createTurnEnvelopeStage } from '../../src/domain/pipeline/turn-envelope-stage.js';
+import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { createRoutingContext } from '../../src/domain/pipeline/pipeline-stage.js';
 import type { Message, ModelProfile, RoutingRequest, SessionPin } from '../../src/domain/types/index.js';
 
@@ -668,5 +669,89 @@ describe('turn-envelope deep main_loop capability floor (SP-323)', () => {
     await createTurnEnvelopeStage().run(context);
 
     expect(context.fleet).toBe(fleet);
+  });
+});
+
+describe('turn-envelope cross-provider handoff re-check (SP-324)', () => {
+  const cursor = makeModel({
+    id: 'cursor-auto',
+    tier: 'frontier-cloud',
+    provider: 'cursor',
+    capabilities: { reasoning: 0.8, code_gen: 0.8, tool_use: 0.8 },
+  });
+  const flash = makeModel({
+    id: 'glm-5.3-flash',
+    tier: 'economical-cloud',
+    provider: 'zai',
+    capabilities: { reasoning: 0.7, code_gen: 0.75, tool_use: 0.7 },
+    pricing: { fallback_cost_per_1m: 0.1 },
+  });
+  const capablePeer = makeModel({
+    id: 'glm-5.3',
+    tier: 'economical-cloud',
+    provider: 'zai',
+    capabilities: { reasoning: 0.9, code_gen: 0.9, tool_use: 0.9 },
+    pricing: { fallback_cost_per_1m: 1 },
+  });
+
+  it('breaks only the transitioned pin and keeps the deep-session floor', async () => {
+    const pinner = new SessionPinner();
+    const stage = createTurnEnvelopeStage();
+    const fleet = [cursor, flash, capablePeer];
+    pinner.recordPin('sess-1', cursor.id, 'initial');
+
+    await stage.run(
+      createRoutingContext({
+        request: makeRequest({ turn_type: 'main_loop', estimated_input_tokens: 50 }),
+        options: { sessionPinner: pinner },
+        fleet,
+      }),
+    );
+    pinner.recordPin('sess-1', flash.id, 'user_forced');
+
+    const toolContext = createRoutingContext({
+      request: makeRequest({
+        turn_type: 'tool_result',
+        estimated_input_tokens: 100_001,
+      }),
+      options: { sessionPinner: pinner },
+      fleet,
+    });
+    const result = await stage.run(toolContext);
+
+    expect(result.decided).toBe(false);
+    expect(pinner.getPin('sess-1')).toBeNull();
+    expect(toolContext.fleet.map((model) => model.id)).toEqual([
+      'cursor-auto',
+      'glm-5.3',
+    ]);
+  });
+
+  it('preserves tool_result stickiness after a same-provider model change', async () => {
+    const pinner = new SessionPinner();
+    const stage = createTurnEnvelopeStage();
+    pinner.recordPin('sess-1', frontierAnthro.id, 'initial');
+
+    await stage.run(
+      createRoutingContext({
+        request: makeRequest({ turn_type: 'main_loop' }),
+        options: { sessionPinner: pinner },
+        fleet: testFleet,
+      }),
+    );
+    pinner.recordPin('sess-1', econAnthro.id, 'user_forced');
+
+    const result = await stage.run(
+      createRoutingContext({
+        request: makeRequest({ turn_type: 'tool_result', estimated_input_tokens: 50 }),
+        options: { sessionPinner: pinner },
+        fleet: testFleet,
+      }),
+    );
+
+    expect(result.decided).toBe(true);
+    expect(result.decision?.reason_code).toBe('turn_tool_result');
+    expect(result.decision?.selected_model_id).toBe(econAnthro.id);
+    expect(pinner.getPin('sess-1')?.pinned_model_id).toBe(econAnthro.id);
   });
 });
