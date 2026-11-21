@@ -6,6 +6,18 @@ import {
   type LocalZeroTierConfig,
 } from '../../src/infrastructure/local/local-zero-tier.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
+import {
+  createLocalZeroStage,
+  TYPED_JUDGMENT_DESTRUCTIVE,
+  TYPED_JUDGMENT_TOOL_USE_SHORTFALL,
+} from '../../src/domain/pipeline/local-zero-stage.js';
+import {
+  createRoutingContext,
+  type RoutingContext,
+} from '../../src/domain/pipeline/pipeline-stage.js';
+import type { TypedJudgment } from '../../src/domain/judgment/index.js';
+import type { TypedJudgmentAnswers } from '../../src/domain/ports/typed-judgment-port.js';
+import { DEFAULT_TYPED_JUDGMENT_CONFIG } from '../../src/domain/types/schemas.js';
 import type { HardwareProbeConfig, SystemInfo } from '../../src/infrastructure/hardware/hardware-probe.js';
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 
@@ -589,5 +601,160 @@ describe('RouterPipeline local zero-tier integration (T046, T047)', () => {
         'local_zero_disabled',
       );
     });
+  });
+});
+
+describe('local_zero typed-judgment gates (SP-327, #188)', () => {
+  const judgmentFleet: readonly ModelProfile[] = [
+    {
+      ...LOCAL_MODEL,
+      capabilities: { reasoning: 0.3, code_gen: 0.6, tool_use: 0.1 },
+    },
+    CLOUD_MODEL,
+  ];
+
+  function makeJudgment(overrides: Partial<TypedJudgment> = {}): TypedJudgment {
+    return {
+      taskKind: null,
+      taskKindConfidence: null,
+      capabilityDeserved: null,
+      deepReasoningP: null,
+      codeGen: null,
+      toolUse: null,
+      destructiveP: null,
+      confidences: {},
+      ...overrides,
+    };
+  }
+
+  function makeStageContext(
+    promptText: string,
+    typedJudgment: TypedJudgment | null,
+  ): RoutingContext {
+    const context = createRoutingContext({
+      request: makeRequest({ prompt_text: promptText }),
+      options: {
+        localConfig: TEST_CONFIG,
+        httpFetchPort: READY_FETCH,
+        localZeroConfig: { enabled: true, max_tool_use_requirement: 0.25 },
+        typedJudgmentConfig: {
+          ...DEFAULT_TYPED_JUDGMENT_CONFIG,
+          enabled: true,
+        },
+      },
+      fleet: judgmentFleet,
+    });
+    context.hardwareResult = 'full_local';
+    context.lowIntensityScore = 1;
+    context.typedJudgment = typedJudgment;
+    return context;
+  }
+
+  it('skips the #97 cleanup fixture with both typed reasons, even when tool_use confidence is low', async () => {
+    const context = makeStageContext(
+      'help me clean up mistakenly added files in the repo',
+      makeJudgment({
+        destructiveP: 1,
+        toolUse: 2 / 3,
+        // Skipping local only raises the tier, so SP-326's raise-only
+        // low-confidence guard permits this safety gate.
+        confidences: { tool_use: 0.1 },
+      }),
+    );
+
+    const result = await createLocalZeroStage().run(context);
+
+    expect(result).toEqual({ decided: false, stage: 'local_zero' });
+    expect(context.localEligibleReason).toBe('low_intensity_structural');
+    expect(context.localZeroGateSkipReasons).toEqual([
+      TYPED_JUDGMENT_DESTRUCTIVE,
+      TYPED_JUDGMENT_TOOL_USE_SHORTFALL,
+    ]);
+  });
+
+  it('preserves the legacy cue-count gate when judgment is null', async () => {
+    const context = makeStageContext(
+      'help me clean up mistakenly added files in the repo',
+      null,
+    );
+
+    const result = await createLocalZeroStage().run(context);
+
+    expect(result.decided).toBe(false);
+    expect(context.localZeroGateSkipReasons).toEqual([
+      'tool_use_capability_shortfall',
+    ]);
+  });
+
+  it('uses the legacy cue-count fallback for a partial judgment without tool_use', async () => {
+    const context = makeStageContext(
+      'help me clean up mistakenly added files in the repo',
+      makeJudgment({ destructiveP: 0.1 }),
+    );
+
+    const result = await createLocalZeroStage().run(context);
+
+    expect(result.decided).toBe(false);
+    expect(context.localZeroGateSkipReasons).toEqual([
+      'tool_use_capability_shortfall',
+    ]);
+  });
+
+  it('keeps true trivial local dispatch unchanged when judgment is null', async () => {
+    const context = makeStageContext('Format this JSON file', null);
+
+    const result = await createLocalZeroStage().run(context);
+
+    expect(result.decided).toBe(true);
+    if (result.decided) {
+      expect(result.decision?.tier).toBe('zero-tier');
+      expect(result.decision?.stage).toBe('local_zero');
+    }
+    expect(context.localZeroGateSkipReasons).toEqual([]);
+  });
+
+  it('merges typed gate reasons into tier-selection telemetry without a false hardware reason', async () => {
+    const answers: TypedJudgmentAnswers = {
+      capability_deserved: {
+        kind: 'score',
+        score: 0,
+        legend: { '0': 'Minimal' },
+        probabilities: { '0': 1 },
+        confidence: 0.9,
+      },
+      tool_use: {
+        kind: 'score',
+        score: 2,
+        legend: { '2': 'Moderate' },
+        probabilities: { '2': 1 },
+        confidence: 0.1,
+      },
+      destructive: { kind: 'noul', noul: 1 },
+    };
+    const pipeline = new RouterPipeline(judgmentFleet, {
+      hardwareConfig: HARDWARE_CONFIG,
+      localConfig: TEST_CONFIG,
+      systemInfoProvider: () => Promise.resolve(makeSystemInfo({ totalMemoryGb: 16 })),
+      httpFetchPort: READY_FETCH,
+      localZeroConfig: { enabled: true, max_tool_use_requirement: 0.25 },
+      typedJudgmentConfig: {
+        ...DEFAULT_TYPED_JUDGMENT_CONFIG,
+        enabled: true,
+      },
+      typedJudgmentPort: { judge: async () => answers },
+    });
+
+    const decision = await pipeline.route(
+      makeRequest({ prompt_text: 'Format this JSON file' }),
+    );
+
+    expect(decision.stage).not.toBe('local_zero');
+    expect(decision.tier).not.toBe('zero-tier');
+    const reasons = decision.features?.tier_selection?.local_zero_skip_reasons;
+    expect(reasons).toEqual([
+      TYPED_JUDGMENT_DESTRUCTIVE,
+      TYPED_JUDGMENT_TOOL_USE_SHORTFALL,
+    ]);
+    expect(reasons).not.toContain('hardware_or_local_unavailable');
   });
 });

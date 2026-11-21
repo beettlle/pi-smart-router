@@ -99,7 +99,11 @@ import {
 } from './typed-judgment-stage.js';
 import { createContextFitStage } from './context-fit-stage.js';
 import { createLowIntensityStage } from './low-intensity-stage.js';
-import { createLocalZeroStage } from './local-zero-stage.js';
+import {
+  createLocalZeroStage,
+  TYPED_JUDGMENT_DESTRUCTIVE,
+  TYPED_JUDGMENT_TOOL_USE_SHORTFALL,
+} from './local-zero-stage.js';
 import {
   createSafeDefaultStage,
   buildSafeDefaultFallbackDecision,
@@ -571,11 +575,14 @@ export class RouterPipeline {
       return decision;
     }
 
-    const capabilityGateActive = ctx.localZeroGateSkipReasons.some(
+    const explicitLocalGateActive = ctx.localZeroGateSkipReasons.some(
       (reason) =>
-        reason === TOOL_USE_CAPABILITY_SHORTFALL || reason === LOCAL_ZERO_DISABLED,
+        reason === TOOL_USE_CAPABILITY_SHORTFALL ||
+        reason === LOCAL_ZERO_DISABLED ||
+        reason === TYPED_JUDGMENT_DESTRUCTIVE ||
+        reason === TYPED_JUDGMENT_TOOL_USE_SHORTFALL,
     );
-    const inferredReasons = capabilityGateActive
+    const inferredReasons = explicitLocalGateActive
       ? tierSelection.local_zero_skip_reasons.filter(
           (reason) => reason !== 'hardware_or_local_unavailable',
         )

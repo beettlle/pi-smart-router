@@ -40,6 +40,12 @@ import {
   resolveLocalZeroToolUseCeiling,
 } from './stage-helpers.js';
 
+/** Judged destructive probability at or above which local dispatch is unsafe (#188). */
+export const TYPED_JUDGMENT_DESTRUCTIVE_THRESHOLD = 0.7;
+export const TYPED_JUDGMENT_DESTRUCTIVE = 'typed_judgment_destructive';
+export const TYPED_JUDGMENT_TOOL_USE_SHORTFALL =
+  'typed_judgment_tool_use_shortfall';
+
 /**
  * Bounded speculative prewarm of the local runtime (Colibri PILOT pattern).
  * Runs only when local_zero eligibility already passed and the operator
@@ -154,14 +160,34 @@ export function createLocalZeroStage(): PipelineStage {
         return { decided: false, stage: 'local_zero' };
       }
 
-      const predictedToolUse = estimateCheapToolUseRequirement(request.prompt_text);
       const ceiling = resolveLocalZeroToolUseCeiling(
         localModel.capabilities.tool_use,
         localZeroConfig.max_tool_use_requirement,
       );
-      if (predictedToolUse > ceiling) {
+      const typedJudgment = ctx.typedJudgment;
+      const typedToolUse = typedJudgment?.toolUse;
+      const typedDestructive = typedJudgment?.destructiveP;
+      const destructiveShortfall =
+        typedDestructive !== null &&
+        typedDestructive !== undefined &&
+        typedDestructive >= TYPED_JUDGMENT_DESTRUCTIVE_THRESHOLD;
+      const typedToolUseShortfall =
+        typedToolUse !== null &&
+        typedToolUse !== undefined &&
+        typedToolUse > ceiling;
+      // A missing tool_use answer is no signal, including on partial judgments:
+      // retain the pre-#188 cue-count gate rather than weakening local safety.
+      const cheapToolUseShortfall =
+        (typedToolUse === null || typedToolUse === undefined) &&
+        estimateCheapToolUseRequirement(request.prompt_text) > ceiling;
+
+      if (destructiveShortfall || typedToolUseShortfall || cheapToolUseShortfall) {
         ctx.localEligibleReason = eligibility.reason;
-        ctx.localZeroGateSkipReasons = [TOOL_USE_CAPABILITY_SHORTFALL];
+        ctx.localZeroGateSkipReasons = [
+          ...(destructiveShortfall ? [TYPED_JUDGMENT_DESTRUCTIVE] : []),
+          ...(typedToolUseShortfall ? [TYPED_JUDGMENT_TOOL_USE_SHORTFALL] : []),
+          ...(cheapToolUseShortfall ? [TOOL_USE_CAPABILITY_SHORTFALL] : []),
+        ];
         return { decided: false, stage: 'local_zero' };
       }
 
