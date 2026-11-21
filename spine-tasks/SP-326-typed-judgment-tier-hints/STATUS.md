@@ -17,10 +17,10 @@
 - [x] Confirm flash-class helper
 
 ### Step 1: Tier hint + planning override
-**Status:** In Progress
+**Status:** In Progress (plan review pending)
 
-- [ ] task_kind + capability hints
-- [ ] Low-confidence + floors
+- [x] task_kind + capability hints
+- [x] Low-confidence + floors
 
 ### Step 2: Testing & Verification
 **Status:** Not Started
