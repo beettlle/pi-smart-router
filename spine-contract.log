@@ -1,0 +1,13 @@
+ddee57e  .pi/extensions/smart-router/route-and-delegate.ts:604  ERROR  Infinite loop risk: The degenerate output failover logic lacks a retry limit. If the alternate model also produces degenerate output, the loop will continue indefinitely, cycling through models or retrying the same model. Unlike the Gemini replay failover which uses a one-shot flag (geminiReplayFailoverAttempted), this path has no mechanism to prevent infinite retries.
+1 finding at 646.6 tokens/sec.
+stet: contract review found 1 active finding(s). Triage, then re-run the contract:
+
+  stet list
+  stet dismiss <id> <reason>
+
+Dismiss reasons: false_positive, already_correct, wrong_suggestion, out_of_scope.
+Fix real defects in this task's diff. If a finding exposes a stet reviewer bug (bad prompt,
+parser, critic), dismiss it with a reason and record it under Discoveries in STATUS.md.
+Never dismiss a real defect without fixing it.
+Project code defects → file issues on beettlle/pi-smart-router (label stet); stet reviewer bugs →
+https://github.com/beettlle/stet/issues.
