@@ -14,7 +14,10 @@ import {
   extractUsageActuals,
   resolveAdaptiveReasoning,
 } from '../../../src/index.js';
-import { isDegenerateOutput } from '../../../src/domain/delegation/degenerate-output.js';
+import {
+  DEGENERATE_OUTPUT_ERROR_CODE,
+  isDegenerateOutput,
+} from '../../../src/domain/delegation/degenerate-output.js';
 import type {
   AdaptiveReasoningResult,
   AdaptiveReasoningSignal,
@@ -317,7 +320,7 @@ function recordDelegateOutcome(
   if (result.failed || degenerate) {
     const providerError = degenerate
       ? {
-          code: 'DEGENERATE_OUTPUT',
+          code: DEGENERATE_OUTPUT_ERROR_CODE,
           message: 'Model produced degenerate output',
           truncated: true,
         }

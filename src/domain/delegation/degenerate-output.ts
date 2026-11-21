@@ -12,6 +12,7 @@
 import type { AssistantMessage } from '@earendil-works/pi-ai/compat';
 
 export const DEGENERATE_OUTPUT = 'degenerate_output' as const;
+export const DEGENERATE_OUTPUT_ERROR_CODE = 'DEGENERATE_OUTPUT' as const;
 
 export const DEFAULT_DEGENERATE_OUTPUT_CONFIG = {
   trailingCharacters: 8_192,

@@ -36,6 +36,7 @@ import {
 } from './delegate-stream.js';
 import {
   DEGENERATE_OUTPUT,
+  DEGENERATE_OUTPUT_ERROR_CODE,
   isDegenerateOutput,
 } from '../../../src/domain/delegation/degenerate-output.js';
 import {
@@ -630,7 +631,7 @@ export async function routeAndDelegate(
             failedModelId: targetModel.id,
             alternateModelId: alternateModel.id,
             errorObj: {
-              code: 'DEGENERATE_OUTPUT',
+              code: DEGENERATE_OUTPUT_ERROR_CODE,
               message: 'Model produced degenerate output',
             },
           };
