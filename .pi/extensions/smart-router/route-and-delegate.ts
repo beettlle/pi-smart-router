@@ -18,7 +18,6 @@ import {
   isGoogleGeminiProfile,
   resolveEffectiveFleet,
   isGeminiThoughtSignatureAssistantError,
-  parseAssistantMessageError,
   GEMINI_REPLAY_INCOMPATIBLE,
   shouldFailoverOnProviderError,
 } from '../../../src/index.js';
@@ -32,6 +31,7 @@ import type {
 import {
   commitPipedTerminal,
   delegateWithOutcome,
+  resolveFailoverProviderError,
   type PipedDelegatedStreamResult,
 } from './delegate-stream.js';
 import {
@@ -63,19 +63,6 @@ export const DELEGATION_ABORTED = 'delegation_aborted';
 
 function isRoutingLogEnabled(): boolean {
   return process.env.SMART_ROUTER_LOG_ROUTING === '1';
-}
-
-function resolveFailoverProviderError(
-  message: AssistantMessage,
-): ReturnType<typeof parseAssistantMessageError> {
-  const parsed = parseAssistantMessageError(message);
-  if (parsed) {
-    return parsed;
-  }
-  if (message.stopReason === 'error' && message.errorMessage) {
-    return { message: message.errorMessage };
-  }
-  return undefined;
 }
 
 function logRoutingDecision(
@@ -663,7 +650,6 @@ export async function routeAndDelegate(
           providerError &&
           shouldFailoverOnProviderError(providerError, failedProfile)
         ) {
-          deps.router.dispatch.recordOutcome(targetModel.id, providerError);
           failedModelIds.push(targetModel.id);
           const failover = deps.router.dispatch.selectFailover(
             decision,

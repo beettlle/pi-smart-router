@@ -271,6 +271,19 @@ export function commitPipedTerminal(
   outer.end(endMessage);
 }
 
+export function resolveFailoverProviderError(
+  message: AssistantMessage,
+): ReturnType<typeof parseAssistantMessageError> {
+  const parsed = parseAssistantMessageError(message);
+  if (parsed) {
+    return parsed;
+  }
+  if (message.stopReason === 'error' && message.errorMessage) {
+    return { message: message.errorMessage };
+  }
+  return undefined;
+}
+
 function recordDelegateOutcome(
   targetModel: Model<Api>,
   deps: StreamDelegationDeps,
@@ -300,8 +313,10 @@ function recordDelegateOutcome(
   }
 
   if (result.failed) {
-    const parsed = parseAssistantMessageError(result.finalMessage);
-    deps.router.dispatch.recordOutcome(targetModel.id, parsed);
+    const providerError = resolveFailoverProviderError(result.finalMessage) ?? {
+      message: `Delegation failed (${result.finalMessage.stopReason})`,
+    };
+    deps.router.dispatch.recordOutcome(targetModel.id, providerError);
   } else {
     deps.router.dispatch.recordOutcome(targetModel.id);
     if (sessionId) {
