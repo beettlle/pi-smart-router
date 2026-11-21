@@ -1,6 +1,6 @@
 # SP-322: Model repeated non-infra failure counter + in-turn failover — Status
 
-**Current Step:** Step 2: In-turn failover + telemetry
+**Current Step:** Step 3: Testing & Verification
 **Status:** In Progress
 **Last Updated:** 2026-11-21
 **Review Level:** 2
@@ -23,13 +23,13 @@
 - [x] Safeguards
 
 ### Step 2: In-turn failover + telemetry
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] selectFailover wiring
-- [ ] status/history reason
+- [x] selectFailover wiring
+- [x] status/history reason
 
 ### Step 3: Testing & Verification
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Tests e/f/g
 - [ ] Run Contract testCommand

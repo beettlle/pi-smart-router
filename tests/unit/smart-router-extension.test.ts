@@ -1372,7 +1372,7 @@ describe('createStreamSimple', () => {
       }),
     );
 
-    expect(recordOutcome).toHaveBeenCalledWith('gpt-4o-mini');
+    expect(recordOutcome).toHaveBeenCalledWith('gpt-4o-mini', undefined, 'req-1');
     expect(onDelegatedModel).toHaveBeenCalledWith({
       provider: 'openai',
       id: 'gpt-4o-mini',
@@ -1415,7 +1415,11 @@ describe('createStreamSimple', () => {
       streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
     );
 
-    expect(recordOutcome).toHaveBeenCalledWith('gpt-4o-mini', { message: unparseableError });
+    expect(recordOutcome).toHaveBeenCalledWith(
+      'gpt-4o-mini',
+      { message: unparseableError },
+      'req-1',
+    );
     expect(router.dispatch.getCircuitBreaker().getSnapshot('gpt-4o-mini')).toMatchObject({
       state: 'closed',
       consecutiveFailures: 1,
@@ -1472,6 +1476,7 @@ describe('createStreamSimple', () => {
     expect(recordOutcome).toHaveBeenCalledWith(
       'gpt-4o-mini',
       expect.objectContaining({ statusCode: 503 }),
+      'req-1',
     );
     expect(
       recordOutcome.mock.calls.filter(([modelId]) => modelId === 'gpt-4o-mini'),
@@ -1489,6 +1494,55 @@ describe('createStreamSimple', () => {
       '[smart-router] infra error, failing over to alternate model',
       'gemini-flash',
     );
+  });
+
+  it('fails over inside the turn on a counted non-infra 400 (SP-322)', async () => {
+    const streamModels: Model<Api>[] = [];
+    const decisions: RoutingDecision[] = [];
+    const router = createMockRouter(
+      vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' })),
+    );
+    mockDelegateStreamSimple.mockImplementation((model) => {
+      streamModels.push(model);
+      return model.id === 'gpt-4o-mini'
+        ? makeErrorStream(model, '400: {"error":{"code":400,"message":"Invalid request"}}')
+        : makeSuccessStream(model);
+    });
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({ router, onRoutingDecision: (decision) => decisions.push(decision) }),
+    );
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
+    );
+
+    expect(streamModels.map((model) => model.id)).toEqual(['gpt-4o-mini', 'gemini-flash']);
+    expect(router.dispatch.getModelFailureSnapshot('gpt-4o-mini').consecutiveFailures).toBe(1);
+    expect(decisions.at(-1)).toMatchObject({
+      selected_model_id: 'gemini-flash',
+      reason_code: 'model_repeated_failure',
+    });
+    expect(events.some((event) => event.type === 'done')).toBe(true);
+    expect(events.some((event) => event.type === 'error')).toBe(false);
+  });
+
+  it('treats the same 4xx on an alternate as request-caused and rolls back counts (SP-322)', async () => {
+    const router = createMockRouter(
+      vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' })),
+    );
+    mockDelegateStreamSimple.mockImplementation((model) =>
+      makeErrorStream(model, '400: {"error":{"code":400,"message":"Malformed request"}}'),
+    );
+    const streamSimple = createStreamSimple(makeStreamDeps({ router }));
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(2);
+    expect(router.dispatch.getModelFailureSnapshot('gpt-4o-mini').consecutiveFailures).toBe(0);
+    expect(router.dispatch.getModelFailureSnapshot('gemini-flash').consecutiveFailures).toBe(0);
+    expect(events.filter((event) => event.type === 'error')).toHaveLength(1);
   });
 
   it('fails over on Cursor usage-limit assistant errors', async () => {
@@ -1554,6 +1608,7 @@ describe('createStreamSimple', () => {
     expect(recordOutcome).toHaveBeenCalledWith(
       'composer-latest',
       expect.objectContaining({ message: usageLimitMessage }),
+      'req-1',
     );
     expect(selectFailover).toHaveBeenCalled();
     const failoverResult = selectFailover.mock.results[0]?.value as RoutingDecision | undefined;
