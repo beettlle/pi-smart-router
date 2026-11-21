@@ -1,7 +1,7 @@
 # SP-327: Typed-judgment local_zero gates + low-confidence guard — Status
 
-**Current Step:** Step 2: Testing & Verification
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-11-21
 **Review Level:** 2
 **Review Counter:** 0
@@ -23,7 +23,7 @@
 - [x] Telemetry reasons
 
 ### Step 2: Testing & Verification
-**Status:** In Progress
+**Status:** Complete
 
 - [x] #97 fixture
 - [x] Contract
@@ -36,6 +36,7 @@
 |------|------|------|---------|
 | 2026-11-21 | 0 | plan | Skipped in worker; engine-owned |
 | 2026-11-21 | 1 | plan | Skipped in worker; engine-owned |
+| 2026-11-21 | 2 | plan | Skipped in worker; engine-owned |
 
 ## Discoveries
 
