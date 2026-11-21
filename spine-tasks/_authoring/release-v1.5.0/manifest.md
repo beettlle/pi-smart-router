@@ -8,7 +8,7 @@
 **Theme:** Dogfood stability + typed-judgment consumers — close remaining #182 guards (#179/#181), ship #188 tier/local_zero consumers (Partial #183), and fix #194 unparseable-delegation failure recording.
 **Operator approved scope:** yes (2026-11-19)
 **Code land:** complete (2026-11-20/21)
-**Publish:** tag `v1.5.0` pushed; npm staged — awaiting 2FA approve `c2986d97-f2a2-4a61-a7e0-e00d38cec8a6`
+**Publish:** **done** — `pi-smart-router@1.5.0` on npm `latest` (stage approved 2026-11-21)
 
 ---
 
@@ -166,4 +166,4 @@ Comments posted on both issues with this decision (no close).
 - [x] `git status` clean
 - [x] Operator approved publish bump type: **minor** (2026-11-21)
 - [x] Exactly one `npm version minor` then push tags — STOP (`f22cbe9e` / `v1.5.0`)
-- [x] `release.yml` succeeded (staged); `npm view` latest still `1.4.0` until 2FA approve (`c2986d97-f2a2-4a61-a7e0-e00d38cec8a6`)
+- [x] `release.yml` succeeded; `npm view` latest == `1.5.0` (stage `c2986d97-f2a2-4a61-a7e0-e00d38cec8a6` approved 2026-11-21)

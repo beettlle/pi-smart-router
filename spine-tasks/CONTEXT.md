@@ -5,7 +5,7 @@
 **Next Task ID:** SP-329
 **Feature:** `001-build-smart-router`
 **Task source:** `specs/001-build-smart-router/tasks.md`
-**Released:** Tagged **v1.5.0** (2026-11-21); npm stage pending 2FA. Prior: **v1.4.0** on npm latest until stage approve.
+**Released:** **v1.5.0** on npm (`latest`, tag `v1.5.0`, 2026-11-21). Prior: **v1.4.0**.
 
 ---
 
@@ -1050,7 +1050,7 @@
 
 **Source:** **v1.5.0** (2026-11-19, minor profile). Theme: dogfood stability + typed-judgment consumers — #194 failure recording, #182 guards (#179/#181), #188 consumers (Partial #183). Scope approved 2026-11-19; packets authored; **pause before batch**.
 
-**Status:** Tagged **v1.5.0** @ `f22cbe9e` (2026-11-21). Release run https://github.com/beettlle/pi-smart-router/actions/runs/44937495422 staged id `c2986d97-f2a2-4a61-a7e0-e00d38cec8a6` — awaiting maintainer 2FA `npm stage approve` before `latest`.
+**Status:** **v1.5.0** live on npm `latest` (2026-11-21). Stage `c2986d97-f2a2-4a61-a7e0-e00d38cec8a6` approved. Tag `v1.5.0` @ `f22cbe9e`. Release https://github.com/beettlle/pi-smart-router/releases/tag/v1.5.0.
 
 **Scope ID:** `SP-320,SP-321,SP-322,SP-323,SP-324,SP-325,SP-326,SP-327,SP-328`
 
