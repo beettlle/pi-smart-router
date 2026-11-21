@@ -1050,7 +1050,7 @@
 
 **Source:** **v1.5.0** (2026-11-19, minor profile). Theme: dogfood stability + typed-judgment consumers — #194 failure recording, #182 guards (#179/#181), #188 consumers (Partial #183). Scope approved 2026-11-19; packets authored; **pause before batch**.
 
-**Status:** Packets pending on `main` (not yet batched).
+**Status:** All SP-320–SP-328 `.DONE` on `main` (2026-11-20/21). `release:check` + `release:assert-content` green. Awaiting operator publish approval for **npm 1.5.0** (`npm version minor` + tag).
 
 **Scope ID:** `SP-320,SP-321,SP-322,SP-323,SP-324,SP-325,SP-326,SP-327,SP-328`
 

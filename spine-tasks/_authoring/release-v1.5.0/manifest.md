@@ -6,7 +6,9 @@
 **Bump type:** minor
 **Profile:** minor
 **Theme:** Dogfood stability + typed-judgment consumers — close remaining #182 guards (#179/#181), ship #188 tier/local_zero consumers (Partial #183), and fix #194 unparseable-delegation failure recording.
-**Operator approved scope:** yes (2026-11-19 — operator approved minor 1.5.0; author packets + push; pause before batch)
+**Operator approved scope:** yes (2026-11-19)
+**Code land:** complete (2026-11-20/21)
+**Publish:** awaiting operator approval for `npm version minor` → `1.5.0`
 
 ---
 
@@ -153,15 +155,15 @@ Comments posted on both issues with this decision (no close).
 
 ## Publish checklist (Phase 5–6)
 
-- [ ] All release-scoped tasks `.DONE` on `main`
-- [ ] Post-integrate `release:check` green after **each wave**
-- [ ] `spine preflight` green
-- [ ] `npm run release:check` green on final `HEAD`
-- [ ] `npm run release:assert-content` green
-- [ ] Manifest target == expected next version (`1.4.0` + minor → `1.5.0`)
-- [ ] No existing git tag `v1.5.0`
-- [ ] CI green on `HEAD`
-- [ ] `git status` clean
+- [x] All release-scoped tasks `.DONE` on `main`
+- [x] Post-integrate `release:check` green after **each wave**
+- [x] `spine preflight` green
+- [x] `npm run release:check` green on final `HEAD`
+- [x] `npm run release:assert-content` green
+- [x] Manifest target == expected next version (`1.4.0` + minor → `1.5.0`)
+- [x] No existing git tag `v1.5.0`
+- [ ] CI green on `HEAD` (verify Actions after push)
+- [x] `git status` clean
 - [ ] Operator approved publish bump type: **minor**
 - [ ] Exactly one `npm version minor` then push tags — STOP
 - [ ] `release.yml` succeeded; `npm view` latest == `1.5.0`
