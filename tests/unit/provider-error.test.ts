@@ -33,6 +33,17 @@ describe('provider-error', () => {
     });
   });
 
+  it('parses a status prefix before a JSON provider error', () => {
+    const parsed = parseProviderError(
+      '400: {"message":"Provider returned error","code":400,"metadata":{"provider_name":"Io Net"}}',
+    );
+
+    expect(parsed).toEqual({
+      statusCode: 400,
+      message: 'Provider returned error',
+    });
+  });
+
   it('parses 400 INVALID_ARGUMENT missing thought_signature as client error', () => {
     const parsed = parseProviderError(
       JSON.stringify({
@@ -128,8 +139,17 @@ describe('provider-error', () => {
     );
   });
 
-  it('handles non-JSON error strings with embedded status codes', () => {
-    expect(parseProviderError('upstream HTTP 502 from gateway')).toEqual({ statusCode: 502 });
+  it.each([512, 503])('keeps a 400 error containing %i in its body non-infra', (bodyStatus) => {
+    const raw = `400: max_tokens must be <= ${bodyStatus}`;
+
+    expect(parseProviderError(raw)).toBeUndefined();
+    expect(isInfraAssistantError(makeErrorAssistant(raw))).toBe(false);
+  });
+
+  it('handles only leading status codes in non-JSON error strings', () => {
+    expect(parseProviderError('429')).toEqual({ statusCode: 429 });
+    expect(parseProviderError('502 from upstream gateway')).toEqual({ statusCode: 502 });
+    expect(parseProviderError('upstream HTTP 502 from gateway')).toBeUndefined();
   });
 
   describe('length stop classification (SP-109)', () => {

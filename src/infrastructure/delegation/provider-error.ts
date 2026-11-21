@@ -65,11 +65,11 @@ export function parseProviderError(errorMessage: string): ParsedProviderError | 
       ? Number.parseInt(statusPrefixMatch[1]!, 10)
       : undefined;
     const statusCode =
-      prefixStatusCode ??
       parseNumericCode(nested?.code) ??
       parseNumericCode(nested?.status) ??
       parseNumericCode(parsed.code) ??
-      parseNumericCode(parsed.status);
+      parseNumericCode(parsed.status) ??
+      prefixStatusCode;
 
     const code =
       typeof nested?.status === 'string'
