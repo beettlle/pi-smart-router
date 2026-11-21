@@ -109,7 +109,14 @@ import {
   buildContextOverflowFallbackDecision,
   shouldAttemptContextOverflowFallback,
 } from './context-overflow-fallback-stage.js';
-import { redactPromptFromError } from './stage-helpers.js';
+import {
+  isPinOnlyFallbackActive,
+  redactPromptFromError,
+} from './stage-helpers.js';
+import {
+  applyMainLoopCapabilityFloor,
+  SESSION_DEPTH_CAPABILITY_FLOOR,
+} from '../routing/flash-class.js';
 
 // ─── Stage result ────────────────────────────────────────────────────────────
 
@@ -151,6 +158,26 @@ type StageRun = (request: RoutingRequest) => Promise<StageResult>;
 interface NamedPipelineStage {
   readonly name: string;
   readonly run: StageRun;
+}
+
+/** Privacy-safe rejected candidates recording the SP-323 floor in LOG_ROUTING. */
+function capabilityFloorCandidates(
+  ctx: RoutingContext,
+): readonly CandidateScore[] {
+  // pin-only fallback deliberately skips turn_envelope, so do not claim its
+  // floor ran while attaching features to that emergency path.
+  if (isPinOnlyFallbackActive(ctx.options, ctx.request)) {
+    return [];
+  }
+
+  return applyMainLoopCapabilityFloor(ctx.request, ctx.fullFleet).excludedModelIds.map(
+    (modelId) => ({
+      model_id: modelId,
+      score: 0,
+      shortfall: 0,
+      rejected_reason: SESSION_DEPTH_CAPABILITY_FLOOR,
+    }),
+  );
 }
 
 /** Inputs for local_zero eligibility beyond trivial-only triage (SP-111, #59).
@@ -586,6 +613,7 @@ export class RouterPipeline {
   }
 
   private mergeFeatureCandidates(ctx: RoutingContext): readonly CandidateScore[] | null {
+    const floorCandidates = capabilityFloorCandidates(ctx);
     const hydraCandidates = ctx.hydraResult?.candidates ?? [];
     const expectedCostCandidates =
       ctx.expectedCostByTier?.map((entry) => ({
@@ -596,6 +624,7 @@ export class RouterPipeline {
       })) ?? [];
 
     if (
+      floorCandidates.length === 0 &&
       ctx.contextFitRejected.length === 0 &&
       hydraCandidates.length === 0 &&
       expectedCostCandidates.length === 0
@@ -603,6 +632,7 @@ export class RouterPipeline {
       return null;
     }
     return [
+      ...floorCandidates,
       ...ctx.contextFitRejected,
       ...expectedCostCandidates,
       ...hydraCandidates,

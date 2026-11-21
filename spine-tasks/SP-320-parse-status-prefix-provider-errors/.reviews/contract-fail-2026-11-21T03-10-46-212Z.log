@@ -1,0 +1,36 @@
+Contract testCommand failure log
+Command: npm run typecheck && npx vitest run tests/unit/provider-error.test.ts && bash scripts/spine-stet-contract-run.sh lenient SP-320
+Exit code: 1
+Attempt: 2 of 2
+Timestamp: 2026-11-21T03:10:46.212Z
+Buffer overflow: no
+---
+
+> pi-smart-router@1.4.0 typecheck
+> tsc --noEmit
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20261121T025419-09da/lane-1
+
+ ✓ tests/unit/provider-error.test.ts (14 tests) 15ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  19:10:45
+   Duration  353ms (transform 39ms, setup 0ms, collect 74ms, tests 15ms, environment 0ms, prepare 50ms)
+
+5f4caf7  tests/unit/provider-error.test.ts:142  ERROR  The test expects parseProviderError to return undefined for '400: max_tokens must be <= 512', but the implementation extracts the leading '400' status code and returns { statusCode: 400 } for non-JSON strings with a status prefix. This test will fail.
+1 finding.
+
+warning: no new hunks to review; --strictness had no effect (pass them to "stet start" or use "stet rerun")
+stet: contract review found 1 active finding(s). Triage, then re-run the contract:
+
+  stet list
+  stet dismiss <id> <reason>
+
+Dismiss reasons: false_positive, already_correct, wrong_suggestion, out_of_scope.
+Fix real defects in this task's diff. If a finding exposes a stet reviewer bug (bad prompt,
+parser, critic), dismiss it with a reason and record it under Discoveries in STATUS.md.
+Never dismiss a real defect without fixing it.
+Project code defects → file issues on beettlle/pi-smart-router (label stet); stet reviewer bugs →
+https://github.com/beettlle/stet/issues.

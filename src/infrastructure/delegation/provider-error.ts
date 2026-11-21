@@ -39,8 +39,13 @@ function parseNumericCode(value: unknown): number | undefined {
  */
 export function parseProviderError(errorMessage: string): ParsedProviderError | undefined {
   const trimmed = errorMessage.trim();
-  if (!trimmed.startsWith('{')) {
-    const statusMatch = trimmed.match(/\b(429|5\d{2})\b/);
+  const statusPrefixMatch = trimmed.match(/^(\d{3}):\s*/);
+  const jsonText = statusPrefixMatch
+    ? trimmed.slice(statusPrefixMatch[0].length)
+    : trimmed;
+
+  if (!jsonText.startsWith('{')) {
+    const statusMatch = trimmed.match(/^(429|5\d{2})\b/);
     if (statusMatch) {
       return { statusCode: Number.parseInt(statusMatch[1]!, 10) };
     }
@@ -48,7 +53,7 @@ export function parseProviderError(errorMessage: string): ParsedProviderError | 
   }
 
   try {
-    const parsed = JSON.parse(trimmed) as {
+    const parsed = JSON.parse(jsonText) as {
       error?: { code?: unknown; status?: unknown; message?: unknown };
       code?: unknown;
       status?: unknown;
@@ -56,11 +61,15 @@ export function parseProviderError(errorMessage: string): ParsedProviderError | 
     };
 
     const nested = parsed.error;
+    const prefixStatusCode = statusPrefixMatch
+      ? Number.parseInt(statusPrefixMatch[1]!, 10)
+      : undefined;
     const statusCode =
       parseNumericCode(nested?.code) ??
       parseNumericCode(nested?.status) ??
       parseNumericCode(parsed.code) ??
-      parseNumericCode(parsed.status);
+      parseNumericCode(parsed.status) ??
+      prefixStatusCode;
 
     const code =
       typeof nested?.status === 'string'

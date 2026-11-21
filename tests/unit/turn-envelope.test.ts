@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { classifyTurnEnvelope } from '../../src/domain/triage/turn-envelope.js';
 import { evaluateSubRoutePolicy } from '../../src/domain/pinning/sub-route-policy.js';
+import { createTurnEnvelopeStage } from '../../src/domain/pipeline/turn-envelope-stage.js';
+import { createRoutingContext } from '../../src/domain/pipeline/pipeline-stage.js';
 import type { Message, ModelProfile, RoutingRequest, SessionPin } from '../../src/domain/types/index.js';
 
 function msg(role: string, content: string): Message {
@@ -621,5 +623,50 @@ describe('evaluateSubRoutePolicy (FR-024)', () => {
 
       expect(perCall).toBeLessThan(1);
     });
+  });
+});
+
+describe('turn-envelope deep main_loop capability floor (SP-323)', () => {
+  const flash = makeModel({
+    id: 'glm-5.3-flash',
+    tier: 'economical-cloud',
+    capabilities: { reasoning: 0.7, code_gen: 0.75, tool_use: 0.7 },
+  });
+  const capablePeer = makeModel({
+    id: 'glm-5.3',
+    tier: 'economical-cloud',
+    capabilities: { reasoning: 0.8, code_gen: 0.8, tool_use: 0.8 },
+  });
+
+  it('narrows the shared fleet before main_loop falls through to later stages', async () => {
+    const context = createRoutingContext({
+      request: makeRequest({
+        turn_type: 'main_loop',
+        estimated_input_tokens: 100_001,
+      }),
+      options: {},
+      fleet: [flash, capablePeer],
+    });
+
+    const result = await createTurnEnvelopeStage().run(context);
+
+    expect(result.decided).toBe(false);
+    expect(context.fleet.map((model) => model.id)).toEqual(['glm-5.3']);
+  });
+
+  it('leaves the shallow main_loop fleet untouched', async () => {
+    const fleet = [flash, capablePeer];
+    const context = createRoutingContext({
+      request: makeRequest({
+        turn_type: 'main_loop',
+        estimated_input_tokens: 50,
+      }),
+      options: {},
+      fleet,
+    });
+
+    await createTurnEnvelopeStage().run(context);
+
+    expect(context.fleet).toBe(fleet);
   });
 });
