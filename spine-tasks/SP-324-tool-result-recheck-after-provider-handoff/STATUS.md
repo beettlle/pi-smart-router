@@ -1,6 +1,6 @@
 # SP-324: Re-check model on first tool_result after cross-provider handoff — Status
 
-**Current Step:** Step 1: Re-check wiring
+**Current Step:** Step 2: Testing & Verification
 **Status:** In Progress
 **Last Updated:** 2026-11-21
 **Review Level:** 1
@@ -17,20 +17,18 @@
 - [x] Define handoff signal
 
 ### Step 1: Re-check wiring
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Implement first-tool_result re-evaluation after handoff
 - [x] Ensure SP-323 floor still applies
 
-- [ ] Implement first-tool_result re-check
-- [ ] Keep SP-323 floor
-
 ### Step 2: Testing & Verification
-**Status:** Not Started
+**Status:** In Progress
 
-- [ ] Handoff test
-- [ ] Non-handoff stickiness
-- [ ] Contract
+- [x] Unit/integration covering handoff → first tool_result re-check
+- [x] Non-handoff tool_result stickiness preserved
+- [ ] Run Contract `testCommand`
+- [x] Call `spine_review_step` after each implementation step
 
 ---
 

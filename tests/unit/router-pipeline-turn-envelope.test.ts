@@ -156,6 +156,7 @@ describe('RouterPipeline deep main_loop capability floor (SP-323 / #179)', () =>
       tier: 'frontier-cloud',
       provider: 'cursor',
       capabilities: { reasoning: 0.8, code_gen: 0.8, tool_use: 0.8 },
+      pricing: { fallback_cost_per_1m: 100 },
     });
     const pinner = new SessionPinner();
     pinner.recordPin('sess-1', cursor.id, 'initial');
@@ -182,7 +183,8 @@ describe('RouterPipeline deep main_loop capability floor (SP-323 / #179)', () =>
     );
 
     expect(decision.stage).toBe('hydra_match');
+    expect(decision.selected_model_id).toBe(capablePeer.id);
     expect(decision.selected_model_id).not.toBe(flash.id);
-    expect(pinner.getPin('sess-1')?.pinned_model_id).toBe(decision.selected_model_id);
+    expect(pinner.getPin('sess-1')?.pinned_model_id).toBe(capablePeer.id);
   });
 });

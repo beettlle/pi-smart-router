@@ -198,7 +198,6 @@ export function createTurnEnvelopeStage(): PipelineStage {
         return { decided: false, stage: 'turn_envelope' };
       }
 
-
       // SP-323 / #179: filter before any downstream pin, tier, or HyDRA
       // selection. main_loop has no direct tier target, but the shared fleet
       // narrowing still prevents a terse deep-session continuation from

@@ -102,6 +102,19 @@ describe('CrossProviderHandoffTracker', () => {
     expect(observe(tracker, 'tool_result', 'claude-sonnet').shouldRecheck).toBe(true);
   });
 
+  it('does not consume a loop-escalation provider change as a handoff', () => {
+    const tracker = new CrossProviderHandoffTracker();
+    observe(tracker, 'tool_result', 'cursor-auto');
+    tracker.observe({
+      sessionId: 'session-1',
+      turnType: 'tool_result',
+      pin: { ...pin('claude-sonnet'), pin_reason: 'loop_escalation' },
+      fleet,
+    });
+
+    expect(observe(tracker, 'tool_result', 'claude-sonnet').shouldRecheck).toBe(false);
+  });
+
   it('isolates pending handoffs by session', () => {
     const tracker = new CrossProviderHandoffTracker();
     observe(tracker, 'main_loop', 'cursor-auto', 'session-1');

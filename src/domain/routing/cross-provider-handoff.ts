@@ -77,8 +77,12 @@ export class CrossProviderHandoffTracker {
       };
     }
 
+    // Loop escalation re-pins earlier in this same routing pass; that provider
+    // change is already a deliberate full-route escalation, not foreign replay.
     const providerChanged =
-      previous !== null && previous.provider !== currentProvider;
+      pin.pin_reason !== 'loop_escalation' &&
+      previous !== null &&
+      previous.provider !== currentProvider;
     const handoffPending =
       providerChanged || (previous?.handoffPending ?? false);
     const shouldRecheck = turnType === 'tool_result' && handoffPending;
