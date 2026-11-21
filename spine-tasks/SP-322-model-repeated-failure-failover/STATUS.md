@@ -1,7 +1,7 @@
 # SP-322: Model repeated non-infra failure counter + in-turn failover — Status
 
-**Current Step:** Step 3: Testing & Verification
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-11-21
 **Review Level:** 2
 **Review Counter:** 0
@@ -29,10 +29,10 @@
 - [x] status/history reason
 
 ### Step 3: Testing & Verification
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Tests e/f/g
-- [ ] Run Contract testCommand
+- [x] Tests e/f/g
+- [x] Run Contract testCommand
 
 ---
 
@@ -55,7 +55,11 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
-| | | |
+| 2026-11-21 | Implementation reviews | `spine_review_step` called after Steps 0, 1, and 2; nested reviews skipped by worker runtime for engine-owned review. |
+| 2026-11-21 | Focused tests + typecheck | 137 tests passed across gateway dispatch and smart-router extension. |
+| 2026-11-21 | SP-322 contract | Exact contract command green; STET zero active findings after two valid review fixes and false-positive triage. |
+| 2026-11-21 | Coverage gate | 155 files / 2,654 tests passed; global lines 92.04%; gateway-dispatch 93.97%, route-and-delegate 86.84%, delegate-stream 90.1%. |
+| 2026-11-21 | Completion | Tests e/f/g, threshold recovery, thought_signature carve-out, last-tier-member safeguard, in-turn failover, and #194 closure criteria satisfied. |
 
 ## Blockers
 

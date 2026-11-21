@@ -132,7 +132,7 @@ describe('GatewayDispatch', () => {
       expect(decision.reason_code).toBe('circuit_breaker_failover');
     });
 
-    it('does not trip circuit on policy rejection (FR-018)', async () => {
+    it('keeps policy rejection on the non-infra path without tripping the infra breaker (SP-322)', async () => {
       const gateway = new GatewayDispatch(fleet, {
         circuitBreakerConfig: { failureThreshold: 1, resetTimeoutMs: 60_000, halfOpenSuccesses: 1 },
       });

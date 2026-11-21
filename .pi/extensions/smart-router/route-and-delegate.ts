@@ -465,7 +465,7 @@ export async function routeAndDelegate(
   });
 
   const failedModelIds: string[] = [];
-  const failedAttempts: Array<{ error: DelegationProviderError }> = [];
+  const failedAttempts: Array<{ modelId: string; error: DelegationProviderError }> = [];
   const headroomExcludedModelIds: string[] = [];
   let geminiReplayFailoverAttempted = false;
   const estimatedInputTokens =
@@ -663,7 +663,14 @@ export async function routeAndDelegate(
         const providerError = resolveFailoverProviderError(result.finalMessage);
         const failedProfile = findFleetProfile(effectiveFleet, targetModel.id);
         if (providerError) {
-          if (failedAttempts.some((attempt) => isSameRequestCaused4xx(providerError, attempt.error))) {
+          const currentTargetModelId = targetModel.id;
+          if (
+            failedAttempts.some(
+              (attempt) =>
+                attempt.modelId !== currentTargetModelId &&
+                isSameRequestCaused4xx(providerError, attempt.error),
+            )
+          ) {
             // The same status on a distinct alternate points to the request,
             // not either model. Undo all non-infra counts from this request.
             deps.router.dispatch.recordRequestCausedFailure(decision.request_id);
@@ -677,7 +684,7 @@ export async function routeAndDelegate(
             commitPipedTerminal(result, { sanitizeErrors: true });
             return;
           }
-          failedAttempts.push({ error: providerError });
+          failedAttempts.push({ modelId: currentTargetModelId, error: providerError });
         }
         if (
           providerError &&
@@ -715,8 +722,8 @@ export async function routeAndDelegate(
             errorObj: providerError,
           };
           decision = failover;
-          deps.onRoutingDecision?.(decision);
           targetModel = alternateModel;
+          deps.onRoutingDecision?.(decision);
           continue;
         }
       }

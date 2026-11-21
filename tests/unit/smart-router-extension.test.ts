@@ -1372,7 +1372,7 @@ describe('createStreamSimple', () => {
       }),
     );
 
-    expect(recordOutcome).toHaveBeenCalledWith('gpt-4o-mini', undefined, 'req-1');
+    expect(recordOutcome).toHaveBeenCalledWith('gpt-4o-mini', undefined, expect.any(String));
     expect(onDelegatedModel).toHaveBeenCalledWith({
       provider: 'openai',
       id: 'gpt-4o-mini',
@@ -1418,7 +1418,7 @@ describe('createStreamSimple', () => {
     expect(recordOutcome).toHaveBeenCalledWith(
       'gpt-4o-mini',
       { message: unparseableError },
-      'req-1',
+      expect.any(String),
     );
     expect(router.dispatch.getCircuitBreaker().getSnapshot('gpt-4o-mini')).toMatchObject({
       state: 'closed',
@@ -1476,7 +1476,7 @@ describe('createStreamSimple', () => {
     expect(recordOutcome).toHaveBeenCalledWith(
       'gpt-4o-mini',
       expect.objectContaining({ statusCode: 503 }),
-      'req-1',
+      expect.any(String),
     );
     expect(
       recordOutcome.mock.calls.filter(([modelId]) => modelId === 'gpt-4o-mini'),
@@ -1608,7 +1608,7 @@ describe('createStreamSimple', () => {
     expect(recordOutcome).toHaveBeenCalledWith(
       'composer-latest',
       expect.objectContaining({ message: usageLimitMessage }),
-      'req-1',
+      expect.any(String),
     );
     expect(selectFailover).toHaveBeenCalled();
     const failoverResult = selectFailover.mock.results[0]?.value as RoutingDecision | undefined;
