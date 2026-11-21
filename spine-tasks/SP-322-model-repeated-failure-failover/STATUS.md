@@ -1,6 +1,6 @@
 # SP-322: Model repeated non-infra failure counter + in-turn failover — Status
 
-**Current Step:** Step 1: Counter + open reason
+**Current Step:** Step 2: In-turn failover + telemetry
 **Status:** In Progress
 **Last Updated:** 2026-11-21
 **Review Level:** 2
@@ -17,13 +17,13 @@
 - [x] Choose threshold/reset defaults
 
 ### Step 1: Counter + open reason
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] model_repeated_failure counter
-- [ ] Safeguards
+- [x] model_repeated_failure counter
+- [x] Safeguards
 
 ### Step 2: In-turn failover + telemetry
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] selectFailover wiring
 - [ ] status/history reason

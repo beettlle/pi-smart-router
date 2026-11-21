@@ -23,7 +23,8 @@ import type { PipelineOptions } from '../../domain/pipeline/router-pipeline.js';
 import { defaultRoutingCostEstimator } from '../telemetry/routing-telemetry.js';
 import { nodeLocalRuntimePort } from '../local/local-zero-tier.js';
 import { CircuitBreaker, isInfraError } from './circuit-breaker.js';
-import type { CircuitBreakerConfig } from './circuit-breaker.js';
+import type { CircuitBreakerConfig, CircuitSnapshot } from './circuit-breaker.js';
+import { isGeminiThoughtSignatureError } from '../../infra/gemini-provider.js';
 
 // ─── Cache marker tracking (FR-023) ──────────────────────────────────────────
 
@@ -54,6 +55,50 @@ export interface ProviderErrorShape {
   readonly statusCode?: number;
   readonly code?: string;
   readonly message?: string;
+  /** Explicit stream classification supplied by delegation adapters. */
+  readonly truncated?: boolean;
+  readonly contextOverflow?: boolean;
+}
+
+export const MODEL_REPEATED_FAILURE = 'model_repeated_failure' as const;
+
+/** Session-scoped non-infra failure policy; intentionally independent of infra trips. */
+export const DEFAULT_MODEL_FAILURE_CONFIG: CircuitBreakerConfig = {
+  failureThreshold: 3,
+  resetTimeoutMs: 30_000,
+  halfOpenSuccesses: 1,
+};
+
+const CONTEXT_OVERFLOW_MESSAGE =
+  /context[\s_-](?:window|length|overflow)|maximum context|prompt (?:is )?too long|too many (?:input )?tokens/i;
+const TRUNCATED_STREAM_MESSAGE =
+  /(?:without|missing|no)\s+finish_reason|zero[\s_-]*output|truncated stream/i;
+
+/** Whether an error contributes to the non-infra repeated-model-failure breaker. */
+export function isModelRepeatedFailureError(error: ProviderErrorShape): boolean {
+  if (error.contextOverflow === true) {
+    return false;
+  }
+  if (isGeminiThoughtSignatureError(error) || error.message?.includes('thought_signature')) {
+    return false;
+  }
+  if (error.message && CONTEXT_OVERFLOW_MESSAGE.test(error.message)) {
+    return false;
+  }
+  if (
+    error.truncated === true ||
+    error.code === 'TRUNCATED_STREAM' ||
+    error.code === 'ZERO_OUTPUT' ||
+    (error.message !== undefined && TRUNCATED_STREAM_MESSAGE.test(error.message))
+  ) {
+    return true;
+  }
+  return (
+    error.statusCode !== undefined &&
+    error.statusCode >= 400 &&
+    error.statusCode < 500 &&
+    error.statusCode !== 429
+  );
 }
 
 const CURSOR_QUOTA_MESSAGE_PATTERNS: readonly RegExp[] = [
@@ -126,13 +171,15 @@ export function shouldFailoverOnProviderError(
     return true;
   }
 
-  return isInfraError(error);
+  return isInfraError(error) || isModelRepeatedFailureError(error);
 }
 
 // ─── Dispatch options ────────────────────────────────────────────────────────
 
 export interface GatewayDispatchOptions extends PipelineOptions {
   readonly circuitBreakerConfig?: Partial<CircuitBreakerConfig>;
+  /** Consecutive non-infra failures, reset, and half-open recovery policy. */
+  readonly modelFailureConfig?: Partial<CircuitBreakerConfig>;
   readonly rateLimiter?: RateLimitPort;
 }
 
@@ -177,8 +224,19 @@ export class GatewayDispatch {
   private readonly fleet: readonly ModelProfile[];
   private readonly cacheMarkers = new Map<string, CacheMarker>();
   private readonly circuitBreaker: CircuitBreaker;
+  private readonly modelFailureBreaker: CircuitBreaker;
+  private readonly modelFailureConfig: CircuitBreakerConfig;
   private readonly rateLimiter: RateLimitPort | undefined;
   private readonly quotaExhaustedModels = new Set<string>();
+  private readonly lastFailureKind = new Map<string, 'infra' | 'model'>();
+  private readonly requestModelFailures = new Map<
+    string,
+    Array<{
+      modelId: string;
+      snapshot: CircuitSnapshot;
+      failureKind: 'infra' | 'model' | undefined;
+    }>
+  >();
 
   constructor(fleet: readonly ModelProfile[], options?: GatewayDispatchOptions) {
     this.fleet = fleet;
@@ -193,6 +251,11 @@ export class GatewayDispatch {
       localRuntime: options?.localRuntime ?? nodeLocalRuntimePort,
     });
     this.circuitBreaker = new CircuitBreaker(options?.circuitBreakerConfig);
+    this.modelFailureConfig = {
+      ...DEFAULT_MODEL_FAILURE_CONFIG,
+      ...options?.modelFailureConfig,
+    };
+    this.modelFailureBreaker = new CircuitBreaker(this.modelFailureConfig);
     this.rateLimiter = options?.rateLimiter;
   }
 
@@ -244,16 +307,21 @@ export class GatewayDispatch {
   }
 
   /**
-   * Record an upstream response outcome for circuit breaker tracking.
-   * Only infra errors trip the breaker; policy/safety rejections are ignored (FR-018).
-   * Cursor quota exhaustion is tracked for SP-097 failover without opening circuits.
+   * Record each delegation attempt once. Infrastructure and repeated non-infra
+   * failures use independent counters so a 4xx cannot masquerade as an outage.
    */
   recordOutcome(
     modelId: string,
     error?: ProviderErrorShape,
+    requestId?: string,
   ): void {
     if (!error) {
       this.circuitBreaker.recordSuccess(modelId);
+      this.modelFailureBreaker.recordSuccess(modelId);
+      this.lastFailureKind.delete(modelId);
+      if (requestId) {
+        this.requestModelFailures.delete(requestId);
+      }
       return;
     }
 
@@ -269,18 +337,130 @@ export class GatewayDispatch {
     }
 
     if (isInfraError(error)) {
+      this.lastFailureKind.set(modelId, 'infra');
       this.circuitBreaker.recordFailure(modelId);
+      return;
     }
+
+    if (!isModelRepeatedFailureError(error)) {
+      return;
+    }
+
+    if (requestId) {
+      this.rememberRequestModelFailure(requestId, modelId);
+    }
+    this.lastFailureKind.set(modelId, 'model');
+
+    const snapshot = this.modelFailureBreaker.getSnapshot(modelId);
+    const wouldOpen =
+      snapshot.state === 'half_open' ||
+      snapshot.consecutiveFailures + 1 >= this.modelFailureConfig.failureThreshold;
+    if (wouldOpen && failedModel && !this.hasHealthySameTierAlternative(failedModel)) {
+      // Keep the final viable tier member dispatchable. The count remains below
+      // threshold and may open later if another healthy tier member appears.
+      return;
+    }
+    this.modelFailureBreaker.recordFailure(modelId);
   }
 
-  /** Expose circuit breaker for observability and testing. */
+  /**
+   * A matching 4xx on an alternate demonstrates a request-caused failure.
+   * Restore every model penalty recorded for this request, not just the last.
+   */
+  recordRequestCausedFailure(requestId: string): void {
+    const records = this.requestModelFailures.get(requestId);
+    if (!records) {
+      return;
+    }
+    for (const record of records) {
+      this.restoreModelFailureSnapshot(record.snapshot);
+      if (record.failureKind) {
+        this.lastFailureKind.set(record.modelId, record.failureKind);
+      } else {
+        this.lastFailureKind.delete(record.modelId);
+      }
+    }
+    this.requestModelFailures.delete(requestId);
+  }
+
+  /** Expose infra circuit breaker for observability and testing. */
   getCircuitBreaker(): CircuitBreaker {
     return this.circuitBreaker;
+  }
+
+  /** Expose the independent non-infra model penalty state. */
+  getModelFailureSnapshot(modelId: string): CircuitSnapshot {
+    return this.modelFailureBreaker.getSnapshot(modelId);
   }
 
   /** Whether a model recently returned a Cursor quota exhaustion error (SP-097). */
   hasQuotaExhaustion(modelId: string): boolean {
     return this.quotaExhaustedModels.has(modelId);
+  }
+
+  private canDispatchModel(modelId: string): boolean {
+    // Evaluate both so elapsed reset timeouts transition independently.
+    const infraAllowed = this.circuitBreaker.canDispatch(modelId);
+    const modelAllowed = this.modelFailureBreaker.canDispatch(modelId);
+    return infraAllowed && modelAllowed;
+  }
+
+  private hasHealthySameTierAlternative(model: ModelProfile): boolean {
+    return this.fleet.some(
+      (candidate) =>
+        candidate.id !== model.id &&
+        candidate.tier === model.tier &&
+        candidate.healthy !== false &&
+        this.canDispatchModel(candidate.id),
+    );
+  }
+
+  private failoverReason(
+    decision: RoutingDecision,
+    excludeModelIds: readonly string[],
+  ): typeof MODEL_REPEATED_FAILURE | 'circuit_breaker_failover' {
+    const failedIds = new Set([decision.selected_model_id, ...excludeModelIds]);
+    for (const modelId of failedIds) {
+      if (this.lastFailureKind.get(modelId) === 'model') {
+        return MODEL_REPEATED_FAILURE;
+      }
+    }
+    return 'circuit_breaker_failover';
+  }
+
+  private rememberRequestModelFailure(requestId: string, modelId: string): void {
+    let records = this.requestModelFailures.get(requestId);
+    if (!records) {
+      records = [];
+      // Bound rollback metadata for terminal requests that never succeed.
+      if (this.requestModelFailures.size >= 128) {
+        const oldest = this.requestModelFailures.keys().next().value as string | undefined;
+        if (oldest) {
+          this.requestModelFailures.delete(oldest);
+        }
+      }
+      this.requestModelFailures.set(requestId, records);
+    }
+    if (records.some((record) => record.modelId === modelId)) {
+      return;
+    }
+    records.push({
+      modelId,
+      snapshot: this.modelFailureBreaker.getSnapshot(modelId),
+      failureKind: this.lastFailureKind.get(modelId),
+    });
+  }
+
+  private restoreModelFailureSnapshot(snapshot: CircuitSnapshot): void {
+    this.modelFailureBreaker.reset(snapshot.modelId);
+    // Closed/open snapshots can be reconstructed from their count. A previous
+    // half-open probe is restored fail-open rather than risking a false ban.
+    if (snapshot.state === 'half_open') {
+      return;
+    }
+    for (let index = 0; index < snapshot.consecutiveFailures; index += 1) {
+      this.modelFailureBreaker.recordFailure(snapshot.modelId);
+    }
   }
 
   /**
@@ -315,7 +495,7 @@ export class GatewayDispatch {
         m.id !== decision.selected_model_id &&
         !excluded.has(m.id) &&
         m.healthy !== false &&
-        this.circuitBreaker.canDispatch(m.id),
+        this.canDispatchModel(m.id),
     );
 
     const sameTierAlternative = weightedSelect(sameTier);
@@ -323,7 +503,7 @@ export class GatewayDispatch {
       return {
         ...decision,
         selected_model_id: sameTierAlternative.id,
-        reason_code: 'circuit_breaker_failover',
+        reason_code: this.failoverReason(decision, excludeModelIds),
       };
     }
 
@@ -332,7 +512,7 @@ export class GatewayDispatch {
         m.id !== decision.selected_model_id &&
         !excluded.has(m.id) &&
         m.healthy !== false &&
-        this.circuitBreaker.canDispatch(m.id),
+        this.canDispatchModel(m.id),
     );
 
     const fallback = weightedSelect(anyHealthy);
@@ -341,7 +521,7 @@ export class GatewayDispatch {
         ...decision,
         selected_model_id: fallback.id,
         tier: fallback.tier,
-        reason_code: 'circuit_breaker_failover',
+        reason_code: this.failoverReason(decision, excludeModelIds),
       };
     }
 
@@ -357,7 +537,7 @@ export class GatewayDispatch {
     decision: RoutingDecision,
     fleet: readonly ModelProfile[] = this.fleet,
   ): RoutingDecision {
-    if (this.circuitBreaker.canDispatch(decision.selected_model_id)) {
+    if (this.canDispatchModel(decision.selected_model_id)) {
       return decision;
     }
 
@@ -390,7 +570,7 @@ export class GatewayDispatch {
         !excluded.has(m.id) &&
         m.id !== decision.selected_model_id &&
         m.healthy !== false &&
-        this.circuitBreaker.canDispatch(m.id),
+        this.canDispatchModel(m.id),
     );
     if (cursorAuto) {
       return {
@@ -408,7 +588,7 @@ export class GatewayDispatch {
         m.id !== decision.selected_model_id &&
         m.healthy !== false &&
         !isCursorSubscriptionModel(m) &&
-        this.circuitBreaker.canDispatch(m.id),
+        this.canDispatchModel(m.id),
     );
     const economicalFallback = weightedSelect(economical);
     if (economicalFallback) {
