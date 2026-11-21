@@ -1,7 +1,7 @@
 # SP-325: Degenerate output detect → failover — Status
 
-**Current Step:** Step 2: Testing & Verification
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-11-21
 **Review Level:** 2
 **Review Counter:** 0
@@ -25,7 +25,7 @@
 - [x] Wire failover + telemetry
 
 ### Step 2: Testing & Verification
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Unit + integration AC
 - [x] Contract
