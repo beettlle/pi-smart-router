@@ -22,6 +22,7 @@ import {
 } from '../pinning/session-pinner.js';
 import { selectLowestCostModel } from '../pinning/sub-route-policy.js';
 import { applyMainLoopCapabilityFloor } from '../routing/flash-class.js';
+import { CrossProviderHandoffTracker } from '../routing/cross-provider-handoff.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
 import {
   createPlanningDelegateObservability,
@@ -171,10 +172,20 @@ function setPlanningDelegateDirectFallback(
 
 /** Step 2b: per-turn tier bias with pin-breakeven + planning-delegate gating. */
 export function createTurnEnvelopeStage(): PipelineStage {
+  const handoffTracker = new CrossProviderHandoffTracker();
+
   return {
     name: 'turn_envelope',
     async run(context: RoutingContext): Promise<StageResult> {
       const request: RoutingRequest = context.request;
+      const turnType = request.turn_type ?? classifyTurnEnvelope(request.messages);
+      const handoff = handoffTracker.observe({
+        sessionId: request.session_id,
+        turnType,
+        pin: context.options.sessionPinner?.getPin(request.session_id) ?? null,
+        fleet: context.fleet,
+      });
+
       if (isPinOnlyFallbackActive(context.options, request)) {
         return { decided: false, stage: 'turn_envelope' };
       }
@@ -187,8 +198,6 @@ export function createTurnEnvelopeStage(): PipelineStage {
         return { decided: false, stage: 'turn_envelope' };
       }
 
-      const turnType = request.turn_type ?? classifyTurnEnvelope(request.messages);
-
       // SP-323 / #179: filter before any downstream pin, tier, or HyDRA
       // selection. main_loop has no direct tier target, but the shared fleet
       // narrowing still prevents a terse deep-session continuation from
@@ -196,8 +205,18 @@ export function createTurnEnvelopeStage(): PipelineStage {
       context.fleet = applyMainLoopCapabilityFloor(
         request,
         context.fleet,
-        turnType,
+        handoff.shouldRecheck ? 'main_loop' : turnType,
       ).fleet;
+
+      // SP-324 / #179: one foreign-history tool_result gets a full route rather
+      // than inheriting the handoff target through turn_envelope/session_pin.
+      // Breaking only this transitioned pin lets the normal later stages make
+      // and persist a fresh decision. The main_loop floor above keeps SP-323's
+      // deep-session flash exclusion active during that re-check.
+      if (handoff.shouldRecheck) {
+        context.options.sessionPinner?.breakPin(request.session_id);
+        return { decided: false, stage: 'turn_envelope' };
+      }
 
       const targetTier = TURN_TIER_MAP[turnType] ?? null;
 

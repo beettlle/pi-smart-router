@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { HydraMatcher } from '../../src/domain/matching/hydra-matcher.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
+import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { SESSION_DEPTH_CAPABILITY_FLOOR } from '../../src/domain/routing/flash-class.js';
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 import {
@@ -147,5 +148,43 @@ describe('RouterPipeline deep main_loop capability floor (SP-323 / #179)', () =>
     expect(decision.features?.candidates).not.toContainEqual(
       expect.objectContaining({ rejected_reason: SESSION_DEPTH_CAPABILITY_FLOOR }),
     );
+  });
+
+  it('fully re-routes the first tool_result after a cross-provider handoff (SP-324)', async () => {
+    const cursor = makeModel({
+      id: 'cursor-auto',
+      tier: 'frontier-cloud',
+      provider: 'cursor',
+      capabilities: { reasoning: 0.8, code_gen: 0.8, tool_use: 0.8 },
+      pricing: { fallback_cost_per_1m: 100 },
+    });
+    const pinner = new SessionPinner();
+    pinner.recordPin('sess-1', cursor.id, 'initial');
+    const pipeline = new RouterPipeline([cursor, flash, capablePeer], {
+      sessionPinner: pinner,
+      hydraMatcher: new HydraMatcher(
+        makeMockHydraProvider({ reasoning: 0.1, code_gen: 0.1, tool_use: 0.1 }),
+        { artifactCachePath: '.pi-smart-router/models/' },
+      ),
+      pSuccessWeights: UNTRAINED_P_SUCCESS_WEIGHTS,
+    });
+
+    const handoff = await pipeline.route(
+      continuation({ force_model_id: flash.id, estimated_input_tokens: 50 }),
+    );
+    expect(handoff.selected_model_id).toBe(flash.id);
+
+    const decision = await pipeline.route(
+      continuation({
+        turn_type: 'tool_result',
+        messages: [{ role: 'tool', content: 'done', tool_call_id: 'call-1' }],
+        estimated_input_tokens: 100_001,
+      }),
+    );
+
+    expect(decision.stage).toBe('hydra_match');
+    expect(decision.selected_model_id).toBe(capablePeer.id);
+    expect(decision.selected_model_id).not.toBe(flash.id);
+    expect(pinner.getPin('sess-1')?.pinned_model_id).toBe(capablePeer.id);
   });
 });
