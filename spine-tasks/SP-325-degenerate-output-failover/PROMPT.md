@@ -54,8 +54,8 @@ Optional mid-stream abort is nice-to-have; not required for close. Do **not** re
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `.pi/extensions/smart-router/delegate-stream.ts`, `.pi/extensions/smart-router/route-and-delegate.ts`, `src/domain/delegation/degenerate-output.ts`, `tests/unit/degenerate-output.test.ts` |
-| May change | `src/infrastructure/gateway/gateway-dispatch.ts`, `tests/unit/smart-router-extension.test.ts` |
+| Must change | `src/domain/delegation/degenerate-output.ts`, `tests/unit/degenerate-output.test.ts` |
+| May change | `.pi/extensions/smart-router/delegate-stream.ts`, `.pi/extensions/smart-router/route-and-delegate.ts`, `src/infrastructure/gateway/gateway-dispatch.ts`, `tests/unit/smart-router-extension.test.ts` |
 | Must NOT change | `src/domain/pipeline/`, `package.json`, `README.md`, `.review/` |
 
 ## Contract
@@ -63,7 +63,7 @@ Optional mid-stream abort is nice-to-have; not required for close. Do **not** re
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/smart-router-extension.test.ts tests/unit/degenerate-output.test.ts && bash scripts/spine-stet-contract-run.sh default SP-325` |
-| fileScopeMustChange | `.pi/extensions/smart-router/delegate-stream.ts`, `tests/unit/degenerate-output.test.ts` |
+| fileScopeMustChange | `src/domain/delegation/degenerate-output.ts`, `tests/unit/degenerate-output.test.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/`, `package.json`, `.review/` |
 | completionCriteria | Synthetic repetitive length stop classified; long non-repetitive length stop not; failover + degenerate_output telemetry; #181 closable |
 
@@ -99,3 +99,7 @@ Optional mid-stream abort is nice-to-have; not required for close. Do **not** re
 ## Git Commit Convention
 
 `feat(SP-325): degenerate output failover (#181)`
+
+## Amendments
+
+- **2026-11-20 (preflight / pre-landed file scope):** SP-321 already changed `delegate-stream.ts` / `route-and-delegate.ts` on main. Redirected `fileScopeMustChange` to new pure detector `degenerate-output.ts` + its unit test; extension wiring remains May change.

@@ -19,7 +19,7 @@
 
 ## Mission
 
-`turn_envelope` / `turn_tool_result` keep the main_loop model for cache/cost. After a **cross-provider handoff**, the first `tool_result` is high risk (foreign replay history). Re-evaluate model selection on that first tool_result (or document why not with operator-approved rationale in STATUS + issue comment — prefer implement).
+`turn_envelope` / `turn_tool_result` keep the main_loop model for cache/cost. After a **cross-provider handoff**, the first `tool_result` is high risk (foreign replay history). Implement detection + re-evaluation in `src/domain/routing/cross-provider-handoff.ts` and wire it from `turn-envelope-stage` (May change) so the first tool_result after a cross-provider handoff re-evaluates instead of unconditional stickiness.
 
 Depends on SP-323 floor so re-check cannot reintroduce flash-class on deep sessions.
 
@@ -42,16 +42,16 @@ Depends on SP-323 floor so re-check cannot reintroduce flash-class on deep sessi
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `src/domain/pipeline/turn-envelope-stage.ts`, `tests/unit/turn-envelope.test.ts` |
-| May change | `src/domain/pipeline/router-pipeline.ts`, `tests/unit/router-pipeline-turn-envelope.test.ts` |
+| Must change | `src/domain/routing/cross-provider-handoff.ts`, `tests/unit/cross-provider-handoff.test.ts` |
+| May change | `src/domain/pipeline/turn-envelope-stage.ts`, `tests/unit/turn-envelope.test.ts`, `src/domain/pipeline/router-pipeline.ts`, `tests/unit/router-pipeline-turn-envelope.test.ts` |
 | Must NOT change | `.pi/extensions/`, `src/infrastructure/`, `package.json`, `README.md`, `.review/` |
 
 ## Contract
 
 | Field | Value |
 |-------|-------|
-| testCommand | `npm run typecheck && npx vitest run tests/unit/turn-envelope.test.ts tests/unit/router-pipeline-turn-envelope.test.ts && bash scripts/spine-stet-contract-run.sh default SP-324` |
-| fileScopeMustChange | `src/domain/pipeline/turn-envelope-stage.ts`, `tests/unit/turn-envelope.test.ts` |
+| testCommand | `npm run typecheck && npx vitest run tests/unit/cross-provider-handoff.test.ts tests/unit/turn-envelope.test.ts tests/unit/router-pipeline-turn-envelope.test.ts && bash scripts/spine-stet-contract-run.sh default SP-324` |
+| fileScopeMustChange | `src/domain/routing/cross-provider-handoff.ts`, `tests/unit/cross-provider-handoff.test.ts` |
 | fileScopeMustNotChange | `.pi/extensions/`, `src/infrastructure/`, `package.json`, `.review/` |
 | completionCriteria | First tool_result after cross-provider handoff re-evaluates (or documented exception); #179 closable; tests green |
 
@@ -87,3 +87,7 @@ Depends on SP-323 floor so re-check cannot reintroduce flash-class on deep sessi
 ## Git Commit Convention
 
 `feat(SP-324): recheck model after cross-provider handoff (#179)`
+
+## Amendments
+
+- **2026-11-20 (preflight / pre-landed file scope):** SP-323 already changed `turn-envelope-stage.ts` and `turn-envelope.test.ts` on main. Redirected delivery to new `src/domain/routing/cross-provider-handoff.ts` (+ unit test); stage wiring remains May change.

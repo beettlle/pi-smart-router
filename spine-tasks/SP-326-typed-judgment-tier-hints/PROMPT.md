@@ -51,8 +51,8 @@ Do **not** implement local_zero destructive/tool_use gates here (SP-327).
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `src/domain/pipeline/turn-envelope-stage.ts`, `src/domain/pipeline/low-intensity-stage.ts`, `tests/unit/turn-envelope.test.ts`, `tests/unit/router-pipeline-low-intensity.test.ts` |
-| May change | `src/domain/pipeline/router-pipeline.ts`, `src/domain/types/entities.ts`, `tests/unit/router-pipeline-turn-envelope.test.ts` |
+| Must change | `src/domain/pipeline/low-intensity-stage.ts`, `tests/unit/router-pipeline-low-intensity.test.ts` |
+| May change | `src/domain/pipeline/turn-envelope-stage.ts`, `tests/unit/turn-envelope.test.ts`, `src/domain/pipeline/router-pipeline.ts`, `src/domain/types/entities.ts`, `tests/unit/router-pipeline-turn-envelope.test.ts` |
 | Must NOT change | `.pi/extensions/`, `src/infrastructure/`, `src/domain/pipeline/local-zero-stage.ts`, `package.json`, `README.md`, `.review/` |
 
 ## Contract
@@ -60,7 +60,7 @@ Do **not** implement local_zero destructive/tool_use gates here (SP-327).
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/turn-envelope.test.ts tests/unit/router-pipeline-low-intensity.test.ts tests/unit/router-pipeline-turn-envelope.test.ts && bash scripts/spine-stet-contract-run.sh default SP-326` |
-| fileScopeMustChange | `src/domain/pipeline/turn-envelope-stage.ts`, `src/domain/pipeline/low-intensity-stage.ts` |
+| fileScopeMustChange | `src/domain/pipeline/low-intensity-stage.ts`, `tests/unit/router-pipeline-low-intensity.test.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/local-zero-stage.ts`, `.pi/extensions/`, `package.json`, `.review/` |
 | completionCriteria | Planning + capability hints applied; low-confidence never lowers; null judgment → prior behavior; never below SP-323 floor; tests green |
 
@@ -96,3 +96,7 @@ Do **not** implement local_zero destructive/tool_use gates here (SP-327).
 ## Git Commit Convention
 
 `feat(SP-326): typed-judgment tier hints (#188)`
+
+## Amendments
+
+- **2026-11-20 (preflight / pre-landed file scope):** SP-323 already changed `turn-envelope-stage.ts` / `turn-envelope.test.ts` on main. Redirected `fileScopeMustChange` to `low-intensity-stage.ts` + `router-pipeline-low-intensity.test.ts`; turn_envelope planning override remains May change.

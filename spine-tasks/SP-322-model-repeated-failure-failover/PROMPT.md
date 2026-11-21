@@ -48,8 +48,8 @@ Prefer sharing a session-scoped penalty primitive that #181 (SP-325) can reuse.
 
 | Scope | Paths |
 |-------|-------|
-| Must change | `src/infrastructure/gateway/gateway-dispatch.ts`, `.pi/extensions/smart-router/route-and-delegate.ts`, `.pi/extensions/smart-router/delegate-stream.ts`, `tests/unit/gateway-dispatch.test.ts`, `tests/unit/smart-router-extension.test.ts` |
-| May change | `src/domain/types/entities.ts`, `tests/unit/provider-error.test.ts` |
+| Must change | `src/infrastructure/gateway/gateway-dispatch.ts`, `tests/unit/gateway-dispatch.test.ts` |
+| May change | `.pi/extensions/smart-router/route-and-delegate.ts`, `.pi/extensions/smart-router/delegate-stream.ts`, `tests/unit/smart-router-extension.test.ts`, `src/domain/types/entities.ts`, `tests/unit/provider-error.test.ts` |
 | Must NOT change | `src/domain/pipeline/`, `package.json`, `README.md`, `.review/` |
 
 ## Contract
@@ -57,7 +57,7 @@ Prefer sharing a session-scoped penalty primitive that #181 (SP-325) can reuse.
 | Field | Value |
 |-------|-------|
 | testCommand | `npm run typecheck && npx vitest run tests/unit/gateway-dispatch.test.ts tests/unit/smart-router-extension.test.ts && bash scripts/spine-stet-contract-run.sh default SP-322` |
-| fileScopeMustChange | `src/infrastructure/gateway/gateway-dispatch.ts`, `.pi/extensions/smart-router/route-and-delegate.ts` |
+| fileScopeMustChange | `src/infrastructure/gateway/gateway-dispatch.ts`, `tests/unit/gateway-dispatch.test.ts` |
 | fileScopeMustNotChange | `src/domain/pipeline/`, `package.json`, `.review/` |
 | completionCriteria | Threshold exclusion + recovery; thought_signature excluded; last model never excluded; in-turn failover; tests e/f/g green; #194 closable |
 
@@ -97,3 +97,7 @@ Prefer sharing a session-scoped penalty primitive that #181 (SP-325) can reuse.
 ## Git Commit Convention
 
 `fix(SP-322): model repeated failure failover (#194)`
+
+## Amendments
+
+- **2026-11-20 (preflight / pre-landed file scope):** SP-321 already changed `.pi/extensions/smart-router/route-and-delegate.ts` and `delegate-stream.ts` on main. Redirected `fileScopeMustChange` / File Scope Must change to `gateway-dispatch.ts` + `gateway-dispatch.test.ts` (model_repeated_failure counter delivery). Extension wiring remains May change.
