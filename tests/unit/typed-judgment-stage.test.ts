@@ -337,7 +337,8 @@ describe('typed_judgment stage — fail open', () => {
     expect(result).toEqual({ decided: false, stage: 'typed_judgment' });
     expect(context.typedJudgment).toBeNull();
     expect(context.typedJudgmentSkipReason).toBe(TYPED_JUDGMENT_TIMEOUT);
-    expect(context.typedJudgmentLatencyMs).toBeGreaterThanOrEqual(25);
+    // Allow a few ms of timer skew; wall-clock AbortSignal can fire slightly early.
+    expect(context.typedJudgmentLatencyMs).toBeGreaterThanOrEqual(20);
   });
 
   it('maps a TypedJudgmentError timeout rejection to typed_judgment_timeout', async () => {
