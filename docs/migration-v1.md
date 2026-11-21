@@ -90,6 +90,10 @@ The `1.0.0` train restructured the routing pipeline internals with **zero routin
 | Telemetry split | `src/infrastructure/telemetry/` | The telemetry module split into `routing-telemetry.ts`, `pin-economics-telemetry.ts`, `planning-delegate-telemetry.ts`, `telemetry-scalar-fields.ts`, `telemetry-limits.ts` |
 | Test fragmentation | `tests/unit/router-pipeline-*.test.ts` | The 2206-line monolith test was deleted and rebuilt per-stage |
 
+### Typed-judgment consumer behavior (#188)
+
+The `typed_judgment` stage remains **opt-in, non-deciding, and default off**, so existing installs require no migration. Operators who enable it now also enable the landed [#188](https://github.com/beettlle/pi-smart-router/issues/188) consumers: `task_kind` planning overrides, `capability_deserved` tier hints / capability filtering, and `destructive` / `tool_use` local-zero gates. A missing or failed judgment retains the prior deterministic / regex behavior. See [Typed judgment (opt-in)](../README.md#typed-judgment-opt-in-183) for thresholds, reason codes, and the remaining [#183](https://github.com/beettlle/pi-smart-router/issues/183) Sprint 2 work (#189–#191); no encoder, requirement-source, reasoning, or frugality default is flipped.
+
 ### Import-path stability
 
 Old import paths from the pre-split modules **continue to resolve** — the infrastructure modules re-export the port symbols, so existing deep imports do not break. That said, deep imports into `src/**` internals remain outside the stability surface (see below); prefer the public exports.

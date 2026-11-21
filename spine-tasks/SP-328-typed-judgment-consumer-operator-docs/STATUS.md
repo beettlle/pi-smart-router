@@ -1,6 +1,6 @@
 # SP-328: Operator docs: Sprint 2 consumer table + #188 enablement — Status
 
-**Current Step:** Step 1: Docs
+**Current Step:** Step 2: Testing & Verification
 **Status:** In Progress
 **Last Updated:** 2026-11-19
 **Review Level:** 0
@@ -16,13 +16,13 @@
 - [x] Diff landed knobs/reason codes
 
 ### Step 1: Docs
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] README consumer table
-- [ ] Roadmap/migration sync
+- [x] README consumer table
+- [x] Roadmap/migration sync
 
 ### Step 2: Testing & Verification
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] rg anchors
 - [ ] No false #183 close claim
