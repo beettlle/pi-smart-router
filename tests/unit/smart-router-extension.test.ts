@@ -1386,6 +1386,59 @@ describe('createStreamSimple', () => {
     });
   });
 
+  it('does not record an unparseable failed delegation as success (SP-321)', async () => {
+    const primary = registryModels[0]!;
+    const unparseableError = 'Stream ended without finish_reason';
+    mockDelegateStreamSimple.mockImplementation(() => makeErrorStream(primary, unparseableError));
+
+    const router = createRouterFromFleet(fleet, {
+      sessionPinner: new SessionPinner(),
+      circuitBreakerConfig: {
+        failureThreshold: 3,
+        resetTimeoutMs: 0,
+        halfOpenSuccesses: 1,
+      },
+    });
+    vi.spyOn(router.dispatch, 'dispatch').mockImplementation(async () =>
+      makeDecision({ selected_model_id: 'gpt-4o-mini' }),
+    );
+    const recordOutcome = vi.spyOn(router.dispatch, 'recordOutcome');
+    const streamSimple = createStreamSimple(makeStreamDeps({ router }));
+
+    router.dispatch.recordOutcome('gpt-4o-mini', { statusCode: 503 });
+    expect(router.dispatch.getCircuitBreaker().getSnapshot('gpt-4o-mini')).toMatchObject({
+      state: 'closed',
+      consecutiveFailures: 1,
+    });
+
+    await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello')])),
+    );
+
+    expect(recordOutcome).toHaveBeenCalledWith('gpt-4o-mini', { message: unparseableError });
+    expect(router.dispatch.getCircuitBreaker().getSnapshot('gpt-4o-mini')).toMatchObject({
+      state: 'closed',
+      consecutiveFailures: 1,
+      consecutiveSuccesses: 0,
+    });
+
+    router.dispatch.recordOutcome('gpt-4o-mini', { statusCode: 503 });
+    router.dispatch.recordOutcome('gpt-4o-mini', { statusCode: 503 });
+    expect(router.dispatch.getCircuitBreaker().getSnapshot('gpt-4o-mini').state).toBe('open');
+    expect(router.dispatch.getCircuitBreaker().canDispatch('gpt-4o-mini')).toBe(true);
+    expect(router.dispatch.getCircuitBreaker().getSnapshot('gpt-4o-mini').state).toBe('half_open');
+
+    await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('hello again')])),
+    );
+
+    expect(router.dispatch.getCircuitBreaker().getSnapshot('gpt-4o-mini')).toMatchObject({
+      state: 'half_open',
+      consecutiveFailures: 3,
+      consecutiveSuccesses: 0,
+    });
+  });
+
   it('fails over on infra stream errors within the same tier', async () => {
     const primary = registryModels[0]!;
     const alternate = registryModels[1]!;
@@ -1420,6 +1473,12 @@ describe('createStreamSimple', () => {
       'gpt-4o-mini',
       expect.objectContaining({ statusCode: 503 }),
     );
+    expect(
+      recordOutcome.mock.calls.filter(([modelId]) => modelId === 'gpt-4o-mini'),
+    ).toHaveLength(1);
+    expect(
+      router.dispatch.getCircuitBreaker().getSnapshot('gpt-4o-mini').consecutiveFailures,
+    ).toBe(1);
     expect(events.some((event) => event.type === 'done')).toBe(true);
 
     const notice = findFailoverNoticeDelta(events);
