@@ -473,6 +473,7 @@ export async function routeAndDelegate(
   const failedAttempts: Array<{ modelId: string; error: DelegationProviderError }> = [];
   const headroomExcludedModelIds: string[] = [];
   let geminiReplayFailoverAttempted = false;
+  let degenerateOutputFailoverAttempted = false;
   const estimatedInputTokens =
     request.estimated_input_tokens ?? request.prompt_text.length;
   let pendingFailoverInfo: FailoverNoticeInfo | undefined;
@@ -608,11 +609,16 @@ export async function routeAndDelegate(
         if (!failedModelIds.includes(targetModel.id)) {
           failedModelIds.push(targetModel.id);
         }
-        const selectedFailover = deps.router.dispatch.selectFailover(
-          decision,
-          failedModelIds,
-          effectiveFleet,
-        );
+        const selectedFailover = degenerateOutputFailoverAttempted
+          ? undefined
+          : deps.router.dispatch.selectFailover(
+              decision,
+              failedModelIds,
+              effectiveFleet,
+            );
+        // Bound this post-stream retry independently of selector behavior. A
+        // repetitive alternate must terminate instead of cycling indefinitely.
+        degenerateOutputFailoverAttempted = true;
         const failover = selectedFailover
           ? { ...selectedFailover, reason_code: DEGENERATE_OUTPUT }
           : undefined;

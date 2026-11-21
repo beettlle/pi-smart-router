@@ -1588,6 +1588,53 @@ describe('createStreamSimple', () => {
     expect(events.some((event) => event.type === 'error')).toBe(false);
   });
 
+  it('limits degenerate-output failover to one retry even if the selector cycles (SP-325)', async () => {
+    const repetitiveTail = 'sleep 300; echo "300-END";\n'.repeat(160);
+    const decisions: RoutingDecision[] = [];
+    const router = createMockRouter(
+      vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' })),
+    );
+    const selectFailover = vi
+      .spyOn(router.dispatch, 'selectFailover')
+      .mockImplementation((currentDecision) =>
+        makeDecision({
+          selected_model_id:
+            currentDecision.selected_model_id === 'gpt-4o-mini'
+              ? 'gemini-flash'
+              : 'gpt-4o-mini',
+        }),
+      );
+    mockDelegateStreamSimple.mockImplementation((model) =>
+      makeLengthStream(model, repetitiveTail),
+    );
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router,
+        onRoutingDecision: (decision) => decisions.push(decision),
+      }),
+    );
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('continue')])),
+    );
+
+    // One retry, then a structured terminal even if failover selection would
+    // otherwise keep alternating between the same two degenerate models.
+    expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(2);
+    expect(selectFailover).toHaveBeenCalledOnce();
+    expect(decisions.at(-1)).toMatchObject({
+      selected_model_id: 'gemini-flash',
+      reason_code: 'degenerate_output',
+    });
+    expect(events.some((event) => event.type === 'done')).toBe(false);
+    const errorEvent = events.find((event) => event.type === 'error');
+    expect(errorEvent?.type).toBe('error');
+    if (errorEvent?.type === 'error') {
+      expect(errorEvent.error.errorMessage).toContain('Model produced degenerate output');
+      expect(errorEvent.error.content).toEqual([]);
+    }
+  });
+
   it('returns a short degenerate_output error when failover is exhausted (SP-325)', async () => {
     const repetitiveTail = 'sleep 300; echo "300-END";\n'.repeat(160);
     const primaryProfile = fleet.find((profile) => profile.id === 'gpt-4o-mini')!;
