@@ -1,7 +1,7 @@
 # SP-328: Operator docs: Sprint 2 consumer table + #188 enablement — Status
 
-**Current Step:** Step 2: Testing & Verification
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-11-19
 **Review Level:** 0
 **Review Counter:** 0
@@ -22,11 +22,11 @@
 - [x] Roadmap/migration sync
 
 ### Step 2: Testing & Verification
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] rg anchors
-- [ ] No false #183 close claim
-- [ ] Contract true
+- [x] rg anchors
+- [x] No false #183 close claim
+- [x] Contract true
 
 ---
 
@@ -46,6 +46,7 @@
 
 | Date | Event | Detail |
 |------|-------|--------|
+| 2026-11-21 | Verification | `true`, `git diff --check`, file-scope review, anchor checks, and typed-judgment reason-code source cross-check passed |
 | | | |
 
 ## Blockers
