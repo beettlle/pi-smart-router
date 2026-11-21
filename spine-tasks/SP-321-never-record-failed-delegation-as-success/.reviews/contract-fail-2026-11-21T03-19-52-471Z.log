@@ -1,0 +1,51 @@
+Contract testCommand failure log
+Command: npm run typecheck && npx vitest run tests/unit/smart-router-extension.test.ts && bash scripts/spine-stet-contract-run.sh default SP-321
+Exit code: 1
+Attempt: 1 of 2
+Timestamp: 2026-11-21T03:19:52.471Z
+Buffer overflow: no
+---
+
+> pi-smart-router@1.4.0 typecheck
+> tsc --noEmit
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20261121T025419-09da/lane-2
+
+ ✓ tests/unit/smart-router-extension.test.ts (99 tests) 52ms
+
+ Test Files  1 passed (1)
+      Tests  99 passed (99)
+   Start at  19:18:55
+   Duration  1.72s (transform 446ms, setup 0ms, collect 1.40s, tests 52ms, environment 0ms, prepare 53ms)
+
+0c77024  tests/unit/smart-router-extension.test.ts:1432  WARNING  The assertion `expect(router.dispatch.getCircuitBreaker().canDispatch('gpt-4o-mini')).toBe(true)` is logically incorrect. The circuit breaker state is 'open' (as verified by the preceding assertion), and `canDispatch` should return `false` for an open circuit. The test likely intends to assert that the circuit is NOT dispatchable, or it is a copy-paste error from a different state.
+1315592  tests/unit/smart-router-extension.test.ts:1476  WARNING  The assertion `recordOutcome.mock.calls.filter(...).toHaveLength(1)` is redundant and potentially brittle. The preceding assertion `expect(recordOutcome).toHaveBeenCalledWith('gpt-4o-mini', ...)` already verifies that the call occurred. If the implementation calls `recordOutcome` multiple times for the same model (e.g., once for the error and once for the failover attempt), this new assertion will fail, whereas the previous one would pass. Additionally, the subsequent assertion on `consecutiveFailures` being 1 already implies the state was updated exactly once for that failure, making the call count check unnecessary.
+2 finding(s) at 501.1 tokens/sec.
+
+stderr | tests/unit/smart-router-extension.test.ts > gemini tool history guard (SP-077, narrowed SP-129) > reroutes to a non-Google model when foreign-signed history excludes Gemini (SP-232)
+[smart-router] gemini tool history guard applied {"reason_code":"gemini_tool_history_excluded","session_id":"sp232-guard-reroute","excluded_providers":["google","gemini"]}
+
+stderr | tests/unit/smart-router-extension.test.ts > gemini empty-fleet fail-safe (SP-084) > routes unrepairable risk to cursor/auto without unknown delegation
+[smart-router] gemini tool history guard applied {"reason_code":"gemini_tool_history_excluded","session_id":"cursor-auto-sess","excluded_providers":["google","gemini"]}
+
+stderr | tests/unit/smart-router-extension.test.ts > delegation output headroom guard (SP-108) > escalates to larger-fit model without calling undersized provider
+[smart-router] output headroom exceeded, escalating to larger model gemini-pro
+
+stderr | tests/unit/smart-router-extension.test.ts > delegation output headroom guard (SP-108) > retries larger model after zero-output length stop from provider
+[smart-router] zero-output length stop, escalating to larger model gemini-pro
+
+stderr | tests/unit/smart-router-extension.test.ts > session teardown eviction (SP-248, #145) > fails open when the session id is unavailable at shutdown
+[smart-router] session teardown eviction failed (fail open) no active session
+
+stet: contract review found 2 active finding(s). Triage, then re-run the contract:
+
+  stet list
+  stet dismiss <id> <reason>
+
+Dismiss reasons: false_positive, already_correct, wrong_suggestion, out_of_scope.
+Fix real defects in this task's diff. If a finding exposes a stet reviewer bug (bad prompt,
+parser, critic), dismiss it with a reason and record it under Discoveries in STATUS.md.
+Never dismiss a real defect without fixing it.
+Project code defects → file issues on beettlle/pi-smart-router (label stet); stet reviewer bugs →
+https://github.com/beettlle/stet/issues.
