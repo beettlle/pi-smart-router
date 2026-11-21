@@ -1,7 +1,7 @@
 # SP-323: Session-depth / flash-class main_loop capability floor — Status
 
-**Current Step:** Step 0: Not started
-**Status:** Ready
+**Current Step:** Step 1: Flash-class helper + floor
+**Status:** In Progress
 **Last Updated:** 2026-11-19
 **Review Level:** 2
 **Review Counter:** 0
@@ -11,13 +11,13 @@
 ---
 
 ### Step 0: Preflight
-**Status:** Not Started
+**Status:** Complete
 
-- [ ] Locate candidate selection + depth signals
-- [ ] Confirm fixtures
+- [x] Locate candidate selection + depth signals
+- [x] Confirm fixtures
 
 ### Step 1: Flash-class helper + floor
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Shared flash-class helper
 - [ ] Apply main_loop floor
