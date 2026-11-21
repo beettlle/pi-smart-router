@@ -21,6 +21,7 @@ import {
   type ModelSwitchBreakevenContext,
 } from '../pinning/session-pinner.js';
 import { selectLowestCostModel } from '../pinning/sub-route-policy.js';
+import { applyMainLoopCapabilityFloor } from '../routing/flash-class.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
 import {
   createPlanningDelegateObservability,
@@ -187,6 +188,17 @@ export function createTurnEnvelopeStage(): PipelineStage {
       }
 
       const turnType = request.turn_type ?? classifyTurnEnvelope(request.messages);
+
+      // SP-323 / #179: filter before any downstream pin, tier, or HyDRA
+      // selection. main_loop has no direct tier target, but the shared fleet
+      // narrowing still prevents a terse deep-session continuation from
+      // matching a flash-class model when a capable peer is available.
+      context.fleet = applyMainLoopCapabilityFloor(
+        request,
+        context.fleet,
+        turnType,
+      ).fleet;
+
       const targetTier = TURN_TIER_MAP[turnType] ?? null;
 
       if (!targetTier) {

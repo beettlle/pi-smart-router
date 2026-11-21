@@ -1,6 +1,6 @@
 # SP-323: Session-depth / flash-class main_loop capability floor — Status
 
-**Current Step:** Step 1: Flash-class helper + floor
+**Current Step:** Step 2: Testing & Verification
 **Status:** In Progress
 **Last Updated:** 2026-11-19
 **Review Level:** 2
@@ -17,13 +17,13 @@
 - [x] Confirm fixtures
 
 ### Step 1: Flash-class helper + floor
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Shared flash-class helper
-- [ ] Apply main_loop floor
+- [x] Shared flash-class helper
+- [x] Apply main_loop floor
 
 ### Step 2: Testing & Verification
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] #179 depth AC test
 - [ ] Shallow unchanged
