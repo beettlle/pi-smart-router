@@ -316,9 +316,17 @@ function recordDelegateOutcome(
     const providerError = resolveFailoverProviderError(result.finalMessage) ?? {
       message: `Delegation failed (${result.finalMessage.stopReason})`,
     };
-    deps.router.dispatch.recordOutcome(targetModel.id, providerError);
+    if (requestId === undefined) {
+      deps.router.dispatch.recordOutcome(targetModel.id, providerError);
+    } else {
+      deps.router.dispatch.recordOutcome(targetModel.id, providerError, requestId);
+    }
   } else {
-    deps.router.dispatch.recordOutcome(targetModel.id);
+    if (requestId === undefined) {
+      deps.router.dispatch.recordOutcome(targetModel.id);
+    } else {
+      deps.router.dispatch.recordOutcome(targetModel.id, undefined, requestId);
+    }
     if (sessionId) {
       deps.executionLedger.recordSuccess(sessionId, modelToExecutionModel(targetModel));
     }

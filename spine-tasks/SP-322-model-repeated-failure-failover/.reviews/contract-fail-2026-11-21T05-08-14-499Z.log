@@ -1,0 +1,53 @@
+Contract testCommand failure log
+Command: npm run typecheck && npx vitest run tests/unit/gateway-dispatch.test.ts tests/unit/smart-router-extension.test.ts && bash scripts/spine-stet-contract-run.sh default SP-322
+Exit code: 1
+Attempt: 2 of 2
+Timestamp: 2026-11-21T05:08:14.499Z
+Buffer overflow: no
+---
+
+> pi-smart-router@1.4.0 typecheck
+> tsc --noEmit
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20261121T041254-4d25/lane-1
+
+ ✓ tests/unit/gateway-dispatch.test.ts (36 tests) 27ms
+ ✓ tests/unit/smart-router-extension.test.ts (101 tests) 52ms
+
+ Test Files  2 passed (2)
+      Tests  137 passed (137)
+   Start at  21:08:12
+   Duration  1.46s (transform 478ms, setup 0ms, collect 1.63s, tests 79ms, environment 0ms, prepare 113ms)
+
+3e42705  .pi/extensions/smart-router/route-and-delegate.ts:726  WARNING  The `deps.onRoutingDecision?.(decision)` callback is invoked after `targetModel` has been updated to `alternateModel`. If the callback implementation relies on the `targetModel` variable (or any state derived from it) to correlate the decision with the active model, it will observe the new model while the `decision` object still represents the routing for the previous failed attempt. This can lead to inconsistent telemetry or state updates where the decision and the current target model are out of sync.
+c6a6d0f  tests/unit/smart-router-extension.test.ts:1479  WARNING  The assertion uses a hardcoded request ID ('req-1') which may be brittle if the request ID generation logic changes or if the test environment generates different IDs. It is safer to assert that the third argument is a string or to capture the actual ID from the mock call.
+2 finding(s).
+
+stderr | tests/unit/smart-router-extension.test.ts > gemini tool history guard (SP-077, narrowed SP-129) > reroutes to a non-Google model when foreign-signed history excludes Gemini (SP-232)
+[smart-router] gemini tool history guard applied {"reason_code":"gemini_tool_history_excluded","session_id":"sp232-guard-reroute","excluded_providers":["google","gemini"]}
+
+stderr | tests/unit/smart-router-extension.test.ts > gemini empty-fleet fail-safe (SP-084) > routes unrepairable risk to cursor/auto without unknown delegation
+[smart-router] gemini tool history guard applied {"reason_code":"gemini_tool_history_excluded","session_id":"cursor-auto-sess","excluded_providers":["google","gemini"]}
+
+stderr | tests/unit/smart-router-extension.test.ts > delegation output headroom guard (SP-108) > escalates to larger-fit model without calling undersized provider
+[smart-router] output headroom exceeded, escalating to larger model gemini-pro
+
+stderr | tests/unit/smart-router-extension.test.ts > delegation output headroom guard (SP-108) > retries larger model after zero-output length stop from provider
+[smart-router] zero-output length stop, escalating to larger model gemini-pro
+
+stderr | tests/unit/smart-router-extension.test.ts > session teardown eviction (SP-248, #145) > fails open when the session id is unavailable at shutdown
+[smart-router] session teardown eviction failed (fail open) no active session
+
+warning: no new hunks to review; --strictness had no effect (pass them to "stet start" or use "stet rerun")
+stet: contract review found 2 active finding(s). Triage, then re-run the contract:
+
+  stet list
+  stet dismiss <id> <reason>
+
+Dismiss reasons: false_positive, already_correct, wrong_suggestion, out_of_scope.
+Fix real defects in this task's diff. If a finding exposes a stet reviewer bug (bad prompt,
+parser, critic), dismiss it with a reason and record it under Discoveries in STATUS.md.
+Never dismiss a real defect without fixing it.
+Project code defects → file issues on beettlle/pi-smart-router (label stet); stet reviewer bugs →
+https://github.com/beettlle/stet/issues.

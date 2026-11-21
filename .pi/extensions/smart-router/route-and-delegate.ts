@@ -162,6 +162,21 @@ function isZeroOutputLengthStop(message: AssistantMessage): boolean {
   return message.stopReason === 'length' && message.usage.output === 0;
 }
 
+type DelegationProviderError = NonNullable<ReturnType<typeof resolveFailoverProviderError>>;
+
+function isSameRequestCaused4xx(
+  current: DelegationProviderError,
+  previous: DelegationProviderError,
+): boolean {
+  return (
+    current.statusCode !== undefined &&
+    current.statusCode === previous.statusCode &&
+    current.statusCode >= 400 &&
+    current.statusCode < 500 &&
+    current.statusCode !== 429
+  );
+}
+
 /** Minimal model identity for degraded terminal messages when no Model resolved. */
 interface DegradedModelRef {
   readonly api: Api;
@@ -450,6 +465,7 @@ export async function routeAndDelegate(
   });
 
   const failedModelIds: string[] = [];
+  const failedAttempts: Array<{ modelId: string; error: DelegationProviderError }> = [];
   const headroomExcludedModelIds: string[] = [];
   let geminiReplayFailoverAttempted = false;
   const estimatedInputTokens =
@@ -646,11 +662,37 @@ export async function routeAndDelegate(
       if (result.failed && result.finalMessage) {
         const providerError = resolveFailoverProviderError(result.finalMessage);
         const failedProfile = findFleetProfile(effectiveFleet, targetModel.id);
+        if (providerError) {
+          const currentTargetModelId = targetModel.id;
+          if (
+            failedAttempts.some(
+              (attempt) =>
+                attempt.modelId !== currentTargetModelId &&
+                isSameRequestCaused4xx(providerError, attempt.error),
+            )
+          ) {
+            // The same status on a distinct alternate points to the request,
+            // not either model. Undo all non-infra counts from this request.
+            deps.router.dispatch.recordRequestCausedFailure(decision.request_id);
+            console.warn(
+              '[smart-router] matching alternate 4xx, treating failure as request-caused',
+              JSON.stringify({
+                request_id: request.request_id,
+                status_code: providerError.statusCode,
+              }),
+            );
+            commitPipedTerminal(result, { sanitizeErrors: true });
+            return;
+          }
+          failedAttempts.push({ modelId: currentTargetModelId, error: providerError });
+        }
         if (
           providerError &&
           shouldFailoverOnProviderError(providerError, failedProfile)
         ) {
-          failedModelIds.push(targetModel.id);
+          if (!failedModelIds.includes(targetModel.id)) {
+            failedModelIds.push(targetModel.id);
+          }
           const failover = deps.router.dispatch.selectFailover(
             decision,
             failedModelIds,
@@ -668,7 +710,9 @@ export async function routeAndDelegate(
           }
 
           console.warn(
-            '[smart-router] infra error, failing over to alternate model',
+            failover.reason_code === 'model_repeated_failure'
+              ? '[smart-router] repeated model failure, failing over to alternate model'
+              : '[smart-router] infra error, failing over to alternate model',
             alternateModel.id,
           );
           // Discard held terminal from the failed attempt — do not forward to outer.
@@ -679,6 +723,7 @@ export async function routeAndDelegate(
           };
           decision = failover;
           targetModel = alternateModel;
+          deps.onRoutingDecision?.(decision);
           continue;
         }
       }

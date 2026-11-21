@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   GatewayDispatch,
@@ -132,7 +132,7 @@ describe('GatewayDispatch', () => {
       expect(decision.reason_code).toBe('circuit_breaker_failover');
     });
 
-    it('does not trip circuit on policy rejection (FR-018)', async () => {
+    it('keeps policy rejection on the non-infra path without tripping the infra breaker (SP-322)', async () => {
       const gateway = new GatewayDispatch(fleet, {
         circuitBreakerConfig: { failureThreshold: 1, resetTimeoutMs: 60_000, halfOpenSuccesses: 1 },
       });
@@ -177,6 +177,128 @@ describe('GatewayDispatch', () => {
 
       const cb = gateway.getCircuitBreaker();
       expect(cb.canDispatch('gpt-4o-mini')).toBe(false);
+    });
+  });
+
+  describe('model repeated non-infra failures (SP-322)', () => {
+    const repeatedFleet = () => [
+      makeModel({
+        id: 'econ-a',
+        tier: 'economical-cloud',
+        pricing: { fallback_cost_per_1m: 0.1 },
+      }),
+      makeModel({
+        id: 'econ-b',
+        tier: 'economical-cloud',
+        pricing: { fallback_cost_per_1m: 0.5 },
+      }),
+      makeModel({ id: 'frontier-a', tier: 'frontier-cloud' }),
+    ];
+
+    it('e: excludes repeated 400/truncated failures on the next turn and recovers half-open', async () => {
+      vi.useFakeTimers();
+      try {
+        const gateway = new GatewayDispatch(repeatedFleet(), {
+          modelFailureConfig: {
+            failureThreshold: 3,
+            resetTimeoutMs: 1_000,
+            halfOpenSuccesses: 1,
+          },
+        });
+
+        gateway.recordOutcome('econ-a', { statusCode: 400, message: 'bad request' }, 'req-a');
+        gateway.recordOutcome('econ-a', { statusCode: 422, message: 'invalid request' }, 'req-b');
+        gateway.recordOutcome(
+          'econ-a',
+          { message: 'Stream ended without finish_reason' },
+          'req-c',
+        );
+
+        expect(gateway.getModelFailureSnapshot('econ-a')).toMatchObject({
+          state: 'open',
+          consecutiveFailures: 3,
+        });
+        // Non-infra failures never leak into the infrastructure counter.
+        expect(gateway.getCircuitBreaker().getSnapshot('econ-a').consecutiveFailures).toBe(0);
+
+        const excluded = await gateway.dispatch(
+          makeRequest({ turn_type: 'tool_result', prompt_text: 'continue' }),
+        );
+        expect(excluded.selected_model_id).toBe('econ-b');
+        expect(excluded.reason_code).toBe('model_repeated_failure');
+
+        vi.advanceTimersByTime(1_000);
+        const recovered = await gateway.dispatch(makeRequest({ request_id: 'req-recovery' }));
+        expect(recovered.selected_model_id).toBe('econ-a');
+        expect(gateway.getModelFailureSnapshot('econ-a').state).toBe('half_open');
+
+        gateway.recordOutcome('econ-a');
+        expect(gateway.getModelFailureSnapshot('econ-a')).toMatchObject({
+          state: 'closed',
+          consecutiveFailures: 0,
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('f: never counts Gemini thought_signature 400s', async () => {
+      const gateway = new GatewayDispatch(repeatedFleet(), {
+        modelFailureConfig: { failureThreshold: 1 },
+      });
+      const error = {
+        statusCode: 400,
+        message: 'Function call is missing a thought_signature',
+      };
+
+      gateway.recordOutcome('econ-a', error);
+      gateway.recordOutcome('econ-a', error);
+      gateway.recordOutcome('econ-a', error);
+
+      expect(gateway.getModelFailureSnapshot('econ-a').consecutiveFailures).toBe(0);
+      expect((await gateway.dispatch(makeRequest())).selected_model_id).toBe('econ-a');
+    });
+
+    it('g: never excludes the last healthy model in a tier', async () => {
+      const gateway = new GatewayDispatch(
+        [
+          makeModel({ id: 'econ-only', tier: 'economical-cloud' }),
+          makeModel({ id: 'frontier-a', tier: 'frontier-cloud' }),
+        ],
+        { modelFailureConfig: { failureThreshold: 1 } },
+      );
+
+      gateway.recordOutcome('econ-only', { statusCode: 400 });
+      gateway.recordOutcome('econ-only', { statusCode: 400 });
+
+      expect(gateway.getModelFailureSnapshot('econ-only').state).toBe('closed');
+      const decision = await gateway.dispatch(makeRequest());
+      expect(decision.selected_model_id).toBe('econ-only');
+      expect(decision.reason_code).not.toBe('model_repeated_failure');
+    });
+
+    it('rolls back current-request counts when an alternate returns the same 4xx', () => {
+      const gateway = new GatewayDispatch(repeatedFleet(), {
+        modelFailureConfig: { failureThreshold: 1 },
+      });
+      gateway.recordOutcome('econ-a', { statusCode: 400 }, 'shared-request');
+      gateway.recordOutcome('econ-b', { statusCode: 400 }, 'shared-request');
+
+      gateway.recordRequestCausedFailure('shared-request');
+
+      expect(gateway.getModelFailureSnapshot('econ-a').consecutiveFailures).toBe(0);
+      expect(gateway.getModelFailureSnapshot('econ-b').consecutiveFailures).toBe(0);
+    });
+
+    it('does not count context overflow as a model failure', () => {
+      const gateway = new GatewayDispatch(repeatedFleet(), {
+        modelFailureConfig: { failureThreshold: 1 },
+      });
+      gateway.recordOutcome('econ-a', {
+        statusCode: 400,
+        message: 'maximum context length exceeded',
+      });
+      expect(gateway.getModelFailureSnapshot('econ-a').consecutiveFailures).toBe(0);
     });
   });
 
@@ -275,7 +397,7 @@ describe('GatewayDispatch', () => {
           { statusCode: 403, message: 'forbidden' },
           composer,
         ),
-      ).toBe(false);
+      ).toBe(true);
     });
 
     it('fails over to cursor/auto when composer-latest hits quota', () => {
