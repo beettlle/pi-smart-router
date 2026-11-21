@@ -36,7 +36,12 @@ import {
   selectTierByExpectedCost,
   type ExpectedCostBreakdown,
 } from '../routing/expected-cost.js';
+import {
+  applyMainLoopCapabilityFloor,
+  isFlashClassModel,
+} from '../routing/flash-class.js';
 import type { Tier } from '../types/index.js';
+import { DEFAULT_TYPED_JUDGMENT_CONFIG } from '../types/schemas.js';
 import { isPinOnlyFallbackActive } from './stage-helpers.js';
 import type { PipelineStage, RoutingContext } from './pipeline-stage.js';
 import type { StageResult } from './router-pipeline.js';
@@ -104,9 +109,114 @@ function resolveTierHint(
   return { tierHint: null, reasonCode: null };
 }
 
-interface ExpectedCostTierHintSelection {
+interface TierHintSelection {
   tierHint: Tier | null;
   reasonCode: string | null;
+}
+
+const TIER_RANK: Readonly<Record<Tier, number>> = {
+  'zero-tier': 0,
+  'economical-cloud': 1,
+  'frontier-cloud': 2,
+};
+
+/** Stable explain / LOG_ROUTING attribution for a judgment-driven tier hint. */
+export function typedJudgmentTierReasonCode(tier: Tier): string {
+  return `typed_judgment_tier_${tier}`;
+}
+
+function isSessionDepthFloorActive(context: RoutingContext): boolean {
+  return (
+    applyMainLoopCapabilityFloor(context.request, context.fullFleet)
+      .excludedModelIds.length > 0
+  );
+}
+
+function isLoopEscalationFloorActive(context: RoutingContext): boolean {
+  return (
+    context.options.sessionPinner?.getPin(context.request.session_id)
+      ?.pin_reason === 'loop_escalation'
+  );
+}
+
+/**
+ * Compose capability_deserved with the structural/expected-cost hint.
+ * High-confidence judgments may replace the prior hint in either direction;
+ * below min_confidence they may only raise it. Deterministic floors always
+ * win over a judgment-driven downgrade.
+ */
+function computeAdjustedHint(
+  context: RoutingContext,
+  structuralHint: TierHintSelection,
+): TierHintSelection {
+  const judgment = context.typedJudgment;
+  const capability = judgment?.capabilityDeserved;
+  if (!judgment || capability === null || capability === undefined) {
+    return structuralHint;
+  }
+
+  let candidate: Tier | null = null;
+  if (capability === 0 || capability === 1 / 3) {
+    candidate = capability === 0 ? 'zero-tier' : 'economical-cloud';
+  } else if (capability >= 2 / 3) {
+    candidate = 'frontier-cloud';
+  }
+  if (candidate === null) {
+    return structuralHint;
+  }
+
+  if (
+    (isSessionDepthFloorActive(context) ||
+      isLoopEscalationFloorActive(context)) &&
+    TIER_RANK[candidate] < TIER_RANK['frontier-cloud']
+  ) {
+    candidate = 'frontier-cloud';
+  }
+
+  // No tier change means no judgment-driven hint to attribute. Besides
+  // preserving observability, this keeps a non-deciding judgment byte-identical
+  // when it agrees with the deterministic / expected-cost selection.
+  if (structuralHint.tierHint === candidate) {
+    return structuralHint;
+  }
+
+  const confidence = judgment.confidences['capability_deserved'] ?? 0;
+  const minConfidence =
+    context.options.typedJudgmentConfig?.min_confidence ??
+    DEFAULT_TYPED_JUDGMENT_CONFIG.min_confidence;
+  if (confidence < minConfidence) {
+    const baseline = structuralHint.tierHint;
+    const raisesTier =
+      baseline === null
+        ? candidate === 'frontier-cloud'
+        : TIER_RANK[candidate] > TIER_RANK[baseline];
+    if (!raisesTier) {
+      return structuralHint;
+    }
+  }
+
+  return {
+    tierHint: candidate,
+    reasonCode: typedJudgmentTierReasonCode(candidate),
+  };
+}
+
+/** Minimal (level 0) is the only judgment allowed onto local/flash models. */
+function applyTypedJudgmentModelFloor(context: RoutingContext): void {
+  const capability = context.typedJudgment?.capabilityDeserved;
+  if (capability === null || capability === undefined || capability === 0) {
+    return;
+  }
+
+  const filtered = context.fleet.filter(
+    (model) => model.tier !== 'zero-tier' && !isFlashClassModel(model),
+  );
+  if (filtered.some((model) => model.healthy !== false)) {
+    context.fleet = filtered;
+  }
+}
+
+interface ExpectedCostTierHintSelection extends TierHintSelection {
   tierCosts: readonly ExpectedCostBreakdown[];
   rationale: string;
 }
@@ -265,6 +375,8 @@ export function createLowIntensityStage(): PipelineStage {
       const alpha = config.p_success_alpha;
       context.pSuccessAlpha = alpha;
 
+      applyTypedJudgmentModelFloor(context);
+
       const cyclomaticThreshold = resolveCyclomaticThreshold(context);
       const triageResult = triageClassify(request.prompt_text, { cyclomaticThreshold });
       let clusterMatch: ClusterMatchResult | undefined;
@@ -304,24 +416,29 @@ export function createLowIntensityStage(): PipelineStage {
       );
       const weightsTrained =
         weights.trained_sample_count >= weights.min_training_samples;
-      const adjustedHint = weightsTrained
-        ? (() => {
-            const selection = selectExpectedCostTierHint(
-              context,
-              pSuccessForGate,
-              alpha,
-            );
-            logExpectedCostExplain(pSuccessForGate, alpha, selection, {
-              p_success_raw: pResult.probability,
-              p_success_calibrated: pSuccessForGate,
-              calibration_applied: calibratedResult.calibration_applied,
-            });
-            return {
-              tierHint: selection.tierHint,
-              reasonCode: selection.reasonCode,
-            };
-          })()
-        : structuralHint;
+      const expectedCostSelection = weightsTrained
+        ? selectExpectedCostTierHint(context, pSuccessForGate, alpha)
+        : null;
+      const adjustedHint = computeAdjustedHint(
+        context,
+        expectedCostSelection ?? structuralHint,
+      );
+      if (expectedCostSelection) {
+        logExpectedCostExplain(
+          pSuccessForGate,
+          alpha,
+          {
+            ...expectedCostSelection,
+            tierHint: adjustedHint.tierHint,
+            reasonCode: adjustedHint.reasonCode,
+          },
+          {
+            p_success_raw: pResult.probability,
+            p_success_calibrated: pSuccessForGate,
+            calibration_applied: calibratedResult.calibration_applied,
+          },
+        );
+      }
       context.tierHint = adjustedHint.tierHint;
       context.tierHintReasonCode = adjustedHint.reasonCode;
 

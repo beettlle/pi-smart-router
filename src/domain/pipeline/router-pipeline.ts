@@ -752,12 +752,25 @@ export class RouterPipeline {
 
   private async turnEnvelope(request: RoutingRequest): Promise<StageResult> {
     void request;
-    return this.runStageWithContext(this.turnEnvelopePipelineStage);
+    const context = this.requireRouteContext();
+    // SP-326: turn_envelope consumes task_kind for its planning override.
+    // Materialize the fail-open signal immediately before that consumer while
+    // retaining the canonical registered stage order for telemetry contracts.
+    await this.typedJudgmentPipelineStage.run(context);
+    return this.turnEnvelopePipelineStage.run(context);
   }
 
   private async typedJudgment(request: RoutingRequest): Promise<StageResult> {
     void request;
-    return this.runStageWithContext(this.typedJudgmentPipelineStage);
+    const context = this.requireRouteContext();
+    // turnEnvelope already ran the stage; avoid a duplicate judge call.
+    if (
+      context.typedJudgment !== null ||
+      context.typedJudgmentSkipReason !== null
+    ) {
+      return { decided: false, stage: 'typed_judgment' };
+    }
+    return this.typedJudgmentPipelineStage.run(context);
   }
 
   private async contextFitStage(request: RoutingRequest): Promise<StageResult> {

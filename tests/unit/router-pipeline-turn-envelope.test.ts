@@ -6,6 +6,8 @@ import { HydraMatcher } from '../../src/domain/matching/hydra-matcher.js';
 import { RouterPipeline } from '../../src/domain/pipeline/router-pipeline.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { SESSION_DEPTH_CAPABILITY_FLOOR } from '../../src/domain/routing/flash-class.js';
+import type { TypedJudgmentPort } from '../../src/domain/ports/typed-judgment-port.js';
+import { DEFAULT_TYPED_JUDGMENT_CONFIG } from '../../src/domain/types/schemas.js';
 import type { ModelProfile, RoutingRequest } from '../../src/domain/types/index.js';
 import {
   makeMockHydraProvider,
@@ -186,5 +188,49 @@ describe('RouterPipeline deep main_loop capability floor (SP-323 / #179)', () =>
     expect(decision.selected_model_id).toBe(capablePeer.id);
     expect(decision.selected_model_id).not.toBe(flash.id);
     expect(pinner.getPin('sess-1')?.pinned_model_id).toBe(capablePeer.id);
+  });
+});
+
+describe('RouterPipeline typed-judgment planning integration (SP-326)', () => {
+  it('populates judgment before turn_envelope and invokes the judge only once', async () => {
+    let judgeCalls = 0;
+    const typedJudgmentPort: TypedJudgmentPort = {
+      judge: () => {
+        judgeCalls += 1;
+        return Promise.resolve({
+          task_kind: {
+            kind: 'choice',
+            choice: 'plan',
+            probabilities: { plan: 0.9, implement: 0.1 },
+            confidence: 0.9,
+          },
+        });
+      },
+    };
+    const pipeline = new RouterPipeline(
+      [
+        makeModel({ id: 'econ', tier: 'economical-cloud' }),
+        makeModel({ id: 'frontier', tier: 'frontier-cloud' }),
+      ],
+      {
+        typedJudgmentPort,
+        typedJudgmentConfig: {
+          ...DEFAULT_TYPED_JUDGMENT_CONFIG,
+          enabled: true,
+        },
+      },
+    );
+
+    const decision = await pipeline.route(
+      makeRequest({
+        prompt_text: 'Implement the auth change',
+        messages: [{ role: 'user', content: 'Implement the auth change' }],
+      }),
+    );
+
+    expect(decision.stage).toBe('turn_envelope');
+    expect(decision.reason_code).toBe('typed_judgment_planning');
+    expect(decision.selected_model_id).toBe('frontier');
+    expect(judgeCalls).toBe(1);
   });
 });

@@ -14,6 +14,7 @@ import type {
   ModelProfile,
   PlanningDelegateConfig,
   RoutingRequest,
+  TurnType,
 } from '../types/index.js';
 import { classifyTurnEnvelope } from '../triage/turn-envelope.js';
 import {
@@ -24,6 +25,7 @@ import { selectLowestCostModel } from '../pinning/sub-route-policy.js';
 import { applyMainLoopCapabilityFloor } from '../routing/flash-class.js';
 import { CrossProviderHandoffTracker } from '../routing/cross-provider-handoff.js';
 import { DEFAULT_OPERATOR_CONFIG } from '../../config/defaults.js';
+import { DEFAULT_TYPED_JUDGMENT_CONFIG } from '../types/schemas.js';
 import {
   createPlanningDelegateObservability,
   PLANNING_DELEGATE,
@@ -170,6 +172,47 @@ function setPlanningDelegateDirectFallback(
   });
 }
 
+const PLANNING_TASK_KINDS: ReadonlySet<string> = new Set([
+  'plan',
+  'debug',
+  'review',
+]);
+
+export const TYPED_JUDGMENT_PLANNING = 'typed_judgment_planning';
+
+/**
+ * A confident task-kind judgment replaces only the regex planning signal.
+ * Explicit host turn types remain authoritative except for a positive
+ * planning override; low-confidence judgments leave classification untouched.
+ */
+function resolveTurnType(
+  context: RoutingContext,
+  classifiedTurnType: TurnType,
+): TurnType {
+  const judgment = context.typedJudgment;
+  if (!judgment?.taskKind) {
+    return classifiedTurnType;
+  }
+
+  const minConfidence =
+    context.options.typedJudgmentConfig?.min_confidence ??
+    DEFAULT_TYPED_JUDGMENT_CONFIG.min_confidence;
+  if ((judgment.taskKindConfidence ?? 0) < minConfidence) {
+    return classifiedTurnType;
+  }
+
+  if (PLANNING_TASK_KINDS.has(judgment.taskKind)) {
+    return 'planning';
+  }
+  if (
+    context.request.turn_type === undefined &&
+    classifiedTurnType === 'planning'
+  ) {
+    return 'main_loop';
+  }
+  return classifiedTurnType;
+}
+
 /** Step 2b: per-turn tier bias with pin-breakeven + planning-delegate gating. */
 export function createTurnEnvelopeStage(): PipelineStage {
   const handoffTracker = new CrossProviderHandoffTracker();
@@ -178,7 +221,9 @@ export function createTurnEnvelopeStage(): PipelineStage {
     name: 'turn_envelope',
     async run(context: RoutingContext): Promise<StageResult> {
       const request: RoutingRequest = context.request;
-      const turnType = request.turn_type ?? classifyTurnEnvelope(request.messages);
+      const classifiedTurnType =
+        request.turn_type ?? classifyTurnEnvelope(request.messages);
+      const turnType = resolveTurnType(context, classifiedTurnType);
       const handoff = handoffTracker.observe({
         sessionId: request.session_id,
         turnType,
@@ -285,7 +330,10 @@ export function createTurnEnvelopeStage(): PipelineStage {
         }
       }
 
-      const directReasonCode = `turn_${turnType}`;
+      const directReasonCode =
+        turnType === 'planning' && classifiedTurnType !== 'planning'
+          ? TYPED_JUDGMENT_PLANNING
+          : `turn_${turnType}`;
       let planningDirectFallback: string | null = null;
 
       if (

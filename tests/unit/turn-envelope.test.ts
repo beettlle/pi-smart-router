@@ -5,6 +5,8 @@ import { evaluateSubRoutePolicy } from '../../src/domain/pinning/sub-route-polic
 import { createTurnEnvelopeStage } from '../../src/domain/pipeline/turn-envelope-stage.js';
 import { SessionPinner } from '../../src/domain/pinning/session-pinner.js';
 import { createRoutingContext } from '../../src/domain/pipeline/pipeline-stage.js';
+import type { TypedJudgment } from '../../src/domain/judgment/index.js';
+import { DEFAULT_TYPED_JUDGMENT_CONFIG } from '../../src/domain/types/schemas.js';
 import type { Message, ModelProfile, RoutingRequest, SessionPin } from '../../src/domain/types/index.js';
 
 function msg(role: string, content: string): Message {
@@ -753,5 +755,100 @@ describe('turn-envelope cross-provider handoff re-check (SP-324)', () => {
     expect(result.decision?.reason_code).toBe('turn_tool_result');
     expect(result.decision?.selected_model_id).toBe(econAnthro.id);
     expect(pinner.getPin('sess-1')?.pinned_model_id).toBe(econAnthro.id);
+  });
+});
+
+describe('turn-envelope typed-judgment planning override (SP-326)', () => {
+  function judgment(
+    taskKind: TypedJudgment['taskKind'],
+    taskKindConfidence: number,
+  ): TypedJudgment {
+    return {
+      taskKind,
+      taskKindConfidence,
+      capabilityDeserved: null,
+      deepReasoningP: null,
+      codeGen: null,
+      toolUse: null,
+      destructiveP: null,
+      confidences: { task_kind: taskKindConfidence },
+    };
+  }
+
+  async function runWithJudgment(
+    request: RoutingRequest,
+    typedJudgment: TypedJudgment,
+  ) {
+    const context = createRoutingContext({
+      request,
+      options: {
+        typedJudgmentConfig: {
+          ...DEFAULT_TYPED_JUDGMENT_CONFIG,
+          enabled: true,
+          min_confidence: 0.6,
+        },
+      },
+      fleet: testFleet,
+    });
+    context.typedJudgment = typedJudgment;
+    const result = await createTurnEnvelopeStage().run(context);
+    return { context, result };
+  }
+
+  it.each(['plan', 'debug', 'review'] as const)(
+    'maps confident task kind %s to a frontier planning turn without regex',
+    async (taskKind) => {
+      const { result } = await runWithJudgment(
+        makeRequest({
+          prompt_text: 'Implement the auth change',
+          messages: [msg('user', 'Implement the auth change')],
+        }),
+        judgment(taskKind, 0.9),
+      );
+
+      expect(result.decided).toBe(true);
+      expect(result.decision?.tier).toBe('frontier-cloud');
+      expect(result.decision?.reason_code).toBe('typed_judgment_planning');
+    },
+  );
+
+  it('does not trigger regex planning for a confident non-planning task kind', async () => {
+    const { context, result } = await runWithJudgment(
+      makeRequest({
+        prompt_text: 'Implement the migration plan',
+        messages: [msg('user', 'Implement the migration plan')],
+      }),
+      judgment('implement', 0.9),
+    );
+
+    expect(result.decided).toBe(false);
+    expect(result.decision).toBeUndefined();
+    expect(context.fleet).toBe(testFleet);
+  });
+
+  it('leaves a main_loop turn unchanged for a low-confidence planning kind', async () => {
+    const { result } = await runWithJudgment(
+      makeRequest({
+        prompt_text: 'Implement the auth change',
+        messages: [msg('user', 'Implement the auth change')],
+      }),
+      judgment('plan', 0.2),
+    );
+
+    expect(result.decided).toBe(false);
+  });
+
+  it('never lets a low-confidence non-planning kind lower regex planning', async () => {
+    const { result } = await runWithJudgment(
+      makeRequest({
+        prompt_text: 'Create a plan for the migration',
+        messages: [msg('user', 'Create a plan for the migration')],
+      }),
+      judgment('implement', 0.2),
+    );
+
+    expect(result.decided).toBe(true);
+    expect(result.decision?.tier).toBe('frontier-cloud');
+    expect(result.decision?.reason_code).toBe('turn_planning');
   });
 });
