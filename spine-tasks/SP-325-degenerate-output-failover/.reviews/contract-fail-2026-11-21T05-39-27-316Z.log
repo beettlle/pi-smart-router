@@ -1,0 +1,51 @@
+Contract testCommand failure log
+Command: npm run typecheck && npx vitest run tests/unit/smart-router-extension.test.ts tests/unit/degenerate-output.test.ts && bash scripts/spine-stet-contract-run.sh default SP-325
+Exit code: 1
+Attempt: 1 of 2
+Timestamp: 2026-11-21T05:39:27.316Z
+Buffer overflow: no
+---
+
+> pi-smart-router@1.4.0 typecheck
+> tsc --noEmit
+
+
+ RUN  v3.2.6 /Users/cdelgado/Documents/github/pi-smart-router/.worktrees/spine-20261121T051253-780f/lane-1
+
+ ✓ tests/unit/degenerate-output.test.ts (7 tests) 4ms
+ ✓ tests/unit/smart-router-extension.test.ts (103 tests) 63ms
+
+ Test Files  2 passed (2)
+      Tests  110 passed (110)
+   Start at  21:38:29
+   Duration  2.09s (transform 482ms, setup 0ms, collect 1.87s, tests 67ms, environment 0ms, prepare 92ms)
+
+4bc845d  .pi/extensions/smart-router/route-and-delegate.ts:604  WARNING  The degenerate output failover path lacks a retry limit. If the alternate model also produces degenerate output, the loop will continue indefinitely, cycling through models or retrying the same model. Unlike the Gemini replay failover which uses a one-shot flag (geminiReplayFailoverAttempted), this path has no mechanism to prevent infinite retries.
+1 finding at 736.3 tokens/sec.
+
+stderr | tests/unit/smart-router-extension.test.ts > gemini tool history guard (SP-077, narrowed SP-129) > reroutes to a non-Google model when foreign-signed history excludes Gemini (SP-232)
+[smart-router] gemini tool history guard applied {"reason_code":"gemini_tool_history_excluded","session_id":"sp232-guard-reroute","excluded_providers":["google","gemini"]}
+
+stderr | tests/unit/smart-router-extension.test.ts > gemini empty-fleet fail-safe (SP-084) > routes unrepairable risk to cursor/auto without unknown delegation
+[smart-router] gemini tool history guard applied {"reason_code":"gemini_tool_history_excluded","session_id":"cursor-auto-sess","excluded_providers":["google","gemini"]}
+
+stderr | tests/unit/smart-router-extension.test.ts > delegation output headroom guard (SP-108) > escalates to larger-fit model without calling undersized provider
+[smart-router] output headroom exceeded, escalating to larger model gemini-pro
+
+stderr | tests/unit/smart-router-extension.test.ts > delegation output headroom guard (SP-108) > retries larger model after zero-output length stop from provider
+[smart-router] zero-output length stop, escalating to larger model gemini-pro
+
+stderr | tests/unit/smart-router-extension.test.ts > session teardown eviction (SP-248, #145) > fails open when the session id is unavailable at shutdown
+[smart-router] session teardown eviction failed (fail open) no active session
+
+stet: contract review found 1 active finding(s). Triage, then re-run the contract:
+
+  stet list
+  stet dismiss <id> <reason>
+
+Dismiss reasons: false_positive, already_correct, wrong_suggestion, out_of_scope.
+Fix real defects in this task's diff. If a finding exposes a stet reviewer bug (bad prompt,
+parser, critic), dismiss it with a reason and record it under Discoveries in STATUS.md.
+Never dismiss a real defect without fixing it.
+Project code defects → file issues on beettlle/pi-smart-router (label stet); stet reviewer bugs →
+https://github.com/beettlle/stet/issues.

@@ -14,6 +14,10 @@ import {
   extractUsageActuals,
   resolveAdaptiveReasoning,
 } from '../../../src/index.js';
+import {
+  DEGENERATE_OUTPUT_ERROR_CODE,
+  isDegenerateOutput,
+} from '../../../src/domain/delegation/degenerate-output.js';
 import type {
   AdaptiveReasoningResult,
   AdaptiveReasoningSignal,
@@ -312,10 +316,17 @@ function recordDelegateOutcome(
     }
   }
 
-  if (result.failed) {
-    const providerError = resolveFailoverProviderError(result.finalMessage) ?? {
-      message: `Delegation failed (${result.finalMessage.stopReason})`,
-    };
+  const degenerate = isDegenerateOutput(result.finalMessage);
+  if (result.failed || degenerate) {
+    const providerError = degenerate
+      ? {
+          code: DEGENERATE_OUTPUT_ERROR_CODE,
+          message: 'Model produced degenerate output',
+          truncated: true,
+        }
+      : resolveFailoverProviderError(result.finalMessage) ?? {
+          message: `Delegation failed (${result.finalMessage.stopReason})`,
+        };
     if (requestId === undefined) {
       deps.router.dispatch.recordOutcome(targetModel.id, providerError);
     } else {

@@ -240,6 +240,21 @@ function makeSuccessStream(model: Model<Api>) {
   return stream;
 }
 
+function makeLengthStream(model: Model<Api>, text: string) {
+  const stream = createAssistantMessageEventStream();
+  const partial: AssistantMessage = {
+    ...makeAssistantPartial(model),
+    content: [{ type: 'text', text }],
+    stopReason: 'length',
+  };
+  void (async () => {
+    stream.push({ type: 'start', partial });
+    stream.push({ type: 'done', reason: 'length', message: partial });
+    stream.end(partial);
+  })();
+  return stream;
+}
+
 function makeErrorStream(model: Model<Api>, errorMessage: string) {
   const stream = createAssistantMessageEventStream();
   const errorMessageObj: AssistantMessage = {
@@ -1524,6 +1539,141 @@ describe('createStreamSimple', () => {
     });
     expect(events.some((event) => event.type === 'done')).toBe(true);
     expect(events.some((event) => event.type === 'error')).toBe(false);
+  });
+
+  it('fails over on degenerate length-stop output and records telemetry (SP-325)', async () => {
+    const repetitiveTail = Array.from(
+      { length: 160 },
+      (_, index) => `sleep ${300 + index}; echo "${index}-END";`,
+    ).join('\n');
+    const decisions: RoutingDecision[] = [];
+    const router = createMockRouter(
+      vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' })),
+    );
+    const recordOutcome = vi.spyOn(router.dispatch, 'recordOutcome');
+    mockDelegateStreamSimple
+      .mockImplementationOnce(() => makeLengthStream(registryModels[0]!, repetitiveTail))
+      .mockImplementationOnce(() => makeSuccessStream(registryModels[1]!));
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router,
+        onRoutingDecision: (decision) => decisions.push(decision),
+      }),
+    );
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('continue')])),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(2);
+    expect(mockDelegateStreamSimple.mock.calls.map(([model]) => model.id)).toEqual([
+      'gpt-4o-mini',
+      'gemini-flash',
+    ]);
+    expect(recordOutcome).toHaveBeenCalledWith(
+      'gpt-4o-mini',
+      {
+        code: 'DEGENERATE_OUTPUT',
+        message: 'Model produced degenerate output',
+        truncated: true,
+      },
+      expect.any(String),
+    );
+    expect(router.dispatch.getModelFailureSnapshot('gpt-4o-mini').consecutiveFailures).toBe(1);
+    expect(decisions.at(-1)).toMatchObject({
+      selected_model_id: 'gemini-flash',
+      reason_code: 'degenerate_output',
+    });
+    expect(events.some((event) => event.type === 'done')).toBe(true);
+    expect(events.some((event) => event.type === 'error')).toBe(false);
+  });
+
+  it('limits degenerate-output failover to one retry even if the selector cycles (SP-325)', async () => {
+    const repetitiveTail = 'sleep 300; echo "300-END";\n'.repeat(160);
+    const decisions: RoutingDecision[] = [];
+    const router = createMockRouter(
+      vi.fn(async () => makeDecision({ selected_model_id: 'gpt-4o-mini' })),
+    );
+    const selectFailover = vi
+      .spyOn(router.dispatch, 'selectFailover')
+      .mockImplementation((currentDecision) =>
+        makeDecision({
+          selected_model_id:
+            currentDecision.selected_model_id === 'gpt-4o-mini'
+              ? 'gemini-flash'
+              : 'gpt-4o-mini',
+        }),
+      );
+    mockDelegateStreamSimple.mockImplementation((model) =>
+      makeLengthStream(model, repetitiveTail),
+    );
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router,
+        onRoutingDecision: (decision) => decisions.push(decision),
+      }),
+    );
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('continue')])),
+    );
+
+    // One retry, then a structured terminal even if failover selection would
+    // otherwise keep alternating between the same two degenerate models.
+    expect(mockDelegateStreamSimple).toHaveBeenCalledTimes(2);
+    expect(selectFailover).toHaveBeenCalledOnce();
+    expect(decisions.at(-1)).toMatchObject({
+      selected_model_id: 'gemini-flash',
+      reason_code: 'degenerate_output',
+    });
+    expect(events.some((event) => event.type === 'done')).toBe(false);
+    const errorEvent = events.find((event) => event.type === 'error');
+    expect(errorEvent?.type).toBe('error');
+    if (errorEvent?.type === 'error') {
+      expect(errorEvent.error.errorMessage).toContain('Model produced degenerate output');
+      expect(errorEvent.error.content).toEqual([]);
+    }
+  });
+
+  it('returns a short degenerate_output error when failover is exhausted (SP-325)', async () => {
+    const repetitiveTail = 'sleep 300; echo "300-END";\n'.repeat(160);
+    const primaryProfile = fleet.find((profile) => profile.id === 'gpt-4o-mini')!;
+    const primaryModel = registryModels[0]!;
+    const decisions: RoutingDecision[] = [];
+    const router = createMockRouter(
+      vi.fn(async () => makeDecision({ selected_model_id: primaryProfile.id })),
+      [primaryProfile],
+    );
+    mockDelegateStreamSimple.mockImplementationOnce(() =>
+      makeLengthStream(primaryModel, repetitiveTail),
+    );
+    const streamSimple = createStreamSimple(
+      makeStreamDeps({
+        router,
+        fleet: [primaryProfile],
+        modelRegistry: createMockRegistry([primaryModel]),
+        onRoutingDecision: (decision) => decisions.push(decision),
+      }),
+    );
+
+    const events = await collectEvents(
+      streamSimple(makeAutoModel(), makeContext([userMessage('continue')])),
+    );
+
+    expect(mockDelegateStreamSimple).toHaveBeenCalledOnce();
+    expect(decisions.at(-1)).toMatchObject({
+      selected_model_id: primaryProfile.id,
+      reason_code: 'degenerate_output',
+    });
+    expect(events.some((event) => event.type === 'done')).toBe(false);
+    const errorEvent = events.find((event) => event.type === 'error');
+    expect(errorEvent?.type).toBe('error');
+    if (errorEvent?.type === 'error') {
+      expect(errorEvent.error.errorMessage).toContain('Model produced degenerate output');
+      expect(errorEvent.error.errorMessage).toContain('no failover model available');
+      expect((errorEvent.error.errorMessage ?? '').length).toBeLessThan(160);
+      expect(errorEvent.error.content).toEqual([]);
+    }
   });
 
   it('treats the same 4xx on an alternate as request-caused and rolls back counts (SP-322)', async () => {
