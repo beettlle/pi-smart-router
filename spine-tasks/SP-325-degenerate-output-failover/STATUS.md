@@ -1,7 +1,7 @@
 # SP-325: Degenerate output detect → failover — Status
 
-**Current Step:** 2
-**Status:** In Progress
+**Current Step:** Complete
+**Status:** Complete
 **Last Updated:** 2026-11-21
 **Review Level:** 2
 **Review Counter:** 0
@@ -25,10 +25,10 @@
 - [x] Wire failover + telemetry
 
 ### Step 2: Testing & Verification
-**Status:** In Progress
+**Status:** Complete
 
 - [x] Unit + integration AC
-- [ ] Contract
+- [x] Contract
 
 ---
 
@@ -50,8 +50,8 @@
 |------|-------|--------|
 | 2026-11-21 | Step 0 preflight | Confirmed #181 AC and #52's separate zero-output path; selected SP-322 `recordOutcome` + `selectFailover` without pipeline changes. |
 | 2026-11-21 | Step 1 implementation | Added trailing 5-gram classifier, SP-322 failure recording, in-turn failover, telemetry reason override, and short no-failover terminal error. |
-| 2026-11-21 | Step 2 verification | Exact contract green; `npm run coverage:check` passed 157 files / 2,673 tests, 92.12% overall lines and 100% on `degenerate-output.ts`. |
-| 2026-11-21 | Contract remediation | Stet found an unbounded degenerate-output retry path. Reopened Step 2 to add a one-shot retry guard and regression coverage. |
+| 2026-11-21 | Step 2 verification | Exact contract green; `npm run coverage:check` passed 157 files / 2,674 tests, 92.12% overall lines and 100% on `degenerate-output.ts`. |
+| 2026-11-21 | Contract remediation | Added a one-shot degenerate-output retry guard and a cycling-selector regression test; exact contract passed with 111 tests and zero stet findings. |
 
 ## Blockers
 
