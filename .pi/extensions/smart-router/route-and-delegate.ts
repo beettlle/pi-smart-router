@@ -35,6 +35,10 @@ import {
   type PipedDelegatedStreamResult,
 } from './delegate-stream.js';
 import {
+  DEGENERATE_OUTPUT,
+  isDegenerateOutput,
+} from '../../../src/domain/delegation/degenerate-output.js';
+import {
   createErrorMessage,
   findFleetProfile,
   flushDelegatedEvents,
@@ -594,6 +598,58 @@ export async function routeAndDelegate(
           emitContextOverflowNoFit(outer, targetModel, fallbackTarget.reasonCode);
           return;
         }
+      }
+
+      if (result.finalMessage && isDegenerateOutput(result.finalMessage)) {
+        // SP-325 / #181: discard the repetitive terminal, count it through the
+        // SP-322 model-failure policy (in recordDelegateOutcome), and retry the
+        // original context. The bad assistant turn was never added to that context.
+        if (!failedModelIds.includes(targetModel.id)) {
+          failedModelIds.push(targetModel.id);
+        }
+        const selectedFailover = deps.router.dispatch.selectFailover(
+          decision,
+          failedModelIds,
+          effectiveFleet,
+        );
+        const failover = selectedFailover
+          ? { ...selectedFailover, reason_code: DEGENERATE_OUTPUT }
+          : undefined;
+        const alternateModel = failover ? resolveTargetModel(deps, failover) : undefined;
+
+        if (failover && alternateModel && alternateModel.id !== targetModel.id) {
+          console.warn(
+            '[smart-router] degenerate output, failing over to alternate model',
+            JSON.stringify({
+              reason_code: DEGENERATE_OUTPUT,
+              failed_model_id: targetModel.id,
+              selected_model_id: alternateModel.id,
+            }),
+          );
+          pendingFailoverInfo = {
+            failedModelId: targetModel.id,
+            alternateModelId: alternateModel.id,
+            errorObj: {
+              code: 'DEGENERATE_OUTPUT',
+              message: 'Model produced degenerate output',
+            },
+          };
+          decision = failover;
+          deps.onRoutingDecision?.(decision);
+          targetModel = alternateModel;
+          continue;
+        }
+
+        decision = { ...decision, reason_code: DEGENERATE_OUTPUT };
+        deps.onRoutingDecision?.(decision);
+        emitDegradedFailure(
+          outer,
+          targetModel,
+          targetModel.id,
+          DEGENERATE_OUTPUT,
+          'Model produced degenerate output; no failover model available',
+        );
+        return;
       }
 
       if (

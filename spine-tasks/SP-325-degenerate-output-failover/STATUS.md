@@ -21,8 +21,8 @@
 ### Step 1: Detector + failover
 **Status:** In Progress
 
-- [ ] Pure classifier
-- [ ] Wire failover + telemetry
+- [x] Pure classifier
+- [x] Wire failover + telemetry
 
 ### Step 2: Testing & Verification
 **Status:** Not Started
@@ -49,6 +49,7 @@
 | Date | Event | Detail |
 |------|-------|--------|
 | 2026-11-21 | Step 0 preflight | Confirmed #181 AC and #52's separate zero-output path; selected SP-322 `recordOutcome` + `selectFailover` without pipeline changes. |
+| 2026-11-21 | Step 1 implementation | Added trailing 5-gram classifier, SP-322 failure recording, in-turn failover, telemetry reason override, and short no-failover terminal error. |
 
 ## Blockers
 
