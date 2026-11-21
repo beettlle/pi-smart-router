@@ -1,6 +1,6 @@
 # SP-320: Parse status-prefix provider errors; stop false 5xx-from-body — Status
 
-**Current Step:** Step 1: Implement parse fixes
+**Current Step:** Step 2: Testing & Verification
 **Status:** In Progress
 **Last Updated:** 2026-11-19
 **Review Level:** 1
@@ -17,13 +17,13 @@
 - [x] Confirm thought_signature expectations
 
 ### Step 1: Implement parse fixes
-**Status:** In Progress
+**Status:** Complete
 
-- [ ] Leading NNN: + JSON path
-- [ ] Leading-only 429/5xx fallback
+- [x] Leading NNN: + JSON path
+- [x] Leading-only 429/5xx fallback
 
 ### Step 2: Testing & Verification
-**Status:** Not Started
+**Status:** In Progress
 
 - [ ] Unit cases a/b + thought_signature
 - [ ] Run Contract testCommand
